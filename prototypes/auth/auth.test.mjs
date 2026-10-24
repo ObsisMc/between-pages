@@ -55,20 +55,28 @@ async function call(path, { cookies, method = 'GET', body, origin = WEB } = {}) 
   return res;
 }
 
-/** Full browser-style OIDC round trip; returns the jar and the final callback response. */
-async function signIn(claims) {
+/** Browser-style OIDC round trip from `path` (sign-in or link); returns the final callback. */
+async function roundTrip(path, claims, provider, cookies) {
   identity = claims;
-  const cookies = jar();
-  const start = await call('/api/auth/sign-in/social', {
-    cookies, method: 'POST', body: { provider: 'google', callbackURL: `${WEB}/` },
+  const start = await call(path, {
+    cookies, method: 'POST', body: { provider, callbackURL: `${WEB}/` },
   });
-  assert.equal(start.status, 200, await start.clone().text());
+  if (start.status !== 200) return { start, done: null };
   const { url } = await start.json();
   const authorize = await fetch(url, { redirect: 'manual' });
   const callback = new URL(authorize.headers.get('location'));
-  const done = await call(callback.pathname + callback.search, { cookies });
+  return { start, done: await call(callback.pathname + callback.search, { cookies }) };
+}
+
+async function signIn(claims, provider = 'google') {
+  const cookies = jar();
+  const { start, done } = await roundTrip('/api/auth/sign-in/social', claims, provider, cookies);
+  assert.equal(start.status, 200, 'sign-in did not start');
   return { cookies, done };
 }
+
+const link = (cookies, claims, provider = 'other') =>
+  roundTrip('/api/auth/link-social', claims, provider, cookies);
 
 const me = async (cookies) => {
   const res = await call('/api/me', { cookies });
@@ -101,7 +109,7 @@ describe('Better Auth spike (Fastify + PostgreSQL + OIDC)', { timeout: 20_000 },
     const { status, body } = await me(cookies);
     assert.equal(status, 200);
     assert.match(body.userId, /^[0-9a-f-]{36}$/, 'application user id is a uuid, not the subject');
-    const accounts = await rows('select "providerId", "accountId", "userId" from account where "accountId" = $1', ['subject-a']);
+    const accounts = await rows('select "providerId", "accountId", "userId" from auth_account where "accountId" = $1', ['subject-a']);
     assert.deepEqual(accounts, [{ providerId: 'google', accountId: 'subject-a', userId: body.userId }]);
   });
 
@@ -109,26 +117,26 @@ describe('Better Auth spike (Fastify + PostgreSQL + OIDC)', { timeout: 20_000 },
     const first = await me((await signIn({ sub: 'subject-b', email: 'b-old@example.test' })).cookies);
     const second = await me((await signIn({ sub: 'subject-b', email: 'b-new@example.test' })).cookies);
     assert.equal(second.body.userId, first.body.userId);
-    assert.equal((await rows('select count(*)::int as n from account where "accountId" = $1', ['subject-b']))[0].n, 1);
+    assert.equal((await rows('select count(*)::int as n from auth_account where "accountId" = $1', ['subject-b']))[0].n, 1);
   });
 
   it('never merges a different subject into an existing user because the email matches', async () => {
     const owner = await me((await signIn({ sub: 'subject-c', email: 'shared@example.test' })).cookies);
-    const usersBefore = (await rows('select count(*)::int as n from "user"'))[0].n;
+    const usersBefore = (await rows('select count(*)::int as n from auth_user'))[0].n;
     const { cookies, done } = await signIn({ sub: 'subject-intruder', email: 'shared@example.test' });
     const intruder = await me(cookies);
     assert.notEqual(intruder.body?.userId, owner.body.userId, 'must not sign in as the existing user');
-    const linked = await rows('select "userId" from account where "accountId" = $1', ['subject-intruder']);
+    const linked = await rows('select "userId" from auth_account where "accountId" = $1', ['subject-intruder']);
     assert.ok(linked.every((r) => r.userId !== owner.body.userId), 'no account row linked to the owner');
     console.log('SAME_EMAIL_OUTCOME', JSON.stringify({
       status: done.status, location: done.headers.get('location'), session: intruder.status,
-      usersAdded: (await rows('select count(*)::int as n from "user"'))[0].n - usersBefore,
+      usersAdded: (await rows('select count(*)::int as n from auth_user'))[0].n - usersBefore,
     }));
   });
 
   it('keeps no provider tokens for the login account', async () => {
     const [account] = await rows(
-      'select "accessToken", "idToken", "refreshToken", "scope" from account where "accountId" = $1', ['subject-a']);
+      'select "accessToken", "idToken", "refreshToken", "scope" from auth_account where "accountId" = $1', ['subject-a']);
     assert.deepEqual(
       { access: account.accessToken, id: account.idToken, refresh: account.refreshToken },
       { access: null, id: null, refresh: null },
@@ -140,8 +148,8 @@ describe('Better Auth spike (Fastify + PostgreSQL + OIDC)', { timeout: 20_000 },
       signIn({ sub: 'subject-race', email: 'race@example.test' }),
       signIn({ sub: 'subject-race', email: 'race@example.test' }),
     ]);
-    const accounts = await rows('select "userId" from account where "accountId" = $1', ['subject-race']);
-    const users = await rows(`select id from "user" where email = 'race@example.test'`);
+    const accounts = await rows('select "userId" from auth_account where "accountId" = $1', ['subject-race']);
+    const users = await rows(`select id from auth_user where email = 'race@example.test'`);
     console.log('RACE_OUTCOME', JSON.stringify({
       fulfilled: results.filter((r) => r.status === 'fulfilled').length,
       statuses: results.map((r) => r.value?.done.status),
@@ -179,8 +187,41 @@ describe('Better Auth spike (Fastify + PostgreSQL + OIDC)', { timeout: 20_000 },
     assert.notEqual(forgedStart.status, 200, 'callback to an untrusted origin must be refused');
   });
 
+  it('lets a signed-in user attach a second provider, then sign in with either', async () => {
+    const { cookies } = await signIn({ sub: 'subject-h', email: 'h@example.test' });
+    const owner = (await me(cookies)).body.userId;
+    const { done } = await link(cookies, { sub: 'other-h', email: 'h-elsewhere@example.test' });
+    assert.equal(done.status, 302);
+    const accounts = await rows('select "providerId", "accountId" from auth_account where "userId" = $1 order by "providerId"', [owner]);
+    assert.deepEqual(accounts.map((a) => `${a.providerId}:${a.accountId}`), ['google:subject-h', 'other:other-h']);
+    const viaOther = await me((await signIn({ sub: 'other-h', email: 'h-elsewhere@example.test' }, 'other')).cookies);
+    assert.equal(viaOther.body.userId, owner);
+  });
+
+  it('refuses linking without a session or to an identity another user already owns', async () => {
+    const anonymous = await link(jar(), { sub: 'other-x', email: 'x@example.test' });
+    assert.equal(anonymous.start.status, 401);
+    const taken = await me((await signIn({ sub: 'other-taken', email: 'taken@example.test' }, 'other')).cookies);
+    const { cookies } = await signIn({ sub: 'subject-i', email: 'i@example.test' });
+    const mine = (await me(cookies)).body.userId;
+    await link(cookies, { sub: 'other-taken', email: 'taken@example.test' });
+    const owner = await rows('select "userId" from auth_account where "providerId" = $1 and "accountId" = $2', ['other', 'other-taken']);
+    assert.deepEqual(owner, [{ userId: taken.body.userId }]);
+    assert.notEqual(mine, taken.body.userId);
+  });
+
+  it('keeps the domain user free of provider and email data', async () => {
+    const { cookies } = await signIn({ sub: 'subject-j', email: 'j@example.test' });
+    const { body } = await me(cookies);
+    const columns = await rows(`select column_name from information_schema.columns where table_name = 'users' order by ordinal_position`);
+    assert.deepEqual(columns.map((c) => c.column_name), ['id', 'display_name', 'created_at']);
+    const fks = await rows(`select conname from pg_constraint where conrelid = 'users'::regclass and contype = 'f'`);
+    assert.deepEqual(fks, [], 'domain users must not depend on auth tables');
+    assert.deepEqual(await rows('select id from users where id = $1', [body.userId]), [{ id: body.userId }]);
+  });
+
   it('has a unique key on (providerId, accountId) so one subject cannot map to two users', async () => {
-    const indexes = await rows(`select indexdef from pg_indexes where tablename = 'account'`);
+    const indexes = await rows(`select indexdef from pg_indexes where tablename = 'auth_account'`);
     console.log('ACCOUNT_INDEXES', JSON.stringify(indexes.map((r) => r.indexdef)));
     const unique = indexes.some((r) => /UNIQUE/i.test(r.indexdef) && /"providerId"/.test(r.indexdef) && /"accountId"/.test(r.indexdef));
     assert.ok(unique, 'no unique index on (providerId, accountId)');

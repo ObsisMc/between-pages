@@ -21,15 +21,30 @@ ADR-0006 把 Better Auth 列为第一候选。本 ADR 根据 spike 和维护情�
 1. 使用 **Better Auth 1.7.x**，锁定精确版本，且不低于 1.7.7（修复了 OAuth state 被冒用登录他人账号的严重漏洞）。它运行在 `apps/api` 进程内，按官方 Fastify 方式挂在 `/api/auth/*`，与 Web 同源。
 2. 生产环境**不启用任何 Better Auth 插件**。该项目历史上的安全公告大多出在插件（sso、oauth-provider、api-key 等）上，少用插件就是少受影响。测试中用 `genericOAuth` 插件把登录指向本地模拟的 OIDC 服务。
 
-### 身份
+### 数据模型：身份层与领域层分开
 
-3. 登录只用 `socialProviders.google`，只申请 `openid email profile`，不申请任何 Drive 权限。
-4. 应用 userId 是 UUID（`advanced.database.generateId: 'uuid'`），与 Google subject 无关。
-5. Google 身份是 `account` 表中的 `(providerId = 'google', accountId = sub)`，并由我们自己的唯一索引保证一一对应。Better Auth 默认只建了普通索引，spike 中防止重复用户的其实是 `user.email` 的唯一约束，属于碰巧，不能依赖。
-   - providerId 固定为 `google`，等价于 issuer 固定为 Google，因此不需要单独存 issuer。
-6. **关闭账号自动合并**（`account.accountLinking.enabled: false`）。Better Auth 默认会把邮箱相同的新 Google 账号合并进已有用户，这违反"不以邮箱作为身份"。关闭后：
-   - 同一 subject 换了邮箱，仍是同一个用户；
-   - 不同 subject 使用已存在的邮箱时，登录被拒绝（`account_not_linked`），不建会话、不建用户。界面要把这个错误明确告诉用户，处理方式是人工协助，不自动合并。
+3. 用户数据分两层，**领域数据不依赖 Google，也不依赖 Better Auth**：
+
+   | 层 | 表 | 内容 | 谁写 |
+   | --- | --- | --- | --- |
+   | 领域层 | `users` | `id`、`display_name`、`created_at`；以后加时区、作者颜色、停用时间 | 只有我们的代码 |
+   | 身份层 | `auth_user` | 与 `users.id` 相同的 id、邮箱、头像等登录资料 | Better Auth |
+   | 身份层 | `auth_account` | `(providerId, accountId)`：哪个登录方式的哪个 subject 属于哪个用户 | Better Auth |
+   | 身份层 | `auth_session`、`auth_verification` | 会话、OAuth state | Better Auth |
+
+   - 空间、成员、邀请、日记、字符作者、已读进度等所有领域表，**只引用 `users.id`**，不引用任何 `auth_*` 表。
+   - `users` 不存邮箱和登录方式，也**不设指向 `auth_*` 的外键**。这样更换认证库、增删登录方式都不影响领域数据；账号停用或身份记录删除，也不会连带删除这个人写过的字（规格 §3）。
+   - 两层通过同一个 UUID 对应（`advanced.database.generateId: 'uuid'`）。领域行由 API 唯一的"当前用户"入口在第一次认证请求时幂等创建，所以"身份已建、领域行还没建"的中间状态会在下一次请求时自动补上。
+   - Better Auth 的表统一加 `auth_` 前缀（`modelName`），一眼能分清哪些表归认证库管。
+4. 登录方式是 `auth_account` 里的一行 `(providerId, accountId = subject)`，由我们自己加的唯一索引保证一一对应。Better Auth 默认只建了普通索引，spike 中防止重复用户的其实是邮箱的唯一约束，属于碰巧，不能依赖。providerId 对应固定的签发方，所以不需要单独存 issuer。
+5. 首版只接 `socialProviders.google`，只申请 `openid email profile`，不申请任何 Drive 权限。以后接入其他 OAuth / OIDC 登录方式，只需增加 provider 配置和 `auth_account` 行，**`users` 和所有领域表不变**。
+
+### 账号合并：禁止自动合并，允许登录后主动绑定
+
+6. 配置为 `accountLinking: { enabled: true, disableImplicitLinking: true, allowDifferentEmails: true }`：
+   - **禁止自动合并**：Better Auth 默认会把邮箱相同的新登录合并进已有用户，这违反"不以邮箱作为身份"。关闭后，同一 subject 换了邮箱仍是同一个用户；不同 subject 使用已存在的邮箱时，登录被拒绝（`account_not_linked`），不建会话、不建用户。界面要明确说明这个错误，处理方式是人工协助。
+   - **允许主动绑定**：已登录的用户可以在设置里绑定另一种登录方式，之后用任一方式都登录同一个用户。绑定必须在已登录状态下完成；已属于别人的身份不能被绑过来。因为是本人在登录状态下完成授权，所以允许新登录方式的邮箱与原邮箱不同。
+   - 不用 `enabled: false`：它不仅关掉自动合并，也会关掉登录后的主动绑定，以后就无法给同一用户增加登录方式（Better Auth 源码 `api/routes/account.mjs` 中 `linkSocial` 同样检查这个开关）。
 
 ### 不保存 Google 令牌
 
@@ -50,12 +65,12 @@ ADR-0006 把 Better Auth 列为第一候选。本 ADR 根据 spike 和维护情�
 
 ### 不归 Better Auth 管的部分
 
-15. 双人空间、成员和邀请用我们自己的表，不用 Better Auth 的 organization 插件。"最多两人、一次性邀请、并发接受不出现第三人"由 PG 约束和事务保证，见 [规格 §3](../diary-spec.md)。
+15. 双人空间、成员和邀请用我们自己的表（引用 `users.id`），不用 Better Auth 的 organization 插件。"最多两人、一次性邀请、并发接受不出现第三人"由 PG 约束和事务保证，见 [规格 §3](../diary-spec.md)。
 16. 退出或切换账号时锁定本机缓存（AUTH-06），这属于客户端的职责。
 
 ### 表结构与升级
 
-17. Better Auth 的表定义用 `npx auth generate` 生成 Drizzle schema，提交到 `apps/api`，用 drizzle-kit 迁移；第 5 条的唯一索引写在同一个 schema 里。旧的 `@better-auth/cli` 已弃用。
+17. Better Auth 的表定义用 `npx auth generate` 生成 Drizzle schema，提交到 `apps/api`，用 drizzle-kit 迁移；第 4 条的唯一索引和领域 `users` 表写在同一套 schema 里。旧的 `@better-auth/cli` 已弃用。
 18. 用 Dependabot 和 GitHub 安全公告跟踪 Better Auth。安全补丁优先升级，升级后重跑认证测试。
 
 ### 测试
@@ -72,10 +87,13 @@ ADR-0006 把 Better Auth 列为第一候选。本 ADR 根据 spike 和维护情�
 - **Clerk、WorkOS**：托管收费服务，身份数据在第三方。对两个人的应用来说太重，会话也不方便和自己的 WebSocket 共用。
 - **Better Auth 的 organization 插件管理空间**：通用的多成员模型，"最多两人、一次性邀请"仍要自己约束，还会增加插件面，见第 2 条。
 - **保留默认的账号自动合并**：Google 会返回 `email_verified`，默认就会按邮箱合并，违反规格。
+- **`accountLinking.enabled: false`**：最初的选择，但它也会禁止登录后的主动绑定，堵死了以后增加登录方式的路。
+- **领域表直接引用 Better Auth 的 `user` 表**：表少一张，但领域数据从此绑在认证库的表结构上，换库或调整认证表都要动领域数据，也会让"删身份"牵连到日记作者。
 
 ## 后果
 
-- 登录的协议细节、会话和登录端点的 CSRF 由成熟的库负责；项目只维护配置、令牌清理钩子、唯一索引、自己路由的 Origin 检查和空间表。
+- 登录的协议细节、会话和登录端点的 CSRF 由成熟的库负责；项目只维护配置、令牌清理钩子、唯一索引、领域 `users` 表、自己路由的 Origin 检查和空间表。
+- 多了一张 `users` 表和"首次请求时创建领域行"的逻辑。代价很小，换来认证层可以整体替换。
 - Better Auth 发版频繁，从 2024-12 到 2026-09 有 37 条安全公告。需要持续跟进补丁，不能装好就不管。
 - 邮箱冲突时要人工处理，理论上会遇到；两人规模下可以接受。
 - spike 用的是 `genericOAuth` 加模拟服务，没有覆盖 `socialProviders.google` 对真实 Google ID 令牌的校验、同意页面和 HTTPS 下的 cookie 前缀；这些在第 20 条的联调中验证。

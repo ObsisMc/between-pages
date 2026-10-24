@@ -1,18 +1,18 @@
 postgres (PostgreSQL) 18.6
-2026-10-24T16:09:27.110Z ERROR [Better Auth]: Database schema mismatch
+2026-10-24T16:33:14.462Z ERROR [Better Auth]: Database schema mismatch
 
   Missing tables
-    user, session, account, verification
+    auth_user, auth_session, auth_account, auth_verification
 
   help: Run `npx auth migrate` to add the missing tables and columns.
 ▶ Better Auth spike (Fastify + PostgreSQL + OIDC)
-  ✔ signs in, issues an HttpOnly SameSite=Lax session cookie and keys the user by subject (127.214478ms)
-  ✔ returns the same user for the same subject even after the email changes (98.324702ms)
-2026-10-24T16:09:27.487Z ERROR [Better Auth]: account_not_linked
-SAME_EMAIL_OUTCOME {"status":302,"location":"http://127.0.0.1:35933/api/auth/error?error=account_not_linked","session":401,"usersAdded":0}
-  ✔ never merges a different subject into an existing user because the email matches (80.93762ms)
-  ✔ keeps no provider tokens for the login account (1.396967ms)
-2026-10-24T16:09:27.547Z ERROR [Better Auth]: Unable to create OAuth user error: duplicate key value violates unique constraint "user_email_key"
+  ✔ signs in, issues an HttpOnly SameSite=Lax session cookie and keys the user by subject (125.266442ms)
+  ✔ returns the same user for the same subject even after the email changes (93.879421ms)
+2026-10-24T16:33:14.834Z ERROR [Better Auth]: account_not_linked
+SAME_EMAIL_OUTCOME {"status":302,"location":"http://127.0.0.1:33391/api/auth/error?error=account_not_linked","session":401,"usersAdded":0}
+  ✔ never merges a different subject into an existing user because the email matches (85.236382ms)
+  ✔ keeps no provider tokens for the login account (1.542807ms)
+2026-10-24T16:33:14.901Z ERROR [Better Auth]: Unable to create OAuth user error: duplicate key value violates unique constraint "auth_user_email_key"
     at /home/ubuntu/codebase/between-pages/node_modules/pg/lib/client.js:694:17
     at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
     at async PostgresConnection.executeQuery (file:///home/ubuntu/codebase/between-pages/node_modules/kysely/dist/dialect/postgres/postgres-driver.js:118:28)
@@ -33,7 +33,7 @@ SAME_EMAIL_OUTCOME {"status":302,"location":"http://127.0.0.1:35933/api/auth/err
     at async InsertQueryBuilder.executeTakeFirst (file:///home/ubuntu/codebase/between-pages/node_modules/kysely/dist/query-builder/insert-query-builder.js:1113:26)
     at async withReturning (file:///home/ubuntu/codebase/between-pages/node_modules/@better-auth/kysely-adapter/dist/index.mjs:362:12)
     at async Object.create (file:///home/ubuntu/codebase/between-pages/node_modules/@better-auth/kysely-adapter/dist/index.mjs:501:13) {
-  length: 206,
+  length: 221,
   severity: 'ERROR',
   code: '23505',
   detail: 'Key (email)=(race@example.test) already exists.',
@@ -43,33 +43,36 @@ SAME_EMAIL_OUTCOME {"status":302,"location":"http://127.0.0.1:35933/api/auth/err
   internalQuery: undefined,
   where: undefined,
   schema: 'public',
-  table: 'user',
+  table: 'auth_user',
   column: undefined,
   dataType: undefined,
-  constraint: 'user_email_key',
+  constraint: 'auth_user_email_key',
   file: 'nbtinsert.c',
   line: '666',
   routine: '_bt_check_unique'
 }
-2026-10-24T16:09:27.548Z ERROR [Better Auth]: unable_to_create_user
+2026-10-24T16:33:14.902Z ERROR [Better Auth]: unable_to_create_user
 RACE_OUTCOME {"fulfilled":2,"statuses":[302,302],"accounts":1,"users":1}
-  ✔ creates one user when the same new subject signs in twice concurrently (58.344754ms)
-  ✔ authenticates a WebSocket upgrade with the session cookie and rejects it without (55.613262ms)
-  ✔ stops accepting the session on HTTP and WebSocket after sign-out (57.793152ms)
-2026-10-24T16:09:27.710Z ERROR [Better Auth]: Invalid origin: https://evil.example
-2026-10-24T16:09:27.719Z ERROR [Better Auth]: Invalid callbackURL: https://evil.example/
-  ✔ rejects state-changing auth calls from an untrusted origin (55.271339ms)
-ACCOUNT_INDEXES ["CREATE UNIQUE INDEX account_pkey ON public.account USING btree (id)","CREATE INDEX \"account_userId_idx\" ON public.account USING btree (\"userId\")","CREATE UNIQUE INDEX account_provider_subject_key ON public.account USING btree (\"providerId\", \"accountId\")"]
-  ✔ has a unique key on (providerId, accountId) so one subject cannot map to two users (8.042518ms)
-✔ Better Auth spike (Fastify + PostgreSQL + OIDC) (1170.449782ms)
+  ✔ creates one user when the same new subject signs in twice concurrently (64.49869ms)
+  ✔ authenticates a WebSocket upgrade with the session cookie and rejects it without (59.251866ms)
+  ✔ stops accepting the session on HTTP and WebSocket after sign-out (56.628854ms)
+2026-10-24T16:33:15.064Z ERROR [Better Auth]: Invalid origin: https://evil.example
+2026-10-24T16:33:15.074Z ERROR [Better Auth]: Invalid callbackURL: https://evil.example/
+  ✔ rejects state-changing auth calls from an untrusted origin (53.017078ms)
+  ✔ lets a signed-in user attach a second provider, then sign in with either (136.925374ms)
+  ✔ refuses linking without a session or to an identity another user already owns (113.966191ms)
+  ✔ keeps the domain user free of provider and email data (62.087598ms)
+ACCOUNT_INDEXES ["CREATE UNIQUE INDEX auth_account_pkey ON public.auth_account USING btree (id)","CREATE INDEX \"auth_account_userId_idx\" ON public.auth_account USING btree (\"userId\")","CREATE UNIQUE INDEX auth_account_provider_subject_key ON public.auth_account USING btree (\"providerId\", \"accountId\")"]
+  ✔ has a unique key on (providerId, accountId) so one subject cannot map to two users (5.746586ms)
+✔ Better Auth spike (Fastify + PostgreSQL + OIDC) (1235.849906ms)
 ▶ Better Auth spike: session expiry
-  ✔ rejects the session once expiresIn has passed (3117.463614ms)
-✔ Better Auth spike: session expiry (3117.986137ms)
-ℹ tests 10
+  ✔ rejects the session once expiresIn has passed (3106.18682ms)
+✔ Better Auth spike: session expiry (3106.837623ms)
+ℹ tests 13
 ℹ suites 2
-ℹ pass 10
+ℹ pass 13
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 5075.808179
+ℹ duration_ms 5146.806417
