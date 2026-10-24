@@ -1,8 +1,6 @@
 # Between Pages：产品与架构文档
 
-更新日期：2026-10-24。当前阶段：协同核心技术验证完成，正式技术栈已定（ADR-0006）；工程规范与产品实现尚待推进。
-
-当前按用户要求暂不开始正式实现；最新基础性能结果及工程约定落实状态见下述 Web 基本性能报告。
+更新日期：2026-10-24。当前阶段：协同核心技术验证完成，正式技术栈已定（ADR-0006），项目骨架与工程规范已落地；产品功能尚未实现。
 
 ## 阅读顺序
 
@@ -16,6 +14,14 @@
 5. [正式技术栈 ADR-0006](./adr/0006-formal-stack.md)：已采纳的栈与协同内核；[正式实现准备方案](./implementation-preparation.md)：开发规范建议。
    - [技术栈深度调研](./research/tech-stack-2026-10-24.md)：采用度、持续维护、Web/移动端路线与正式选型门槛。
 6. [第一轮历史记录](./validation/collaboration-core-2026-10-24.md)：早期协议层验证。
+
+## Engineering (English)
+
+- [Architecture](./architecture.md): modules, dependency direction, runtime flow.
+- [Engineering standards](./engineering-standards.md): code rules with examples, reserved vocabulary.
+- [Testing](./testing.md): tiers, coverage gate, mocks, flaky tests.
+- [Postmortems](./postmortem/README.md): when to write one and how.
+- Agent instructions and commands: [AGENTS.md](../AGENTS.md); workflow: [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## 状态约定
 
