@@ -10,6 +10,7 @@
 | [0004](./0004-google-export-and-recovery.md) | 已采纳；运维默认待调整 | Google 可读单向副本与版本化恢复数据分开保存 |
 | [0005](./0005-yjs-authoritative-validation.md) | 第一轮验证通过；生产路线由 0006 取代 | 服务端权限校验后生成 Yjs 增量，保留本地未确认意图 |
 | [0006](./0006-formal-stack.md) | 已采纳；协同内核生产验证未完成 | Node 26、React/Vite、Fastify、Drizzle、Zod 契约；协同用 Yjs `Y.Text` + 服务端更新检查 + 自写绑定 |
+| [0007](./0007-authentication-and-sessions.md) | 已采纳；真实 Google 端点待联调 | Better Auth 1.7 只做 Google 登录：按 subject 绑定、不按邮箱合并、不存 Google 令牌、数据库会话；Drive 授权与空间自管 |
 
 产品需求见 [规格](../diary-spec.md)，验证义务见 [验收清单](../acceptance.md)。
 

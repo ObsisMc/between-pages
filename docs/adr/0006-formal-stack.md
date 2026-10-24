@@ -61,7 +61,7 @@ ADR-0005 的路线由服务端代客户端生成所有 Yjs 更新：服务端是
 
 ### 认证
 
-25. Better Auth 是登录的第一候选，实现登录前另写 ADR，确认版本、会话、CSRF 和账号关联。Google Drive 授权与登录分开实现，见 [ADR-0004](./0004-google-export-and-recovery.md)。
+25. 登录采用 Better Auth，具体配置见 [ADR-0007](./0007-authentication-and-sessions.md)。Google Drive 授权与登录分开实现，见 [ADR-0004](./0004-google-export-and-recovery.md)。
 
 ## 替代方案
 
