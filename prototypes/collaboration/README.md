@@ -9,7 +9,7 @@
 ```sh
 npm ci
 npx playwright install chromium firefox webkit
-npm test
+npm run test:prototypes
 npm run test:pg:docker
 npm run test:browser
 npm run test:browser:pg

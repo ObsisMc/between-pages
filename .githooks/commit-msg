@@ -1,0 +1,3 @@
+#!/bin/sh
+# Reject commit messages that are not Conventional Commits (CONTRIBUTING.md#commits).
+exec node checks/verify-commit-convention.ts --file "$1"

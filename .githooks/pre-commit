@@ -1,0 +1,15 @@
+#!/bin/sh
+# Format and lint the staged files only; repo-wide checks are CI's job.
+# Never auto-fixes: a failing file aborts the commit with the fix command.
+set -e
+files=$(git diff --cached --name-only --diff-filter=ACMR)
+[ -z "$files" ] && exit 0
+
+echo "$files" | tr '\n' '\0' | xargs -0 npx --no-install prettier --check --ignore-unknown \
+  || { echo "pre-commit: run  npm run format  and re-stage" >&2; exit 1; }
+
+lintable=$(echo "$files" | grep -E '\.(ts|tsx|js|mjs)$' || true)
+if [ -n "$lintable" ]; then
+  echo "$lintable" | tr '\n' '\0' | xargs -0 npx --no-install eslint --no-warn-ignored \
+    || { echo "pre-commit: fix the lint errors (npx eslint --fix <file>) and re-stage" >&2; exit 1; }
+fi
