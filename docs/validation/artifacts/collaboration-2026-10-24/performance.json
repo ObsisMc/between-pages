@@ -1,0 +1,61 @@
+{
+  "environment": "Headless Chromium, local memory authority, offline input",
+  "results": [
+    {
+      "characters": 10000,
+      "loadMs": 212,
+      "inputHandlerMs": [
+        6,
+        6,
+        6,
+        7,
+        8,
+        5,
+        5,
+        5,
+        6,
+        5,
+        6,
+        6,
+        5,
+        6,
+        6,
+        7,
+        8,
+        5,
+        5,
+        8
+      ],
+      "p95InputHandlerMs": 8,
+      "textRetained": true
+    },
+    {
+      "characters": 100000,
+      "loadMs": 638,
+      "inputHandlerMs": [
+        78,
+        78,
+        79,
+        71,
+        88,
+        72,
+        70,
+        64,
+        65,
+        47,
+        49,
+        59,
+        64,
+        74,
+        68,
+        49,
+        65,
+        68,
+        65,
+        48
+      ],
+      "p95InputHandlerMs": 79,
+      "textRetained": true
+    }
+  ]
+}

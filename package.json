@@ -1,0 +1,30 @@
+{
+  "name": "between-pages",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test prototypes/collaboration/test/core.test.mjs prototypes/collaboration/test/policy.test.mjs",
+    "test:pg": "node --test prototypes/collaboration/test/postgres.test.mjs",
+    "test:pg:docker": "bash scripts/test-collab-postgres.sh",
+    "test:browser": "node --test prototypes/collaboration/test/browser.test.mjs",
+    "test:browser:pg": "COLLAB_TEST_SUITE=test:browser bash scripts/test-collab-postgres.sh",
+    "benchmark:collab": "node prototypes/collaboration/test/performance.mjs",
+    "dev:probe": "node prototypes/collaboration/browser/server.mjs"
+  },
+  "dependencies": {
+    "pg": "8.23.1",
+    "prosemirror-keymap": "1.2.3",
+    "prosemirror-model": "1.25.12",
+    "prosemirror-state": "1.4.4",
+    "prosemirror-view": "1.42.8",
+    "ws": "8.22.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "playwright": "1.64.1"
+  }
+}

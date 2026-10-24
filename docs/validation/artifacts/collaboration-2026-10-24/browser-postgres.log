@@ -1,0 +1,51 @@
+npm notice run between-pages@0.0.1 test:browser:pg
+npm notice run COLLAB_TEST_SUITE=test:browser bash scripts/test-collab-postgres.sh
+postgres (PostgreSQL) 18.6
+npm notice run between-pages@0.0.1 test:browser
+npm notice run node --test prototypes/collaboration/test/browser.test.mjs
+BROWSER_ENVIRONMENT {"node":"v24.20.0","postgres":true,"engines":{"chromium":"156.0.8078.4","firefox":"157.0","webkit":"27.2"}}
+✔ chromium: native typing, inline provenance and synthetic plain paste (1920.002127ms)
+✔ chromium: foreign deletion jumps; mixed replacement/cut denied (654.294469ms)
+✔ chromium: virtual-keyboard deletion, hold guard and forward jump (528.923848ms)
+✔ chromium: offline reload restores IndexedDB and merges remote edits (669.272458ms)
+✔ chromium: real context offline refresh uses cached shell and local draft (580.731648ms)
+✔ chromium: same-account tabs cannot overwrite each other's local journal (602.177907ms)
+✔ chromium: personal undo preserves peer's nested text (567.165065ms)
+✔ chromium: peer caret stays anchored after insertion and vanishes on disconnect (504.957257ms)
+✔ chromium: whole-text grapheme grouping across operations prevents broken deletion (480.281143ms)
+✔ chromium: storage failure stays visible and is not reported saved (540.286781ms)
+✔ firefox: native typing, inline provenance and synthetic plain paste (2576.208365ms)
+✔ firefox: foreign deletion jumps; mixed replacement/cut denied (1411.446693ms)
+✔ firefox: virtual-keyboard deletion, hold guard and forward jump (1649.892557ms)
+✔ firefox: offline reload restores IndexedDB and merges remote edits (1593.370536ms)
+✔ firefox: real context offline refresh uses cached shell and local draft (1757.115014ms)
+✔ firefox: same-account tabs cannot overwrite each other's local journal (1882.584034ms)
+✔ firefox: personal undo preserves peer's nested text (1509.191666ms)
+✔ firefox: peer caret stays anchored after insertion and vanishes on disconnect (1358.77353ms)
+✔ firefox: whole-text grapheme grouping across operations prevents broken deletion (1446.859977ms)
+✔ firefox: storage failure stays visible and is not reported saved (3917.979096ms)
+✔ webkit: native typing, inline provenance and synthetic plain paste (900.580569ms)
+✔ webkit: foreign deletion jumps; mixed replacement/cut denied (852.237985ms)
+✔ webkit: virtual-keyboard deletion, hold guard and forward jump (790.081217ms)
+✔ webkit: offline reload restores IndexedDB and merges remote edits (915.046476ms)
+✔ webkit: real context offline refresh uses cached shell and local draft (832.253333ms)
+✔ webkit: same-account tabs cannot overwrite each other's local journal (1036.029516ms)
+✔ webkit: personal undo preserves peer's nested text (868.31406ms)
+✔ webkit: peer caret stays anchored after insertion and vanishes on disconnect (799.791903ms)
+✔ webkit: whole-text grapheme grouping across operations prevents broken deletion (776.660515ms)
+✔ webkit: storage failure stays visible and is not reported saved (823.390532ms)
+✔ chromium CDP: real composition input stays private, survives concurrent peer insert, commits once (575.056822ms)
+✔ chromium: additional 250ms per API request while typing does not steal selection or roll back text (1805.623398ms)
+✔ chromium CDP: canceled composition does not duplicate prefix or create shared phantom text (443.657414ms)
+✔ chromium CDP: composing over foreign selection never edits shared foreign text (500.094315ms)
+REMOTE_DELAY_METRIC {"extraHttpRequestDelayMs":250,"samples":20,"p95Ms":1013,"maxMs":1017}
+✔ chromium: batch sync bounds remote latency with 250ms extra HTTP request delay (2323.914558ms)
+✔ chromium: native system clipboard paste strips author metadata; copy excludes peer widgets (508.361993ms)
+ℹ tests 36
+ℹ suites 0
+ℹ pass 36
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 42142.27588

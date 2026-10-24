@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Between Pages · 协同验证台</title>
+<style>
+body{max-width:850px;margin:30px auto;padding:16px;font:16px/1.8 system-ui;color:#303030;background:#fafafa}
+#editor{background:white;border:1px solid #ccc;padding:24px;min-height:200px}.ProseMirror{outline:none;white-space:pre-wrap;overflow-wrap:anywhere}
+[data-author="A"]{color:#79502d}[data-author="B"]{color:#2d6874}.peer-caret{font-size:12px;color:#7e2880;user-select:none}.peer-selection{background:#e2deec}
+#message{color:#95321d}header{font-size:13px}output{padding:4px}h1{font-size:20px}
+</style>
+<h1>协同核心验证台</h1><p>测试专用，无正式登录或产品功能。A 为棕色，B 为蓝色。</p>
+<header>状态 <output id="status"></output> 待同步 <output id="pending"></output></header>
+<div id="editor"></div><p id="message" role="status"></p>
+<script type="module" src="/bundle.js"></script>
+</html>

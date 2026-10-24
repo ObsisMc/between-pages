@@ -1,0 +1,49 @@
+npm notice run between-pages@0.0.1 test
+npm notice run node --test prototypes/collaboration/test/core.test.mjs prototypes/collaboration/test/policy.test.mjs
+✔ inline insertion keeps A/B/A provenance and reconstructs original sentence (8.337399ms)
+✔ authority rejects foreign deletion even when UI is bypassed (2.21125ms)
+✔ atomic replacement cannot delete foreign text before adding own text (1.663767ms)
+✔ spoofed author, seq, whole-document update and extra keys are rejected (1.652367ms)
+✔ nonmember cannot read or write (1.653287ms)
+✔ foreign undo and cross-user id replay are rejected (2.531132ms)
+✔ id replay with a changed payload is rejected; exact retry is idempotent (1.405966ms)
+✔ simultaneous same-position runs remain whole, converge independent of receive order (3.471496ms)
+✔ same-account devices preserve both edits and stable ids (4.884383ms)
+✔ offline pending survives new remote state and a stale snapshot without rollback (4.985663ms)
+✔ ACK lost after commit: pending stays visible, retry does not duplicate (1.422886ms)
+✔ failure before commit does not claim saved; retry retains original text (1.568487ms)
+✔ file-backed client restart restores offline pending and later merges remote edits (43.932163ms)
+✔ journal cannot be opened by a different user (0.556123ms)
+✔ local storage failure stays visible and is explicitly reported (0.422762ms)
+✔ stale delete targets only original own ids; concurrent B insertion survives (2.292571ms)
+✔ delete tombstone remains a valid anchor for offline edits (2.528292ms)
+✔ undo own insertion leaves other author descendants; redo preserves them (2.652052ms)
+✔ undo deletion removes only its own deletion tag, not another device deletion (2.240371ms)
+✔ emoji families, modifiers, flags and combining marks survive scalar storage (0.537763ms)
+✔ missing dependency can be retried after its parent; no partial acceptance (0.588642ms)
+✔ out-of-order sparse snapshot is rejected without mutation; full retry catches up (2.327331ms)
+✔ malformed, too-large, invalid UTF16, unknown anchors and duplicate targets rejected (0.589042ms)
+✔ server-side rejection preserves recoverable draft and blocks dependent writes (1.396846ms)
+✔ 100 deterministic network schedules: offline clients, retries, stale snapshots, restarts (4441.003272ms)
+✔ 50 deterministic mixed schedules: own deletes/undo, offline and same-user devices (1800.15365ms)
+✔ non-string ids cannot exploit JavaScript coercion (0.541002ms)
+✔ real HTTP: session-derived actor rejects spoofing and foreign edits; reconnect merges (147.458083ms)
+✔ atomic batch refuses a foreign second operation without committing the valid first (0.928724ms)
+✔ batch dependencies preserve offline chains and lost-ACK retry is idempotent (0.661803ms)
+✔ malicious clock jump cannot poison the document and block another member input (0.611563ms)
+✔ cross-operation accents and flag pairs group over the entire text (10.446968ms)
+✔ mixed-author grapheme cannot be partially deleted or replaced (4.49194ms)
+✔ boundary insertion and foreign-only forward/backward jumps never erase (0.684963ms)
+✔ relative cursor follows text after front insert and has deterministic deletion fallback (1.106726ms)
+✔ transactional journal union retains distinct tab pending operations (0.889244ms)
+✔ late stale local snapshot cannot resurrect a committed or rejected operation (0.298442ms)
+✔ journal union rejects actor mismatch and same ID conflicting payload (0.593603ms)
+✔ cache invalidates when later input changes the document (1.260766ms)
+ℹ tests 39
+ℹ suites 0
+ℹ pass 39
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6747.034544

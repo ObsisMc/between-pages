@@ -1,6 +1,8 @@
 # MVP 验收清单
 
-日期：2026-10-24；全部未执行。规格来源：[diary-spec.md](./diary-spec.md)。
+日期：2026-10-24；产品级验收尚未完成。规格来源：[diary-spec.md](./diary-spec.md)。
+
+协议、浏览器与 PG 层已有[独立验证记录](./validation/collaboration-readiness-2026-10-24.md)。以下清单仍保持未勾选：原型测试不替代正式认证、浏览器输入法、存储与界面的完整验收。
 
 ## 执行方式
 

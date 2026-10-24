@@ -20,3 +20,4 @@ coverage/
 .sites-runtime/
 .DS_Store
 *.log
+!/docs/validation/artifacts/**/*.log

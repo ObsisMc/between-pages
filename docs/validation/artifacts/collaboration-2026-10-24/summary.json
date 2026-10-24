@@ -1,0 +1,150 @@
+{
+  "date": "2026-10-24",
+  "phase": "validation only; formal implementation not started",
+  "uniqueCases": 87,
+  "executions": 123,
+  "runs": {
+    "unit": {
+      "tests": 39,
+      "pass": 39,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "postgres": {
+      "tests": 12,
+      "pass": 12,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "browser-memory": {
+      "tests": 36,
+      "pass": 36,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "environment": {
+        "node": "v24.20.0",
+        "postgres": false,
+        "engines": {
+          "chromium": "156.0.8078.4",
+          "firefox": "157.0",
+          "webkit": "27.2"
+        }
+      },
+      "remoteDelay": {
+        "extraHttpRequestDelayMs": 250,
+        "samples": 20,
+        "p95Ms": 986,
+        "maxMs": 996
+      }
+    },
+    "browser-postgres": {
+      "tests": 36,
+      "pass": 36,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "environment": {
+        "node": "v24.20.0",
+        "postgres": true,
+        "engines": {
+          "chromium": "156.0.8078.4",
+          "firefox": "157.0",
+          "webkit": "27.2"
+        }
+      },
+      "remoteDelay": {
+        "extraHttpRequestDelayMs": 250,
+        "samples": 20,
+        "p95Ms": 1013,
+        "maxMs": 1017
+      }
+    }
+  },
+  "performance": {
+    "environment": "Headless Chromium, local memory authority, offline input",
+    "results": [
+      {
+        "characters": 10000,
+        "loadMs": 212,
+        "inputHandlerMs": [
+          6,
+          6,
+          6,
+          7,
+          8,
+          5,
+          5,
+          5,
+          6,
+          5,
+          6,
+          6,
+          5,
+          6,
+          6,
+          7,
+          8,
+          5,
+          5,
+          8
+        ],
+        "p95InputHandlerMs": 8,
+        "textRetained": true
+      },
+      {
+        "characters": 100000,
+        "loadMs": 638,
+        "inputHandlerMs": [
+          78,
+          78,
+          79,
+          71,
+          88,
+          72,
+          70,
+          64,
+          65,
+          47,
+          49,
+          59,
+          64,
+          74,
+          68,
+          49,
+          65,
+          68,
+          65,
+          48
+        ],
+        "p95InputHandlerMs": 79,
+        "textRetained": true
+      }
+    ]
+  },
+  "sourceSha256": {
+    "package-lock.json": "9ab8cf9b06a7f9b036e358c92caa273eec319baa42b89488c930c3951837d881",
+    "package.json": "385cb7d8eda14f4313f34fc65d7ca7647683307d3044b89f5918c1ec63968c55",
+    "prototypes/collaboration/authority.mjs": "d6e05d1341c8e67d59e33993dde31db26fa1fc5543c2bda79cdbd3a32c13624b",
+    "prototypes/collaboration/browser/editor.mjs": "2335423cf5abbde153b07322b445983f5b4063379def7d6dba377a90bf3ac462",
+    "prototypes/collaboration/browser/index.html": "b74fae3170ef57dc4e942c32b736f33c0870999c14431c0c01865018a10fb419",
+    "prototypes/collaboration/browser/journal.mjs": "d28f8ab2f983a32ad9005646ff4e5236dfe02e820e32e8c920c5ac80973286b2",
+    "prototypes/collaboration/browser/policy.mjs": "dba98c27a498acdd64ce6526791757a32129b2947b5f01e431c7b07d1ae5caeb",
+    "prototypes/collaboration/browser/server.mjs": "8435a971a0d0a939a07898e941c8ceb7495be28e76b49545d9235d50f55fbf89",
+    "prototypes/collaboration/browser/sw.js": "1725cce18d8de62c98f620d884e70b5d3c4771d7d0e8b11f56431e023e1d6ae8",
+    "prototypes/collaboration/client.mjs": "31f45aa141164fdc51153ea29f5b6ca2c3f84f8b34799d7d5bf45b1d341a8ec5",
+    "prototypes/collaboration/file-journal.mjs": "c5e1560a2e3f36239128c61d788222e372b1f957b9cf6a17dfdbbec8b8728307",
+    "prototypes/collaboration/http.mjs": "73c9af058b9d01bf3d71b742a3d034d1c4d47f3f8240b40c3c163e7690644a3e",
+    "prototypes/collaboration/model.mjs": "320e832d59ac83db9882866f723f38fb38cc54b5c2dd3ef8729ce6bd4ff7ab70",
+    "prototypes/collaboration/postgres.mjs": "1648545616e7c2ce27eda30363ae8c0fb53d1f14861a84448a1b0bd96821904d",
+    "prototypes/collaboration/test/browser.test.mjs": "668984a65379488657db466c2c4dea8fbddf52852239481bb0e1616d611dcb01",
+    "prototypes/collaboration/test/core.test.mjs": "16578ff7210217977554e9f71c2850bb87ec8813d35399272dc7c693c3d72518",
+    "prototypes/collaboration/test/crash-worker.mjs": "130f4a765d47adb838e7c44def59f449a9090eaaf32f316375aae84baa446015",
+    "prototypes/collaboration/test/performance.mjs": "70fccbbdffef72ee89bb6d529228780ce404d910d4f8a9fded85d2892cebe7ce",
+    "prototypes/collaboration/test/policy.test.mjs": "c1c83a808f5d67de386527fa8b818af3cff5444389618947ce40222127a6a82c",
+    "prototypes/collaboration/test/postgres.test.mjs": "09f2ea5b98c80a6b0e1632348a6a3eaa00258ac59ac748293f642135e792d184",
+    "scripts/test-collab-postgres.sh": "6c4a6a4c5e0350c0acd20afd84dba08555d0bd49a053768a7c3b929783b74d41"
+  }
+}
