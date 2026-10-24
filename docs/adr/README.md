@@ -8,5 +8,6 @@
 | [0002](./0002-collaboration-and-author-authorization.md) | 技术验证通过；正式选型待确认 | 受约束增量操作、作者保护与重连合并；最终序列算法/编辑器待选 |
 | [0003](./0003-postgres-and-durable-commit.md) | 已采纳；部署待选 | PG 主存储、持久化确认、事务 outbox；替换 D1 脚手架默认 |
 | [0004](./0004-google-export-and-recovery.md) | 已采纳；运维默认待调整 | Google 可读单向副本与版本化恢复数据分开保存 |
+| [0005](./0005-yjs-authoritative-validation.md) | 第一轮验证通过；生产格式待定 | 服务端权限校验后生成 Yjs 增量，保留本地未确认意图 |
 
 产品需求见 [规格](../diary-spec.md)，验证义务见 [验收清单](../acceptance.md)。

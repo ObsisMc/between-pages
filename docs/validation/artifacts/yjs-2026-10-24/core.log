@@ -1,0 +1,34 @@
+npm notice run between-pages@0.0.1 test:yjs
+npm notice run node --test prototypes/yjs/core.test.mjs
+YJS_MIXED_SCHEDULES seeds=15 steps=525 devices=3
+YJS_RANDOM_SCHEDULES seeds=30 insertion_steps=1200
+✔ Yjs authority updates materialize in an independent vanilla Y.Doc (66.96731ms)
+✔ Unrestricted Yjs applyUpdate is not an author permission boundary (15.044509ms)
+✔ Yjs server rejects delete without changing authoritative bytes (8.558119ms)
+✔ Yjs server rejects replace without changing authoritative bytes (6.264509ms)
+✔ Yjs server rejects actor without changing authoritative bytes (6.34439ms)
+✔ Yjs server rejects authorId without changing authoritative bytes (7.901197ms)
+✔ Yjs server rejects update without changing authoritative bytes (10.530449ms)
+✔ Yjs server rejects clientID without changing authoritative bytes (9.427724ms)
+✔ Yjs server rejects foreign-undo without changing authoritative bytes (9.020402ms)
+✔ Yjs server rejects collision without changing authoritative bytes (7.029073ms)
+✔ Yjs server rejects unknown-root without changing authoritative bytes (8.960521ms)
+✔ Yjs batch validation is atomic; valid prefix is never published (7.027312ms)
+✔ Yjs own delete / undo / redo never removes partner inline reply (34.028958ms)
+✔ Yjs offline continuation survives stale snapshots, local reopen and lost ACK (24.068271ms)
+✔ Yjs failed local persistence retains visible pending and surfaces failure (2.12165ms)
+✔ Yjs malformed queued metadata is rejected before replacing the local queue (11.255173ms)
+✔ Yjs server rejection preserves full draft and dependent operations in recovery journal (4.526901ms)
+✔ Yjs nonmembers cannot read or write (3.186295ms)
+✔ Yjs sparse and old receipts never replace pending or regress committed state (18.853487ms)
+✔ Yjs tombstone anchor survives own delete while offline peer reply arrives later (11.680094ms)
+✔ Yjs mixed schedules preserve provenance, own undo and three-device convergence (4010.774461ms)
+✔ Yjs deterministic network schedules retain every accepted authored insertion (10799.537072ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15555.997107

@@ -2,22 +2,27 @@ import { Schema } from 'prosemirror-model';
 import { EditorState, TextSelection } from 'prosemirror-state';
 import { EditorView, Decoration, DecorationSet } from 'prosemirror-view';
 import { keymap } from 'prosemirror-keymap';
-import { Client } from '../client.mjs';
-import { Document, ROOT, Rejection } from '../model.mjs';
+import { Client as LegacyClient } from '../client.mjs';
+import { Document as LegacyDocument, ROOT, Rejection } from '../model.mjs';
+import { Client as YjsClient, Document as YjsDocument } from '../../yjs/client.mjs';
 import { IndexedJournal, mergeJournals } from './journal.mjs';
 import { ranges, replacement, deletion, anchor, resolve } from './policy.mjs';
 
 if ('serviceWorker' in navigator) { await navigator.serviceWorker.register('/sw.js'); await navigator.serviceWorker.ready; }
 const params = new URLSearchParams(location.search);
+const isYjs = params.get('engine') === 'yjs';
+const Client = isYjs ? YjsClient : LegacyClient, Document = isYjs ? YjsDocument : LegacyDocument;
 const actor = params.get('actor') === 'B' ? 'B' : 'A';
 const docId = params.get('doc') ?? 'manual';
-const journal = await IndexedJournal.open(`${docId}:${actor}`);
+const journal = await IndexedJournal.open(`${isYjs ? 'yjs:' : ''}${docId}:${actor}`);
 const client = await Client.open(actor, journal);
 const session = crypto.randomUUID();
 const token = `probe-${actor}`;
 const api = `/api/${encodeURIComponent(docId)}`;
 const message = document.querySelector('#message');
 let composing = null, finishingComposition = false, heldDelete = false, socket, syncing = null, frozen = false, syncAgain = false;
+let disposed = false;
+let requestLifetime = new AbortController();
 const undo = [], redo = [], peers = new Map();
 const metrics = { render: [], editing: [], writes: [], frames: 0, compositions: 0 };
 const schema = new Schema({
@@ -137,6 +142,7 @@ function setSelection(from, to = from) {
   view.focus();
 }
 function render(saved = null) {
+  if (disposed) return;
   if (composing || finishingComposition) return;
   const started = performance.now(), scrollY = window.scrollY;
   saved ??= selectionAnchors();
@@ -189,7 +195,9 @@ async function history(isRedo) {
 }
 const transport = {
   async call(path, method, body) {
+    if (disposed || frozen) throw new DOMException('Page transport paused', 'AbortError');
     const response = await fetch(`${api}/${path}`, { method,
+      signal: requestLifetime.signal,
       headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
       ...(body ? { body: JSON.stringify(body) } : {}) });
     const result = await response.json();
@@ -204,7 +212,7 @@ const transport = {
   submitBatch: (_actor, operations) => transport.call('batch', 'POST', { operations })
 };
 async function flush() {
-  if (frozen || !navigator.onLine) return;
+  if (disposed || frozen || !navigator.onLine) return;
   if (syncing) { syncAgain = true; return syncing; }
   const run = async () => {
     try { await client.sync(transport); sendPosition(); }
@@ -214,16 +222,17 @@ async function flush() {
   return syncing;
 }
 function sendPosition() {
-  if (composing || finishingComposition || socket?.readyState !== WebSocket.OPEN) return;
+  if (disposed || composing || finishingComposition || socket?.readyState !== WebSocket.OPEN) return;
   const position = selectionAnchors();
   socket.send(JSON.stringify({ type: 'presence', session, anchor: position.a, head: position.b }));
 }
 function connect() {
-  if (frozen || !navigator.onLine) return;
+  if (disposed || frozen || !navigator.onLine) return;
   if (socket && [WebSocket.OPEN, WebSocket.CONNECTING].includes(socket.readyState)) return;
   socket = new WebSocket(`${location.origin.replace('http', 'ws')}/live?doc=${encodeURIComponent(docId)}&token=${token}&session=${session}`);
   socket.onopen = () => { sendPosition(); flush(); };
   socket.onmessage = async event => {
+    if (disposed) return;
     const data = JSON.parse(event.data);
     if (data.type === 'changed') await flush();
     if (data.type === 'presence') { peers.set(data.session, data); if (!composing) render(); }
@@ -243,7 +252,24 @@ journal.channel.onmessage = async () => {
 };
 window.addEventListener('online', () => { connect(); flush(); });
 window.addEventListener('offline', () => { socket?.close(); updateStatus(); });
-setInterval(() => { if (client.pending.length) flush(); }, 500);
+const retryPending = () => { if (client.pending.length) flush(); };
+let retryInterval = setInterval(retryPending, 500);
+// A departing page must stop its requests/reconnect loops. Pending intentions stay in
+// IndexedDB; aborting a response never treats the associated operations as committed.
+function stopDepartingPage() {
+  disposed = true; frozen = true; clearInterval(retryInterval);
+  requestLifetime.abort(); socket?.close();
+}
+// beforeunload stops new pulls before WebKit enters provisional navigation;
+// pagehide remains the fallback on platforms that do not dispatch beforeunload.
+// Neither handler is responsible for saving input: that already uses IndexedDB.
+window.addEventListener('beforeunload', stopDepartingPage);
+window.addEventListener('pagehide', stopDepartingPage);
+window.addEventListener('pageshow', event => {
+  if (!event.persisted || !disposed) return;
+  disposed = false; frozen = false; requestLifetime = new AbortController();
+  retryInterval = setInterval(retryPending, 500); connect(); flush();
+});
 const originalReceive = client.receive.bind(client);
 client.receive = records => {
   const saved = selectionAnchors();

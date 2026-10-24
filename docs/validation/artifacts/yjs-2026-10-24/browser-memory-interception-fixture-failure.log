@@ -1,0 +1,69 @@
+npm notice run between-pages@0.0.1 test:yjs:browser
+npm notice run COLLAB_ENGINE=yjs node --test prototypes/collaboration/test/browser.test.mjs
+BROWSER_ENVIRONMENT {"node":"v24.20.0","postgres":false,"engines":{"chromium":"156.0.8078.4","firefox":"157.0","webkit":"27.2"}}
+✔ chromium: native typing, inline provenance and synthetic plain paste (2138.372386ms)
+✔ chromium: foreign deletion jumps; mixed replacement/cut denied (1065.111374ms)
+✔ chromium: virtual-keyboard deletion, hold guard and forward jump (598.851014ms)
+✔ chromium: offline reload restores IndexedDB and merges remote edits (704.797385ms)
+✔ chromium: real context offline refresh uses cached shell and local draft (661.633105ms)
+✔ chromium: same-account tabs cannot overwrite each other's local journal (947.460949ms)
+✔ chromium: personal undo preserves peer's nested text (795.943768ms)
+✔ chromium: peer caret stays anchored after insertion and vanishes on disconnect (692.84709ms)
+✔ chromium: whole-text grapheme grouping across operations prevents broken deletion (656.31092ms)
+✔ chromium: storage failure stays visible and is not reported saved (612.375877ms)
+✔ firefox: native typing, inline provenance and synthetic plain paste (2381.654233ms)
+✔ firefox: foreign deletion jumps; mixed replacement/cut denied (1462.483935ms)
+✔ firefox: virtual-keyboard deletion, hold guard and forward jump (1357.054807ms)
+✔ firefox: offline reload restores IndexedDB and merges remote edits (1714.608223ms)
+✔ firefox: real context offline refresh uses cached shell and local draft (1871.53343ms)
+✔ firefox: same-account tabs cannot overwrite each other's local journal (1877.629578ms)
+✔ firefox: personal undo preserves peer's nested text (1518.835356ms)
+✔ firefox: peer caret stays anchored after insertion and vanishes on disconnect (1465.981072ms)
+✔ firefox: whole-text grapheme grouping across operations prevents broken deletion (1342.66638ms)
+✔ firefox: storage failure stays visible and is not reported saved (3552.9225ms)
+✔ webkit: native typing, inline provenance and synthetic plain paste (1001.969362ms)
+✔ webkit: foreign deletion jumps; mixed replacement/cut denied (878.145628ms)
+✔ webkit: virtual-keyboard deletion, hold guard and forward jump (792.22935ms)
+✔ webkit: offline reload restores IndexedDB and merges remote edits (931.557395ms)
+✔ webkit: real context offline refresh uses cached shell and local draft (832.063534ms)
+✔ webkit: same-account tabs cannot overwrite each other's local journal (1104.640757ms)
+✔ webkit: personal undo preserves peer's nested text (1037.217045ms)
+✔ webkit: peer caret stays anchored after insertion and vanishes on disconnect (935.788895ms)
+✔ webkit: whole-text grapheme grouping across operations prevents broken deletion (817.593668ms)
+✔ webkit: storage failure stays visible and is not reported saved (827.230112ms)
+✔ chromium CDP: real composition input stays private, survives concurrent peer insert, commits once (629.947118ms)
+✔ chromium: additional 250ms per API request while typing does not steal selection or roll back text (1811.04407ms)
+✔ chromium CDP: canceled composition does not duplicate prefix or create shared phantom text (507.325431ms)
+✔ chromium CDP: composing over foreign selection never edits shared foreign text (485.67789ms)
+REMOTE_DELAY_METRIC {"extraHttpRequestDelayMs":250,"samples":20,"p95Ms":1018,"maxMs":1030}
+✔ chromium: batch sync bounds remote latency with 250ms extra HTTP request delay (2356.605037ms)
+✔ chromium: native system clipboard paste strips author metadata; copy excludes peer widgets (516.270392ms)
+✔ Yjs chromium: reload with committed response in flight restores pending without duplication (618.051623ms)
+✖ Yjs firefox: reload with committed response in flight restores pending without duplication (11304.395328ms)
+✖ Yjs webkit: reload with committed response in flight restores pending without duplication (10744.818656ms)
+✔ Yjs browser: every optimistic character remains visible through stale pulls and lost ACK (657.360085ms)
+✔ Yjs HTTP: authenticated attacker cannot upload binary changes or delete peer text (530.582978ms)
+ℹ tests 41
+ℹ suites 0
+ℹ pass 39
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 67934.052468
+
+✖ failing tests:
+
+test at prototypes/collaboration/test/browser.test.mjs:222:5
+✖ Yjs firefox: reload with committed response in flight restores pending without duplication (11304.395328ms)
+  Error: COMMIT_NOT_REACHED
+      at Timeout._onTimeout (file:///home/ubuntu/codebase/between-pages/prototypes/collaboration/test/browser.test.mjs:242:51)
+      at listOnTimeout (node:internal/timers:685:17)
+      at process.processTimers (node:internal/timers:618:7)
+
+test at prototypes/collaboration/test/browser.test.mjs:222:5
+✖ Yjs webkit: reload with committed response in flight restores pending without duplication (10744.818656ms)
+  Error: COMMIT_NOT_REACHED
+      at Timeout._onTimeout (file:///home/ubuntu/codebase/between-pages/prototypes/collaboration/test/browser.test.mjs:242:51)
+      at listOnTimeout (node:internal/timers:685:17)
+      at process.processTimers (node:internal/timers:618:7)

@@ -8,6 +8,7 @@ export class MemoryJournal {
 }
 // Platform-independent client; browser bindings and IndexedDB live in browser/.
 export class Client {
+  static Document = Document;
   constructor(actor, journal, saved) {
     this.actor = actor; this.journal = journal;
     this.committed = saved?.committed ?? []; this.pending = saved?.pending ?? [];
@@ -17,7 +18,7 @@ export class Client {
   static async open(actor, journal = new MemoryJournal()) {
     const saved = await journal.read();
     if (saved && saved.actor !== actor) throw new Rejection('JOURNAL_ACCOUNT_MISMATCH');
-    return new Client(actor, journal, saved);
+    return new this(actor, journal, saved);
   }
   async persist() {
     const snapshot = copy({ actor: this.actor, committed: this.committed, pending: this.pending, recovery: this.recovery });
@@ -30,7 +31,7 @@ export class Client {
     const base = this.committed.length ? Math.max(...this.committed.map(x => x.seq)) : 0;
     const signature = this.signature();
     if (this.cachedSignature === signature) return this.cachedDocument;
-    this.cachedDocument = new Document([...this.committed,
+    this.cachedDocument = new this.constructor.Document([...this.committed,
       ...this.pending.map((op, i) => ({ actor: this.actor, op, seq: base + i + 1 }))]);
     this.cachedSignature = signature;
     return this.cachedDocument;
@@ -83,7 +84,7 @@ export class Client {
     }
     const pending = this.pending.filter(x => !byId.has(x.id));
     // Validation happens before mutation. Own pending ops may anchor to tombstones.
-    new Document([...merged, ...pending.map((op, i) => ({ actor: this.actor, op, seq: merged.length + i + 1 }))]);
+    new this.constructor.Document([...merged, ...pending.map((op, i) => ({ actor: this.actor, op, seq: merged.length + i + 1 }))]);
     this.committed = merged; this.pending = pending; await this.persist();
   }
   async sync(authority) {

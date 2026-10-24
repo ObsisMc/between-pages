@@ -20,9 +20,17 @@
 
 ## 当前状态
 
-**协同核心技术验证完成，等待技术栈与开发流程确认；完整应用尚未实现。**
+**已完成自研协同基线与第一轮 Yjs 验证；完整应用尚未实现。**
+
+用户已要求先不进行正式实现；当前只整理并保存方案、验证原型和证据，React/Fastify 正式骨架与工程规范尚未落地。
 
 仓库包含规格、ADR 和可运行的协议/浏览器验证原型。87 个不同场景通过，浏览器套件分别接内存服务和 PG，共执行 123 项次。已有 ProseMirror、IndexedDB、WebSocket 与离线刷新验证；真机和完整产品验收未完成。正式技术栈仍待确认，PostgreSQL 已确认为主存储。
+
+前端状态管理方向已确认为 **TanStack Query + 按需使用 Zustand**。正文与未确认操作由协同核心管理。新增 [Yjs 原型](./prototypes/yjs/README.md)验证服务端字符权限及离线恢复，不接受客户端任意二进制更新；正式内核仍待性能、升级与移动端验证。
+
+Yjs 验证包含 75 个不同用例；浏览器套件分别接内存与 PG 后端，全部 Yjs 套件合计执行 116 项次，最终全部通过。原始日志、排查记录与边界见 [Yjs 验证报告](./docs/validation/yjs-collaboration-2026-10-24.md)。
+
+[Web 基本性能检查](./docs/validation/yjs-web-smoke-2026-10-24.md)也已完成：所测场景输入处理 P95 为 3～9 毫秒，本地保存、同步和刷新后文字完整。此结果限于本地原型，不代表完整上线验收；深入优化和手机验证后置。
 
 ## 运行核心验证
 
@@ -39,6 +47,16 @@ npm test
 npm run test:pg:docker
 ```
 
+Yjs 专项验证：
+
+```sh
+npm run test:yjs
+npm run test:yjs:pg
+npm run test:yjs:browser
+npm run test:yjs:browser:pg
+npm run dev:yjs
+```
+
 浏览器验证命令与诊断编辑器见[原型运行说明](./prototypes/collaboration/README.md)。完整证据见[技术验证报告](./docs/validation/collaboration-readiness-2026-10-24.md)。验证台不属于正式产品。
 
 ## 文档
@@ -52,6 +70,9 @@ npm run test:pg:docker
 | [开发路线](./docs/roadmap.md) | 实现顺序与阶段出口 |
 | [技术验证报告](./docs/validation/collaboration-readiness-2026-10-24.md) | 87 个场景、性能样本、已解决风险与剩余门槛 |
 | [实现准备方案](./docs/implementation-preparation.md) | 技术栈建议、开发规范与 CI 准备 |
+| [技术栈调研](./docs/research/tech-stack-2026-10-24.md) | 采用度、持续维护、状态管理和跨端路线 |
+| [Yjs 验证报告](./docs/validation/yjs-collaboration-2026-10-24.md) | 作者权限、断线恢复、真实 PG 与浏览器证据 |
+| [Web 基本性能检查](./docs/validation/yjs-web-smoke-2026-10-24.md) | 日常规模、200 次编辑历史、PG 保存与刷新恢复 |
 
 文档明确区分已确认的产品规则、可调整的实施默认和待验证的技术方案。
 

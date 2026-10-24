@@ -11,7 +11,7 @@ test.before(async () => {
   if (process.env.COLLAB_TEST_DATABASE_URL) {
     pool = PostgresAuthority.pool(process.env.COLLAB_TEST_DATABASE_URL); await PostgresAuthority.migrate(pool);
   }
-  harness = await startHarness({ pool });
+  harness = await startHarness({ pool, engine: process.env.COLLAB_ENGINE ?? 'legacy' });
   for (const [name, engine] of Object.entries({ chromium, firefox, webkit }))
     browsers.set(name, await engine.launch({ headless: true }));
   console.log(`BROWSER_ENVIRONMENT ${JSON.stringify({ node: process.version, postgres: Boolean(pool), engines: Object.fromEntries([...browsers].map(([name,browser])=>[name,browser.version()])) })}`);
@@ -26,8 +26,8 @@ async function fixture(t, engine, mobile = false) {
   const doc = randomUUID(); const errors = [];
   t.after(async () => { await context.close(); assert.deepEqual(errors, []); });
   const open = async actor => {
-    const page = await context.newPage(); page.on('pageerror', error => errors.push(error.message));
-    await page.goto(`${harness.url}/?actor=${actor}&doc=${doc}`);
+    const page = await context.newPage(); page.on('pageerror', error => errors.push({ message: error.message, stack: error.stack }));
+    await page.goto(`${harness.url}/?actor=${actor}&doc=${doc}&engine=${process.env.COLLAB_ENGINE ?? 'legacy'}`);
     await page.waitForFunction(() => window.probeReady && navigator.serviceWorker.controller);
     return page;
   };
@@ -216,3 +216,84 @@ test('chromium: native system clipboard paste strips author metadata; copy exclu
   assert.equal(await a.evaluate(() => navigator.clipboard.readText()), '甲新内容乙');
   await a.keyboard.press('Control+x'); assert.equal((await state(a)).text, '甲新内容乙');
 });
+
+if (process.env.COLLAB_ENGINE === 'yjs') {
+  for (const engine of ['chromium', 'firefox', 'webkit']) {
+    test(`Yjs ${engine}: reload with committed response in flight restores pending without duplication`, { timeout: 30000 }, async t => {
+      const { a, b, doc } = await fixture(t, engine); await seed(a, b);
+      await a.evaluate(() => probe.freeze(true)); await type(a, '刷新仍保留', 2);
+      let release, committed;
+      const holding = new Promise(resolve => { release = resolve; });
+      const reachedCommit = new Promise(resolve => { committed = resolve; });
+      const authority = await harness.authority(doc), previousHook = authority.afterCommit;
+      // Server-side barrier works across all browser engines and Service Workers;
+      // it does not depend on Playwright intercepting a worker-controlled request.
+      authority.afterCommit = async () => { committed(); await holding; };
+      try {
+        await a.evaluate(() => probe.freeze(false));
+        await Promise.race([reachedCommit, new Promise((_, reject) => {
+          const timeout = setTimeout(() => reject(new Error('COMMIT_NOT_REACHED')), 10000); timeout.unref();
+        })]);
+        assert.equal((await state(a)).pending, 1);
+        await a.reload(); release(); await a.waitForFunction(() => window.probeReady);
+        await settled(a); await contains(b, '刷新仍保留');
+        assert.equal((await state(a)).display, '甲乙刷新仍保留');
+        const records = await (await harness.authority(doc)).read('A');
+        assert.equal(records.filter(record => record.op.text === '刷新仍保留').length, 1);
+        // Handler-level BFCache lifecycle fixture, not a claim of native BFCache coverage.
+        await a.evaluate(() => {
+          window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }));
+          window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+        });
+        await type(a, '恢复后续写', 7); await settled(a); await contains(b, '恢复后续写');
+      } finally { release(); authority.afterCommit = previousHook; }
+    });
+  }
+  test('Yjs browser: every optimistic character remains visible through stale pulls and lost ACK', { timeout: 30000 }, async t => {
+    const { a, b, context, doc } = await fixture(t, 'chromium'); await seed(a, b);
+    const stale = await a.evaluate(() => probe.records());
+    await a.evaluate(() => {
+      probe.freeze(true); window.lostCharacters = [];
+      new MutationObserver(() => {
+        const visible = probe.view.state.doc.textContent;
+        for (const entry of probe.metrics.writes) {
+          if (entry.text && !visible.includes(entry.text)) window.lostCharacters.push(entry.text);
+        }
+      }).observe(probe.view.dom, { childList: true, subtree: true, characterData: true });
+    });
+    await type(a, 'abcdefghij', 2);
+    await type(b, '远端', 0); await settled(b);
+    await a.evaluate(stale => probe.receiveOld(stale), stale);
+    assert.equal((await state(a)).display, '甲乙abcdefghij');
+    // Drop the actual HTTP response after the backend commits the operation batch.
+    let dropped = false;
+    await context.route('**/batch', async route => {
+      if (route.request().frame().page() === a && !dropped) {
+        dropped = true; await route.fetch(); await route.abort('connectionreset');
+      } else await route.continue();
+    });
+    await a.evaluate(() => probe.freeze(false)); await settled(a); await contains(b, 'abcdefghij');
+    assert.ok(dropped); assert.deepEqual(await a.evaluate(() => window.lostCharacters), []);
+    assert.equal((await state(a)).display, '远端甲乙abcdefghij');
+    const records = await (await harness.authority(doc)).read('A');
+    assert.equal(records.filter(record => record.op.text === 'abcdefghij').length, 1);
+    assert.ok(records.every(record => typeof record.update === 'string'));
+  });
+
+  test('Yjs HTTP: authenticated attacker cannot upload binary changes or delete peer text', async t => {
+    const { a, b, doc } = await fixture(t, 'chromium'); await seed(a, b);
+    const target = await a.evaluate(() => probe.client.document().visible()[0].id);
+    for (const operation of [
+      { kind: 'edit', id: randomUUID(), clock: 2, after: '^', text: '', deleteIds: [target] },
+      { kind: 'edit', id: randomUUID(), clock: 2, after: '^', text: '伪造', deleteIds: [], actor: 'A' },
+      { kind: 'edit', id: randomUUID(), clock: 2, after: '^', text: '伪造', deleteIds: [], update: 'AA==' }
+    ]) {
+      const response = await fetch(`${harness.url}/api/${doc}/batch`, { method: 'POST',
+        headers: { authorization: 'Bearer probe-B', 'content-type': 'application/json' },
+        body: JSON.stringify({ operations: [operation] }) });
+      assert.ok([403, 409].includes(response.status));
+    }
+    assert.equal((await (await harness.authority(doc)).read('A')).length, 1);
+    assert.equal((await state(a)).display, '甲乙'); assert.equal((await state(b)).display, '甲乙');
+  });
+}

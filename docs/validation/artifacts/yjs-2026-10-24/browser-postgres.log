@@ -1,0 +1,56 @@
+npm notice run between-pages@0.0.1 test:yjs:browser:pg
+npm notice run COLLAB_ENGINE=yjs COLLAB_TEST_SUITE=test:browser bash scripts/test-collab-postgres.sh
+postgres (PostgreSQL) 18.6
+npm notice run between-pages@0.0.1 test:browser
+npm notice run node --test prototypes/collaboration/test/browser.test.mjs
+BROWSER_ENVIRONMENT {"node":"v24.20.0","postgres":true,"engines":{"chromium":"156.0.8078.4","firefox":"157.0","webkit":"27.2"}}
+✔ chromium: native typing, inline provenance and synthetic plain paste (2462.654855ms)
+✔ chromium: foreign deletion jumps; mixed replacement/cut denied (1105.095816ms)
+✔ chromium: virtual-keyboard deletion, hold guard and forward jump (799.538904ms)
+✔ chromium: offline reload restores IndexedDB and merges remote edits (958.617849ms)
+✔ chromium: real context offline refresh uses cached shell and local draft (822.438012ms)
+✔ chromium: same-account tabs cannot overwrite each other's local journal (865.212092ms)
+✔ chromium: personal undo preserves peer's nested text (850.615663ms)
+✔ chromium: peer caret stays anchored after insertion and vanishes on disconnect (730.623702ms)
+✔ chromium: whole-text grapheme grouping across operations prevents broken deletion (683.27276ms)
+✔ chromium: storage failure stays visible and is not reported saved (810.934357ms)
+✔ firefox: native typing, inline provenance and synthetic plain paste (3258.264738ms)
+✔ firefox: foreign deletion jumps; mixed replacement/cut denied (1963.213873ms)
+✔ firefox: virtual-keyboard deletion, hold guard and forward jump (1863.050244ms)
+✔ firefox: offline reload restores IndexedDB and merges remote edits (2331.116875ms)
+✔ firefox: real context offline refresh uses cached shell and local draft (2201.097826ms)
+✔ firefox: same-account tabs cannot overwrite each other's local journal (2566.110174ms)
+✔ firefox: personal undo preserves peer's nested text (2161.361759ms)
+✔ firefox: peer caret stays anchored after insertion and vanishes on disconnect (1790.179901ms)
+✔ firefox: whole-text grapheme grouping across operations prevents broken deletion (1628.033102ms)
+✔ firefox: storage failure stays visible and is not reported saved (5375.243722ms)
+✔ webkit: native typing, inline provenance and synthetic plain paste (1294.800261ms)
+✔ webkit: foreign deletion jumps; mixed replacement/cut denied (1205.313881ms)
+✔ webkit: virtual-keyboard deletion, hold guard and forward jump (1171.210002ms)
+✔ webkit: offline reload restores IndexedDB and merges remote edits (1315.379197ms)
+✔ webkit: real context offline refresh uses cached shell and local draft (1163.094884ms)
+✔ webkit: same-account tabs cannot overwrite each other's local journal (1503.834439ms)
+✔ webkit: personal undo preserves peer's nested text (1173.476893ms)
+✔ webkit: peer caret stays anchored after insertion and vanishes on disconnect (857.160652ms)
+✔ webkit: whole-text grapheme grouping across operations prevents broken deletion (1034.300801ms)
+✔ webkit: storage failure stays visible and is not reported saved (1116.830347ms)
+✔ chromium CDP: real composition input stays private, survives concurrent peer insert, commits once (725.485676ms)
+✔ chromium: additional 250ms per API request while typing does not steal selection or roll back text (1943.945818ms)
+✔ chromium CDP: canceled composition does not duplicate prefix or create shared phantom text (683.431838ms)
+✔ chromium CDP: composing over foreign selection never edits shared foreign text (559.90694ms)
+REMOTE_DELAY_METRIC {"extraHttpRequestDelayMs":250,"samples":20,"p95Ms":1050,"maxMs":1054}
+✔ chromium: batch sync bounds remote latency with 250ms extra HTTP request delay (2475.779306ms)
+✔ chromium: native system clipboard paste strips author metadata; copy excludes peer widgets (547.018119ms)
+✔ Yjs chromium: reload with committed response in flight restores pending without duplication (661.626096ms)
+✔ Yjs firefox: reload with committed response in flight restores pending without duplication (1670.689538ms)
+✔ Yjs webkit: reload with committed response in flight restores pending without duplication (993.192408ms)
+✔ Yjs browser: every optimistic character remains visible through stale pulls and lost ACK (646.650866ms)
+✔ Yjs HTTP: authenticated attacker cannot upload binary changes or delete peer text (540.435609ms)
+ℹ tests 41
+ℹ suites 0
+ℹ pass 41
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 59866.404422

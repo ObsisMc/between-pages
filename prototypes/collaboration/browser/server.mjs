@@ -4,11 +4,18 @@ import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createAuthorityServer } from '../http.mjs';
-import { MemoryAuthority } from '../authority.mjs';
-import { Document, ROOT } from '../model.mjs';
-import { PostgresAuthority } from '../postgres.mjs';
+import { MemoryAuthority as LegacyMemoryAuthority } from '../authority.mjs';
+import { Document as LegacyDocument, ROOT } from '../model.mjs';
+import { PostgresAuthority as LegacyPostgresAuthority } from '../postgres.mjs';
+import { MemoryAuthority as YjsMemoryAuthority } from '../../yjs/authority.mjs';
+import { Document as YjsDocument } from '../../yjs/model.mjs';
+import { PostgresAuthority as YjsPostgresAuthority } from '../../yjs/postgres.mjs';
 
-export async function startHarness({ pool = null } = {}) {
+export async function startHarness({ pool = null, engine = 'legacy' } = {}) {
+  const MemoryAuthority = engine === 'yjs' ? YjsMemoryAuthority : LegacyMemoryAuthority;
+  const PostgresAuthority = engine === 'yjs' ? YjsPostgresAuthority : LegacyPostgresAuthority;
+  const Document = engine === 'yjs' ? YjsDocument : LegacyDocument;
+  if (pool && engine === 'yjs') await PostgresAuthority.migrate(pool);
   const bundle = await build({ entryPoints: [fileURLToPath(new URL('./editor.mjs', import.meta.url))],
     bundle: true, write: false, format: 'esm', platform: 'browser', target: 'es2022' });
   const html = await readFile(new URL('./index.html', import.meta.url));
@@ -95,5 +102,6 @@ export async function startHarness({ pool = null } = {}) {
     } };
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const harness = await startHarness(); console.log(`Validation harness: ${harness.url}/?actor=A&doc=manual`);
+  const engine = process.env.COLLAB_ENGINE ?? 'legacy';
+  const harness = await startHarness({ engine }); console.log(`Validation harness: ${harness.url}/?actor=A&doc=manual&engine=${engine}`);
 }

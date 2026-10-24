@@ -1,0 +1,96 @@
+npm notice run between-pages@0.0.1 test:yjs:browser:pg
+npm notice run COLLAB_ENGINE=yjs COLLAB_TEST_SUITE=test:browser bash scripts/test-collab-postgres.sh
+postgres (PostgreSQL) 18.6
+npm notice run between-pages@0.0.1 test:browser
+npm notice run node --test prototypes/collaboration/test/browser.test.mjs
+BROWSER_ENVIRONMENT {"node":"v24.20.0","postgres":true,"engines":{"chromium":"156.0.8078.4","firefox":"157.0","webkit":"27.2"}}
+✔ chromium: native typing, inline provenance and synthetic plain paste (1699.325273ms)
+✔ chromium: foreign deletion jumps; mixed replacement/cut denied (636.481629ms)
+✔ chromium: virtual-keyboard deletion, hold guard and forward jump (599.741058ms)
+✔ chromium: offline reload restores IndexedDB and merges remote edits (705.676749ms)
+✔ chromium: real context offline refresh uses cached shell and local draft (631.584726ms)
+✔ chromium: same-account tabs cannot overwrite each other's local journal (684.630292ms)
+✔ chromium: personal undo preserves peer's nested text (630.123799ms)
+✔ chromium: peer caret stays anchored after insertion and vanishes on disconnect (561.637202ms)
+✔ chromium: whole-text grapheme grouping across operations prevents broken deletion (558.842589ms)
+✔ chromium: storage failure stays visible and is not reported saved (562.237084ms)
+✔ firefox: native typing, inline provenance and synthetic plain paste (2504.475602ms)
+✔ firefox: foreign deletion jumps; mixed replacement/cut denied (1676.515206ms)
+✔ firefox: virtual-keyboard deletion, hold guard and forward jump (1467.85984ms)
+✔ firefox: offline reload restores IndexedDB and merges remote edits (2137.474422ms)
+✔ firefox: real context offline refresh uses cached shell and local draft (1549.423178ms)
+✔ firefox: same-account tabs cannot overwrite each other's local journal (1918.308407ms)
+✔ firefox: personal undo preserves peer's nested text (1721.076293ms)
+✔ firefox: peer caret stays anchored after insertion and vanishes on disconnect (1369.549264ms)
+✔ firefox: whole-text grapheme grouping across operations prevents broken deletion (1358.450013ms)
+✔ firefox: storage failure stays visible and is not reported saved (3700.938545ms)
+✔ webkit: native typing, inline provenance and synthetic plain paste (924.095841ms)
+✔ webkit: foreign deletion jumps; mixed replacement/cut denied (924.321482ms)
+✔ webkit: virtual-keyboard deletion, hold guard and forward jump (793.563796ms)
+✔ webkit: offline reload restores IndexedDB and merges remote edits (987.313173ms)
+✔ webkit: real context offline refresh uses cached shell and local draft (893.248458ms)
+✔ webkit: same-account tabs cannot overwrite each other's local journal (1136.865987ms)
+✔ webkit: personal undo preserves peer's nested text (941.853444ms)
+✔ webkit: peer caret stays anchored after insertion and vanishes on disconnect (803.534042ms)
+✔ webkit: whole-text grapheme grouping across operations prevents broken deletion (845.529877ms)
+✖ webkit: storage failure stays visible and is not reported saved (852.77319ms)
+✔ chromium CDP: real composition input stays private, survives concurrent peer insert, commits once (620.616315ms)
+✔ chromium: additional 250ms per API request while typing does not steal selection or roll back text (1855.922438ms)
+✔ chromium CDP: canceled composition does not duplicate prefix or create shared phantom text (502.265806ms)
+✔ chromium CDP: composing over foreign selection never edits shared foreign text (508.888037ms)
+REMOTE_DELAY_METRIC {"extraHttpRequestDelayMs":250,"samples":20,"p95Ms":1045,"maxMs":1054}
+✔ chromium: batch sync bounds remote latency with 250ms extra HTTP request delay (2460.75592ms)
+✔ chromium: native system clipboard paste strips author metadata; copy excludes peer widgets (733.92368ms)
+✔ Yjs chromium: reload with committed response in flight restores pending without duplication (1073.518333ms)
+✔ Yjs firefox: reload with committed response in flight restores pending without duplication (2305.427281ms)
+✖ Yjs webkit: reload with committed response in flight restores pending without duplication (10929.680753ms)
+✔ Yjs browser: every optimistic character remains visible through stale pulls and lost ACK (635.970986ms)
+✔ Yjs HTTP: authenticated attacker cannot upload binary changes or delete peer text (534.981479ms)
+ℹ tests 41
+ℹ suites 0
+ℹ pass 39
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 59122.067611
+
+✖ failing tests:
+
+test at prototypes/collaboration/test/browser.test.mjs:132:3
+✖ webkit: storage failure stays visible and is not reported saved (852.77319ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   {
+  +     message: '/127.0.0.1:44597/api/cd09af1d-db4b-4e8a-9550-0e937ad5a38c/records due to access control checks.',
+  +     stack: 'Fetch API cannot load http://127.0.0.1:44597/api/cd09af1d-db4b-4e8a-9550-0e937ad5a38c/records due to access control checks.\n' +
+  +       '    at call (http://127.0.0.1:44597/bundle.js:20815:33)\n' +
+  +       '    at sync (http://127.0.0.1:44597/bundle.js:11837:44)\n' +
+  +       '    at unknown (http://127.0.0.1:44597/bundle.js:20840:24)\n' +
+  +       '    at flush (http://127.0.0.1:44597/bundle.js:20847:16)'
+  +   }
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///home/ubuntu/codebase/between-pages/prototypes/collaboration/test/browser.test.mjs:27:55)
+      at async TestHook.run (node:internal/test_runner/test:1404:7)
+      at async Test.runHook (node:internal/test_runner/test:1284:9)
+      at async after (node:internal/test_runner/test:1337:9)
+      at async Test.run (node:internal/test_runner/test:1423:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ { message: '/127.0.0.1:44597/api/cd09af1d-db4b-4e8a-9550-0e937ad5a38c/records due to access control checks.', stack: 'Fetch API cannot load http://127.0.0.1:44597/api/cd09af1d-db4b-4e8a-9550-0e937ad5a38c/records due to access control checks.\n    at call (http://127.0.0.1:44597/bundle.js:20815:33)\n    at sync (http://127.0.0.1:44597/bundle.js:11837:44)\n    at unknown (http://127.0.0.1:44597/bundle.js:20840:24)\n    at flush (http://127.0.0.1:44597/bundle.js:20847:16)' } ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at prototypes/collaboration/test/browser.test.mjs:222:5
+✖ Yjs webkit: reload with committed response in flight restores pending without duplication (10929.680753ms)
+  Error: COMMIT_NOT_REACHED
+      at Timeout._onTimeout (file:///home/ubuntu/codebase/between-pages/prototypes/collaboration/test/browser.test.mjs:242:51)
+      at listOnTimeout (node:internal/timers:685:17)
+      at process.processTimers (node:internal/timers:618:7)

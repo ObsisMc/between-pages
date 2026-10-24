@@ -4,6 +4,8 @@
 
 ## 2026-10-24 验证进展
 
+后续新增 [ADR-0005](./0005-yjs-authoritative-validation.md)，对路径 A 接入 Yjs，沿用作者保护与离线恢复的行为门槛；下述数字和“没有接入 Yjs”仅描述此前自研插入树轮次。生产内核尚未定案。
+
 选用路径 A 完成协议与浏览器技术验证：ProseMirror、稳定 scalar ID、受约束语义操作、个人操作 toggle、客户端 IndexedDB 和服务端 PG 事务。没有接入 Yjs，也不接受客户端任意二进制更新。
 
 39 项协议/策略测试、12 项 PG 测试、36 项浏览器测试通过。浏览器套件分别在内存与 PG 后端执行，共 123 项次；含 150 个确定性随机调度、真实服务进程 SIGKILL、CDP composition、原生剪贴板、离线刷新、多标签页和光标锚点。细节、性能原始样本及真机边界见[最终报告](../validation/collaboration-readiness-2026-10-24.md)。

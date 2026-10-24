@@ -1,0 +1,25 @@
+npm notice run between-pages@0.0.1 test:pg:docker
+npm notice run bash scripts/test-collab-postgres.sh
+postgres (PostgreSQL) 18.6
+npm notice run between-pages@0.0.1 test:pg
+npm notice run node --test prototypes/collaboration/test/postgres.test.mjs
+✔ PG: two service instances serialize concurrent writes with atomic outbox (42.966319ms)
+✔ PG: parallel retries across instances create exactly one operation and task (100.646627ms)
+✔ PG: attempted foreign deletion rolls back and leaves outbox unchanged (14.941829ms)
+✔ PG: failure after SQL writes before COMMIT rolls back document, operation and outbox (19.268889ms)
+✔ PG: commit followed by lost ACK survives fresh service and pool (28.886293ms)
+✔ PG: offline edits remain visible through old read and merge after service restart (33.654436ms)
+✔ PG: nonmember cannot read or submit and no transaction is left open (12.75366ms)
+✔ PG: actual service SIGKILL at beforeCommit preserves correct commit boundary (143.507945ms)
+✔ PG: actual service SIGKILL at afterCommit preserves correct commit boundary (137.472677ms)
+✔ PG: batch permission failure rolls back all operations and all outbox rows (17.787682ms)
+✔ PG: dependent offline batch commits once across parallel retries (42.207755ms)
+✔ PG: clock poisoning is rejected without changing version or backup tasks (14.634747ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 848.515731

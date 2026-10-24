@@ -1,4 +1,4 @@
-import { PostgresAuthority } from '../postgres.mjs';
+const { PostgresAuthority } = await import(process.env.COLLAB_ENGINE === 'yjs' ? '../../yjs/postgres.mjs' : '../postgres.mjs');
 process.on('message', async ({ docId, actor, op, phase }) => {
   const pool = PostgresAuthority.pool(process.env.COLLAB_TEST_DATABASE_URL);
   const server = new PostgresAuthority(pool, docId);

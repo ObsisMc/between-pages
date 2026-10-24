@@ -1,9 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { Client } from '../client.mjs';
-import { Document, ROOT } from '../model.mjs';
-import { PostgresAuthority } from '../postgres.mjs';
+const isYjs = process.env.COLLAB_ENGINE === 'yjs';
+const { Client } = await import(isYjs ? '../../yjs/client.mjs' : '../client.mjs');
+import { ROOT } from '../model.mjs';
+const { Document } = await import(isYjs ? '../../yjs/model.mjs' : '../model.mjs');
+const { PostgresAuthority } = await import(isYjs ? '../../yjs/postgres.mjs' : '../postgres.mjs');
+const tablePrefix = isYjs ? 'yjs_probe' : 'collab_probe';
 
 const url = process.env.COLLAB_TEST_DATABASE_URL;
 if (!url) throw new Error('Set COLLAB_TEST_DATABASE_URL to a disposable PostgreSQL test database.');
@@ -17,9 +20,9 @@ async function fixture() {
 }
 async function counts(id) {
   const { rows } = await pool.query(`SELECT
-    (SELECT count(*)::int FROM collab_probe_operations WHERE doc_id=$1) operations,
-    (SELECT count(*)::int FROM collab_probe_outbox WHERE doc_id=$1) outbox,
-    (SELECT version FROM collab_probe_documents WHERE id=$1) version`, [id]);
+    (SELECT count(*)::int FROM ${tablePrefix}_operations WHERE doc_id=$1) operations,
+    (SELECT count(*)::int FROM ${tablePrefix}_outbox WHERE doc_id=$1) outbox,
+    (SELECT version FROM ${tablePrefix}_documents WHERE id=$1) version`, [id]);
   return rows[0];
 }
 

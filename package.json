@@ -7,13 +7,21 @@
     "node": ">=24"
   },
   "scripts": {
-    "test": "node --test prototypes/collaboration/test/core.test.mjs prototypes/collaboration/test/policy.test.mjs",
+    "test": "node --test prototypes/collaboration/test/core.test.mjs prototypes/collaboration/test/policy.test.mjs prototypes/yjs/core.test.mjs",
     "test:pg": "node --test prototypes/collaboration/test/postgres.test.mjs",
     "test:pg:docker": "bash scripts/test-collab-postgres.sh",
     "test:browser": "node --test prototypes/collaboration/test/browser.test.mjs",
     "test:browser:pg": "COLLAB_TEST_SUITE=test:browser bash scripts/test-collab-postgres.sh",
     "benchmark:collab": "node prototypes/collaboration/test/performance.mjs",
-    "dev:probe": "node prototypes/collaboration/browser/server.mjs"
+    "benchmark:yjs:smoke": "COLLAB_ENGINE=yjs COLLAB_PERF_SIZES=1000,5000,10000 node prototypes/collaboration/test/performance.mjs",
+    "benchmark:yjs:history": "COLLAB_ENGINE=yjs COLLAB_PERF_SIZES=1000 COLLAB_PERF_CHUNK_SIZE=5 node prototypes/collaboration/test/performance.mjs",
+    "benchmark:yjs:smoke:pg": "COLLAB_TEST_SUITE=benchmark:yjs:smoke bash scripts/test-collab-postgres.sh",
+    "dev:probe": "node prototypes/collaboration/browser/server.mjs",
+    "test:yjs": "node --test prototypes/yjs/core.test.mjs",
+    "test:yjs:pg": "COLLAB_ENGINE=yjs COLLAB_TEST_SUITE=test:pg bash scripts/test-collab-postgres.sh",
+    "test:yjs:browser": "COLLAB_ENGINE=yjs node --test prototypes/collaboration/test/browser.test.mjs",
+    "test:yjs:browser:pg": "COLLAB_ENGINE=yjs COLLAB_TEST_SUITE=test:browser bash scripts/test-collab-postgres.sh",
+    "dev:yjs": "COLLAB_ENGINE=yjs node prototypes/collaboration/browser/server.mjs"
   },
   "dependencies": {
     "pg": "8.23.1",
@@ -21,7 +29,8 @@
     "prosemirror-model": "1.25.12",
     "prosemirror-state": "1.4.4",
     "prosemirror-view": "1.42.8",
-    "ws": "8.22.0"
+    "ws": "8.22.0",
+    "yjs": "13.6.33"
   },
   "devDependencies": {
     "esbuild": "0.28.2",
