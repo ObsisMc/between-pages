@@ -20,9 +20,9 @@
 
 ## 当前状态
 
-**已完成自研协同基线与第一轮 Yjs 验证；完整应用尚未实现。**
+**技术验证完成，正式技术栈已定，项目骨架与工程规范已落地；产品功能尚未实现。**
 
-用户已要求先不进行正式实现；当前只整理并保存方案、验证原型和证据，React/Fastify 正式骨架与工程规范尚未落地。
+正式代码在 `apps/`（Web、API）和 `packages/`（共享契约），目前只有健康检查这一条端到端路径。工程规范、检查命令和完成标准见 [AGENTS.md](./AGENTS.md) 与 [CONTRIBUTING.md](./CONTRIBUTING.md)。
 
 仓库包含规格、ADR 和可运行的协议/浏览器验证原型。87 个不同场景通过，浏览器套件分别接内存服务和 PG，共执行 123 项次。已有 ProseMirror、IndexedDB、WebSocket 与离线刷新验证；真机和完整产品验收未完成。正式技术栈已由 [ADR-0006](./docs/adr/0006-formal-stack.md) 确定：Node 26、React/Vite、Fastify、PostgreSQL + Drizzle、Zod 契约；协同用 Yjs `Y.Text`，客户端发普通更新，服务端检查作者权限。
 
@@ -32,13 +32,23 @@ Yjs 验证包含 75 个不同用例；浏览器套件分别接内存与 PG 后�
 
 [Web 基本性能检查](./docs/validation/yjs-web-smoke-2026-10-24.md)也已完成：所测场景输入处理 P95 为 3～9 毫秒，本地保存、同步和刷新后文字完整。此结果限于本地原型，不代表完整上线验收；深入优化和手机验证后置。
 
-## 运行核心验证
+## 本地开发
 
-需要 Node.js 24+：
+需要 Node.js 26（见 `.nvmrc`）：
 
 ```sh
 npm ci
-npm test
+cp .env.example .env
+npm run dev:api
+npm run dev:web
+```
+
+检查命令见 [AGENTS.md](./AGENTS.md#commands)。
+
+## 运行原型验证
+
+```sh
+npm run test:prototypes
 ```
 
 真实 PG 集成和服务进程崩溃测试需要 Docker：

@@ -1,0 +1,9 @@
+# Prototypes are a frozen behavior baseline; documentation keeps its hand-written layout.
+prototypes/
+docs/
+*.md
+package-lock.json
+coverage/
+dist/
+# Generated, written by `npm run openapi`.
+apps/api/openapi.json

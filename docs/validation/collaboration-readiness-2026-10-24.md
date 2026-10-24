@@ -122,7 +122,7 @@ Chromium 连续输入 20 个字符，每个 API 请求人为增加 250ms 等待�
 ```sh
 npm ci
 npx playwright install chromium firefox webkit
-npm test
+npm run test:prototypes   # 原为 npm test；正式初始化后改名
 npm run test:pg:docker
 npm run test:browser
 npm run test:browser:pg

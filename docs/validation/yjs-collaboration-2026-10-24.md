@@ -82,7 +82,7 @@ Yjs 共有 75 个不同用例；同一套 41 项浏览器测试在两个后端�
 
 ```sh
 npm ci
-npm test
+npm run test:prototypes   # 原为 npm test；正式初始化后改名
 npm run test:yjs:pg
 npm run test:yjs:browser
 npm run test:yjs:browser:pg

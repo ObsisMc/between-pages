@@ -18,7 +18,7 @@ ADR-0005 的路线由服务端代客户端生成所有 Yjs 更新：服务端是
 ### 运行时与工程
 
 1. 运行时为 **Node.js 26**（2026-10-28 进入 LTS，支持到 2029-04）。`engines` 要求 Node 26；现有原型需在 26 上重跑一遍测试。
-2. 语言为 TypeScript strict，开启 `erasableSyntaxOnly`，让 Node 能直接运行源码；前端由 Vite 构建。
+2. 语言为 TypeScript 6.0 strict，开启 `erasableSyntaxOnly`，让 Node 能直接运行源码；前端由 Vite 构建。不用 TypeScript 7：typescript-eslint 8.72 只支持到 6.0（初始化时核实）。
 3. 包管理器为 **npm workspaces**，不使用 pnpm 或 Bun。
 4. 模块划分：`apps/web`、`apps/api`（含独立 worker 入口）、`packages/contracts`、`packages/collab`；`prototypes/` 保持现状，只作为行为基线。
 5. 测试：新的正式模块用 **Vitest**，行覆盖率 80%；浏览器端到端测试用 **Playwright**；原型继续用 Node 测试，不改写。
@@ -56,7 +56,8 @@ ADR-0005 的路线由服务端代客户端生成所有 Yjs 更新：服务端是
 
 22. 所有 HTTP 请求和响应、所有 WebSocket 消息，都用 **Zod 4** 定义在 `packages/contracts`，只维护这一份。
 23. 后端用 `fastify-type-provider-zod` 校验请求和响应；用 `@fastify/swagger` 生成 OpenAPI 3.1 文件，提交进仓库。CI 重新生成该文件并与仓库版本比对，不一致就失败。
-24. 前端用 `openapi-typescript` 和 `openapi-fetch` 根据 OpenAPI 生成带类型的客户端。WebSocket 消息用带协议版本号的 Zod 联合类型，前后端都用它校验。
+24. 前端直接从 `packages/contracts` 引用路由表和 schema，经唯一的 `callApi` 发请求并用同一 schema 解析响应，不从 OpenAPI 生成客户端。OpenAPI 只服务于防偏移检查和以后的非 TS 客户端。WebSocket 消息用带协议版本号的 Zod 联合类型，前后端都用它校验。
+    - 初始化时改定（原定 `openapi-typescript` + `openapi-fetch`）：openapi-typescript 最近一次发布是 2026-02，peer 依赖只支持 TypeScript 5；而在同一个仓库里共享 schema 已经能防止前后端偏移，多一步代码生成没有收益。
 
 ### 认证
 
