@@ -10,13 +10,13 @@ Question: does Better Auth 1.7.12, configured explicitly, satisfy the login rule
 - An `oauth2-mock-server` OIDC issuer stands in for Google through the `genericOAuth` plugin (provider id `google`, PKCE, ID-token verification required). Production would use `socialProviders.google`; both go through the same Better Auth account and session code.
 - A second provider (`other`) on the same mock issuer, to show identities are not Google-specific.
 - Hardening on top of defaults: no implicit account linking but explicit linking while signed in (`disableImplicitLinking: true`, `allowDifferentEmails: true`), `encryptOAuthTokens: true`, UUID ids, a `databaseHooks` filter that drops every provider token, and a unique index on `auth_account ("providerId", "accountId")`.
-- Two-layer user model: Better Auth tables carry an `auth_` prefix; the domain `users` table (`id`, `display_name`, `created_at`) shares the id, holds no email or provider data, has no foreign key into `auth_*`, and is created idempotently by `currentUser()` on the first authenticated request.
+- Two-layer user model: Better Auth tables carry an `auth_` prefix; the domain `users` table (`id`, `display_name`, `created_at`, `last_seen_at`) shares the id, holds no email or provider data, has no foreign key into `auth_*`, and is created idempotently by `currentUser()` on the first authenticated request.
 
 ```sh
 npm run test:auth:pg     # Docker PostgreSQL 18; log: docs/validation/artifacts/auth-2026-10-24/
 ```
 
-## Results (13/13 pass, PostgreSQL 18.6, Node 26.12.1)
+## Results (14/14 pass, PostgreSQL 18.6, Node 26.12.1)
 
 | Check | Result |
 | --- | --- |
@@ -31,7 +31,8 @@ npm run test:auth:pg     # Docker PostgreSQL 18; log: docs/validation/artifacts/
 | `expiresIn` | A 2-second session is rejected after 3 seconds |
 | Signed-in user links a second provider (different email) | Both identities point at one user; signing in with either returns it |
 | Link without a session / to an identity another user owns | `401` / the identity stays with its owner |
-| Domain `users` table | Only `id`, `display_name`, `created_at`; no foreign keys; row exists after first request |
+| Domain `users` table | Only `id`, `display_name`, `created_at`, `last_seen_at`; no foreign keys; row exists after first request |
+| `last_seen_at` | A second request within 5 minutes leaves the row untouched (same `xmin`); a stale value is refreshed by the WebSocket handshake |
 
 ## Findings
 

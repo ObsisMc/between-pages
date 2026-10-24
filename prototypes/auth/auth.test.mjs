@@ -214,10 +214,25 @@ describe('Better Auth spike (Fastify + PostgreSQL + OIDC)', { timeout: 20_000 },
     const { cookies } = await signIn({ sub: 'subject-j', email: 'j@example.test' });
     const { body } = await me(cookies);
     const columns = await rows(`select column_name from information_schema.columns where table_name = 'users' order by ordinal_position`);
-    assert.deepEqual(columns.map((c) => c.column_name), ['id', 'display_name', 'created_at']);
+    assert.deepEqual(columns.map((c) => c.column_name), ['id', 'display_name', 'created_at', 'last_seen_at']);
     const fks = await rows(`select conname from pg_constraint where conrelid = 'users'::regclass and contype = 'f'`);
     assert.deepEqual(fks, [], 'domain users must not depend on auth tables');
     assert.deepEqual(await rows('select id from users where id = $1', [body.userId]), [{ id: body.userId }]);
+  });
+
+  it('records last seen at most once per interval, from HTTP and the WebSocket upgrade', async () => {
+    const { cookies } = await signIn({ sub: 'subject-k', email: 'k@example.test' });
+    const id = (await me(cookies)).body.userId;
+    const lastSeen = async () => (await rows('select last_seen_at, xmin::text as version from users where id = $1', [id]))[0];
+    const first = await lastSeen();
+    await me(cookies);
+    const within = await lastSeen();
+    assert.deepEqual(within, first, 'a request inside the interval must not rewrite the row');
+    await server.pool.query(`update users set last_seen_at = now() - interval '10 minutes' where id = $1`, [id]);
+    const stale = await lastSeen();
+    await upgrade(cookies);
+    const after = await lastSeen();
+    assert.ok(after.last_seen_at > stale.last_seen_at, 'the socket handshake refreshes last seen');
   });
 
   it('has a unique key on (providerId, accountId) so one subject cannot map to two users', async () => {

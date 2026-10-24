@@ -9,7 +9,9 @@ import { fromNodeHeaders } from 'better-auth/node';
 // Spike: Better Auth mounted in Fastify, PostgreSQL storage, an OIDC provider standing
 // in for Google. Production would use socialProviders.google instead of genericOAuth;
 // both create users and accounts through the same Better Auth sign-in path.
-export async function createAuthServer({ databaseUrl, issuerUrl, webOrigin, sessionSeconds = 3600 }) {
+export async function createAuthServer({
+  databaseUrl, issuerUrl, webOrigin, sessionSeconds = 3600, lastSeenEverySeconds = 300,
+}) {
   const pool = new pg.Pool({ connectionString: databaseUrl });
   const app = Fastify();
   const port = await freePort();
@@ -81,7 +83,8 @@ export async function createAuthServer({ databaseUrl, issuerUrl, webOrigin, sess
   await pool.query(`create table if not exists users (
     id uuid primary key,
     display_name text not null,
-    created_at timestamptz not null default now()
+    created_at timestamptz not null default now(),
+    last_seen_at timestamptz not null default now()
   )`);
 
   // The one way app code learns who is calling. Creates the domain row on first use, so a
@@ -89,12 +92,21 @@ export async function createAuthServer({ databaseUrl, issuerUrl, webOrigin, sess
   async function currentUser(headers) {
     const session = await auth.api.getSession({ headers: fromNodeHeaders(headers) });
     if (!session) return null;
-    const { rows: [user] } = await pool.query(
-      `insert into users (id, display_name) values ($1, $2)
-       on conflict (id) do update set id = excluded.id returning id, display_name`,
+    await pool.query(
+      'insert into users (id, display_name) values ($1, $2) on conflict (id) do nothing',
       [session.user.id, session.user.name || 'Unnamed'],
     );
-    return { id: user.id, displayName: user.display_name, email: session.user.email };
+    // Last seen = last authenticated request or socket, written at most once per interval
+    // so ordinary traffic does not turn every request into a row update.
+    await pool.query(
+      'update users set last_seen_at = now() where id = $1 and last_seen_at < now() - make_interval(secs => $2)',
+      [session.user.id, lastSeenEverySeconds],
+    );
+    const { rows: [user] } = await pool.query(
+      'select id, display_name, last_seen_at from users where id = $1', [session.user.id]);
+    return {
+      id: user.id, displayName: user.display_name, lastSeenAt: user.last_seen_at, email: session.user.email,
+    };
   }
 
   // Official Fastify pattern: hand Better Auth a Web Request, copy its Response back.

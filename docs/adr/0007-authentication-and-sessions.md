@@ -27,7 +27,7 @@ ADR-0006 把 Better Auth 列为第一候选。本 ADR 根据 spike 和维护情�
 
    | 层 | 表 | 内容 | 谁写 |
    | --- | --- | --- | --- |
-   | 领域层 | `users` | `id`、`display_name`、`created_at`；以后加时区、作者颜色、停用时间 | 只有我们的代码 |
+   | 领域层 | `users` | `id`、`display_name`、`created_at`、`last_seen_at`；以后加时区、作者颜色、停用时间 | 只有我们的代码 |
    | 身份层 | `auth_user` | 与 `users.id` 相同的 id、邮箱、头像等登录资料 | Better Auth |
    | 身份层 | `auth_account` | `(providerId, accountId)`：哪个登录方式的哪个 subject 属于哪个用户 | Better Auth |
    | 身份层 | `auth_session`、`auth_verification` | 会话、OAuth state | Better Auth |
@@ -36,6 +36,7 @@ ADR-0006 把 Better Auth 列为第一候选。本 ADR 根据 spike 和维护情�
    - `users` 不存邮箱和登录方式，也**不设指向 `auth_*` 的外键**。这样更换认证库、增删登录方式都不影响领域数据；账号停用或身份记录删除，也不会连带删除这个人写过的字（规格 §3）。
    - 两层通过同一个 UUID 对应（`advanced.database.generateId: 'uuid'`）。领域行由 API 唯一的"当前用户"入口在第一次认证请求时幂等创建，所以"身份已建、领域行还没建"的中间状态会在下一次请求时自动补上。
    - Better Auth 的表统一加 `auth_` 前缀（`modelName`），一眼能分清哪些表归认证库管。
+   - `last_seen_at`（用户于 2026-10-24 确认现在加）：最近一次带登录状态的请求或 WebSocket 连接的时间，由同一个"当前用户"入口更新，**同一用户最多每 5 分钟写一次**，避免每个请求都改写这一行；WebSocket 连接期间按心跳刷新。只供运维和以后的功能使用，**不在界面上展示给对方**：那相当于在线状态回执，与"不默认公开对方已读状态"的原则冲突，要展示须先改规格。
 4. 登录方式是 `auth_account` 里的一行 `(providerId, accountId = subject)`，由我们自己加的唯一索引保证一一对应。Better Auth 默认只建了普通索引，spike 中防止重复用户的其实是邮箱的唯一约束，属于碰巧，不能依赖。providerId 对应固定的签发方，所以不需要单独存 issuer。
 5. 首版只接 `socialProviders.google`，只申请 `openid email profile`，不申请任何 Drive 权限。以后接入其他 OAuth / OIDC 登录方式，只需增加 provider 配置和 `auth_account` 行，**`users` 和所有领域表不变**。
 

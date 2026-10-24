@@ -1,18 +1,18 @@
 postgres (PostgreSQL) 18.6
-2026-10-24T16:33:14.462Z ERROR [Better Auth]: Database schema mismatch
+2026-10-24T16:59:12.421Z ERROR [Better Auth]: Database schema mismatch
 
   Missing tables
     auth_user, auth_session, auth_account, auth_verification
 
   help: Run `npx auth migrate` to add the missing tables and columns.
 ▶ Better Auth spike (Fastify + PostgreSQL + OIDC)
-  ✔ signs in, issues an HttpOnly SameSite=Lax session cookie and keys the user by subject (125.266442ms)
-  ✔ returns the same user for the same subject even after the email changes (93.879421ms)
-2026-10-24T16:33:14.834Z ERROR [Better Auth]: account_not_linked
-SAME_EMAIL_OUTCOME {"status":302,"location":"http://127.0.0.1:33391/api/auth/error?error=account_not_linked","session":401,"usersAdded":0}
-  ✔ never merges a different subject into an existing user because the email matches (85.236382ms)
-  ✔ keeps no provider tokens for the login account (1.542807ms)
-2026-10-24T16:33:14.901Z ERROR [Better Auth]: Unable to create OAuth user error: duplicate key value violates unique constraint "auth_user_email_key"
+  ✔ signs in, issues an HttpOnly SameSite=Lax session cookie and keys the user by subject (143.421584ms)
+  ✔ returns the same user for the same subject even after the email changes (103.56824ms)
+2026-10-24T16:59:12.835Z ERROR [Better Auth]: account_not_linked
+SAME_EMAIL_OUTCOME {"status":302,"location":"http://127.0.0.1:35275/api/auth/error?error=account_not_linked","session":401,"usersAdded":0}
+  ✔ never merges a different subject into an existing user because the email matches (91.390864ms)
+  ✔ keeps no provider tokens for the login account (1.698288ms)
+2026-10-24T16:59:12.905Z ERROR [Better Auth]: Unable to create OAuth user error: duplicate key value violates unique constraint "auth_user_email_key"
     at /home/ubuntu/codebase/between-pages/node_modules/pg/lib/client.js:694:17
     at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
     at async PostgresConnection.executeQuery (file:///home/ubuntu/codebase/between-pages/node_modules/kysely/dist/dialect/postgres/postgres-driver.js:118:28)
@@ -51,28 +51,29 @@ SAME_EMAIL_OUTCOME {"status":302,"location":"http://127.0.0.1:33391/api/auth/err
   line: '666',
   routine: '_bt_check_unique'
 }
-2026-10-24T16:33:14.902Z ERROR [Better Auth]: unable_to_create_user
+2026-10-24T16:59:12.905Z ERROR [Better Auth]: unable_to_create_user
 RACE_OUTCOME {"fulfilled":2,"statuses":[302,302],"accounts":1,"users":1}
-  ✔ creates one user when the same new subject signs in twice concurrently (64.49869ms)
-  ✔ authenticates a WebSocket upgrade with the session cookie and rejects it without (59.251866ms)
-  ✔ stops accepting the session on HTTP and WebSocket after sign-out (56.628854ms)
-2026-10-24T16:33:15.064Z ERROR [Better Auth]: Invalid origin: https://evil.example
-2026-10-24T16:33:15.074Z ERROR [Better Auth]: Invalid callbackURL: https://evil.example/
-  ✔ rejects state-changing auth calls from an untrusted origin (53.017078ms)
-  ✔ lets a signed-in user attach a second provider, then sign in with either (136.925374ms)
-  ✔ refuses linking without a session or to an identity another user already owns (113.966191ms)
-  ✔ keeps the domain user free of provider and email data (62.087598ms)
+  ✔ creates one user when the same new subject signs in twice concurrently (64.460458ms)
+  ✔ authenticates a WebSocket upgrade with the session cookie and rejects it without (59.799837ms)
+  ✔ stops accepting the session on HTTP and WebSocket after sign-out (57.661387ms)
+2026-10-24T16:59:13.075Z ERROR [Better Auth]: Invalid origin: https://evil.example
+2026-10-24T16:59:13.087Z ERROR [Better Auth]: Invalid callbackURL: https://evil.example/
+  ✔ rejects state-changing auth calls from an untrusted origin (60.679761ms)
+  ✔ lets a signed-in user attach a second provider, then sign in with either (144.909992ms)
+  ✔ refuses linking without a session or to an identity another user already owns (129.835242ms)
+  ✔ keeps the domain user free of provider and email data (71.836853ms)
+  ✔ records last seen at most once per interval, from HTTP and the WebSocket upgrade (66.628548ms)
 ACCOUNT_INDEXES ["CREATE UNIQUE INDEX auth_account_pkey ON public.auth_account USING btree (id)","CREATE INDEX \"auth_account_userId_idx\" ON public.auth_account USING btree (\"userId\")","CREATE UNIQUE INDEX auth_account_provider_subject_key ON public.auth_account USING btree (\"providerId\", \"accountId\")"]
-  ✔ has a unique key on (providerId, accountId) so one subject cannot map to two users (5.746586ms)
-✔ Better Auth spike (Fastify + PostgreSQL + OIDC) (1235.849906ms)
+  ✔ has a unique key on (providerId, accountId) so one subject cannot map to two users (5.759586ms)
+✔ Better Auth spike (Fastify + PostgreSQL + OIDC) (1572.780126ms)
 ▶ Better Auth spike: session expiry
-  ✔ rejects the session once expiresIn has passed (3106.18682ms)
-✔ Better Auth spike: session expiry (3106.837623ms)
-ℹ tests 13
+  ✔ rejects the session once expiresIn has passed (3122.430705ms)
+✔ Better Auth spike: session expiry (3122.844587ms)
+ℹ tests 14
 ℹ suites 2
-ℹ pass 13
+ℹ pass 14
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 5146.806417
+ℹ duration_ms 5494.300532
