@@ -24,7 +24,7 @@
 
 用户已要求先不进行正式实现；当前只整理并保存方案、验证原型和证据，React/Fastify 正式骨架与工程规范尚未落地。
 
-仓库包含规格、ADR 和可运行的协议/浏览器验证原型。87 个不同场景通过，浏览器套件分别接内存服务和 PG，共执行 123 项次。已有 ProseMirror、IndexedDB、WebSocket 与离线刷新验证；真机和完整产品验收未完成。正式技术栈仍待确认，PostgreSQL 已确认为主存储。
+仓库包含规格、ADR 和可运行的协议/浏览器验证原型。87 个不同场景通过，浏览器套件分别接内存服务和 PG，共执行 123 项次。已有 ProseMirror、IndexedDB、WebSocket 与离线刷新验证；真机和完整产品验收未完成。正式技术栈已由 [ADR-0006](./docs/adr/0006-formal-stack.md) 确定：Node 26、React/Vite、Fastify、PostgreSQL + Drizzle、Zod 契约；协同用 Yjs `Y.Text`，客户端发普通更新，服务端检查作者权限。
 
 前端状态管理方向已确认为 **TanStack Query + 按需使用 Zustand**。正文与未确认操作由协同核心管理。新增 [Yjs 原型](./prototypes/yjs/README.md)验证服务端字符权限及离线恢复，不接受客户端任意二进制更新；正式内核仍待性能、升级与移动端验证。
 
