@@ -1,6 +1,6 @@
 # Between Pages 技术栈调研与建议
 
-调研日期：2026-10-24。状态：选型建议，不代表已经安装、验证或批准所有依赖。持续维护是用户明确要求的生产依赖门槛。
+调研日期：2026-10-24。状态：选型建议；最终决定见 [ADR-0006](../adr/0006-formal-stack.md)，其中 pnpm 改为 npm、移动端后置。持续维护是用户明确要求的生产依赖门槛。
 
 后续进展：状态管理已确认为 TanStack Query + 按需使用 Zustand；同日完成 [Yjs 第一轮验证](../validation/yjs-collaboration-2026-10-24.md)。该轮采用服务端权威更新及自定义 ProseMirror 适配器，没有使用 y-prosemirror/Hocuspocus 默认 provider；下文对这些候选的维护和集成门槛仍有效。
 
