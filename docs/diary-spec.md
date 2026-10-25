@@ -32,7 +32,7 @@ MVP 包含：登录与双人绑定、日期列表与日记编辑、实时协同�
 
 **已确认**：每个空间最多两人，需明确接受邀请才能加入；支持 Google 认证和 Google 数据访问授权；日记只对成员开放。退出或账号停用不能连带清除另一人的文字。
 
-**实施默认**：Google 登录采用 OpenID Connect，应用用户使用独立的稳定 userId，Google 身份按 issuer + subject 绑定，不以邮箱作为永久身份。认证库见 [ADR-0007](./adr/0007-authentication-and-sessions.md)。登录与“连接 Google 备份”是两个独立流程；拒绝 Drive 权限不阻止登录及写日记。
+**实施默认**：Google 登录采用 OpenID Connect，应用用户使用独立的稳定 userId，Google 身份按 issuer + subject 绑定，不以邮箱作为永久身份。认证方案见 [authentication-and-sessions](./adr/2026-10-24-authentication-and-sessions.md)。登录与“连接 Google 备份”是两个独立流程；拒绝 Drive 权限不阻止登录及写日记。
 
 邀请使用有期限、可撤销、一次性令牌；接受时再次校验身份和空间人数。并发接受也不能产生第三位成员。邀请失效、空间已满必须明确提示。
 

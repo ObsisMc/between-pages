@@ -1,6 +1,6 @@
 # Spike: Better Auth with Fastify and PostgreSQL
 
-Status: exploratory spike (2026-10-24) behind [ADR-0007](../../docs/adr/0007-authentication-and-sessions.md). Not production code.
+Status: exploratory spike (2026-10-24) behind [authentication-and-sessions](../../docs/adr/2026-10-24-authentication-and-sessions.md). Not production code.
 
 Question: does Better Auth 1.7.12, configured explicitly, satisfy the login rules in [spec §3](../../docs/diary-spec.md) — stable user id, Google identity keyed by subject and never merged by email, revocable HttpOnly cookie sessions that also authenticate a WebSocket upgrade, and no Google tokens kept for login?
 
@@ -33,6 +33,23 @@ npm run test:auth:pg     # Docker PostgreSQL 18; log: docs/validation/artifacts/
 | Link without a session / to an identity another user owns | `401` / the identity stays with its owner |
 | Domain `users` table | Only `id`, `display_name`, `created_at`, `last_seen_at`; no foreign keys; row exists after first request |
 | `last_seen_at` | A second request within 5 minutes leaves the row untouched (same `xmin`); a stale value is refreshed by the WebSocket handshake |
+
+## Configuration to carry into apps/api
+
+The ADR states the decision; these are the Better Auth settings that implement it, as validated here. They move into `apps/api` (and its README) when login is built.
+
+| Concern | Setting |
+| --- | --- |
+| No merge by email, explicit linking allowed | `account.accountLinking: { enabled: true, disableImplicitLinking: true, allowDifferentEmails: true }` — not `enabled: false`, which also blocks `linkSocial` |
+| No provider tokens kept | `databaseHooks.account.create/update.before` nulls `accessToken`, `refreshToken`, `idToken` and their expiries; `account.encryptOAuthTokens: true` as a backstop |
+| One user per identity | unique index on `auth_account ("providerId", "accountId")` in the Drizzle schema |
+| Shared UUID with `users` | `advanced.database.generateId: 'uuid'`; `modelName` gives every Better Auth table the `auth_` prefix |
+| Cookies | production `advanced.useSecureCookies: true`; defaults already give `HttpOnly`, `SameSite=Lax` |
+| Sessions | implementation default `session.expiresIn` 30 days, `updateAge` 1 day; leave `session.cookieCache` off so revocation is immediate |
+| WebSocket handshake | `auth.api.getSession({ headers, query: { disableRefresh: true, disableCookieCache: true } })`, plus our own `Origin` check |
+| Login scopes | `socialProviders.google` with `openid email profile` only |
+| `last_seen_at` | updated by the single current-user entry point at most every 5 minutes per user; WebSocket heartbeats refresh it |
+| Schema | `npx auth generate` → Drizzle schema in `apps/api`, migrated with drizzle-kit (`@better-auth/cli` is deprecated) |
 
 ## Findings
 
