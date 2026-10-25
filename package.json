@@ -34,7 +34,9 @@
     "test:yjs:pg": "COLLAB_ENGINE=yjs COLLAB_TEST_SUITE=test:pg bash scripts/test-collab-postgres.sh",
     "test:yjs:browser": "COLLAB_ENGINE=yjs node --test prototypes/collaboration/test/browser.test.mjs",
     "test:yjs:browser:pg": "COLLAB_ENGINE=yjs COLLAB_TEST_SUITE=test:browser bash scripts/test-collab-postgres.sh",
-    "dev:yjs": "COLLAB_ENGINE=yjs node prototypes/collaboration/browser/server.mjs"
+    "dev:yjs": "COLLAB_ENGINE=yjs node prototypes/collaboration/browser/server.mjs",
+    "test:auth:pg": "COLLAB_TEST_SUITE=test:auth bash scripts/test-collab-postgres.sh",
+    "test:auth": "node --test prototypes/auth/auth.test.mjs"
   },
   "dependencies": {
     "pg": "8.23.1",
@@ -49,10 +51,13 @@
     "@eslint/js": "10.0.1",
     "@types/node": "26.6.5",
     "@vitest/coverage-v8": "5.0.5",
+    "better-auth": "1.7.12",
+    "drizzle-orm": "0.45.4",
     "esbuild": "0.28.2",
     "eslint": "10.13.0",
     "eslint-plugin-react-hooks": "7.1.1",
     "globals": "17.13.0",
+    "oauth2-mock-server": "9.3.0",
     "playwright": "1.64.1",
     "prettier": "3.9.10",
     "typescript": "6.0.3",
