@@ -8,11 +8,12 @@ How this repository tests, tier by tier, and the rules that keep a green suite m
 | --- | --- | --- | --- |
 | Unit | `npx vitest run --project <name>` — every push | One module's contract in isolation | `*.test.ts` beside the code |
 | Integration | same runner, `apps/api` project | The API through its real router (`app.inject()`), no socket | `apps/api/src/*.test.ts` |
+| Database | same runner; needs `TEST_DATABASE_URL` (`npm run test:db` locally, a service container in CI) | Schema, constraints and transactions on real PostgreSQL 18 | `apps/api/src/**/*.db.test.ts` |
 | Component | same runner, `apps/web` project (jsdom) | Screens render and react to real contract responses | `apps/web/src/*.test.tsx` |
 | Prototype baseline | `npm run test:prototypes` — every PR; PG/browser suites on demand | The validated collaboration behavior still holds | `prototypes/**/test/` (node:test, frozen) |
 | End-to-end | None yet for the formal app | — | Playwright arrives with the first editor screen |
 
-Coverage gate: `npm run test:coverage` fails under **80% lines** across `apps/*/src` and `packages/*/src` (process entry points excluded, see `vitest.config.ts`). Coverage proves lines ran, not that behavior is right — necessary, never sufficient. An uncovered line is often dead code to delete, not a test to bolt on.
+Coverage gate: `npm run test:coverage` (`npm run test:db` locally, so database tests count) fails under **80% lines** across `apps/*/src` and `packages/*/src` (process entry points excluded, see `vitest.config.ts`). Coverage proves lines ran, not that behavior is right — necessary, never sufficient. An uncovered line is often dead code to delete, not a test to bolt on.
 
 Collaboration code carries a stricter bar than coverage: author protection, no silent text loss and honest "saved" state need the attack, fault and multi-client tests listed in [ADR-0002](adr/0002-collaboration-and-author-authorization.md) and [ADR-0006](adr/0006-formal-stack.md), mapped to [acceptance](acceptance.md) IDs.
 

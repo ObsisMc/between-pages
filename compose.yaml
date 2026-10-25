@@ -1,0 +1,23 @@
+# Local development database only (npm run db:up). Credentials are local test data,
+# never a deployment value; tests use a separate disposable container.
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: between_pages
+      POSTGRES_PASSWORD: local-dev-only
+      POSTGRES_DB: between_pages
+    ports:
+      # 54320 avoids clashing with a PostgreSQL already on 5432; override with DB_PORT.
+      - '127.0.0.1:${DB_PORT:-54320}:5432'
+    # Over TCP: the image's first-boot init server listens on a socket only, so this
+    # passes once the real server is up and `db:up --wait` cannot return too early.
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-h', '127.0.0.1', '-U', 'between_pages', '-d', 'between_pages']
+      interval: 1s
+      timeout: 5s
+      retries: 60
+    volumes:
+      - pgdata:/var/lib/postgresql
+volumes:
+  pgdata:

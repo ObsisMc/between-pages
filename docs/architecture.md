@@ -67,4 +67,4 @@ Target path for an edit (phase 2, ADR-0006): editor step → `Y.Text` update per
 - Configuration: repo-root `.env` (template `.env.example`), read by the API via `node --env-file-if-exists` and by the Vite proxy via `loadEnv`. No other config source.
 - Errors: the API returns Fastify's error shape for now; the web client turns non-2xx into `ApiError`. TODO(owner): a contract error schema arrives with the first route that returns a domain error.
 - Logging: Fastify's logger in the API process. Never log diary text, OAuth tokens or exports ([spec §11](diary-spec.md)).
-- Persistence: PostgreSQL via Drizzle (schema and migrations in `apps/api` once the first table exists); browser IndexedDB for local copies and pending updates.
+- Persistence: PostgreSQL via Drizzle; schema in `apps/api/src/db/schema.ts`, generated migrations in `apps/api/drizzle/`, applied by `npm run db:migrate`. Local development uses `compose.yaml` (`npm run db:up`). Browser IndexedDB for local copies and pending updates.
