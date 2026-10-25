@@ -48,8 +48,8 @@ A task is complete when every line below is true. Check them before reporting; r
 **After changing** — each line is checked by CI
 - Behavior changed ⇒ the module README's *Public surface* / *Invariants* / *Known limitations* updated in the same commit. `verify-doc-pairs` fails the PR otherwise; bypass only with the `docs-not-needed` label and a reason in the PR.
 - Contract or route changed ⇒ `npm run openapi` and commit `apps/api/openapi.json`. `verify-openapi-current`.
-- A choice another agent might re-litigate ⇒ an ADR in [docs/adr/](docs/adr/README.md). `verify-decision-format` checks the form.
-- Changing an existing decision ⇒ a new ADR that supersedes it, plus its line in [architecture.md](docs/architecture.md#current-decisions); never rewrite an accepted ADR's body (`verify-adr-immutable`).
+- A choice another agent might re-litigate, or a feature that needs design first ⇒ an ADR in [docs/adr/](docs/adr/README.md). `verify-decision-format` checks the form.
+- Implementing an ADR ⇒ follow its 落地顺序 (dependencies and migrations it pre-approves need no extra ask) and keep its facts in sync once 已实现. Changing a decision ⇒ a new ADR that supersedes it, plus its line in [architecture.md](docs/architecture.md#current-decisions); never edit an adopted ADR's 决策依据/不变量/备选方案 (`verify-adr-immutable`).
 - Meaningful behavior ⇒ a test that fails before and passes after, at the tier [docs/testing.md](docs/testing.md) names. No tests for static values or that mirror the implementation. Coverage gate: 80% lines on `apps/*/src` and `packages/*/src`.
 - Format, lint, typecheck and the relevant test subset ran; the PR's *Evidence* section lists what ran and what did not.
 - Commits: Conventional Commits `type(scope)!: description` — see [CONTRIBUTING.md](CONTRIBUTING.md#commits). PRs merge with a merge commit, so every commit must conform; the hook and the `commit-convention` job enforce it.
@@ -58,7 +58,7 @@ A task is complete when every line below is true. Check them before reporting; r
 ## Boundaries
 
 - ✅ Always: run `npm run format` before committing; put tests beside the code (`*.test.ts(x)`); keep secrets, tokens and real diary text out of commits, fixtures and logs.
-- ⚠️ Ask first: database schema or migration changes; new dependencies (pin exact versions); deleting a public export; changing CI, hooks, `checks/` or this file's budget; anything under `prototypes/`.
+- ⚠️ Ask first (unless an adopted ADR's 落地顺序 pre-approves it): database schema or migration changes; new dependencies (pin exact versions); deleting a public export; changing CI, hooks, `checks/` or this file's budget; anything under `prototypes/`.
 - 🚫 Never: `--no-verify`; weakening an assertion, widening a mock, or adding a retry or sleep to make a test pass; editing `apps/api/openapi.json` by hand; force-pushing shared branches; accepting a client-supplied author, actor or raw update without the server check.
 
 ## Read when relevant
