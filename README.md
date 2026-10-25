@@ -20,30 +20,34 @@
 
 ## 当前状态
 
-**技术验证完成，正式技术栈已定，项目骨架与工程规范已落地；产品功能尚未实现。**
+更新日期：2026-10-25。**阶段 1 进行中：登录与会话已完成，双人空间、邀请和每日一篇尚未开始，尚未部署。** 分阶段进度见[开发路线](./docs/roadmap.md)。
 
-正式代码在 `apps/`（Web、API）和 `packages/`（共享契约），目前只有健康检查这一条端到端路径。工程规范、检查命令和完成标准见 [AGENTS.md](./AGENTS.md) 与 [CONTRIBUTING.md](./CONTRIBUTING.md)。
+| 部分 | 状态 |
+| --- | --- |
+| 工程骨架与规范 | 已完成：Web、API、共享契约；检查脚本、Git hooks、CI（[AGENTS.md](./AGENTS.md)、[CONTRIBUTING.md](./CONTRIBUTING.md)） |
+| 登录与会话 | 已完成：Google 登录、数据库会话、登录页与退出（[认证 ADR](./docs/adr/2026-10-24-authentication-and-sessions.md)）；本机已用真实 Google 登录验证，HTTPS 下的联调待部署后进行 |
+| 双人空间与邀请 | 未开始，ADR 待写 |
+| 每日一篇、协同编辑、未读、Google 备份 | 未开始；协同的技术方案已验证（见下方"技术验证"） |
+| 部署 | 未开始：计划部署到现有的云服务器（美国，ARM），部署 ADR 待写 |
 
-仓库包含规格、ADR 和可运行的协议/浏览器验证原型。87 个不同场景通过，浏览器套件分别接内存服务和 PG，共执行 123 项次。已有 ProseMirror、IndexedDB、WebSocket 与离线刷新验证；真机和完整产品验收未完成。正式技术栈已由 [ADR-0006](./docs/adr/0006-formal-stack.md) 确定：Node 26、React/Vite、Fastify、PostgreSQL + Drizzle、Zod 契约；协同用 Yjs `Y.Text`，客户端发普通更新，服务端检查作者权限。
+### 技术验证（阶段 0，已完成）
 
-前端状态管理方向已确认为 **TanStack Query + 按需使用 Zustand**。正文与未确认操作由协同核心管理。新增 [Yjs 原型](./prototypes/yjs/README.md)验证服务端字符权限及离线恢复，不接受客户端任意二进制更新；正式内核仍待性能、升级与移动端验证。
-
-Yjs 验证包含 75 个不同用例；浏览器套件分别接内存与 PG 后端，全部 Yjs 套件合计执行 116 项次，最终全部通过。原始日志、排查记录与边界见 [Yjs 验证报告](./docs/validation/yjs-collaboration-2026-10-24.md)。
-
-[Web 基本性能检查](./docs/validation/yjs-web-smoke-2026-10-24.md)也已完成：所测场景输入处理 P95 为 3～9 毫秒，本地保存、同步和刷新后文字完整。此结果限于本地原型，不代表完整上线验收；深入优化和手机验证后置。
+协同编辑的关键行为已在原型中验证：字符级作者保护、服务端校验、断线和刷新后不丢字、PostgreSQL 持久化确认。正式技术栈由 [ADR-0006](./docs/adr/0006-formal-stack.md) 确定，协同采用 Yjs `Y.Text`，客户端发送普通更新，由服务端检查作者权限。证据见[技术验证报告](./docs/validation/collaboration-readiness-2026-10-24.md)、[Yjs 验证报告](./docs/validation/yjs-collaboration-2026-10-24.md)和 [Web 基本性能检查](./docs/validation/yjs-web-smoke-2026-10-24.md)。手机支持与深入性能优化后置。
 
 ## 本地开发
 
-需要 Node.js 26（见 `.nvmrc`）：
+需要 Node.js 26（见 `.nvmrc`）和 Docker：
 
 ```sh
-npm ci
+nvm use && npm ci
 cp .env.example .env
+npm run db:up && npm run db:migrate
+npm run dev:oidc    # 本地模拟登录服务，不需要 Google 账号
 npm run dev:api
-npm run dev:web
+npm run dev:web     # 打开 http://localhost:5173/，用"开发登录"输入任意名字
 ```
 
-检查命令见 [AGENTS.md](./AGENTS.md#commands)。
+`.env` 默认使用模拟登录（`AUTH_PROVIDER=dev`）。改用真实 Google：在 Google Cloud 创建 OAuth 客户端，回调地址填 `http://localhost:5173/api/auth/callback/google`，然后在 `.env` 里设置 `AUTH_PROVIDER=google` 和 `GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET`，重启 API。检查命令见 [AGENTS.md](./AGENTS.md#commands)。
 
 ## 运行原型验证
 
@@ -86,8 +90,6 @@ npm run dev:yjs
 
 文档明确区分已确认的产品规则、可调整的实施默认和待验证的技术方案。
 
-## 开发起点
+## 开发方式
 
-下一步先确定正式技术栈、协议与数据版本，再落地开发规范、模块契约及配套检查。完成这些准备后，将已验证的行为迁入正式应用；真机与生产集成继续作为发布门槛。
-
-后续开发以[功能规格](./docs/diary-spec.md)和[验收清单](./docs/acceptance.md)为依据。技术选择的变化通过 ADR 记录，功能完成以可复现的验证结果为准。
+开发以[功能规格](./docs/diary-spec.md)和[验收清单](./docs/acceptance.md)为依据。需要设计的功能先写 ADR 评审，再按 ADR 实现；功能完成以可复现的测试和验证结果为准。
