@@ -142,7 +142,7 @@ ADR 只回答一件事：**为什么这样决定，以及当时打败了哪些�
 
 ## 实施状态
 
-验证某条约束的测试或检查，在标题里写 `[adr:<slug>#<约束编号>]`，例如 `it('[adr:authentication-and-sessions#1] refuses a different subject with an existing email', …)`。ADR 不链接测试，所以测试改名、移动不影响 ADR；删除某条约束唯一的测试时，索引里的覆盖数会在该 PR 中下降。`verify-adr-tags` 检查标记指向存在的 ADR 和约束编号。
+验证某条约束的测试或检查，在标题里写 `[adr:<slug>#<约束编号>]`，例如 `it('[adr:authentication-and-sessions#1] refuses a different subject with an existing email', …)`。ADR 不链接测试，所以测试改名、移动不影响 ADR；删除某条约束唯一的测试时，索引里的覆盖数会在该 PR 中下降。`verify-adr-tags` 检查标记指向存在的 ADR 和约束编号。`prototypes/` 下的测试不计入：spike 证明的是可行，不是产品已经实现。
 
 ## 信息归属
 
