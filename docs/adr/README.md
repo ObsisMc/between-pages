@@ -18,6 +18,7 @@
 | [ADR-0005](./0005-yjs-authoritative-validation.md) | 以服务端权威操作验证 Yjs | 已取代 | 协同 | — |
 | [ADR-0006](./0006-formal-stack.md) | 正式技术栈与协同内核 | 已采纳 | 技术栈 | — |
 | [authentication-and-sessions](./2026-10-24-authentication-and-sessions.md) | 用 Better Auth 只做登录和会话，领域用户与认证层分离 | 已采纳 | 认证 | 12/13 部分 |
+| [spaces-and-invitations](./2026-10-25-spaces-and-invitations.md) | 用双人名额约束和一次性邀请建立共享空间 | 提议 | 领域 | 0/12 未开始 |
 <!-- adr-index:end -->
 
 ## 原则
