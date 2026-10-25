@@ -114,11 +114,16 @@ export interface TagUse {
   constraint: number;
 }
 
-/** `[adr:<slug>#<n>]` markers in test files and verify scripts. */
+/**
+ * `[adr:<slug>#<n>]` markers in test files and verify scripts. prototypes/ is skipped:
+ * a spike shows a decision is feasible, not that the product implements it.
+ */
 export function findTags(): TagUse[] {
   const uses: TagUse[] = [];
   const scanned = repoFiles().filter(
-    (f) => /\.test\.(?:ts|tsx|mjs|js)$/.test(f) || /^checks\/verify-.*\.ts$/.test(f),
+    (f) =>
+      !f.startsWith('prototypes/') &&
+      (/\.test\.(?:ts|tsx|mjs|js)$/.test(f) || /^checks\/verify-.*\.ts$/.test(f)),
   );
   for (const file of scanned) {
     read(file)
