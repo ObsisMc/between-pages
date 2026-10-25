@@ -22,6 +22,10 @@ npm run lint                      # fix with: npx eslint --fix <file>
 npm run typecheck
 npx vitest run --project <name>   # contracts | api | web — one module
 npm run openapi                   # after any contract or route change
+npm run db:generate -- --name <x> # after any change to apps/api/src/db/schema.ts
+npm run test:db                   # all tests incl. *.db.test.ts on a disposable PostgreSQL
+npm run dev:oidc                  # mock login issuer for local development (with db:up, dev:api, dev:web)
+npm run test:e2e:db               # browser tests (Playwright, Chromium) on a disposable PostgreSQL
 npm run check -- docs             # module READMEs, links, ADR format, budget, OpenAPI freshness
 npm run check -- all              # everything CI runs, locally
 ```

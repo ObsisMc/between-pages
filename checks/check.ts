@@ -12,8 +12,10 @@ const STACK = [
   ['npm', 'run', 'format:check'],
   ['npm', 'run', 'lint'],
   ['npm', 'run', 'typecheck'],
-  ['npm', 'run', 'test:coverage'],
+  // Local runs get a disposable PostgreSQL; CI runs test:coverage against its service.
+  ['npm', 'run', process.env.CI ? 'test:coverage' : 'test:db'],
   ['npm', 'run', 'test:prototypes'],
+  ['npm', 'run', process.env.CI ? 'test:e2e' : 'test:e2e:db'],
 ];
 
 const GROUPS: Record<string, string[][]> = {
@@ -23,6 +25,8 @@ const GROUPS: Record<string, string[][]> = {
     gate('verify-decision-format'),
     gate('verify-agents-md-budget'),
     gate('verify-openapi-current'),
+    gate('verify-migrations-current'),
+    gate('verify-auth-boundary'),
     gate('verify-adr-index'),
     gate('verify-adr-tags'),
   ],

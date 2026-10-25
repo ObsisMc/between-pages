@@ -1,0 +1,125 @@
+/* Warm, simple, paper-like (docs/project-identity.md). Tokens first; dark mode below. */
+:root {
+  --paper: #fbf7f0;
+  --ink: #3b322b;
+  --ink-soft: #7a6c60;
+  --accent: #b5683f;
+  --accent-ink: #fffaf4;
+  --line: #e7ddd0;
+  --notice: #f6e7d8;
+  --font-title: 'Songti SC', 'Noto Serif SC', 'Source Han Serif SC', Georgia, serif;
+  --font-body:
+    system-ui, -apple-system, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #221d19;
+    --ink: #eee4d8;
+    --ink-soft: #b3a596;
+    --accent: #d98b5f;
+    --accent-ink: #221d19;
+    --line: #3a322b;
+    --notice: #3a2b21;
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  line-height: 1.6;
+}
+
+.page {
+  max-width: 28rem;
+  margin: 0 auto;
+  padding: 4rem 1.25rem;
+}
+
+h1 {
+  font-family: var(--font-title);
+  font-weight: 600;
+  font-size: 2.25rem;
+  margin: 0;
+}
+
+.tagline {
+  color: var(--ink-soft);
+  margin: 0.25rem 0 2.5rem;
+}
+
+button {
+  font: inherit;
+  min-height: 2.75rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+button.primary {
+  width: 100%;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.notice {
+  background: var(--notice);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+
+.dev-login {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px dashed var(--line);
+  display: grid;
+  gap: 0.5rem;
+}
+
+.dev-login label {
+  color: var(--ink-soft);
+  font-size: 0.875rem;
+}
+
+.dev-login input {
+  font: inherit;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+}
+
+.home header {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.greeting {
+  font-family: var(--font-title);
+  font-size: 1.5rem;
+}
+
+.status {
+  text-align: center;
+  padding: 4rem 1.25rem;
+  color: var(--ink-soft);
+}

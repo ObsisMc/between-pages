@@ -17,7 +17,7 @@
 | [ADR-0004](./0004-google-export-and-recovery.md) | Google 可读副本与恢复快照 | 已采纳 | 备份 | — |
 | [ADR-0005](./0005-yjs-authoritative-validation.md) | 以服务端权威操作验证 Yjs | 已取代 | 协同 | — |
 | [ADR-0006](./0006-formal-stack.md) | 正式技术栈与协同内核 | 已采纳 | 技术栈 | — |
-| [authentication-and-sessions](./2026-10-24-authentication-and-sessions.md) | 用 Better Auth 只做登录和会话，领域用户与认证层分离 | 已采纳 | 认证 | 0/13 未开始 |
+| [authentication-and-sessions](./2026-10-24-authentication-and-sessions.md) | 用 Better Auth 只做登录和会话，领域用户与认证层分离 | 已采纳 | 认证 | 12/13 部分 |
 <!-- adr-index:end -->
 
 ## 原则

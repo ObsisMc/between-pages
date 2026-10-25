@@ -5,7 +5,14 @@ export default defineConfig({
   test: {
     projects: [
       { test: { name: 'contracts', root: 'packages/contracts', environment: 'node' } },
-      { test: { name: 'api', root: 'apps/api', environment: 'node' } },
+      {
+        test: {
+          name: 'api',
+          root: 'apps/api',
+          environment: 'node',
+          globalSetup: ['test/global-setup.ts'],
+        },
+      },
       { test: { name: 'web', root: 'apps/web', environment: 'jsdom' } },
     ],
     coverage: {

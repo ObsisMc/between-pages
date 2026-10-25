@@ -21,3 +21,10 @@ coverage/
 .DS_Store
 *.log
 !/docs/validation/artifacts/**/*.log
+
+# Scratch copy written and removed by checks/verify-migrations-current.ts.
+apps/api/.migrations-check-*/
+
+# Playwright output.
+test-results/
+playwright-report/
