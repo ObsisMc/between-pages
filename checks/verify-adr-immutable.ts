@@ -8,7 +8,7 @@ import { defaultRange, git, read, report } from './lib.ts';
 // - 已拒绝 / 已废弃 / 已取代 and the legacy 0001–0006 bodies: nothing but 状态/关联 changes.
 // Anything else needs the `adr-amend` PR label (ADR_AMEND=true in CI).
 const BYPASS = 'ADR_AMEND';
-const FROZEN_SECTIONS = ['## 决策依据', '## 不变量', '### 约束', '## 备选方案'];
+const FROZEN_SECTIONS = ['## 决策依据', '## 不变量', '## 备选方案'];
 const FULLY_FROZEN = new Set(['已拒绝', '已废弃', '已取代']);
 
 const range = process.argv[2] ?? defaultRange();

@@ -12,12 +12,7 @@ export const HEADER_FIELDS = ['状态', '日期', '决策者', '范围', '关联
 const LEGACY_NAME = /^(\d{4})-[a-z][a-z0-9]*(?:-[a-z0-9]+)*\.md$/;
 const LEGACY_LAST = 6;
 const DATED_NAME = /^(\d{4}-\d{2}-\d{2})-([a-z0-9]+(?:-[a-z0-9]+)*)\.md$/;
-/**
- * Dated records still in the short MADR layout (numbered `### 约束`, no D sections) that
- * predates the design-document format. Each is rewritten in its own PR; remove its entry
- * in that PR so the full format applies from then on.
- */
-export const PRE_DESIGN_FORMAT = new Set(['2026-10-24-authentication-and-sessions.md']);
+
 export const TAG = /\[adr:([a-z0-9]+(?:-[a-z0-9]+)*)#(\d+)\]/g;
 
 export interface Relation {
@@ -37,7 +32,7 @@ export interface Adr {
   header: Map<string, string>;
   relations: Relation[];
   lines: string[];
-  /** Numbers of the items under `## 不变量` (`### 约束` for PRE_DESIGN_FORMAT records). */
+  /** Numbers of the items under `## 不变量`. */
   invariants: number[];
   nameError?: string;
 }
@@ -83,8 +78,7 @@ export function parseAdr(file: string, text: string): Adr {
     if (m) header.set(m[1]!, m[2]!.trim());
   }
   const parsed = parseRelations(header.get('关联') ?? '无');
-  const invariantHeading = PRE_DESIGN_FORMAT.has(file) ? '### 约束' : '## 不变量';
-  const invariants = (section(lines, invariantHeading) ?? [])
+  const invariants = (section(lines, '## 不变量') ?? [])
     .map((l) => /^(\d+)\. /.exec(l)?.[1])
     .filter((n): n is string => Boolean(n))
     .map(Number);
