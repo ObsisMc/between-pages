@@ -1,13 +1,13 @@
 # Between Pages：产品与架构文档
 
-更新日期：2026-10-25。当前阶段：阶段 1 进行中，登录与会话已完成，个人日记、绑定/解绑与空间恢复尚未实现，产品模型见 [关系与日记 ADR](./adr/2026-10-25-spaces-and-invitations.md)（技术方案提议中）；进度见[开发路线](./roadmap.md)。
+当前进度见[开发路线](./roadmap.md)（唯一记录进度的地方）。
 
 ## 阅读顺序
 
 0. [项目主旨与命名](./project-identity.md)：暂定品牌与产品理念。
 1. [MVP 功能规格](./diary-spec.md)：范围、交互规则、数据模型、接口语义及可靠性要求。
 2. [验收清单](./acceptance.md)：按需求编号组织的可复现验收场景及发布门槛。
-3. [ADR 索引](./adr/README.md)：为什么采用这些设计，哪些技术选择仍需验证。
+3. [ADR 索引](./adr/README.md)：为什么采用这些设计，哪些技术选择仍需验证；[个人日记与双人共享](./adr/2026-10-25-spaces-and-invitations.md)说明关系、日期范围和版本边界。
 4. [最终技术验证报告](./validation/collaboration-readiness-2026-10-24.md)：浏览器、PG、离线恢复、故障、性能与进入下一阶段的判断。
    - [Yjs 验证报告](./validation/yjs-collaboration-2026-10-24.md)：后续开源内核验证，聚焦作者权限及断线恢复。
    - [Web 基本性能检查](./validation/yjs-web-smoke-2026-10-24.md)：日常规模和多次续写的性能、保存与刷新恢复。

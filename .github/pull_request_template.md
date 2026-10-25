@@ -21,6 +21,7 @@
 ## Docs
 
 - [ ] Module README(s) updated: <!-- paths --> — or label `docs-not-needed` because:
+- [ ] `docs/roadmap.md` row and date updated (and the README status line) — or label `roadmap-not-needed` because:
 
 ## Decision
 

@@ -98,6 +98,7 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           DOCS_NOT_NEEDED: ${{ contains(github.event.pull_request.labels.*.name, 'docs-not-needed') }}
+          ROADMAP_NOT_NEEDED: ${{ contains(github.event.pull_request.labels.*.name, 'roadmap-not-needed') }}
           ADR_AMEND: ${{ contains(github.event.pull_request.labels.*.name, 'adr-amend') }}
 
   e2e:

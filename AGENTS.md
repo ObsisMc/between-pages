@@ -52,6 +52,7 @@ A task is complete when every line below is true. Check them before reporting; r
 **After changing** — each line is checked by CI
 - Behavior changed ⇒ the module README's *Public surface* / *Invariants* / *Known limitations* updated in the same commit. `verify-doc-pairs` fails the PR otherwise; bypass only with the `docs-not-needed` label and a reason in the PR.
 - Contract or route changed ⇒ `npm run openapi` and commit `apps/api/openapi.json`. `verify-openapi-current`.
+- A PR that finishes or starts a roadmap item ⇒ its row and date in [docs/roadmap.md](docs/roadmap.md), the only progress record, plus the README status line, in the same PR. `verify-roadmap-current`; bypass only with the `roadmap-not-needed` label and a reason.
 - A choice another agent might re-litigate, or a feature that needs design first ⇒ an ADR in [docs/adr/](docs/adr/README.md). `verify-decision-format` checks the form.
 - Implementing an ADR ⇒ follow its 落地顺序 (dependencies and migrations it pre-approves need no extra ask) and keep its facts in sync once 已实现. Changing a decision ⇒ a new ADR that supersedes it, plus its line in [architecture.md](docs/architecture.md#current-decisions); never edit an adopted ADR's 决策依据/不变量/备选方案 (`verify-adr-immutable`).
 - Meaningful behavior ⇒ a test that fails before and passes after, at the tier [docs/testing.md](docs/testing.md) names. No tests for static values or that mirror the implementation. Coverage gate: 80% lines on `apps/*/src` and `packages/*/src`.
