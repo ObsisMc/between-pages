@@ -23,8 +23,13 @@ const GROUPS: Record<string, string[][]> = {
     gate('verify-decision-format'),
     gate('verify-agents-md-budget'),
     gate('verify-openapi-current'),
+    gate('verify-adr-index'),
+    gate('verify-adr-tags'),
   ],
-  pairs: [gate('verify-doc-pairs', ...(range ? [range] : []))],
+  pairs: [
+    gate('verify-doc-pairs', ...(range ? [range] : [])),
+    gate('verify-adr-immutable', ...(range ? [range] : [])),
+  ],
   commits: [gate('verify-commit-convention', ...(range ? [range] : []))],
   stack: STACK,
 };

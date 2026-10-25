@@ -2,6 +2,19 @@
 
 A React single-page app and a Fastify API in one npm-workspaces repo, sharing one contract package; PostgreSQL is the only store of record. The design idea everything follows: **the server decides what is committed and who wrote it** — clients render optimistically, but authorship and "saved" come from the server ([ADR-0002](adr/0002-collaboration-and-author-authorization.md), [ADR-0003](adr/0003-postgres-and-durable-commit.md), [ADR-0006](adr/0006-formal-stack.md)).
 
+## Current decisions
+
+What is decided today, by scope. Each line is the current answer; the linked record says why. When a record is superseded, update its line in the same PR (`verify-decision-format` rejects links to superseded or deprecated records here).
+
+| Scope | Current decision | Record |
+| --- | --- | --- |
+| 领域 | One shared diary per space and local date; every character has one immutable author; UTC instants are stored apart from the diary date | [ADR-0001](adr/0001-diary-domain-and-time.md) |
+| 协同 | The server enforces author protection on every edit path; implemented with one Yjs `Y.Text` per diary, client updates checked on the server against bound clientIDs, and a custom ProseMirror binding | [ADR-0002](adr/0002-collaboration-and-author-authorization.md), [ADR-0006](adr/0006-formal-stack.md) |
+| 存储 | PostgreSQL is the store of record; "saved" only after commit; backups through a transactional outbox | [ADR-0003](adr/0003-postgres-and-durable-commit.md) |
+| 备份 | One-way readable Google Doc plus a versioned recovery snapshot | [ADR-0004](adr/0004-google-export-and-recovery.md) |
+| 技术栈 | Node 26, npm workspaces, TypeScript 6, React + Vite, Fastify, Drizzle, Zod contracts with generated OpenAPI, Vitest + Playwright | [ADR-0006](adr/0006-formal-stack.md) |
+| 认证 | Better Auth is the chosen library; the login and session design is being recorded separately | [ADR-0006](adr/0006-formal-stack.md) |
+
 ## Modules
 
 | Module | Owns | Does not own |

@@ -79,6 +79,10 @@ jobs:
       - name: whitespace and conflict markers
         run: git diff --check "$CHECK_RANGE"
       - run: npm run check -- docs
+      # Label bypasses are decided on the PR; re-running these on the merge push would
+      # fail every PR that was merged with a bypass label.
       - run: npm run check -- pairs "$CHECK_RANGE"
+        if: github.event_name == 'pull_request'
         env:
           DOCS_NOT_NEEDED: ${{ contains(github.event.pull_request.labels.*.name, 'docs-not-needed') }}
+          ADR_AMEND: ${{ contains(github.event.pull_request.labels.*.name, 'adr-amend') }}
