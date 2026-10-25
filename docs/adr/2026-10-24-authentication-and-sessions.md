@@ -302,8 +302,8 @@ Better Auth 按官方 Fastify 方式挂在 `/api/auth/*`：把 Fastify 请求转
 
 | 问题 | 默认做法 |
 | --- | --- |
-| Better Auth 能否只存会话令牌的摘要 | 实现时查一次文档和源码。有现成选项就打开并加测试；没有就维持 D6，写进 `apps/api` README 的已知限制 |
-| 新建用户时 `auth_user` 和 `auth_account` 是否同一事务写入 | 写一个测试确认。如果不是，写进已知限制：中途失败只会留下一个无法登录的 `auth_user`，不影响任何人的数据 |
+| Better Auth 能否只存会话令牌的摘要 | **结论（2026-10-25）**：1.7.12 没有这个选项（源码中会话令牌原样写入），维持 D6，已写进 `apps/api` README 的已知限制 |
+| 新建用户时 `auth_user` 和 `auth_account` 是否同一事务写入 | **结论（2026-10-25）**：Better Auth 会把两次写入包进事务，但 Drizzle 适配器默认不开启事务（`transaction` 默认为 false）。实现中打开 `transaction: true`，并用“插入身份时强制失败”的测试确认不会留下孤立用户；关掉该选项时测试失败 |
 | D10 表格之外的 Better Auth 错误代码 | 统一显示"登录没有成功，请重试" |
 | Google 发布状态与 `drive.file` 是否需要审核 | 属于 ADR-0004，不在本 ADR 解决 |
 

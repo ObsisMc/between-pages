@@ -1,12 +1,19 @@
 import { buildApp } from './app.ts';
+import { createAuth } from './auth/auth.ts';
+import { createCurrentUser } from './auth/current-user.ts';
+import { parseConfig } from './config.ts';
+import { createDb } from './db/client.ts';
 
-const port = Number(process.env.PORT ?? 3000);
-const host = process.env.HOST ?? '127.0.0.1';
+// Refuses to start on a bad configuration and names every offending variable (D11).
+const config = parseConfig(process.env);
+const database = createDb(config.DATABASE_URL);
+const auth = createAuth(config, database.db);
 
-// Signed-out stand-in until the Better Auth wiring lands; every user route answers 401.
 const app = await buildApp({
-  publicOrigin: process.env.PUBLIC_ORIGIN ?? 'http://localhost:5173',
-  currentUser: async () => null,
+  publicOrigin: config.publicOrigin,
+  currentUser: createCurrentUser(auth, database.db),
+  authHandler: (request) => auth.handler(request),
   logger: true,
+  onClose: () => database.close(),
 });
-await app.listen({ port, host });
+await app.listen({ port: config.PORT, host: config.HOST });

@@ -19,6 +19,8 @@ export interface AppDeps {
   /** Better Auth's handler, mounted at /api/auth/* when given. */
   authHandler?: (request: Request) => Promise<Response>;
   logger?: FastifyServerOptions['logger'];
+  /** Releases resources the caller owns (e.g. the database pool) when the app closes. */
+  onClose?: () => Promise<void>;
 }
 
 // Builds the app without listening so tests and the OpenAPI generator use the exact
@@ -28,6 +30,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
   app.decorateRequest('user', null);
+  if (deps.onClose) {
+    const onClose = deps.onClose;
+    app.addHook('onClose', async () => onClose());
+  }
   registerErrorHandling(app);
   registerOriginGuard(app, deps.publicOrigin);
 

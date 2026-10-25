@@ -10,6 +10,7 @@
     "prepare": "node checks/install-hooks.ts",
     "dev:api": "npm run dev -w @between-pages/api",
     "dev:web": "npm run dev -w @between-pages/web",
+    "dev:oidc": "npm run dev:oidc -w @between-pages/api",
     "build": "npm run build -w @between-pages/web",
     "db:up": "docker compose up -d --wait postgres",
     "db:migrate": "npm run db:migrate -w @between-pages/api",

@@ -10,6 +10,7 @@ npm ci             # installs dependencies and the git hooks
 cp .env.example .env
 npm run db:up      # local PostgreSQL 18 (compose.yaml)
 npm run db:migrate
+npm run dev:oidc   # mock login issuer on 127.0.0.1:4010 (no Google account needed)
 npm run dev:api    # API on 127.0.0.1:3000
 npm run dev:web    # Vite dev server; proxies /api to the API
 ```

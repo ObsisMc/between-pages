@@ -9,3 +9,6 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+// Auth layer tables, owned by Better Auth; exported so drizzle-kit migrates them with ours.
+export * from './auth-schema.ts';
