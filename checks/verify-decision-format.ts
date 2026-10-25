@@ -11,14 +11,22 @@ import {
 import { read, report } from './lib.ts';
 
 // Form of docs/adr/ records and of the links between them (docs/adr/README.md).
-const NEW_SECTIONS = [
+const SECTIONS = [
   '## 背景与问题',
   '## 决策依据',
+  '## 决策',
+  '## 不变量',
   '## 备选方案',
-  '## 决策结果',
-  '### 后果',
+  '## 风险与代价',
   '## 补充信息',
 ];
+const PLAN = ['## 落地顺序', '## 验收标准'];
+// Sections a record carries only before it is implemented, and the one it gains after.
+const BY_STATUS: Record<string, { require: string[]; forbid: string[] }> = {
+  提议: { require: PLAN, forbid: ['## 验证'] },
+  已采纳: { require: PLAN, forbid: ['## 验证'] },
+  已实现: { require: ['## 验证'], forbid: PLAN },
+};
 const INACTIVE = new Set(['已取代', '已废弃']);
 
 const adrs = loadAdrs();
@@ -64,21 +72,35 @@ for (const adr of adrs) {
     else if (!filled(section(adr.lines, alt))) p(`"${alt}" is empty`);
     continue;
   }
-  for (const heading of NEW_SECTIONS) if (!adr.lines.includes(heading)) p(`missing "${heading}"`);
-  if (adr.lines.includes('## 备选方案') && !filled(section(adr.lines, '## 备选方案')))
-    p('"## 备选方案" is empty');
   const reassess = (section(adr.lines, '## 补充信息') ?? []).find((l) =>
     l.startsWith('- 重新评估条件：'),
   );
   if (!reassess || !reassess.replace('- 重新评估条件：', '').trim())
     p('补充信息 needs a non-empty "- 重新评估条件：…"');
-  if (adr.lines.includes('### 约束')) {
-    const expected = adr.constraints.map((_, i) => i + 1).join(',');
-    if (!adr.constraints.length) p('"### 约束" has no numbered items');
-    else if (adr.constraints.join(',') !== expected) p('constraints must be numbered 1, 2, 3, …');
-    if (!filled(section(adr.lines, '### 确认方式')))
-      p('"### 约束" needs a non-empty "### 确认方式"');
-  }
+
+  for (const heading of SECTIONS) if (!adr.lines.includes(heading)) p(`missing "${heading}"`);
+  const lifecycle = BY_STATUS[status ?? ''];
+  for (const heading of lifecycle?.require ?? [])
+    if (!adr.lines.includes(heading)) p(`状态 ${status} needs "${heading}"`);
+  for (const heading of lifecycle?.forbid ?? [])
+    if (adr.lines.includes(heading)) p(`状态 ${status} must not have "${heading}"`);
+  if (!(section(adr.lines, '## 决策') ?? []).some((l) => /^### D1[：:]\s*\S/.test(l)))
+    p('"## 决策" needs numbered decisions starting with "### D1：<rule>"');
+  if (adr.lines.includes('## 不变量')) checkNumbered(adr, '## 不变量', p);
+  const alternatives = section(adr.lines, '## 备选方案') ?? [];
+  const header = alternatives.find((l) => l.trimStart().startsWith('|'));
+  if (!header || !/优势/.test(header) || !/否决理由/.test(header))
+    p('"## 备选方案" must be a table with "优势" and "否决理由" columns');
+  else if (alternatives.filter((l) => l.trimStart().startsWith('|')).length < 3)
+    p('"## 备选方案" table has no alternatives');
+}
+
+/** Numbered items under `heading` must exist and run 1, 2, 3, … */
+function checkNumbered(adr: Adr, heading: string, p: (msg: string) => void) {
+  const expected = adr.invariants.map((_, i) => i + 1).join(',');
+  if (!adr.invariants.length) p(`"${heading}" has no numbered items`);
+  else if (adr.invariants.join(',') !== expected)
+    p(`"${heading}" items must be numbered 1, 2, 3, …`);
 }
 
 // Supersession must be recorded on both sides, and status must agree with it.
