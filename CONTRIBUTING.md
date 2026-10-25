@@ -50,6 +50,7 @@ The `commit-msg` hook rejects a non-conforming message. CI's `commit-convention`
 - Title follows the commit format.
 - Fill the template: **Problem**, **Change**, **Evidence** (every check you ran with its result, and every check you did not run with why), **Docs** (which READMEs / ADRs changed, or why none), **Decision** (ADR link or "none needed").
 - If module code changed without a contract change, add the `docs-not-needed` label and say why in the Docs section; otherwise `docs-gates` fails.
+- A `feat` PR updates its row and the date in [docs/roadmap.md](docs/roadmap.md), the only progress record, and the one-line status in the root README. If the feature moves no roadmap item, add the `roadmap-not-needed` label and say why; otherwise `docs-gates` fails.
 
 ## Running the checks locally
 
