@@ -9,6 +9,7 @@ import {
   me,
   roundTrip,
   signIn,
+  startGoogleApp,
   startHarness,
   type Harness,
 } from '../../test/oidc.ts';
@@ -224,5 +225,30 @@ describe.runIf(testDatabaseUrl)('secrets', () => {
     expect(h.logs.length).toBeGreaterThan(0);
     expect(everything).not.toContain(TEST_SECRET);
     expect(() => execFileSync('git', ['check-ignore', '-q', '.env'])).not.toThrow();
+  });
+});
+
+describe.runIf(testDatabaseUrl)('google provider', () => {
+  it('[adr:authentication-and-sessions#5] asks Google only for basic identity, each scope once', async () => {
+    const google = await startGoogleApp();
+    try {
+      const start = await google.app.inject({
+        method: 'POST',
+        url: '/api/auth/sign-in/social',
+        headers: { origin: WEB_ORIGIN },
+        payload: { provider: 'google', callbackURL: `${WEB_ORIGIN}/`, disableRedirect: true },
+      });
+      expect(start.statusCode).toBe(200);
+      const url = new URL((start.json() as { url: string }).url);
+      expect(url.origin).toBe('https://accounts.google.com');
+      expect(url.searchParams.get('redirect_uri')).toBe(`${WEB_ORIGIN}/api/auth/callback/google`);
+      expect(url.searchParams.get('scope')!.split(' ').sort()).toEqual([
+        'email',
+        'openid',
+        'profile',
+      ]);
+    } finally {
+      await google.close();
+    }
   });
 });

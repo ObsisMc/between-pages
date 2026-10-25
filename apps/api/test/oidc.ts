@@ -157,3 +157,29 @@ export async function me(h: Harness, jar: Jar) {
         : null,
   };
 }
+
+/** The app configured for real Google (no network needed to build the authorization URL). */
+export async function startGoogleApp() {
+  const config = parseConfig({
+    DATABASE_URL: testDatabaseUrl,
+    PUBLIC_ORIGIN: WEB_ORIGIN,
+    BETTER_AUTH_SECRET: TEST_SECRET,
+    AUTH_PROVIDER: 'google',
+    GOOGLE_CLIENT_ID: 'test-client.apps.googleusercontent.com',
+    GOOGLE_CLIENT_SECRET: 'test-only-client-secret',
+  });
+  const database = createDb(config.DATABASE_URL);
+  const auth = createAuth(config, database.db);
+  const app = await buildApp({
+    publicOrigin: config.publicOrigin,
+    currentUser: createCurrentUser(auth, database.db),
+    authHandler: (request) => auth.handler(request),
+  });
+  return {
+    app,
+    async close() {
+      await app.close();
+      await database.close();
+    },
+  };
+}

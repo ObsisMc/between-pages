@@ -71,7 +71,8 @@ export function createAuth(config: Config, db: Db) {
             google: {
               clientId: config.GOOGLE_CLIENT_ID!,
               clientSecret: config.GOOGLE_CLIENT_SECRET!,
-              scope: LOGIN_SCOPES,
+              // No `scope`: the provider already asks for exactly openid email profile, and
+              // `scope` is appended to its defaults, which would request each one twice.
               prompt: 'select_account',
             },
           }
