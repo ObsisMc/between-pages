@@ -1,22 +1,96 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { routes } from '@between-pages/contracts';
+import { ApiErrorBody, routes } from '@between-pages/contracts';
 import { buildApp } from './app.ts';
 import { renderOpenApi } from './openapi.ts';
 
-let app: FastifyInstance;
+const ORIGIN = 'http://localhost:5173';
+const alice = { id: '6f1c1d0e-0000-4000-8000-000000000001', displayName: 'alice' };
+
+let signedOut: FastifyInstance;
+let signedIn: FastifyInstance;
 beforeAll(async () => {
-  app = await buildApp();
+  signedOut = await buildApp({ publicOrigin: ORIGIN, currentUser: async () => null });
+  signedIn = await buildApp({ publicOrigin: ORIGIN, currentUser: async () => alice });
 });
 afterAll(async () => {
-  await app.close();
+  await signedOut.close();
+  await signedIn.close();
 });
 
 describe('health route', () => {
-  it('serves the contract response at the contract path', async () => {
-    const res = await app.inject({ method: routes.health.method, url: routes.health.path });
+  it('serves the contract response at the contract path without a session', async () => {
+    const res = await signedOut.inject({ method: routes.health.method, url: routes.health.path });
     expect(res.statusCode).toBe(200);
     expect(routes.health.response.parse(res.json())).toEqual({ status: 'ok' });
+  });
+});
+
+describe('access control', () => {
+  it('[adr:authentication-and-sessions#13] answers 401 on every user route without a session', async () => {
+    const userRoutes = Object.values(routes).filter((route) => route.access === 'user');
+    expect(userRoutes.length).toBeGreaterThan(0);
+    for (const route of userRoutes) {
+      const res = await signedOut.inject({ method: route.method, url: route.path });
+      expect(res.statusCode, route.path).toBe(401);
+      expect(ApiErrorBody.parse(res.json()).error.code).toBe('UNAUTHENTICATED');
+    }
+  });
+
+  it('returns the signed-in user from /api/me without private fields', async () => {
+    const res = await signedIn.inject({ method: 'GET', url: routes.me.path });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ user: alice });
+  });
+});
+
+describe('origin guard', () => {
+  it('[adr:authentication-and-sessions#7] refuses state-changing requests from another or no origin', async () => {
+    const evil = await signedIn.inject({
+      method: 'POST',
+      url: '/api/anything',
+      headers: { origin: 'https://evil.example' },
+    });
+    expect(evil.statusCode).toBe(403);
+    expect(ApiErrorBody.parse(evil.json()).error.code).toBe('FORBIDDEN_ORIGIN');
+    const missing = await signedIn.inject({ method: 'DELETE', url: '/api/anything' });
+    expect(missing.statusCode).toBe(403);
+    const trusted = await signedIn.inject({
+      method: 'POST',
+      url: '/api/anything',
+      headers: { origin: ORIGIN },
+    });
+    expect(trusted.statusCode).toBe(404);
+  });
+
+  it('leaves reads alone', async () => {
+    const res = await signedIn.inject({
+      method: 'GET',
+      url: routes.me.path,
+      headers: { origin: 'https://evil.example' },
+    });
+    expect(res.statusCode).toBe(200);
+  });
+});
+
+describe('error format', () => {
+  it('answers unknown routes with the contract error body', async () => {
+    const res = await signedIn.inject({ method: 'GET', url: '/api/nope' });
+    expect(res.statusCode).toBe(404);
+    expect(ApiErrorBody.parse(res.json()).error.code).toBe('NOT_FOUND');
+  });
+
+  it('hides internal errors behind INTERNAL', async () => {
+    const broken = await buildApp({
+      publicOrigin: ORIGIN,
+      currentUser: async () => {
+        throw new Error('database password is hunter2');
+      },
+    });
+    const res = await broken.inject({ method: 'GET', url: routes.me.path });
+    await broken.close();
+    expect(res.statusCode).toBe(500);
+    expect(res.json()).toEqual({ error: { code: 'INTERNAL', message: 'Internal error' } });
   });
 });
 

@@ -8,7 +8,7 @@ The React single-page app (Vite, React Router, TanStack Query). Calls the API on
 | --- | --- |
 | `npm run dev -w @between-pages/web` | Vite dev server; proxies `/api` to the API on the repo-root `.env` `PORT` (default 3000), so the app is same-origin. |
 | `npm run build -w @between-pages/web` | Static bundle in `dist/`. |
-| `callApi(name, fetch?)` (`src/api/client.ts`) | The only way to call the API: method and path come from the contract, the response is parsed with its schema. Throws `ApiError` (with `status`) on non-2xx and a Zod error on a shape mismatch. |
+| `callApi(name, fetch?)` (`src/api/client.ts`) | The only way to call the API: method and path come from the contract, the response is parsed with its schema. Throws `ApiError` (with `status` and the contract error `code`, `INTERNAL` when the body is unreadable) on non-2xx and a Zod error on a shape mismatch. |
 | `<App />` (`src/App.tsx`) | Root screen; currently shows API reachability. |
 
 ## Invariants
