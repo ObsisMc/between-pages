@@ -15,6 +15,7 @@ const STACK = [
   // Local runs get a disposable PostgreSQL; CI runs test:coverage against its service.
   ['npm', 'run', process.env.CI ? 'test:coverage' : 'test:db'],
   ['npm', 'run', 'test:prototypes'],
+  ['npm', 'run', process.env.CI ? 'test:e2e' : 'test:e2e:db'],
 ];
 
 const GROUPS: Record<string, string[][]> = {

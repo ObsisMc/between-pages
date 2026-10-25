@@ -38,4 +38,4 @@ npx vitest run --project web
 
 - No editor or diary screens yet; `src/main.tsx` (excluded from coverage) only mounts providers and the router.
 - No screen for linking a second login method; the server supports it (ADR D3).
-- No Playwright tests for the formal app yet; the browser suites under `prototypes/` remain the editor behavior baseline.
+- Browser-level login flows are covered by the root `e2e/` Playwright suite (E1-E6), not here; the browser suites under `prototypes/` remain the editor behavior baseline.
