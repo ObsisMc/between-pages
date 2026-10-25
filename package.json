@@ -18,6 +18,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "openapi": "npm run openapi -w @between-pages/api",
+    "adr:index": "node checks/generate-adr-index.ts",
     "check": "node checks/check.ts",
     "test:prototypes": "node --test prototypes/collaboration/test/core.test.mjs prototypes/collaboration/test/policy.test.mjs prototypes/yjs/core.test.mjs",
     "test:pg": "node --test prototypes/collaboration/test/postgres.test.mjs",

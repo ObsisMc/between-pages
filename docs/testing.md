@@ -30,6 +30,10 @@ Collaboration code carries a stricter bar than coverage: author protection, no s
 - Negative tests for logic that was removed.
 - Reversible, low-impact changes where the test would only restate the diff — say so in the PR's Evidence section instead.
 
+## Tagging ADR constraints
+
+A test or `checks/verify-*` script that verifies a numbered constraint of a dated ADR carries `[adr:<slug>#<n>]` in its title, e.g. `it('[adr:authentication-and-sessions#1] refuses a different subject with an existing email', …)`. The ADR index counts these markers as implementation progress ([docs/adr/README.md](adr/README.md#实施状态)); `verify-adr-tags` rejects markers that name no ADR or constraint. Keep the marker when renaming or moving the test.
+
 ## Mocks
 
 Mock only the expensive or nondeterministic boundary — network, clock, Google APIs, external processes — and keep everything downstream real.
