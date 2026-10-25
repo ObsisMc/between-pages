@@ -8,12 +8,14 @@ What is decided today, by scope. Each line is the current answer; the linked rec
 
 | Scope | Current decision | Record |
 | --- | --- | --- |
-| 领域 | One shared diary per space and local date; every character has one immutable author; UTC instants are stored apart from the diary date | [ADR-0001](adr/0001-diary-domain-and-time.md) |
+| 领域 | One personal diary per owner and local date, independent of binding; one current partner per user; a permanent pair space with separate binding periods, frozen shared history on unbind and the same space restored on rebind; every character retains its author | [spaces-and-invitations](adr/2026-10-25-spaces-and-invitations.md), [ADR-0001](adr/0001-diary-domain-and-time.md) (remaining authorship/time rules) |
 | 协同 | The server enforces author protection on every edit path; implemented with one Yjs `Y.Text` per diary, client updates checked on the server against bound clientIDs, and a custom ProseMirror binding | [ADR-0002](adr/0002-collaboration-and-author-authorization.md), [ADR-0006](adr/0006-formal-stack.md) |
 | 存储 | PostgreSQL is the store of record; "saved" only after commit; backups through a transactional outbox | [ADR-0003](adr/0003-postgres-and-durable-commit.md) |
 | 备份 | One-way readable Google Doc plus a versioned recovery snapshot | [ADR-0004](adr/0004-google-export-and-recovery.md) |
 | 技术栈 | Node 26, npm workspaces, TypeScript 6, React + Vite, Fastify, Drizzle, Zod contracts with generated OpenAPI, Vitest + Playwright | [ADR-0006](adr/0006-formal-stack.md) |
 | 认证 | Better Auth for Google login and database sessions only; domain `users` separate from the auth tables; no merge by email; no Google tokens kept for login | [authentication-and-sessions](adr/2026-10-24-authentication-and-sessions.md) |
+
+The personal-diary and relationship product rules above were confirmed on 2026-10-25. Their implementation design remains a proposal in `spaces-and-invitations`; no diary or relationship tables are implemented yet. A shared space must read authorized shared versions, including frozen historical versions, rather than the owner's latest personal diary. Rebinding never grants access to changes made while unbound.
 
 ## Modules
 
