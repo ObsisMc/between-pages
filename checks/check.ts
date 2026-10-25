@@ -32,6 +32,7 @@ const GROUPS: Record<string, string[][]> = {
   ],
   pairs: [
     gate('verify-doc-pairs', ...(range ? [range] : [])),
+    gate('verify-roadmap-current', ...(range ? [range] : [])),
     gate('verify-adr-immutable', ...(range ? [range] : [])),
   ],
   commits: [gate('verify-commit-convention', ...(range ? [range] : []))],
