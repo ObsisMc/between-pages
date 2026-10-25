@@ -1,7 +1,6 @@
 import {
   ADR_DIR,
   HEADER_FIELDS,
-  PRE_DESIGN_FORMAT,
   SCOPES,
   STATUSES,
   loadAdrs,
@@ -28,15 +27,6 @@ const BY_STATUS: Record<string, { require: string[]; forbid: string[] }> = {
   已采纳: { require: PLAN, forbid: ['## 验证'] },
   已实现: { require: ['## 验证'], forbid: PLAN },
 };
-// The short MADR layout still used by PRE_DESIGN_FORMAT records.
-const PRE_DESIGN_SECTIONS = [
-  '## 背景与问题',
-  '## 决策依据',
-  '## 备选方案',
-  '## 决策结果',
-  '### 后果',
-  '## 补充信息',
-];
 const INACTIVE = new Set(['已取代', '已废弃']);
 
 const adrs = loadAdrs();
@@ -87,13 +77,6 @@ for (const adr of adrs) {
   );
   if (!reassess || !reassess.replace('- 重新评估条件：', '').trim())
     p('补充信息 needs a non-empty "- 重新评估条件：…"');
-
-  if (PRE_DESIGN_FORMAT.has(adr.file)) {
-    for (const heading of PRE_DESIGN_SECTIONS)
-      if (!adr.lines.includes(heading)) p(`missing "${heading}"`);
-    if (adr.lines.includes('### 约束')) checkNumbered(adr, '### 约束', p);
-    continue;
-  }
 
   for (const heading of SECTIONS) if (!adr.lines.includes(heading)) p(`missing "${heading}"`);
   const lifecycle = BY_STATUS[status ?? ''];
