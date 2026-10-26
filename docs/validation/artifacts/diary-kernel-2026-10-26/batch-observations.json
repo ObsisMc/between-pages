@@ -1,0 +1,131 @@
+{
+  "runtime": {
+    "node": "v26.12.1",
+    "yjs": "13.6.33",
+    "pg": "8.23.1",
+    "playwright": "1.64.1",
+    "chromium": "156.0.8078.4",
+    "postgres": "18.6"
+  },
+  "validator": {
+    "source": "prototypes/yjs-standard/authority.mjs",
+    "sha256": "41b6bfbb26f239983c58d926b770afbbae5c06c7eb4c229148272baf0f8aec1e"
+  },
+  "checks": [
+    {
+      "name": "first durable edit is sent at once; edits made while it is in flight form the next batch in order",
+      "passed": true,
+      "durationMs": 311,
+      "batchSizes": [
+        1,
+        5
+      ]
+    },
+    {
+      "name": "batch identity, members and bytes are persisted before the first send and survive a renderer crash",
+      "passed": true,
+      "durationMs": 450,
+      "batchId": "persisted before send"
+    },
+    {
+      "name": "a long offline dependency chain is split by operation and byte limits into ordered, strictly validated batches",
+      "passed": true,
+      "durationMs": 1533,
+      "batchSizes": [
+        25,
+        24,
+        19,
+        15,
+        16,
+        11,
+        10
+      ]
+    },
+    {
+      "name": "one invalid operation in the middle rejects the whole batch with no partial commit, ACK or broadcast",
+      "passed": true,
+      "durationMs": 221,
+      "failedOrdinal": 1
+    },
+    {
+      "name": "a PostgreSQL error after batch rows were written rolls everything back; the original batch commits once later",
+      "passed": true,
+      "durationMs": 209
+    },
+    {
+      "name": "server process killed inside the open transaction leaves no rows; retry after restart commits the same batch once",
+      "passed": true,
+      "durationMs": 391,
+      "exit": "SIGKILL"
+    },
+    {
+      "name": "server killed after COMMIT before replying: the retry returns the original result and other devices catch up from PG",
+      "passed": true,
+      "durationMs": 538,
+      "exit": "SIGKILL"
+    },
+    {
+      "name": "a connection dropped after COMMIT is resent by Chromium itself; the batch receipt answers with the original ACK",
+      "passed": true,
+      "durationMs": 171,
+      "commitRequests": 2
+    },
+    {
+      "name": "lost ACK followed by an aborted local confirmation keeps the batch; each retry returns the same version",
+      "passed": true,
+      "durationMs": 203,
+      "commitRequests": 2
+    },
+    {
+      "name": "renderer crash after the server committed but before the client confirmed: the reopened page resends the original batch",
+      "passed": true,
+      "durationMs": 403
+    },
+    {
+      "name": "same batch ID with different members or bytes is refused; a committed operation cannot be repacked into a new batch",
+      "passed": true,
+      "durationMs": 229
+    },
+    {
+      "name": "the same batch delivered concurrently on two connections commits once and both get one version",
+      "passed": true,
+      "durationMs": 174
+    },
+    {
+      "name": "a batch formed before sharing stopped is refused as stale; after reopening its members become recovery drafts",
+      "passed": true,
+      "durationMs": 209
+    },
+    {
+      "name": "a batch committed before sharing stopped, whose ACK was lost, is reconciled by receipt and not turned into a draft",
+      "passed": true,
+      "durationMs": 240
+    },
+    {
+      "name": "commit racing stop-sharing in PostgreSQL: every batch is either in the frozen version or refused",
+      "passed": true,
+      "durationMs": 737,
+      "outcomes": {
+        "committedBeforeFreeze": 15,
+        "refusedAfterFreeze": 15
+      }
+    },
+    {
+      "name": "two tabs share one sequence: one batch carries both tabs’ dependent edits in order and commits as one version",
+      "passed": true,
+      "durationMs": 286
+    },
+    {
+      "name": "two tabs sending at once keep one batch in flight; nothing is sent twice or overtakes an unconfirmed batch",
+      "passed": true,
+      "durationMs": 304,
+      "requests": 3
+    },
+    {
+      "name": "a stale tab writing after a reopen produces a draft and never enters a new batch",
+      "passed": true,
+      "durationMs": 261
+    }
+  ],
+  "validatorUnchanged": true
+}

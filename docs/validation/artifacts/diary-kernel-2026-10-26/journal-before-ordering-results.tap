@@ -1,0 +1,372 @@
+TAP version 13
+# (node:1261238) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: rendered input survives page reload in real IndexedDB without sending
+ok 1 - rendered input survives page reload in real IndexedDB without sending
+  ---
+  duration_ms: 848.7229
+  type: 'test'
+  ...
+# Subtest: closing and reopening a tab restores exact pending operation IDs
+ok 2 - closing and reopening a tab restores exact pending operation IDs
+  ---
+  duration_ms: 336.096689
+  type: 'test'
+  ...
+# Subtest: offline network failure preserves pending; reconnect commits once
+ok 3 - offline network failure preserves pending; reconnect commits once
+  ---
+  duration_ms: 355.088815
+  type: 'test'
+  ...
+# Subtest: server commits then drops ACK: reload and retry returns original result
+ok 4 - server commits then drops ACK: reload and retry returns original result
+  ---
+  duration_ms: 302.536856
+  type: 'test'
+  ...
+# Subtest: connection drops before server acceptance: pending remains and later saves
+ok 5 - connection drops before server acceptance: pending remains and later saves
+  ---
+  duration_ms: 264.915005
+  type: 'test'
+  ...
+# Subtest: abort ACK transaction after pending deletion: no partial local acknowledgement
+ok 6 - abort ACK transaction after pending deletion: no partial local acknowledgement
+  ---
+  duration_ms: 291.104003
+  type: 'test'
+  ...
+# Subtest: request success is not transaction completion or local save confirmation
+ok 7 - request success is not transaction completion or local save confirmation
+  ---
+  duration_ms: 219.691919
+  type: 'test'
+  ...
+# Subtest: aborted local append shows error and never sends an undurable edit
+ok 8 - aborted local append shows error and never sends an undurable edit
+  ---
+  duration_ms: 237.62596
+  type: 'test'
+  ...
+# Subtest: injected quota failure keeps visible text even if user tries sync
+ok 9 - injected quota failure keeps visible text even if user tries sync
+  ---
+  duration_ms: 198.987145
+  type: 'test'
+  ...
+# Subtest: generation transition moves insert/delete/replace intents to recoverable drafts
+ok 10 - generation transition moves insert/delete/replace intents to recoverable drafts
+  ---
+  duration_ms: 290.383641
+  type: 'test'
+  ...
+# Subtest: abort draft transition: old baseline and pending survive with no partial reset
+ok 11 - abort draft transition: old baseline and pending survive with no partial reset
+  ---
+  duration_ms: 255.880164
+  type: 'test'
+  ...
+# Subtest: lost ACK before reopen is reconciled, not duplicated into recovery drafts
+ok 12 - lost ACK before reopen is reconciled, not duplicated into recovery drafts
+  ---
+  duration_ms: 246.514441
+  type: 'test'
+  ...
+# Subtest: expired epoch with unchanged character IDs is rejected and becomes a draft
+ok 13 - expired epoch with unchanged character IDs is rejected and becomes a draft
+  ---
+  duration_ms: 233.0409
+  type: 'test'
+  ...
+# Subtest: stale tab cannot append old-generation edits into new active queue
+ok 14 - stale tab cannot append old-generation edits into new active queue
+  ---
+  duration_ms: 344.876769
+  type: 'test'
+  ...
+# Subtest: out-of-order ACKs cannot rewind committed baseline or erase later pending
+ok 15 - out-of-order ACKs cannot rewind committed baseline or erase later pending
+  ---
+  duration_ms: 527.934001
+  type: 'test'
+  ...
+# Subtest: account change cannot load another account pending or recovery data
+ok 16 - account change cannot load another account pending or recovery data
+  ---
+  duration_ms: 334.955164
+  type: 'test'
+  ...
+# Subtest: new local input during receipt lookup aborts transition without losing either edit
+ok 17 - new local input during receipt lookup aborts transition without losing either edit
+  ---
+  duration_ms: 213.736812
+  type: 'test'
+  ...
+# Subtest: actual renderer crash after local completion preserves pending on new page
+ok 18 - actual renderer crash after local completion preserves pending on new page
+  ---
+  duration_ms: 621.868228
+  type: 'test'
+  ...
+# Subtest: persistent browser profile restores pending after browser close and restart
+ok 19 - persistent browser profile restores pending after browser close and restart
+  ---
+  duration_ms: 1109.256445
+  type: 'test'
+  ...
+# Subtest: acknowledging first edit leaves later edit pending and visible
+ok 20 - acknowledging first edit leaves later edit pending and visible
+  ---
+  duration_ms: 260.853346
+  type: 'test'
+  ...
+# Subtest: local write failure blocks baseline reset and retains copyable text
+ok 21 - local write failure blocks baseline reset and retains copyable text
+  ---
+  duration_ms: 189.201541
+  type: 'test'
+  ...
+# Subtest: concurrent duplicate delivery from two tabs commits one operation once
+ok 22 - concurrent duplicate delivery from two tabs commits one operation once
+  ---
+  duration_ms: 217.961191
+  type: 'test'
+  ...
+# Subtest: retry after storage recovers persists original failed operation and syncs once
+ok 23 - retry after storage recovers persists original failed operation and syncs once
+  ---
+  duration_ms: 212.171285
+  type: 'test'
+  ...
+# Subtest: strict validator rejects dependent update arriving first without mutating server
+ok 24 - strict validator rejects dependent update arriving first without mutating server
+  ---
+  duration_ms: 222.384491
+  type: 'test'
+  ...
+# Subtest: reverse UUID sorting cannot reorder insert-then-modify replay under strict validator
+not ok 25 - reverse UUID sorting cannot reorder insert-then-modify replay under strict validator
+  ---
+  duration_ms: 192.602836
+  type: 'test'
+  location: '/tmp/between-pages-journal-dependencies-UmJe7G/probe.test.mjs:110:3'
+  failureType: 'testCodeFailure'
+  error: '[{"error":"MISSING_DEPENDENCY"},{"id":"ffffffff-ffff-4fff-8fff-ffffffffffff","version":1}]'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    file:///tmp/between-pages-journal-dependencies-UmJe7G/probe.test.mjs:302:10
+    async TestContext.<anonymous> (file:///tmp/between-pages-journal-dependencies-UmJe7G/probe.test.mjs:112:9)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: local sequence is durable across reload and reflects edit dependency order
+not ok 26 - local sequence is durable across reload and reflects edit dependency order
+  ---
+  duration_ms: 200.293391
+  type: 'test'
+  location: '/tmp/between-pages-journal-dependencies-UmJe7G/probe.test.mjs:110:3'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+
+      [
+    +   undefined,
+    +   undefined
+    -   1,
+    -   2
+      ]
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0: 1
+    1: 2
+  actual:
+  operator: 'deepStrictEqual'
+  stack: |-
+    file:///tmp/between-pages-journal-dependencies-UmJe7G/probe.test.mjs:308:36
+    async TestContext.<anonymous> (file:///tmp/between-pages-journal-dependencies-UmJe7G/probe.test.mjs:112:9)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: missing-ACK head blocks later dependent submissions until its original result is known
+not ok 27 - missing-ACK head blocks later dependent submissions until its original result is known
+  ---
+  duration_ms: 212.041044
+  type: 'test'
+  location: '/tmp/between-pages-journal-dependencies-UmJe7G/probe.test.mjs:110:3'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+
+      [
+    +   '00000000-0000-4000-8000-000000000000',
+    +   '00000000-0000-4000-8000-000000000000',
+        'ffffffff-ffff-4fff-8fff-ffffffffffff'
+      ]
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0: 'ffffffff-ffff-4fff-8fff-ffffffffffff'
+  actual:
+    0: '00000000-0000-4000-8000-000000000000'
+    1: '00000000-0000-4000-8000-000000000000'
+    2: 'ffffffff-ffff-4fff-8fff-ffffffffffff'
+  operator: 'deepStrictEqual'
+  stack: |-
+    file:///tmp/between-pages-journal-dependencies-UmJe7G/probe.test.mjs:317:47
+    async TestContext.<anonymous> (file:///tmp/between-pages-journal-dependencies-UmJe7G/probe.test.mjs:112:9)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: failed local ACK transaction also blocks later dependent submissions
+not ok 28 - failed local ACK transaction also blocks later dependent submissions
+  ---
+  duration_ms: 211.14324
+  type: 'test'
+  location: '/tmp/between-pages-journal-dependencies-UmJe7G/probe.test.mjs:110:3'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+
+      [
+    +   '00000000-0000-4000-8000-000000000000',
+        'ffffffff-ffff-4fff-8fff-ffffffffffff'
+      ]
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0: 'ffffffff-ffff-4fff-8fff-ffffffffffff'
+  actual:
+    0: '00000000-0000-4000-8000-000000000000'
+    1: 'ffffffff-ffff-4fff-8fff-ffffffffffff'
+  operator: 'deepStrictEqual'
+  stack: |-
+    file:///tmp/between-pages-journal-dependencies-UmJe7G/probe.test.mjs:326:47
+    async TestContext.<anonymous> (file:///tmp/between-pages-journal-dependencies-UmJe7G/probe.test.mjs:112:9)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: insert then delete is replayed in order even when second update contains only a delete set
+not ok 29 - insert then delete is replayed in order even when second update contains only a delete set
+  ---
+  duration_ms: 251.937105
+  type: 'test'
+  location: '/tmp/between-pages-journal-dependencies-UmJe7G/probe.test.mjs:110:3'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+
+    '开头，随后删除' !== '开头'
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: '开头'
+  actual: '开头，随后删除'
+  operator: 'strictEqual'
+  stack: |-
+    file:///tmp/between-pages-journal-dependencies-UmJe7G/probe.test.mjs:336:10
+    async TestContext.<anonymous> (file:///tmp/between-pages-journal-dependencies-UmJe7G/probe.test.mjs:112:9)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: cross-tab dependency is replayed using one shared persisted sequence
+not ok 30 - cross-tab dependency is replayed using one shared persisted sequence
+  ---
+  duration_ms: 360.269718
+  type: 'test'
+  location: '/tmp/between-pages-journal-dependencies-UmJe7G/probe.test.mjs:110:3'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+
+    1 !== 0
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 0
+  actual: 1
+  operator: 'strictEqual'
+  stack: |-
+    file:///tmp/between-pages-journal-dependencies-UmJe7G/probe.test.mjs:346:10
+    async TestContext.<anonymous> (file:///tmp/between-pages-journal-dependencies-UmJe7G/probe.test.mjs:112:9)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: two tab senders share a lock and cannot overtake an unacknowledged queue head
+not ok 31 - two tab senders share a lock and cannot overtake an unacknowledged queue head
+  ---
+  duration_ms: 370.686726
+  type: 'test'
+  location: '/tmp/between-pages-journal-dependencies-UmJe7G/probe.test.mjs:110:3'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+
+    0 !== 1
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 1
+  actual: 0
+  operator: 'strictEqual'
+  stack: |-
+    file:///tmp/between-pages-journal-dependencies-UmJe7G/probe.test.mjs:358:12
+    async TestContext.<anonymous> (file:///tmp/between-pages-journal-dependencies-UmJe7G/probe.test.mjs:112:9)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: long offline dependency chain survives reloads and passes strict validation for every update
+not ok 32 - long offline dependency chain survives reloads and passes strict validation for every update
+  ---
+  duration_ms: 762.498868
+  type: 'test'
+  location: '/tmp/between-pages-journal-dependencies-UmJe7G/probe.test.mjs:110:3'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+
+    1 !== 40
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 40
+  actual: 1
+  operator: 'strictEqual'
+  stack: |-
+    file:///tmp/between-pages-journal-dependencies-UmJe7G/probe.test.mjs:372:10
+    async TestContext.<anonymous> (file:///tmp/between-pages-journal-dependencies-UmJe7G/probe.test.mjs:112:9)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: strict validator rejects forged client ownership without changing accepted state
+ok 33 - strict validator rejects forged client ownership without changing accepted state
+  ---
+  duration_ms: 158.041199
+  type: 'test'
+  ...
+# Subtest: repository bytes remain unchanged by the temporary verification
+ok 34 - repository bytes remain unchanged by the temporary verification
+  ---
+  duration_ms: 23.058944
+  type: 'test'
+  ...
+1..34
+# tests 34
+# suites 0
+# pass 26
+# fail 8
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 12116.931668

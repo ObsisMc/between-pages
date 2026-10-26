@@ -8,16 +8,19 @@
 1. [MVP 功能规格](./diary-spec.md)：范围、交互规则、数据模型、接口语义及可靠性要求。
 2. [验收清单](./acceptance.md)：按需求编号组织的可复现验收场景及发布门槛。
 3. [ADR 索引](./adr/README.md)：为什么采用这些设计，哪些技术选择仍需验证；[个人日记与双人共享](./adr/2026-10-25-spaces-and-invitations.md)说明关系、日期范围和版本边界。
+   - [日记协作内核 ADR](./adr/2026-10-26-diary-collaboration-kernel.md)：增量保存、共享轮次、保留原 ID 的干净基线、有序本地日志、固定批原子提交、正文与光标协调、跨轮次未读和长期只读历史；记录已确认规则、技术细节与两阶段验证边界。
 4. [最终技术验证报告](./validation/collaboration-readiness-2026-10-24.md)：浏览器、PG、离线恢复、故障、性能与进入下一阶段的判断。
    - [Yjs 验证报告](./validation/yjs-collaboration-2026-10-24.md)：后续开源内核验证，聚焦作者权限及断线恢复。
    - [Web 基本性能检查](./validation/yjs-web-smoke-2026-10-24.md)：日常规模和多次续写的性能、保存与刷新恢复。
+   - [内核设计验证](./validation/diary-kernel-design-2026-10-26.md)：保留原 ID 的干净基线、本地日志与严格依赖补验，归档原始输出；不代表产品已实现。
+   - [内核批次验证](./validation/diary-kernel-batch-2026-10-26.md)：固定批次与整批原子提交在真实 PG 和浏览器日志上的临时验证，归档原始输出；不代表产品已实现。
 5. [正式技术栈 ADR-0006](./adr/0006-formal-stack.md)：已采纳的栈与协同内核；[正式实现准备方案](./implementation-preparation.md)：开发规范建议。
    - [技术栈深度调研](./research/tech-stack-2026-10-24.md)：采用度、持续维护、Web/移动端路线与正式选型门槛。
 6. [第一轮历史记录](./validation/collaboration-core-2026-10-24.md)：早期协议层验证。
 
 ## 后续功能备忘
 
-[未来功能清单](./future-features.md)记录暂缓场景和重新评估问题，目前包含误绑纠正与更换搭档；不表示已排期，实施进度仍只见开发路线。
+[未来功能清单](./future-features.md)记录暂缓场景和重新评估问题，目前包含误绑纠正、更换搭档与历史版本回滚；不表示已排期，实施进度仍只见开发路线。
 
 ## Engineering (English)
 

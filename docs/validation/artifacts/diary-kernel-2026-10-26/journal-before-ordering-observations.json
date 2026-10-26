@@ -1,0 +1,177 @@
+{
+  "runtime": {
+    "node": "v26.12.1",
+    "yjs": "13.6.33",
+    "chromium": "156.0.8078.4"
+  },
+  "checks": [
+    {
+      "name": "rendered input survives page reload in real IndexedDB without sending",
+      "passed": true,
+      "durationMs": 534
+    },
+    {
+      "name": "closing and reopening a tab restores exact pending operation IDs",
+      "passed": true,
+      "durationMs": 324
+    },
+    {
+      "name": "offline network failure preserves pending; reconnect commits once",
+      "passed": true,
+      "durationMs": 343
+    },
+    {
+      "name": "server commits then drops ACK: reload and retry returns original result",
+      "passed": true,
+      "durationMs": 288
+    },
+    {
+      "name": "connection drops before server acceptance: pending remains and later saves",
+      "passed": true,
+      "durationMs": 252
+    },
+    {
+      "name": "abort ACK transaction after pending deletion: no partial local acknowledgement",
+      "passed": true,
+      "durationMs": 280
+    },
+    {
+      "name": "request success is not transaction completion or local save confirmation",
+      "passed": true,
+      "durationMs": 211
+    },
+    {
+      "name": "aborted local append shows error and never sends an undurable edit",
+      "passed": true,
+      "durationMs": 224
+    },
+    {
+      "name": "injected quota failure keeps visible text even if user tries sync",
+      "passed": true,
+      "durationMs": 183
+    },
+    {
+      "name": "generation transition moves insert/delete/replace intents to recoverable drafts",
+      "passed": true,
+      "durationMs": 275
+    },
+    {
+      "name": "abort draft transition: old baseline and pending survive with no partial reset",
+      "passed": true,
+      "durationMs": 247
+    },
+    {
+      "name": "lost ACK before reopen is reconciled, not duplicated into recovery drafts",
+      "passed": true,
+      "durationMs": 237
+    },
+    {
+      "name": "expired epoch with unchanged character IDs is rejected and becomes a draft",
+      "passed": true,
+      "durationMs": 215
+    },
+    {
+      "name": "stale tab cannot append old-generation edits into new active queue",
+      "passed": true,
+      "durationMs": 327
+    },
+    {
+      "name": "out-of-order ACKs cannot rewind committed baseline or erase later pending",
+      "passed": true,
+      "durationMs": 502
+    },
+    {
+      "name": "account change cannot load another account pending or recovery data",
+      "passed": true,
+      "durationMs": 314
+    },
+    {
+      "name": "new local input during receipt lookup aborts transition without losing either edit",
+      "passed": true,
+      "durationMs": 203
+    },
+    {
+      "name": "actual renderer crash after local completion preserves pending on new page",
+      "passed": true,
+      "durationMs": 615
+    },
+    {
+      "name": "persistent browser profile restores pending after browser close and restart",
+      "passed": true,
+      "durationMs": 1099
+    },
+    {
+      "name": "acknowledging first edit leaves later edit pending and visible",
+      "passed": true,
+      "durationMs": 251
+    },
+    {
+      "name": "local write failure blocks baseline reset and retains copyable text",
+      "passed": true,
+      "durationMs": 178
+    },
+    {
+      "name": "concurrent duplicate delivery from two tabs commits one operation once",
+      "passed": true,
+      "durationMs": 208
+    },
+    {
+      "name": "retry after storage recovers persists original failed operation and syncs once",
+      "passed": true,
+      "durationMs": 197
+    },
+    {
+      "name": "strict validator rejects dependent update arriving first without mutating server",
+      "passed": true,
+      "durationMs": 213
+    },
+    {
+      "name": "reverse UUID sorting cannot reorder insert-then-modify replay under strict validator",
+      "passed": false,
+      "error": "[{\"error\":\"MISSING_DEPENDENCY\"},{\"id\":\"ffffffff-ffff-4fff-8fff-ffffffffffff\",\"version\":1}]"
+    },
+    {
+      "name": "local sequence is durable across reload and reflects edit dependency order",
+      "passed": false,
+      "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   undefined,\n+   undefined\n-   1,\n-   2\n  ]\n"
+    },
+    {
+      "name": "missing-ACK head blocks later dependent submissions until its original result is known",
+      "passed": false,
+      "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   '00000000-0000-4000-8000-000000000000',\n+   '00000000-0000-4000-8000-000000000000',\n    'ffffffff-ffff-4fff-8fff-ffffffffffff'\n  ]\n"
+    },
+    {
+      "name": "failed local ACK transaction also blocks later dependent submissions",
+      "passed": false,
+      "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   '00000000-0000-4000-8000-000000000000',\n    'ffffffff-ffff-4fff-8fff-ffffffffffff'\n  ]\n"
+    },
+    {
+      "name": "insert then delete is replayed in order even when second update contains only a delete set",
+      "passed": false,
+      "error": "Expected values to be strictly equal:\n\n'开头，随后删除' !== '开头'\n"
+    },
+    {
+      "name": "cross-tab dependency is replayed using one shared persisted sequence",
+      "passed": false,
+      "error": "Expected values to be strictly equal:\n\n1 !== 0\n"
+    },
+    {
+      "name": "two tab senders share a lock and cannot overtake an unacknowledged queue head",
+      "passed": false,
+      "error": "Expected values to be strictly equal:\n\n0 !== 1\n"
+    },
+    {
+      "name": "long offline dependency chain survives reloads and passes strict validation for every update",
+      "passed": false,
+      "error": "Expected values to be strictly equal:\n\n1 !== 40\n"
+    },
+    {
+      "name": "strict validator rejects forged client ownership without changing accepted state",
+      "passed": true,
+      "durationMs": 147
+    }
+  ],
+  "ackDropTransportAttempts": 2,
+  "preCommitDropTransportAttempts": 2,
+  "repositoryUnchanged": true
+}

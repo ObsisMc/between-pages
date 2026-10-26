@@ -1,0 +1,114 @@
+TAP version 13
+# (node:26545) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: control: original gc:false state contains deleted private content
+ok 1 - control: original gc:false state contains deleted private content
+  ---
+  duration_ms: 15.744352
+  type: 'test'
+  ...
+# Subtest: isolated GC import removes deleted private payload and preserves visible IDs/authors
+ok 2 - isolated GC import removes deleted private payload and preserves visible IDs/authors
+  ---
+  duration_ms: 5.822667
+  type: 'test'
+  ...
+# Subtest: all encoded relative positions resolve at the same index after clean reload
+ok 3 - all encoded relative positions resolve at the same index after clean reload
+  ---
+  duration_ms: 6.552391
+  type: 'test'
+  ...
+# Subtest: old deleted anchors resolve equivalently before/after cleanup
+ok 4 - old deleted anchors resolve equivalently before/after cleanup
+  ---
+  duration_ms: 1.331486
+  type: 'test'
+  ...
+# Subtest: owner archives still reconstruct private history; clean shared state cannot restore it
+ok 5 - owner archives still reconstruct private history; clean shared state cannot restore it
+  ---
+  duration_ms: 6.269469
+  type: 'test'
+  ...
+# Subtest: new A/B concurrent inserts converge, subsequent edits retain author checks
+ok 6 - new A/B concurrent inserts converge, subsequent edits retain author checks
+  ---
+  duration_ms: 4.23218
+  type: 'test'
+  ...
+# Subtest: fresh personal undo preserves the other author and cannot undo the baseline
+ok 7 - fresh personal undo preserves the other author and cannot undo the baseline
+  ---
+  duration_ms: 6.218629
+  type: 'test'
+  ...
+# Subtest: foreign deletions and wrong actor inserts are rejected after cleanup
+ok 8 - foreign deletions and wrong actor inserts are rejected after cleanup
+  ---
+  duration_ms: 4.078419
+  type: 'test'
+  ...
+# Subtest: negative control: merging the baseline into an old document does not erase its private history
+ok 9 - negative control: merging the baseline into an old document does not erase its private history
+  ---
+  duration_ms: 2.328011
+  type: 'test'
+  ...
+# Subtest: native Yjs accepts a stale pending edit; the context guard model is required
+ok 10 - native Yjs accepts a stale pending edit; the context guard model is required
+  ---
+  duration_ms: 2.956213
+  type: 'test'
+  ...
+# Subtest: raw payload replay can leak private content even when canonical state stays clean
+ok 11 - raw payload replay can leak private content even when canonical state stays clean
+  ---
+  duration_ms: 2.250451
+  type: 'test'
+  ...
+# Subtest: mixed new update + historical replay: re-encode from clean accepted state before relay
+ok 12 - mixed new update + historical replay: re-encode from clean accepted state before relay
+  ---
+  duration_ms: 3.470256
+  type: 'test'
+  ...
+# Subtest: deterministic 200-case corpus: fragmented Unicode edits, IDs, anchors and continuation
+ok 13 - deterministic 200-case corpus: fragmented Unicode edits, IDs, anchors and continuation
+  ---
+  duration_ms: 1137.489382
+  type: 'test'
+  ...
+# Subtest: negative control: toggling GC on the existing document is not a cleanup pass
+ok 14 - negative control: toggling GC on the existing document is not a cleanup pass
+  ---
+  duration_ms: 0.817604
+  type: 'test'
+  ...
+# Subtest: 50 successive clean generations preserve current IDs/authors and old archives
+ok 15 - 50 successive clean generations preserve current IDs/authors and old archives
+  ---
+  duration_ms: 197.897155
+  type: 'test'
+  ...
+# Subtest: 100k UTF-16 unit document with interleaved authors: cleanup and serialization smoke
+ok 16 - 100k UTF-16 unit document with interleaved authors: cleanup and serialization smoke
+  ---
+  duration_ms: 144.349507
+  type: 'test'
+  ...
+# Subtest: repository files remain untouched; write diagnostic observations outside repository
+ok 17 - repository files remain untouched; write diagnostic observations outside repository
+  ---
+  duration_ms: 15.433671
+  type: 'test'
+  ...
+1..17
+# tests 17
+# suites 0
+# pass 17
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1906.043096
