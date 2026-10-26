@@ -15,6 +15,10 @@
    - [技术栈深度调研](./research/tech-stack-2026-10-24.md)：采用度、持续维护、Web/移动端路线与正式选型门槛。
 6. [第一轮历史记录](./validation/collaboration-core-2026-10-24.md)：早期协议层验证。
 
+## 后续功能备忘
+
+[未来功能清单](./future-features.md)记录暂缓场景和重新评估问题，目前包含误绑纠正与更换搭档；不表示已排期，实施进度仍只见开发路线。
+
 ## Engineering (English)
 
 - [Architecture](./architecture.md): modules, dependency direction, runtime flow.
