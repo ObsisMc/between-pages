@@ -174,14 +174,14 @@ not ok 26 - local sequence is durable across reload and reflects edit dependency
   error: |-
     Expected values to be strictly deep-equal:
     + actual - expected
-    
+
       [
     +   undefined,
     +   undefined
     -   1,
     -   2
       ]
-    
+
   code: 'ERR_ASSERTION'
   name: 'AssertionError'
   expected:
@@ -205,13 +205,13 @@ not ok 27 - missing-ACK head blocks later dependent submissions until its origin
   error: |-
     Expected values to be strictly deep-equal:
     + actual - expected
-    
+
       [
     +   '00000000-0000-4000-8000-000000000000',
     +   '00000000-0000-4000-8000-000000000000',
         'ffffffff-ffff-4fff-8fff-ffffffffffff'
       ]
-    
+
   code: 'ERR_ASSERTION'
   name: 'AssertionError'
   expected:
@@ -237,12 +237,12 @@ not ok 28 - failed local ACK transaction also blocks later dependent submissions
   error: |-
     Expected values to be strictly deep-equal:
     + actual - expected
-    
+
       [
     +   '00000000-0000-4000-8000-000000000000',
         'ffffffff-ffff-4fff-8fff-ffffffffffff'
       ]
-    
+
   code: 'ERR_ASSERTION'
   name: 'AssertionError'
   expected:
@@ -266,9 +266,9 @@ not ok 29 - insert then delete is replayed in order even when second update cont
   failureType: 'testCodeFailure'
   error: |-
     Expected values to be strictly equal:
-    
+
     '开头，随后删除' !== '开头'
-    
+
   code: 'ERR_ASSERTION'
   name: 'AssertionError'
   expected: '开头'
@@ -289,9 +289,9 @@ not ok 30 - cross-tab dependency is replayed using one shared persisted sequence
   failureType: 'testCodeFailure'
   error: |-
     Expected values to be strictly equal:
-    
+
     1 !== 0
-    
+
   code: 'ERR_ASSERTION'
   name: 'AssertionError'
   expected: 0
@@ -312,9 +312,9 @@ not ok 31 - two tab senders share a lock and cannot overtake an unacknowledged q
   failureType: 'testCodeFailure'
   error: |-
     Expected values to be strictly equal:
-    
+
     0 !== 1
-    
+
   code: 'ERR_ASSERTION'
   name: 'AssertionError'
   expected: 1
@@ -335,9 +335,9 @@ not ok 32 - long offline dependency chain survives reloads and passes strict val
   failureType: 'testCodeFailure'
   error: |-
     Expected values to be strictly equal:
-    
+
     1 !== 40
-    
+
   code: 'ERR_ASSERTION'
   name: 'AssertionError'
   expected: 40
