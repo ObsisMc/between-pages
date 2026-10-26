@@ -16,9 +16,10 @@ const WORKSPACES: { dir: string; imports: string[]; externals?: string[] }[] = [
 const TEST_EXTERNALS = ['vitest'];
 
 /**
- * Sub-modules: the first path segment under `dir` (file stem or directory), with tests
- * belonging to the sub-module they sit in. Each maps to the sub-modules it may import;
- * `*` is any. A file in no listed sub-module is reported, so new ones get a rule.
+ * Sub-modules: the first path segment under `dir` (a directory, or a file name up to its
+ * first dot), with tests belonging to the sub-module they sit in. Each maps to the
+ * sub-modules it may import; `*` is any. A file in no listed sub-module is reported, so
+ * new ones get a rule.
  */
 const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
   {
@@ -31,6 +32,31 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       authorship: ['doc'],
       index: ['*'],
       kernel: ['*'], // cross-sub-module tests through the public surface
+    },
+  },
+  {
+    // Kernel ADR D11: transport (routes, ws) → services (commit, diaries, history, outbox,
+    // events) → storage (store), never upwards; transport never reaches the store, and
+    // events imports no other service; `errors` is a leaf the layers may use. `app` and
+    // `server` compose everything, so tests through the real router (app.*.test.ts)
+    // belong to `app`.
+    dir: 'apps/api/src',
+    units: {
+      app: ['*'],
+      server: ['*'],
+      openapi: ['app', 'db'],
+      config: [],
+      errors: [],
+      auth: ['config', 'db', 'errors'],
+      db: [],
+      routes: ['errors', 'commit', 'diaries', 'history'],
+      ws: ['auth', 'errors', 'commit', 'diaries', 'events'],
+      commit: ['store', 'outbox', 'events', 'errors'],
+      diaries: ['store', 'errors'],
+      history: ['store', 'errors'],
+      outbox: ['store', 'errors'],
+      events: [],
+      store: ['db', 'errors'],
     },
   },
 ];
@@ -96,8 +122,10 @@ export function violations(files: readonly SourceFile[]): string[] {
 const workspaceOf = (path: string) => WORKSPACES.find((w) => path.startsWith(`${w.dir}/`));
 
 function unitOf(dir: string, path: string): string | undefined {
-  const first = path.slice(dir.length + 1).split('/')[0];
-  return first?.replace(/(?:\.test)?\.[cm]?[jt]sx?$/, '');
+  return path
+    .slice(dir.length + 1)
+    .split('/')[0]
+    ?.split('.')[0];
 }
 
 function packageName(specifier: string): string {

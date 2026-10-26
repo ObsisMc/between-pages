@@ -16,6 +16,12 @@ describe('verify-dependency-direction', () => {
         file('packages/collab/src/validate.test.ts', "import { it } from 'vitest';"),
         file('packages/collab/src/index.ts', "export * from './digest.ts';"),
         file('packages/contracts/src/routes.ts', "import { z } from 'zod';"),
+        file(
+          'apps/api/src/ws/sync.ts',
+          "import type { CommitService } from '../commit/commit.ts';",
+        ),
+        file('apps/api/src/commit/commit.ts', "import type { Store } from '../store/store.ts';"),
+        file('apps/api/src/app.sync.db.test.ts', "import { buildApp } from './app.ts';"),
       ]),
     ).toEqual([]);
   });
@@ -33,7 +39,7 @@ describe('verify-dependency-direction', () => {
     ],
     [
       'code importing a prototype',
-      'apps/api/src/x.ts',
+      'apps/api/src/app.ts',
       "import { Authority } from '../../../prototypes/yjs-standard/authority.mjs';",
     ],
     [
@@ -57,6 +63,22 @@ describe('verify-dependency-direction', () => {
       "export { sha256 } from './digest.ts';",
     ],
     ['an unlisted collab sub-module', 'packages/collab/src/helpers.ts', 'export const x = 1;'],
+    [
+      'api transport reaching the store past the services',
+      'apps/api/src/routes/diaries.ts',
+      "import { createStore } from '../store/store.ts';",
+    ],
+    [
+      'the api store importing a service',
+      'apps/api/src/store/store.ts',
+      "import { registerBackups } from '../outbox/outbox.ts';",
+    ],
+    [
+      'the api events module importing another service',
+      'apps/api/src/events/events.ts',
+      "import type { CommitService } from '../commit/commit.ts';",
+    ],
+    ['an unlisted api sub-module', 'apps/api/src/reader/reader.ts', 'export const x = 1;'],
   ])('rejects %s', (_, path, source) => {
     expect(violations([file(path, source)])).toHaveLength(1);
   });
