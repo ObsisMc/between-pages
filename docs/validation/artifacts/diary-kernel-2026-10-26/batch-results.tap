@@ -1,0 +1,132 @@
+TAP version 13
+# (node:16091) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:16483) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: first durable edit is sent at once; edits made while it is in flight form the next batch in order
+ok 1 - first durable edit is sent at once; edits made while it is in flight form the next batch in order
+  ---
+  duration_ms: 692.365124
+  type: 'test'
+  ...
+# Subtest: batch identity, members and bytes are persisted before the first send and survive a renderer crash
+ok 2 - batch identity, members and bytes are persisted before the first send and survive a renderer crash
+  ---
+  duration_ms: 458.445535
+  type: 'test'
+  ...
+# Subtest: a long offline dependency chain is split by operation and byte limits into ordered, strictly validated batches
+ok 3 - a long offline dependency chain is split by operation and byte limits into ordered, strictly validated batches
+  ---
+  duration_ms: 1541.979193
+  type: 'test'
+  ...
+# Subtest: one invalid operation in the middle rejects the whole batch with no partial commit, ACK or broadcast
+ok 4 - one invalid operation in the middle rejects the whole batch with no partial commit, ACK or broadcast
+  ---
+  duration_ms: 228.267043
+  type: 'test'
+  ...
+# Subtest: a PostgreSQL error after batch rows were written rolls everything back; the original batch commits once later
+ok 5 - a PostgreSQL error after batch rows were written rolls everything back; the original batch commits once later
+  ---
+  duration_ms: 216.372426
+  type: 'test'
+  ...
+# (node:18413) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: server process killed inside the open transaction leaves no rows; retry after restart commits the same batch once
+ok 6 - server process killed inside the open transaction leaves no rows; retry after restart commits the same batch once
+  ---
+  duration_ms: 399.447974
+  type: 'test'
+  ...
+# (node:18677) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: server killed after COMMIT before replying: the retry returns the original result and other devices catch up from PG
+ok 7 - server killed after COMMIT before replying: the retry returns the original result and other devices catch up from PG
+  ---
+  duration_ms: 545.001944
+  type: 'test'
+  ...
+# Subtest: a connection dropped after COMMIT is resent by Chromium itself; the batch receipt answers with the original ACK
+ok 8 - a connection dropped after COMMIT is resent by Chromium itself; the batch receipt answers with the original ACK
+  ---
+  duration_ms: 179.973973
+  type: 'test'
+  ...
+# Subtest: lost ACK followed by an aborted local confirmation keeps the batch; each retry returns the same version
+ok 9 - lost ACK followed by an aborted local confirmation keeps the batch; each retry returns the same version
+  ---
+  duration_ms: 211.765524
+  type: 'test'
+  ...
+# Subtest: renderer crash after the server committed but before the client confirmed: the reopened page resends the original batch
+ok 10 - renderer crash after the server committed but before the client confirmed: the reopened page resends the original batch
+  ---
+  duration_ms: 408.901779
+  type: 'test'
+  ...
+# Subtest: same batch ID with different members or bytes is refused; a committed operation cannot be repacked into a new batch
+ok 11 - same batch ID with different members or bytes is refused; a committed operation cannot be repacked into a new batch
+  ---
+  duration_ms: 239.878137
+  type: 'test'
+  ...
+# Subtest: the same batch delivered concurrently on two connections commits once and both get one version
+ok 12 - the same batch delivered concurrently on two connections commits once and both get one version
+  ---
+  duration_ms: 183.419269
+  type: 'test'
+  ...
+# Subtest: a batch formed before sharing stopped is refused as stale; after reopening its members become recovery drafts
+ok 13 - a batch formed before sharing stopped is refused as stale; after reopening its members become recovery drafts
+  ---
+  duration_ms: 219.499441
+  type: 'test'
+  ...
+# Subtest: a batch committed before sharing stopped, whose ACK was lost, is reconciled by receipt and not turned into a draft
+ok 14 - a batch committed before sharing stopped, whose ACK was lost, is reconciled by receipt and not turned into a draft
+  ---
+  duration_ms: 247.568854
+  type: 'test'
+  ...
+# Subtest: commit racing stop-sharing in PostgreSQL: every batch is either in the frozen version or refused
+ok 15 - commit racing stop-sharing in PostgreSQL: every batch is either in the frozen version or refused
+  ---
+  duration_ms: 740.20827
+  type: 'test'
+  ...
+# Subtest: two tabs share one sequence: one batch carries both tabs’ dependent edits in order and commits as one version
+ok 16 - two tabs share one sequence: one batch carries both tabs’ dependent edits in order and commits as one version
+  ---
+  duration_ms: 296.179764
+  type: 'test'
+  ...
+# Subtest: two tabs sending at once keep one batch in flight; nothing is sent twice or overtakes an unconfirmed batch
+ok 17 - two tabs sending at once keep one batch in flight; nothing is sent twice or overtakes an unconfirmed batch
+  ---
+  duration_ms: 322.066127
+  type: 'test'
+  ...
+# Subtest: a stale tab writing after a reopen produces a draft and never enters a new batch
+ok 18 - a stale tab writing after a reopen produces a draft and never enters a new batch
+  ---
+  duration_ms: 271.593128
+  type: 'test'
+  ...
+# Subtest: the frozen validator was used read-only
+ok 19 - the frozen validator was used read-only
+  ---
+  duration_ms: 0.799724
+  type: 'test'
+  ...
+1..19
+# tests 19
+# suites 0
+# pass 19
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 8196.352427
