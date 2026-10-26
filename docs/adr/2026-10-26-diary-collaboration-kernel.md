@@ -265,13 +265,51 @@ Diary 保持 `diaryId`、`ownerId`、`diaryDate`、创建时区及 UTC 时间；
 
 原因：依据 2～5，连接认证、资源权限、共享轮次与同步起点分别检查；授权在提交时已经确定，推送时再查得不到新信息。
 
-### D11：模块职责沿用现有边界，首版单 API 实例
+### D11：模块职责沿用现有边界，包内按职责划分子模块，首版单 API 实例
 
 packages/collab 负责 Y.Text 模型、更新校验、作者来源、基线清理与自检、批次摘要等纯协同逻辑，不依赖 app、PG、HTTP 或 UI。contracts 只拥有 wire schemas 与错误码表。API 负责会话、授权、事务、提交链、获准状态读取（D17）与 socket。web 负责编辑器绑定、本地日志、恢复提示与只读历史展示。不从 prototypes 导入代码。
 
+**包内按职责划分子模块，高内聚、低耦合。** 每个子模块只拥有一项职责，通过少量公开接口协作；划分依据是职责，不为"模块化"把逻辑切成只用一次的小函数（engineering-standards 的既有规则仍然适用）。
+
+packages/collab 全部是纯函数，没有任何 I/O：
+
+| 子模块 | 职责 |
+| --- | --- |
+| validate | 纯文本与作者校验（D3） |
+| baseline | 隔离副本清理与自检（D4） |
+| digest | 批次摘要的规范字节串与算法版本（D9） |
+| authorship | clientID 区间到作者的推导 |
+
+apps/api 分三层，只能从上往下引用：
+
+| 层 | 子模块 | 职责 |
+| --- | --- | --- |
+| 传输 | ws、http 处理器 | 解析消息、校验会话、调用服务，不写业务规则 |
+| 服务 | commit | 提交链（D9） |
+| 服务 | sharing | 多篇开放的两阶段流程与冻结（D5） |
+| 服务 | reader | 获准状态读取（D17），唯一产出搭档可见内容的地方 |
+| 服务 | history | 历史点计算（D6） |
+| 服务 | outbox | 备份任务登记（D16） |
+| 服务 | events | 进程内事件（本节下文），不引用其他服务 |
+| 存储 | store | 唯一写 SQL 与管理锁序的地方（D9），不引用服务层 |
+
+传输层不直接引用存储层；除 reader 外，任何子模块都不产出面向搭档的内容。
+
+apps/web：
+
+| 子模块 | 职责 |
+| --- | --- |
+| editor-binding | ProseMirror 与 Y.Text 之间的转换，产出带意图的操作；不了解网络与 IndexedDB |
+| journal | IndexedDB 日志（D7）；不了解 ProseMirror |
+| sender | 发送批次与 Web Lock（D13）；依赖 journal 与 contracts |
+| sync-client | WebSocket、补同步与上下文变化处理 |
+| 界面 | 恢复草稿、保存状态、历史视图；只通过上述子模块的公开接口使用它们 |
+
+包与包之间、以及上述子模块之间的引用方向由 `checks/verify-dependency-direction` 检查（architecture 中已列为 collab 落地时的待办），不只依靠评审。每个子模块单独测试：collab 用纯单元测试；api 的各服务用真实 PG 单独测试；journal 不依赖编辑器、editor-binding 不依赖网络。各包 README 的 *Public surface* 与 *Allowed dependencies* 列出子模块的公开接口与允许的依赖；子模块不另写 README。
+
 首版只运行一个 API 实例，worker 按 ADR-0006 第 20 条另起进程。提交事件与会话失效事件在进程内传递，收在 API 的同一个模块里，对外只有发布与订阅两个函数。数据正确性不依赖实例数量：提交靠日记行锁排队，缓存在锁内核对版本，重连从 PG 补同步；实例数只影响实时推送与会话失效通知能否送达连在别的实例上的设备。以后需要多实例时只换该模块的内部实现（例如 PG `LISTEN/NOTIFY`），协议与表结构不变；现在不预建。部署须先停后启，不让新旧实例并存；万一并存，数据仍然安全，只是实时显示要等下次重连。
 
-原因：依据 6，协同算法、权限事务与界面各只有一个责任拥有者；不预建没有当前消费者的适配器。
+原因：依据 6，协同算法、权限事务与界面各只有一个责任拥有者；传输、业务规则与存储分开，才能分别测试与替换；不预建没有当前消费者的适配器。
 
 ### D12：部分取代 ADR-0006 第 15、17 条，其余为细化
 
@@ -497,21 +535,21 @@ API 中只有一个模块能产出给搭档的正文或字节。它的输入是�
 
 ### 阶段 1：纯协同模型
 
-新建 packages/collab：纯文本校验、clientID 作者校验、基线清理与自检、批次摘要。登记进 `checks/modules.json`，新增 Vitest 项目与模块 README。
+新建 packages/collab 及其 D11 子模块：纯文本校验、clientID 作者校验、基线清理与自检、批次摘要。登记进 `checks/modules.json`，新增 Vitest 项目与模块 README；实现 `checks/verify-dependency-direction`，覆盖包与包之间及 D11 子模块之间的引用方向，并纳入 `npm run check`。
 
-完成条件：恶意更新、原作者保留、重复原始字节泄露、基线自检与多客户端性质测试通过；原型行为基线保持。
+完成条件：恶意更新、原作者保留、重复原始字节泄露、基线自检与多客户端性质测试通过；依赖方向检查通过，并有一个违规引用被它拒绝的测试；原型行为基线保持。
 
 ### 阶段 2：个人日记的服务端
 
 个人部分迁移（`diaries`、`diary_client_bindings`、`diary_generations`、`diary_commits`、`diary_operations`、`diary_character_ranges`、`diary_snapshots`、`backup_outbox` 个人目标），@fastify/websocket、提交链、回执查询、clientID 登记、错误码表、补同步与进程内事件模块；contracts 与 OpenAPI 随真实接口落地。
 
-完成条件：`app.inject` 与真实 PG 验证 owner/date 唯一、整批原子、批次与操作查重、锁序、故障回滚、重复投递与 ACK 丢失后的重试。
+完成条件：`app.inject` 与真实 PG 验证 owner/date 唯一、整批原子、批次与操作查重、锁序、故障回滚、重复投递与 ACK 丢失后的重试；commit、history、outbox 与 store 各有不经传输层的单独测试；依赖方向检查覆盖新增的 api 子模块。
 
 ### 阶段 3：桌面编辑器与本地日志（单人写作闭环）
 
 自写 ProseMirror 绑定、本地日志、发送批次、恢复草稿、保存状态、个人撤销与本人的只读历史。这一阶段完成后，一个人写作、保存与离线恢复的完整链路可以验收。
 
-完成条件：A1/A2 多设备在 Chromium、Firefox、WebKit 通过 EDIT、SAVE、SYNC 相关验收与故障场景；粘贴上限、浏览器要求与只读模式按 D7、D13 生效。
+完成条件：A1/A2 多设备在 Chromium、Firefox、WebKit 通过 EDIT、SAVE、SYNC 相关验收与故障场景；粘贴上限、浏览器要求与只读模式按 D7、D13 生效；journal 与 sender 有不依赖编辑器的测试，editor-binding 有不依赖网络的测试。
 
 ### 阶段 4：共享集成
 
@@ -525,9 +563,9 @@ API 中只有一个模块能产出给搭档的正文或字节。它的输入是�
 
 - **依赖**（精确版本）：packages/collab `yjs` 13.6.33；apps/api `yjs` 13.6.33、`@fastify/websocket` 11.3.4、`@between-pages/collab`；apps/web `yjs` 13.6.33、`prosemirror-model` 1.25.12、`prosemirror-state` 1.4.4、`prosemirror-view` 1.42.8、`prosemirror-transform` 1.12.4、`prosemirror-keymap` 1.2.3、`@between-pages/collab`。不加 y-indexeddb、y-prosemirror、Hocuspocus、IndexedDB 封装库与 pg-boss。
 - **迁移**：阶段 2、阶段 4 列出的表与列，用 `npm run db:generate -- --name <x>` 生成。
-- **checks**：packages/collab 登记进 `checks/modules.json`，新增其 Vitest 项目。
+- **checks**：packages/collab 登记进 `checks/modules.json`，新增其 Vitest 项目；新增 `checks/verify-dependency-direction` 并纳入 `npm run check`，规则以 architecture 的依赖方向与 D11 的子模块划分为准。
 
-实现者可以自行决定：模块内部结构与命名、测试组织、"未解决的问题"中的默认值及其实测后的调整。必须停下来询问的情况：清单外的依赖、表、列或 CI/hook 改动；需要修改任何决定或不变量；实测结果明显达不到验收目标；需要修改 prototypes。
+实现者可以自行决定：子模块内部的文件结构与命名（不得改变 D11 的划分与依赖方向）、测试组织、"未解决的问题"中的默认值及其实测后的调整。必须停下来询问的情况：清单外的依赖、表、列或 CI/hook 改动；需要修改任何决定或不变量；实测结果明显达不到验收目标；需要修改 prototypes。
 
 PR 组织：每个阶段至少一个 PR，阶段 3 可以把编辑器绑定与本地日志拆开；每个 PR 在同一 PR 里更新 roadmap 对应行及 README 状态行。
 
