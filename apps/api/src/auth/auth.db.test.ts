@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { closeCode, routes, syncSocket } from '@between-pages/contracts';
 import { query, testDatabaseUrl } from '../../test/db.ts';
 import {
   Jar,
@@ -181,6 +182,45 @@ describe.runIf(testDatabaseUrl)('sessions', () => {
     });
     expect(forged.statusCode).toBe(403);
     expect((await me(h, jar)).status).toBe(200);
+  });
+
+  it('[adr:authentication-and-sessions#6] [adr:authentication-and-sessions#8] ends socket writes and handshakes with the session', async () => {
+    const { jar } = await signIn(h, unique('lena'));
+    const opened = await h.app.inject({
+      method: 'POST',
+      url: routes.openDiary.path,
+      headers: { origin: WEB_ORIGIN, cookie: jar.header() },
+      payload: { timezone: 'Asia/Shanghai' },
+    });
+    const { diary } = routes.openDiary.response.parse(opened.json());
+    const upgrade = { headers: { origin: WEB_ORIGIN, cookie: jar.header() } };
+    const socket = await h.app.injectWS(syncSocket.path, upgrade);
+    const closed = new Promise<number>((resolve) => socket.on('close', resolve));
+
+    await h.app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-out',
+      headers: { origin: WEB_ORIGIN, cookie: jar.header() },
+      payload: {},
+    });
+    socket.send(
+      JSON.stringify({
+        v: 1,
+        type: 'submit',
+        diaryId: diary.diaryId,
+        batchId: randomUUID(),
+        generationId: diary.generationId,
+        operations: [
+          { operationId: randomUUID(), update: 'AAA=', writtenAt: new Date().toISOString() },
+        ],
+      }),
+    );
+
+    expect(await closed).toBe(closeCode.UNAUTHENTICATED);
+    await expect(h.app.injectWS(syncSocket.path, upgrade)).rejects.toThrow('401');
+    expect(await query('select 1 from diary_commits where diary_id = $1', [diary.diaryId])).toEqual(
+      [],
+    );
   });
 
   it('writes last_seen_at at most once per interval', async () => {

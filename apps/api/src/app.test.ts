@@ -2,20 +2,26 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { ApiErrorBody, routes } from '@between-pages/contracts';
 import { buildApp } from './app.ts';
+import { createDb } from './db/client.ts';
 import { renderOpenApi } from './openapi.ts';
 
 const ORIGIN = 'http://localhost:5173';
 const alice = { id: '6f1c1d0e-0000-4000-8000-000000000001', displayName: 'alice' };
 
+// These routes never reach the database, so the pool never connects.
+const database = createDb('postgresql://localhost/unused');
+const db = database.db;
+
 let signedOut: FastifyInstance;
 let signedIn: FastifyInstance;
 beforeAll(async () => {
-  signedOut = await buildApp({ publicOrigin: ORIGIN, currentUser: async () => null });
-  signedIn = await buildApp({ publicOrigin: ORIGIN, currentUser: async () => alice });
+  signedOut = await buildApp({ publicOrigin: ORIGIN, currentUser: async () => null, db });
+  signedIn = await buildApp({ publicOrigin: ORIGIN, currentUser: async () => alice, db });
 });
 afterAll(async () => {
   await signedOut.close();
   await signedIn.close();
+  await database.close();
 });
 
 describe('health route', () => {
@@ -31,7 +37,11 @@ describe('access control', () => {
     const userRoutes = Object.values(routes).filter((route) => route.access === 'user');
     expect(userRoutes.length).toBeGreaterThan(0);
     for (const route of userRoutes) {
-      const res = await signedOut.inject({ method: route.method, url: route.path });
+      const res = await signedOut.inject({
+        method: route.method,
+        url: route.path,
+        headers: { origin: ORIGIN },
+      });
       expect(res.statusCode, route.path).toBe(401);
       expect(ApiErrorBody.parse(res.json()).error.code).toBe('UNAUTHENTICATED');
     }
@@ -86,6 +96,7 @@ describe('error format', () => {
       currentUser: async () => {
         throw new Error('database password is hunter2');
       },
+      db,
     });
     const res = await broken.inject({ method: 'GET', url: routes.me.path });
     await broken.close();
@@ -98,7 +109,8 @@ describe('OpenAPI document', () => {
   it('describes every contract route', async () => {
     const doc = JSON.parse(await renderOpenApi()) as { paths: Record<string, unknown> };
     for (const route of Object.values(routes)) {
-      expect(doc.paths).toHaveProperty([route.path, route.method.toLowerCase()]);
+      const path = route.path.replace(/:(\w+)/g, '{$1}');
+      expect(doc.paths).toHaveProperty([path, route.method.toLowerCase()]);
     }
   });
 

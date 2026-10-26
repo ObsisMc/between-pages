@@ -2,6 +2,12 @@ import type { FastifyError, FastifyInstance, FastifyReply } from 'fastify';
 import { hasZodFastifySchemaValidationErrors } from 'fastify-type-provider-zod';
 import { errorStatus, type ApiErrorBody, type ErrorCode } from '@between-pages/contracts';
 
+/**
+ * A stored delta, snapshot or baseline no longer matches its sha256, or is missing
+ * (kernel D9). Reported as VERSION_UNREADABLE; nothing falls back to another version.
+ */
+export class VersionUnreadable extends Error {}
+
 export function sendError(reply: FastifyReply, code: ErrorCode, message: string) {
   const body: ApiErrorBody = { error: { code, message } };
   return reply.status(errorStatus[code]).send(body);
@@ -16,6 +22,10 @@ export function registerErrorHandling(app: FastifyInstance) {
   app.setErrorHandler((error: FastifyError, request, reply) => {
     if (hasZodFastifySchemaValidationErrors(error) || error.validation) {
       return sendError(reply, 'VALIDATION_FAILED', 'Request does not match the contract');
+    }
+    if (error instanceof VersionUnreadable) {
+      request.log.error({ err: error }, 'stored diary state failed its check');
+      return sendError(reply, 'VERSION_UNREADABLE', 'Stored diary state failed its check');
     }
     if (error.statusCode && error.statusCode >= 400 && error.statusCode < 500) {
       return sendError(reply, 'VALIDATION_FAILED', error.message);

@@ -12,6 +12,7 @@ const auth = createAuth(config, database.db);
 const app = await buildApp({
   publicOrigin: config.publicOrigin,
   currentUser: createCurrentUser(auth, database.db),
+  db: database.db,
   authHandler: (request) => auth.handler(request),
   logger: true,
   onClose: () => database.close(),

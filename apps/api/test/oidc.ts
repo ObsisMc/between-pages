@@ -75,6 +75,7 @@ export async function startHarness(): Promise<Harness> {
   const app = await buildApp({
     publicOrigin: config.publicOrigin,
     currentUser: createCurrentUser(auth, database.db),
+    db: database.db,
     authHandler: (request) => auth.handler(request),
     logger: { level: 'debug', stream: { write: (line: string) => harness.logs.push(line) } },
   });
@@ -173,6 +174,7 @@ export async function startGoogleApp() {
   const app = await buildApp({
     publicOrigin: config.publicOrigin,
     currentUser: createCurrentUser(auth, database.db),
+    db: database.db,
     authHandler: (request) => auth.handler(request),
   });
   return {
