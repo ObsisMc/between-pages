@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { ApiErrorBody, routes } from './index.ts';
+import { ApiErrorBody, ServerMessage, TimeZone, routes } from './index.ts';
 
 const propertyNames = (schema: unknown): string[] => {
   if (!schema || typeof schema !== 'object') return [];
@@ -32,6 +32,29 @@ describe('route contracts', () => {
       const names = propertyNames(z.toJSONSchema(route.response)).map((n) => n.toLowerCase());
       expect(names.filter((n) => n.includes('lastseen') || n.includes('last_seen'))).toEqual([]);
     }
+  });
+
+  it('[adr:diary-collaboration-kernel#15] exposes no internal version in any response or server message', () => {
+    const schemas = [...Object.values(routes).map((route) => route.response), ServerMessage];
+    for (const schema of schemas) {
+      const names = propertyNames(z.toJSONSchema(schema)).map((n) => n.toLowerCase());
+      expect(names.filter((n) => n.includes('version'))).toEqual([]);
+    }
+  });
+
+  it('names every path parameter in the route params schema', () => {
+    for (const route of Object.values(routes)) {
+      const segments = [...route.path.matchAll(/:(\w+)/g)].map((m) => m[1]);
+      const params = 'params' in route ? Object.keys(z.toJSONSchema(route.params).properties!) : [];
+      expect(params.sort(), route.path).toEqual(segments.sort());
+    }
+  });
+
+  it('accepts IANA time zones only', () => {
+    expect(TimeZone.safeParse('Asia/Shanghai').success).toBe(true);
+    expect(TimeZone.safeParse('America/Los_Angeles').success).toBe(true);
+    expect(TimeZone.safeParse('Mars/Olympus').success).toBe(false);
+    expect(TimeZone.safeParse('+08:00').success).toBe(false);
   });
 
   it('accepts only the known error codes', () => {
