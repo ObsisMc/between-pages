@@ -27,6 +27,7 @@ const GROUPS: Record<string, string[][]> = {
     gate('verify-openapi-current'),
     gate('verify-migrations-current'),
     gate('verify-auth-boundary'),
+    gate('verify-dependency-direction'),
     gate('verify-adr-index'),
     gate('verify-adr-tags'),
   ],

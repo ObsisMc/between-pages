@@ -15,6 +15,8 @@ export default defineConfig({
         },
       },
       { test: { name: 'web', root: 'apps/web', environment: 'jsdom' } },
+      // Tests of the checks themselves; outside the coverage include on purpose.
+      { test: { name: 'checks', root: 'checks', environment: 'node' } },
     ],
     coverage: {
       provider: 'v8',
