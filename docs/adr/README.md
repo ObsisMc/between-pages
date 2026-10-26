@@ -19,6 +19,7 @@
 | [ADR-0006](./0006-formal-stack.md) | 正式技术栈与协同内核 | 已采纳 | 技术栈 | — |
 | [authentication-and-sessions](./2026-10-24-authentication-and-sessions.md) | 用 Better Auth 只做登录和会话，领域用户与认证层分离 | 已采纳 | 认证 | 12/13 部分 |
 | [spaces-and-invitations](./2026-10-25-spaces-and-invitations.md) | 个人日记独立存在，双人空间按日期和授权版本共享 | 提议 | 领域 | 0/12 未开始 |
+| [diary-collaboration-kernel](./2026-10-26-diary-collaboration-kernel.md) | 个人日记以增量协作保存，共享从获准的正文状态开始 | 提议 | 协同 | 0/25 未开始 |
 <!-- adr-index:end -->
 
 ## 原则

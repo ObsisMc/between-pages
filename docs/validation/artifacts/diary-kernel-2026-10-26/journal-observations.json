@@ -1,0 +1,214 @@
+{
+  "runtime": {
+    "node": "v26.12.1",
+    "yjs": "13.6.33",
+    "chromium": "156.0.8078.4"
+  },
+  "checks": [
+    {
+      "name": "rendered input survives page reload in real IndexedDB without sending",
+      "passed": true,
+      "durationMs": 352
+    },
+    {
+      "name": "closing and reopening a tab restores exact pending operation IDs",
+      "passed": true,
+      "durationMs": 264
+    },
+    {
+      "name": "offline network failure preserves pending; reconnect commits once",
+      "passed": true,
+      "durationMs": 231
+    },
+    {
+      "name": "server commits then drops ACK: reload and retry returns original result",
+      "passed": true,
+      "durationMs": 206
+    },
+    {
+      "name": "connection drops before server acceptance: pending remains and later saves",
+      "passed": true,
+      "durationMs": 209
+    },
+    {
+      "name": "abort ACK transaction after pending deletion: no partial local acknowledgement",
+      "passed": true,
+      "durationMs": 222
+    },
+    {
+      "name": "request success is not transaction completion or local save confirmation",
+      "passed": true,
+      "durationMs": 137
+    },
+    {
+      "name": "aborted local append shows error and never sends an undurable edit",
+      "passed": true,
+      "durationMs": 159
+    },
+    {
+      "name": "injected quota failure keeps visible text even if user tries sync",
+      "passed": true,
+      "durationMs": 173
+    },
+    {
+      "name": "generation transition moves insert/delete/replace intents to recoverable drafts",
+      "passed": true,
+      "durationMs": 531
+    },
+    {
+      "name": "abort draft transition: old baseline and pending survive with no partial reset",
+      "passed": true,
+      "durationMs": 562
+    },
+    {
+      "name": "lost ACK before reopen is reconciled, not duplicated into recovery drafts",
+      "passed": true,
+      "durationMs": 416
+    },
+    {
+      "name": "expired epoch with unchanged character IDs is rejected and becomes a draft",
+      "passed": true,
+      "durationMs": 244
+    },
+    {
+      "name": "stale tab cannot append old-generation edits into new active queue",
+      "passed": true,
+      "durationMs": 416
+    },
+    {
+      "name": "out-of-order ACKs cannot rewind committed baseline or erase later pending",
+      "passed": true,
+      "durationMs": 542
+    },
+    {
+      "name": "account change cannot load another account pending or recovery data",
+      "passed": true,
+      "durationMs": 409
+    },
+    {
+      "name": "new local input during receipt lookup aborts transition without losing either edit",
+      "passed": true,
+      "durationMs": 209
+    },
+    {
+      "name": "actual renderer crash after local completion preserves pending on new page",
+      "passed": true,
+      "durationMs": 518
+    },
+    {
+      "name": "persistent browser profile restores pending after browser close and restart",
+      "passed": true,
+      "durationMs": 1014
+    },
+    {
+      "name": "acknowledging first edit leaves later edit pending and visible",
+      "passed": true,
+      "durationMs": 260
+    },
+    {
+      "name": "local write failure blocks baseline reset and retains copyable text",
+      "passed": true,
+      "durationMs": 243
+    },
+    {
+      "name": "concurrent duplicate delivery from two tabs commits one operation once",
+      "passed": true,
+      "durationMs": 176
+    },
+    {
+      "name": "retry after storage recovers persists original failed operation and syncs once",
+      "passed": true,
+      "durationMs": 162
+    },
+    {
+      "name": "strict validator rejects dependent update arriving first without mutating server",
+      "passed": true,
+      "durationMs": 191
+    },
+    {
+      "name": "reverse UUID sorting cannot reorder insert-then-modify replay under strict validator",
+      "passed": true,
+      "durationMs": 185
+    },
+    {
+      "name": "local sequence is durable across reload and reflects edit dependency order",
+      "passed": true,
+      "durationMs": 247
+    },
+    {
+      "name": "missing-ACK head blocks later dependent submissions until its original result is known",
+      "passed": true,
+      "durationMs": 239
+    },
+    {
+      "name": "failed local ACK transaction also blocks later dependent submissions",
+      "passed": true,
+      "durationMs": 225
+    },
+    {
+      "name": "insert then delete is replayed in order even when second update contains only a delete set",
+      "passed": true,
+      "durationMs": 274
+    },
+    {
+      "name": "cross-tab dependency is replayed using one shared persisted sequence",
+      "passed": true,
+      "durationMs": 324
+    },
+    {
+      "name": "two tab senders share a lock and cannot overtake an unacknowledged queue head",
+      "passed": true,
+      "durationMs": 325
+    },
+    {
+      "name": "long offline dependency chain survives reloads and passes strict validation for every update",
+      "passed": true,
+      "durationMs": 1136
+    },
+    {
+      "name": "strict validator rejects forged client ownership without changing accepted state",
+      "passed": true,
+      "durationMs": 147
+    }
+  ],
+  "ackDropTransportAttempts": 2,
+  "preCommitDropTransportAttempts": 2,
+  "repositoryUnchanged": true,
+  "previousDesignFailures": [
+    "reverse UUID sorting cannot reorder insert-then-modify replay under strict validator",
+    "local sequence is durable across reload and reflects edit dependency order",
+    "missing-ACK head blocks later dependent submissions until its original result is known",
+    "failed local ACK transaction also blocks later dependent submissions",
+    "insert then delete is replayed in order even when second update contains only a delete set",
+    "cross-tab dependency is replayed using one shared persisted sequence",
+    "two tab senders share a lock and cannot overtake an unacknowledged queue head",
+    "long offline dependency chain survives reloads and passes strict validation for every update"
+  ],
+  "validator": {
+    "source": "prototypes/yjs-standard/authority.mjs",
+    "sha256": "41b6bfbb26f239983c58d926b770afbbae5c06c7eb4c229148272baf0f8aec1e",
+    "scope": "Existing exploratory Authority.check rules, including missing references, clock gaps and unknown delete targets; no frozen prototype changes",
+    "actorBinding": "Known browser clientIDs are registered by the test harness out of band, never inferred from untrusted submitted updates",
+    "postcondition": "Every accepted server candidate has pendingStructs == null and pendingDs == null"
+  },
+  "ordering": {
+    "durability": "localSequence allocation, nextSequence advancement and pending insertion share one IndexedDB transaction",
+    "send": "Read pending by localSequence; shared Web Lock per account/diary; await server ACK and atomic local acknowledgement before the next operation",
+    "failure": "Network failure, server rejection or local ACK transaction failure stops the drain without dropping later operations",
+    "identity": "operationId and original Yjs update bytes remain unchanged across retries",
+    "counter": "ACK and baseline changes preserve the persistent nextSequence counter"
+  },
+  "limitations": [
+    "Temporary in-memory HTTP server, not production Fastify/PG/WebSocket/authentication",
+    "Chromium only",
+    "Existing exploratory validator is not a finished production pure-text validator",
+    "Temporary textarea, not the production ProseMirror binding",
+    "Quota fault is injected; no physical disk-full or OS power-loss verification"
+  ],
+  "totals": {
+    "scenarioCount": 33,
+    "passed": 33,
+    "repositoryIntegrity": true,
+    "previousDesignFailingScenarios": 8
+  }
+}

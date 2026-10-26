@@ -1,0 +1,58 @@
+{
+  "node": "v26.12.1",
+  "yjs": "13.6.33",
+  "observations": [
+    {
+      "check": "clean-baseline",
+      "sourceBytes": 188,
+      "baselineBytes": 166,
+      "visibleUtf16Units": 41,
+      "privatePayloadPresent": false,
+      "visibleIdsAndAuthorsPreserved": true,
+      "historicalStructuresStillPresent": true
+    },
+    {
+      "check": "relative-positions",
+      "checked": 84
+    },
+    {
+      "check": "must-replace-instance",
+      "mergingIntoOldInstanceRetainsPrivatePayload": true
+    },
+    {
+      "check": "old-pending",
+      "nativeYjsAcceptsOldUpdate": true,
+      "contextGuardIsOnlyAModel": true
+    },
+    {
+      "check": "raw-replay",
+      "ownershipModelAcceptsKnownReplay": true,
+      "rawRelayWouldLeak": true,
+      "canonicalStateContainsPrivatePayload": false,
+      "regeneratedDeltaContainsPrivatePayload": false
+    },
+    {
+      "check": "seeded-corpus",
+      "cases": 200,
+      "checkedAnchors": 41812
+    },
+    {
+      "check": "successive-generations",
+      "rounds": 50,
+      "oldArchiveIntact": true
+    },
+    {
+      "check": "large-document-smoke",
+      "visibleUtf16Units": 101497,
+      "encodedBytes": 217785,
+      "cleanupAndSerializationMs": 5.82,
+      "note": "Single Node process smoke; excludes PG, browser, network and concurrency under load."
+    }
+  ],
+  "limitations": [
+    "No PG, WebSocket, browser, IndexedDB or durable recovery integration was implemented or tested.",
+    "Ownership and context checks here are diagnostic models, not a production validator.",
+    "Private-history structure metadata remains; no guarantee of hiding edit volume."
+  ],
+  "workspaceUnchanged": true
+}
