@@ -6,7 +6,11 @@ import { createDb } from './db/client.ts';
 import { renderOpenApi } from './openapi.ts';
 
 const ORIGIN = 'http://localhost:5173';
-const alice = { id: '6f1c1d0e-0000-4000-8000-000000000001', displayName: 'alice' };
+const alice = {
+  id: '6f1c1d0e-0000-4000-8000-000000000001',
+  displayName: 'alice',
+  sessionId: 'session-1',
+};
 
 // These routes never reach the database, so the pool never connects.
 const database = createDb('postgresql://localhost/unused');
@@ -50,7 +54,7 @@ describe('access control', () => {
   it('returns the signed-in user from /api/me without private fields', async () => {
     const res = await signedIn.inject({ method: 'GET', url: routes.me.path });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ user: alice });
+    expect(res.json()).toEqual({ user: { id: alice.id, displayName: alice.displayName } });
   });
 });
 

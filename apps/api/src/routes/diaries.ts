@@ -5,6 +5,7 @@ import type { DiaryService, DiaryView } from '../diaries/diaries.ts';
 import { sendError } from '../errors.ts';
 import type { HistoryService } from '../history/history.ts';
 import type { Reader, SharedView } from '../reader/reader.ts';
+import type { ReadingService } from '../reading/reading.ts';
 import type { ContractRequest } from './contract.ts';
 
 const base64 = (bytes: Uint8Array) => Buffer.from(bytes).toString('base64');
@@ -55,6 +56,7 @@ export function diaryHandlers(services: {
   commit: CommitService;
   history: HistoryService;
   reader: Reader;
+  reading: ReadingService;
 }) {
   return {
     async diaries(request: ContractRequest<'diaries'>) {
@@ -102,6 +104,22 @@ export function diaryHandlers(services: {
         nextCursor: page.nextCursor,
         nextPointInMs: page.nextPointInMs,
       };
+    },
+
+    async readRanges(request: ContractRequest<'readRanges'>, reply: FastifyReply) {
+      reply.header('cache-control', 'no-store');
+      const ranges = await services.reading.ranges(request.user!.id, request.params.diaryId);
+      return ranges ? { ranges } : notFound(reply);
+    },
+
+    async reportRead(request: ContractRequest<'reportRead'>, reply: FastifyReply) {
+      reply.header('cache-control', 'no-store');
+      const ranges = await services.reading.report(
+        request.user!.id,
+        request.params.diaryId,
+        request.body.ranges,
+      );
+      return ranges ? { ranges } : notFound(reply);
     },
 
     async sharedDiaries(request: ContractRequest<'sharedDiaries'>, reply: FastifyReply) {

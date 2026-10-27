@@ -578,6 +578,63 @@
           "clockAdjusted"
         ]
       },
+      "ReadRangeInput": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "from": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "to": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "clientId",
+          "from",
+          "to"
+        ],
+        "additionalProperties": false
+      },
+      "ReportReadRequestInput": {
+        "type": "object",
+        "properties": {
+          "ranges": {
+            "minItems": 1,
+            "maxItems": 1000,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReadRangeInput"
+            }
+          }
+        },
+        "required": [
+          "ranges"
+        ],
+        "additionalProperties": false
+      },
+      "ReadRangesResponseInput": {
+        "type": "object",
+        "properties": {
+          "ranges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReadRangeInput"
+            }
+          }
+        },
+        "required": [
+          "ranges"
+        ]
+      },
       "UserSummaryInput": {
         "type": "object",
         "properties": {
@@ -1713,6 +1770,64 @@
         ],
         "additionalProperties": false
       },
+      "ReadRange": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "from": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "to": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "clientId",
+          "from",
+          "to"
+        ],
+        "additionalProperties": false
+      },
+      "ReportReadRequest": {
+        "type": "object",
+        "properties": {
+          "ranges": {
+            "minItems": 1,
+            "maxItems": 1000,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReadRange"
+            }
+          }
+        },
+        "required": [
+          "ranges"
+        ],
+        "additionalProperties": false
+      },
+      "ReadRangesResponse": {
+        "type": "object",
+        "properties": {
+          "ranges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReadRange"
+            }
+          }
+        },
+        "required": [
+          "ranges"
+        ],
+        "additionalProperties": false
+      },
       "UserSummary": {
         "type": "object",
         "properties": {
@@ -2574,6 +2689,92 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HistoryVersion"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/diaries/{diaryId}/read": {
+      "get": {
+        "summary": "The caller's own read coverage of a diary they may read, merged across devices.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "diaryId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadRangesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Add characters the caller saw on screen to their own read coverage; no one else ever learns of it.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportReadRequestInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "diaryId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadRangesResponse"
                 }
               }
             }

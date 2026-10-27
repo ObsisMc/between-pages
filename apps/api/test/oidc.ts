@@ -77,6 +77,7 @@ export async function startHarness(): Promise<Harness> {
     currentUser: createCurrentUser(auth, database.db),
     db: database.db,
     authHandler: (request) => auth.handler(request),
+    sessionEnded: (listener) => auth.onSessionEnded(listener),
     logger: { level: 'debug', stream: { write: (line: string) => harness.logs.push(line) } },
   });
   return Object.assign(harness, {

@@ -23,6 +23,8 @@ import { createDiaryService } from './diaries/diaries.ts';
 import { createEvents } from './events/events.ts';
 import { createHistoryService } from './history/history.ts';
 import { createReader } from './reader/reader.ts';
+import { createReadingService } from './reading/reading.ts';
+import { createReadingStore } from './store/reading.ts';
 import type { ContractRequest } from './routes/contract.ts';
 import { diaryHandlers } from './routes/diaries.ts';
 import { meHandler } from './routes/me.ts';
@@ -45,6 +47,8 @@ export interface AppDeps {
   onClose?: () => Promise<void>;
   /** Shortens the history idle rule for the end-to-end suite; production keeps two minutes. */
   historyIdleMs?: number;
+  /** Registers a listener for sessions that ended (`Auth.onSessionEnded`); their sockets close at once. */
+  sessionEnded?: (listener: (sessionId: string) => void) => void;
 }
 
 // Builds the app without listening so tests and the OpenAPI generator use the exact
@@ -101,6 +105,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 
   const store = createStore(deps.db);
   const events = createEvents();
+  // Auth knows nothing of events; the session-ended event is published here (kernel D10).
+  deps.sessionEnded?.((sessionId) => events.publish({ type: 'session-ended', sessionId }));
   const diaries = createDiaryService(store);
   const reader = createReader(store);
   const commit = createCommitService(store);
@@ -109,6 +115,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     commit,
     reader,
     history: createHistoryService(reader, deps.historyIdleMs),
+    reading: createReadingService(store, createReadingStore(deps.db)),
   });
 
   contractRoute('health', () => ({ status: 'ok' as const }));
@@ -119,6 +126,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   contractRoute('receipt', handlers.receipt);
   contractRoute('history', handlers.history);
   contractRoute('historyVersion', handlers.historyVersion);
+  contractRoute('readRanges', handlers.readRanges);
+  contractRoute('reportRead', handlers.reportRead);
   contractRoute('sharedDiary', handlers.sharedDiary);
   contractRoute('character', handlers.character);
   contractRoute('sharedDiaries', handlers.sharedDiaries);

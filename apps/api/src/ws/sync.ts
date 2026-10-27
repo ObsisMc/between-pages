@@ -16,7 +16,7 @@ import type { CommittedEvent, DiaryEvent, Events } from '../events/events.ts';
 import { VersionUnreadable } from '../errors.ts';
 import type { Reader } from '../reader/reader.ts';
 
-/** Fallback session check per connection (kernel D10); sign-out events arrive in phase 4. */
+/** Fallback session check per connection (kernel D10), for sessions that end without an event (expiry, another instance). */
 export const SESSION_RECHECK_MS = 60_000;
 
 /**
@@ -101,6 +101,13 @@ function serve(socket: WebSocket, request: FastifyRequest, deps: Deps) {
     return false;
   }
 
+  // Sign-out and revocation close the socket at once and drop what was queued (kernel D10).
+  let ended = false;
+  const unsubscribeSession = deps.events.subscribe({ sessionId: user.sessionId }, () => {
+    ended = true;
+    socket.close(closeCode.UNAUTHENTICATED, 'session ended');
+  });
+
   const recheck = setInterval(() => {
     sessionValid().catch((error: unknown) =>
       request.log.error({ err: error }, 'session recheck failed'),
@@ -109,7 +116,7 @@ function serve(socket: WebSocket, request: FastifyRequest, deps: Deps) {
 
   socket.on('message', (data: RawData, isBinary: boolean) => {
     queue = queue
-      .then(() => handle(data, isBinary))
+      .then(() => (ended ? undefined : handle(data, isBinary)))
       .catch((error: unknown) => {
         request.log.error({ err: error }, 'sync message failed');
         fail('INTERNAL', 'Internal error');
@@ -117,6 +124,7 @@ function serve(socket: WebSocket, request: FastifyRequest, deps: Deps) {
   });
   socket.on('close', () => {
     clearInterval(recheck);
+    unsubscribeSession();
     for (const unsubscribe of subscriptions.values()) unsubscribe();
     subscriptions.clear();
   });
@@ -162,7 +170,7 @@ function serve(socket: WebSocket, request: FastifyRequest, deps: Deps) {
     subscriptions.get(diaryId)?.();
     subscriptions.set(
       diaryId,
-      deps.events.subscribe(diaryId, (event) => {
+      deps.events.subscribe({ diaryId }, (event) => {
         if (!live) return void held.push(event);
         if (deps.reader.deliverable(event, sub, owner)) sendEvent(event);
       }),

@@ -5,6 +5,8 @@ import { sendError } from '../errors.ts';
 export interface AuthenticatedUser {
   id: string;
   displayName: string;
+  /** The session this request carries; a socket closes when it ends (kernel D10). Never sent out. */
+  sessionId: string;
 }
 
 /** Resolves the caller from request headers; `null` when there is no valid session. */

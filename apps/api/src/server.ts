@@ -14,6 +14,7 @@ const app = await buildApp({
   currentUser: createCurrentUser(auth, database.db),
   db: database.db,
   authHandler: (request) => auth.handler(request),
+  sessionEnded: (listener) => auth.onSessionEnded(listener),
   logger: true,
   onClose: () => database.close(),
   ...(config.HISTORY_IDLE_MS ? { historyIdleMs: config.HISTORY_IDLE_MS } : {}),

@@ -216,6 +216,17 @@ describe('editor binding', () => {
   });
 });
 
+describe('characters by identity', () => {
+  it('[adr:diary-collaboration-kernel#26] names the other person’s characters in an index range by clientID and clock', () => {
+    const editor = alongsideBob(); // 今天很累，抱抱！ — Bob's from index 5
+    const bob = [...editor.bindings].find(([, user]) => user === BOB)![0];
+
+    expect(editor.binding.othersCharacters(0, 20)).toEqual([{ client: bob, clock: 0, length: 3 }]);
+    expect(editor.binding.othersCharacters(6, 7)).toEqual([{ client: bob, clock: 1, length: 1 }]);
+    expect(editor.binding.othersCharacters(0, 5)).toEqual([]);
+  });
+});
+
 describe('author protection', () => {
   it("[adr:diary-collaboration-kernel#3] Backspace jumps over the other person's text without deleting it", () => {
     const editor = alongsideBob();

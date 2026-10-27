@@ -56,16 +56,28 @@ export async function countRows(table: string, diaryId: string): Promise<number>
  * in src/auth/auth.db.test.ts.
  */
 export function testSessions() {
-  const users = new Map<string, { id: string; displayName: string }>();
+  const users = new Map<string, { id: string; displayName: string; sessionId: string }>();
+  const ended = new Set<(sessionId: string) => void>();
   return {
     async signIn(name = 'writer') {
       const id = await createUser(name);
       const token = `t-${id}`;
-      users.set(token, { id, displayName: name });
+      users.set(token, { id, displayName: name, sessionId: token });
       return { id, cookie: `session=${token}` };
     },
+    /** Ends the session as sign-out does: no longer valid, then announced. */
     revoke(cookie: string) {
+      const token = cookie.slice('session='.length);
+      users.delete(token);
+      for (const listener of ended) listener(token);
+    },
+    /** Ends the session silently, as expiry does: no event follows. */
+    expire(cookie: string) {
       users.delete(cookie.slice('session='.length));
+    },
+    /** As `Auth.onSessionEnded`, for buildApp's `sessionEnded`. */
+    onSessionEnded(listener: (sessionId: string) => void) {
+      ended.add(listener);
     },
     currentUser: async (headers: { cookie?: string | undefined }) =>
       users.get(headers.cookie?.slice('session='.length) ?? '') ?? null,

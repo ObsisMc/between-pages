@@ -28,10 +28,14 @@ function withoutTokens<T extends Record<string, unknown>>(account: T): { data: T
  * Better Auth for the configured provider (authentication-and-sessions D1, D3, D5, D6).
  * `dev` adds the genericOAuth plugin against the local mock issuer; parseConfig refuses
  * that outside localhost and in production, so no plugin runs in a real deployment.
+ * `onSessionEnded(listener)` hears every session row deleted by sign-out or revocation,
+ * after Better Auth's transaction commits (kernel D10 "会话失效"); this module knows
+ * nothing of who listens.
  */
 export function createAuth(config: Config, db: Db) {
   const origin = config.publicOrigin;
-  return betterAuth({
+  const ended = new Set<(sessionId: string) => void>();
+  const auth = betterAuth({
     baseURL: origin,
     basePath: '/api/auth',
     secret: config.BETTER_AUTH_SECRET,
@@ -60,6 +64,13 @@ export function createAuth(config: Config, db: Db) {
     },
     onAPIError: { errorURL: `${origin}/login` },
     databaseHooks: {
+      session: {
+        delete: {
+          after: async (session) => {
+            for (const listener of ended) listener(session.id);
+          },
+        },
+      },
       account: {
         create: { before: async (account) => withoutTokens(account) },
         update: { before: async (account) => withoutTokens(account) },
@@ -95,6 +106,11 @@ export function createAuth(config: Config, db: Db) {
             }),
           ]
         : [],
+  });
+  return Object.assign(auth, {
+    onSessionEnded(listener: (sessionId: string) => void): void {
+      ended.add(listener);
+    },
   });
 }
 

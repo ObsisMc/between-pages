@@ -22,6 +22,7 @@ beforeAll(async () => {
     publicOrigin: ORIGIN,
     currentUser: sessions.currentUser,
     db: database.db,
+    sessionEnded: sessions.onSessionEnded,
   });
 });
 afterAll(async () => {
@@ -261,11 +262,25 @@ describe.runIf(testDatabaseUrl)('sessions on an open socket', () => {
     expect(await countRows('diary_commits', diary.diaryId)).toBe(0);
   });
 
-  it('[adr:diary-collaboration-kernel#24] closes an idle connection within 60 seconds of its session ending', async () => {
+  it('[adr:diary-collaboration-kernel#24] closes a connection as soon as its session ends, without waiting for a write', async () => {
+    const owner = await sessions.signIn();
+    const other = await sessions.signIn();
+    const socket = await connect(owner.cookie);
+    const untouched = await connect(other.cookie);
+
+    sessions.revoke(owner.cookie);
+
+    expect(await socket.closed).toBe(closeCode.UNAUTHENTICATED);
+    expect(await untouched.quiet(50)).toEqual([]);
+    untouched.close();
+  });
+
+  it('[adr:diary-collaboration-kernel#24] closes an idle connection within 60 seconds of its session ending unannounced', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
     const owner = await sessions.signIn();
     const socket = await connect(owner.cookie);
-    sessions.revoke(owner.cookie);
+    // Expiry or another instance: the session is gone but no event says so.
+    sessions.expire(owner.cookie);
 
     await vi.advanceTimersByTimeAsync(60_000);
 

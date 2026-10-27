@@ -1,5 +1,6 @@
 export {
   createEditorBinding,
+  type CharacterRun,
   type EditorBinding,
   type EditorBindingOptions,
   type EditorOperation,

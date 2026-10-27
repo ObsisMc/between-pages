@@ -184,6 +184,24 @@ describe.runIf(testDatabaseUrl)('sessions', () => {
     expect((await me(h, jar)).status).toBe(200);
   });
 
+  it('[adr:diary-collaboration-kernel#24] closes an open socket as soon as Better Auth signs its session out', async () => {
+    const { jar } = await signIn(h, unique('mira'));
+    const socket = await h.app.injectWS(syncSocket.path, {
+      headers: { origin: WEB_ORIGIN, cookie: jar.header() },
+    });
+    const closed = new Promise<number>((resolve) => socket.on('close', resolve));
+
+    const out = await h.app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-out',
+      headers: { origin: WEB_ORIGIN, cookie: jar.header() },
+      payload: {},
+    });
+
+    expect(out.statusCode).toBe(200);
+    expect(await closed).toBe(closeCode.UNAUTHENTICATED);
+  });
+
   it('[adr:authentication-and-sessions#6] [adr:authentication-and-sessions#8] ends socket writes and handshakes with the session', async () => {
     const { jar } = await signIn(h, unique('lena'));
     const opened = await h.app.inject({

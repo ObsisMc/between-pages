@@ -43,6 +43,6 @@ export function createCurrentUser(auth: Auth, db: Db): CurrentUser {
       .select({ id: users.id, displayName: users.displayName })
       .from(users)
       .where(eq(users.id, id));
-    return user ?? null;
+    return user ? { ...user, sessionId: session.session.id } : null;
   };
 }
