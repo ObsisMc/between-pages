@@ -55,7 +55,10 @@ export class FakeSocket {
       });
     this.ack(message, reply);
   }
+  /** ACKs the batch, then broadcasts it to every subscriber, its sender included, as the API does. */
   ack(message: Submit, reply: (m: object) => void) {
+    const seq = ++FakeSocket.seq;
+    const publicId = crypto.randomUUID();
     reply({
       ...base,
       type: 'ack',
@@ -64,13 +67,30 @@ export class FakeSocket {
         batchId: message.batchId,
         operationIds: message.operations.map((op) => op.operationId),
         generationId: GENERATION,
-        seq: ++FakeSocket.seq,
-        publicId: crypto.randomUUID(),
+        seq,
+        publicId,
         committedAt: new Date().toISOString(),
       },
     });
+    const updates = message.operations.map((op) =>
+      Uint8Array.from(atob(op.update), (c) => c.charCodeAt(0)),
+    );
+    const delta = Y.mergeUpdates(updates);
+    reply({
+      ...base,
+      type: 'commit',
+      generationId: GENERATION,
+      seq,
+      publicId,
+      delta: btoa(String.fromCharCode(...delta)),
+      bindings: [],
+    });
   }
   close() {}
+  /** Delivers a server message, such as another device's commit. */
+  push(message: object) {
+    this.onmessage?.({ data: JSON.stringify(message) });
+  }
   static reset() {
     FakeSocket.all = [];
     FakeSocket.answer = () => 'ack';

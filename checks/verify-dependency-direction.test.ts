@@ -107,7 +107,12 @@ describe('verify-dependency-direction', () => {
       'apps/web/src/journal/journal.ts',
       "import { DiaryPage } from '../diary/index.ts';",
     ],
-    ['an unlisted web sub-module', 'apps/web/src/history/history.ts', 'export const x = 1;'],
+    [
+      'the history view reaching the journal',
+      'apps/web/src/history/HistoryPreview.tsx',
+      "import { openJournal } from '../journal/index.ts';",
+    ],
+    ['an unlisted web sub-module', 'apps/web/src/reader/reader.ts', 'export const x = 1;'],
   ])('rejects %s', (_, path, source) => {
     expect(violations([file(path, source)])).toHaveLength(1);
   });

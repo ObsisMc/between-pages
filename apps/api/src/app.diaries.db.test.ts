@@ -119,6 +119,7 @@ describe.runIf(testDatabaseUrl)('receipts and history routes', () => {
     expect(routes.history.response.parse((await get(cookie, url)).json())).toEqual({
       points: [],
       nextCursor: null,
+      nextPointInMs: null,
     });
     expect((await get(cookie, `${url}?cursor=forged`)).statusCode).toBe(400);
   });

@@ -20,6 +20,19 @@ describe('parseConfig', () => {
     expect(() => parseConfig({ ...local, NODE_ENV: 'production' })).toThrow(/dev is not allowed/);
   });
 
+  it('takes a shorter history idle time only alongside development login', () => {
+    expect(parseConfig({ ...local, HISTORY_IDLE_MS: '3000' }).HISTORY_IDLE_MS).toBe(3000);
+    expect(() =>
+      parseConfig({
+        ...local,
+        AUTH_PROVIDER: 'google',
+        GOOGLE_CLIENT_ID: 'id',
+        GOOGLE_CLIENT_SECRET: 'secret',
+        HISTORY_IDLE_MS: '3000',
+      }),
+    ).toThrow(/HISTORY_IDLE_MS: allowed only with AUTH_PROVIDER=dev/);
+  });
+
   it('[adr:authentication-and-sessions#12] refuses development login on a non-local origin', () => {
     expect(() => parseConfig({ ...local, PUBLIC_ORIGIN: 'https://between-pages.example' })).toThrow(
       /localhost or 127.0.0.1/,

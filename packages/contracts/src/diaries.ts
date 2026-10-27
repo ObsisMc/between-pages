@@ -89,8 +89,17 @@ export const HistoryPoint = z
   .object({ publicId: Uuid, committedAt: z.iso.datetime({ offset: true }), authors: z.array(Uuid) })
   .meta({ id: 'HistoryPoint' });
 
+/**
+ * `nextPointInMs`: how long until the group being written becomes a point if nothing
+ * joins it, so the client can fetch it then; null when no group is open. It is relative
+ * because the device clock may differ from the server's.
+ */
 export const HistoryPage = z
-  .object({ points: z.array(HistoryPoint), nextCursor: z.string().nullable() })
+  .object({
+    points: z.array(HistoryPoint),
+    nextCursor: z.string().nullable(),
+    nextPointInMs: z.number().int().nonnegative().nullable(),
+  })
   .meta({ id: 'HistoryPage' });
 
 export const HistoryVersionParams = z.object({ diaryId: Uuid, publicId: Uuid });

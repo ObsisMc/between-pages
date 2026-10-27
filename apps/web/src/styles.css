@@ -211,3 +211,62 @@ button.primary {
   text-decoration: none;
   background: var(--notice);
 }
+
+.page.diary:has(.with-history) {
+  max-width: 64rem;
+}
+
+.diary-body.with-history {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 16rem;
+  gap: 2rem;
+}
+
+@media (max-width: 48rem) {
+  .diary-body.with-history {
+    grid-template-columns: 1fr;
+  }
+}
+
+.history h2 {
+  font-family: var(--font-title);
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.history h3,
+.history-note,
+.history-badge {
+  color: var(--ink-soft);
+  font-size: 0.875rem;
+  font-weight: normal;
+}
+
+.history ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.history button[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.history-preview header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.history-text {
+  white-space: pre-wrap;
+  padding: 1rem 0;
+  font-size: 1.0625rem;
+  line-height: 1.9;
+  border-top: 1px dashed var(--line);
+}

@@ -35,6 +35,8 @@ export type DiaryState = {
   /** Storing on this device failed and is being retried; the text is kept in memory. */
   storeFailed: boolean;
   drafts: DiaryDraft[];
+  /** Committed deltas applied so far; a history preview compares it to say text changed. */
+  remoteChanges: number;
   /** The last input the editor refused, for a short notice; `count` tells repeats apart. */
   refusal?: { reason: Refusal; count: number };
 };
@@ -62,7 +64,13 @@ export function createDiarySession({
   diaryId,
   onChange,
 }: DiarySessionOptions): DiarySession {
-  let state: DiaryState = { phase: 'opening', unstored: 0, storeFailed: false, drafts: [] };
+  let state: DiaryState = {
+    phase: 'opening',
+    unstored: 0,
+    storeFailed: false,
+    drafts: [],
+    remoteChanges: 0,
+  };
   let destroyed = false;
   let journal: Journal<EditIntent[]> | undefined;
   let editor: EditorBinding | undefined;
@@ -200,6 +208,7 @@ export function createDiarySession({
       knownSeq: baseline.seq,
       onCommits: (commits, bindings) => {
         bind(bindings);
+        if (commits.length > 0) set({ remoteChanges: state.remoteChanges + commits.length });
         for (const commit of commits)
           if (arriving) arriving.push(commit.delta);
           else editor?.applyUpdate(commit.delta, authors);

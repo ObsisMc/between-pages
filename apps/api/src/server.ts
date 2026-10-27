@@ -16,5 +16,6 @@ const app = await buildApp({
   authHandler: (request) => auth.handler(request),
   logger: true,
   onClose: () => database.close(),
+  ...(config.HISTORY_IDLE_MS ? { historyIdleMs: config.HISTORY_IDLE_MS } : {}),
 });
 await app.listen({ port: config.PORT, host: config.HOST });
