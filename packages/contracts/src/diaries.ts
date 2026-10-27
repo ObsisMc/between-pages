@@ -57,6 +57,29 @@ export const OpenDiaryResponse = z
 
 export const DiaryResponse = z.object({ diary: DiaryState }).meta({ id: 'DiaryResponse' });
 
+/** Diaries dated before `before`; omitted means from the newest. */
+export const DiaryListQuery = z.strictObject({ before: z.iso.date().optional() });
+
+/** One card on the home page: the diary's date and the start of its text, as plain text. */
+export const DiarySummary = z
+  .object({
+    diaryId: Uuid,
+    diaryDate: z.iso.date(),
+    /**
+     * The text's first characters with whitespace runs folded to one space; empty for a
+     * blank diary, null when its stored text fails verification (`VERSION_UNREADABLE`).
+     */
+    excerpt: z.string().nullable(),
+    /** The last commit, or the creation time when nothing is written yet. */
+    updatedAt: z.iso.datetime({ offset: true }),
+  })
+  .meta({ id: 'DiarySummary' });
+
+/** Newest date first; `nextBefore` asks for the following page, null on the last. */
+export const DiaryListPage = z
+  .object({ diaries: z.array(DiarySummary), nextBefore: z.iso.date().nullable() })
+  .meta({ id: 'DiaryListPage' });
+
 /** The result of one committed send batch; the same for its ACK and every later query. */
 export const CommitReceipt = z
   .object({

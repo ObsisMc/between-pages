@@ -1,5 +1,6 @@
 import * as Y from 'yjs';
-import { createDiaryDoc } from '@between-pages/collab';
+import { BODY, createDiaryDoc } from '@between-pages/collab';
+import { VersionUnreadable } from '../errors.ts';
 import type { Store } from '../store/store.ts';
 
 /** The owner's view of a diary's current generation (kernel D10 "打开个人日记"). */
@@ -12,6 +13,21 @@ export type DiaryView = {
   state: Uint8Array;
   bindings: Map<number, string>;
 };
+
+/** One home-page card; `excerpt` is null when the stored text fails verification. */
+export type DiarySummary = {
+  diaryId: string;
+  diaryDate: string;
+  excerpt: string | null;
+  updatedAt: Date;
+};
+
+export const LIST_PAGE_SIZE = 30;
+/** Characters, not UTF-16 units, so an emoji is never cut in half. */
+export const EXCERPT_LENGTH = 80;
+
+const excerptOf = (text: string) =>
+  Array.from(text.replace(/\s+/g, ' ').trim()).slice(0, EXCERPT_LENGTH).join('');
 
 export type CatchUp = {
   seq: number;
@@ -77,6 +93,42 @@ export function createDiaryService(store: Store) {
     },
 
     view,
+
+    /**
+     * The owner's own diaries, newest date first, one page before `before`. The excerpt is
+     * rendered here from the committed state, so no CRDT data leaves the server; a diary
+     * whose stored text fails verification still gets its card, without an excerpt.
+     */
+    async list(
+      owner: string,
+      before: string | undefined,
+    ): Promise<{ diaries: DiarySummary[]; nextBefore: string | null }> {
+      return store.read(async (queries) => {
+        const rows = await queries.ownedDiaries(owner, before ?? null, LIST_PAGE_SIZE + 1);
+        const page = rows.slice(0, LIST_PAGE_SIZE);
+        const diaries: DiarySummary[] = [];
+        for (const row of page) {
+          let excerpt: string | null;
+          try {
+            const doc = await queries.state(row.id, row.generationId, row.version);
+            excerpt = excerptOf(doc.getText(BODY).toString());
+          } catch (error) {
+            if (!(error instanceof VersionUnreadable)) throw error;
+            excerpt = null;
+          }
+          diaries.push({
+            diaryId: row.id,
+            diaryDate: row.diaryDate,
+            excerpt,
+            updatedAt: row.updatedAt,
+          });
+        }
+        return {
+          diaries,
+          nextBefore: rows.length > LIST_PAGE_SIZE ? page.at(-1)!.diaryDate : null,
+        };
+      });
+    },
 
     /**
      * Commits after `knownSeq` in the caller's generation, read in one snapshot (D14).

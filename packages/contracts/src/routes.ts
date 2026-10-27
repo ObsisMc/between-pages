@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import {
+  DiaryListPage,
+  DiaryListQuery,
   DiaryParams,
   DiaryResponse,
   HistoryPage,
@@ -60,6 +62,14 @@ export const routes = {
     summary: 'Return the signed-in user.',
     access: 'user',
     response: MeResponse,
+  },
+  diaries: {
+    method: 'GET',
+    path: '/api/diaries',
+    summary: "List the caller's own diaries, newest date first, one page per `before` date.",
+    access: 'user',
+    query: DiaryListQuery,
+    response: DiaryListPage,
   },
   openDiary: {
     method: 'POST',

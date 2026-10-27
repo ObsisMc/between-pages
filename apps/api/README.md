@@ -11,6 +11,7 @@ The Fastify process: registers the routes defined in `@between-pages/contracts`,
 | `npm run dev` / `npm start -w @between-pages/api` | Listens on `HOST:PORT` (defaults `127.0.0.1:3000`), reading the repo-root `.env` if present. |
 | `GET /api/health` | Public. `200 { "status": "ok" }` while the process serves requests. |
 | `GET /api/me` | `200 { user: { id, displayName } }` for the signed-in user; `401 UNAUTHENTICATED` otherwise. |
+| `GET /api/diaries[?before=YYYY-MM-DD]` | The caller's own diaries, newest date first, 30 per page: `{ diaries: [{ diaryId, diaryDate, excerpt, updatedAt }], nextBefore }`. `excerpt` is the first 80 characters of the committed text with whitespace folded, `null` when its stored parts fail their sha256 (that card still lists); `updatedAt` is the last commit, or the creation time. |
 | `POST /api/diaries` | `{ timezone, date? }` → `{ created, diary }`: the caller's diary for `date`, or for today in `timezone` from the server's UTC clock; created with its first generation when missing. A future date or a zone that is not an IANA name is `400 VALIDATION_FAILED`. |
 | `GET /api/diaries/:diaryId` | `{ diary }`: the current generation's committed state (base64 Yjs update), `generationId`, `seq`, clientID bindings. |
 | `GET /api/diaries/:diaryId/receipt?batchId=… \| ?operationId=…` | `{ receipt }` of the caller's committed batch, or `{ receipt: null }`. The same shape as the ACK; answerable forever. |
@@ -39,7 +40,7 @@ Sub-modules of `src/` (kernel D11), top to bottom; each imports only from the la
 | Transport | `routes/` | `diaryHandlers(services)`: the HTTP handlers above; `ContractRequest<Name>`. |
 | Transport | `ws/` | `registerSyncSocket(app, deps)`, `SESSION_RECHECK_MS` (60 s), `TRANSPORT_MAX_BYTES`. |
 | Service | `commit/` | `createCommitService(store)` → `commit(actor, batch)` (`CommitOutcome`; throws on PG failure, lock timeout or `VersionUnreadable`) and `receipt(actor, diaryId, { batchId } \| { operationId })`. |
-| Service | `diaries/` | `createDiaryService(store)` → `open(owner, { timezone, date? })`, `view(viewer, diaryId)`, `catchUp(viewer, diaryId, generationId, knownSeq)`. |
+| Service | `diaries/` | `createDiaryService(store)` → `open(owner, { timezone, date? })`, `view(viewer, diaryId)`, `list(owner, before?)`, `catchUp(viewer, diaryId, generationId, knownSeq)`. |
 | Service | `history/` | `createHistoryService(store, idleMs?)` → `page(viewer, diaryId, cursor, now)`, `version(viewer, diaryId, publicId)`; `historyPoints(timeline, now)`, `nextPointIn(timeline, now)`. |
 | Service | `outbox/` | `registerBackups(locked, version)`: the backup tasks of one commit, in its transaction. |
 | Service | `events/` | `createEvents()` → `publish(event)`, `subscribe(diaryId, listener)` (returns unsubscribe). In-process only. |
@@ -87,6 +88,7 @@ npm run test:db                   # all tests against a disposable PostgreSQL 18
 - Sign-out publishes no event yet, so an open socket learns of it on its next `submit` or within the 60 s recheck (the "session invalidated" event is phase 4).
 - Commit events are in-process: one API instance (kernel D11). Correctness does not depend on it; a missed broadcast is caught up by seq.
 - The 1 MB cap applies to the JSON message, so base64 leaves about 750 KB for the updates of one batch. The phase-3 paste limit must count the encoded message.
+- The diary list rebuilds each listed diary's state to take its excerpt (at most 100 deltas past the latest snapshot each, 30 per page). If that becomes slow, keep the excerpt beside the commit instead; that is a schema change.
 - `backup_outbox` tasks are registered but nothing runs them yet; the worker arrives with the Google backup phase.
 - `ws` ships no types and `@types/ws` is not a dependency, so the socket object is untyped inside `src/ws/`.
 - Session tokens are stored as issued; Better Auth has no option to store only a digest. The cookie carries an HMAC signature, so the database alone cannot forge a session; the database and `BETTER_AUTH_SECRET` together can.

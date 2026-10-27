@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router';
 import { signOut } from '../api/auth.ts';
 import { ApiError, callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
+import { DiaryList } from '../diary-list/index.ts';
 
 /** The device's IANA zone decides which date "today" is (spec §4); the server checks it. */
 const timezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -12,7 +13,7 @@ const timezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 const todayIn = (zone: string) =>
   new Intl.DateTimeFormat('en-CA', { timeZone: zone }).format(new Date());
 
-/** Home behind RequireAuth: write today, open or back-fill a past day, sign out. */
+/** Home behind RequireAuth: write today, open or back-fill a past day, the diary cards, sign out. */
 export function HomePage() {
   const me = useMe();
   const queryClient = useQueryClient();
@@ -97,6 +98,7 @@ export function HomePage() {
           退出失败，请重试
         </p>
       )}
+      <DiaryList />
     </main>
   );
 }

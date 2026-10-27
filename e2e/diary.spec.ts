@@ -112,6 +112,33 @@ test('DATE-06 opens a past date as its own diary', async ({ page, browserName })
   await saved(page);
 });
 
+test('DATE-07 lists the own diaries as cards, newest first, and opens one', async ({
+  page,
+  browserName,
+}) => {
+  await devLogin(page, `cards-${browserName}-${run}`);
+  const today = await writeToday(page);
+  await typeAtEnd(page, '今天的第一行\n第二行');
+  await saved(page);
+  await page.getByRole('link', { name: '← 返回' }).click();
+  await page.getByLabel('打开或补写过去的日期').fill('2026-10-05');
+  await page.getByRole('button', { name: '打开', exact: true }).click();
+  await expect(page).toHaveURL(/\/diaries\/[0-9a-f-]{36}$/);
+  const past = page.url().split('/').at(-1)!;
+  await page.getByRole('link', { name: '← 返回' }).click();
+
+  const cards = page.getByRole('region', { name: '我的日记' }).getByRole('link');
+  await expect(cards).toHaveCount(2);
+  await expect(cards.first()).toContainText('今天的第一行 第二行');
+  await expect(cards.first()).toHaveAttribute('href', `/diaries/${today}`);
+  await expect(cards.last()).toContainText('还没有写字');
+  await expect(cards.last()).toHaveAttribute('href', `/diaries/${past}`);
+
+  await cards.first().click();
+  await expect(page).toHaveURL(new RegExp(`/diaries/${today}$`));
+  await expect(editor(page)).toHaveText('今天的第一行\n第二行');
+});
+
 test('SYNC-04 two devices of one account edit together without overwriting', async ({
   browser,
   browserName,

@@ -123,4 +123,28 @@ describe.runIf(testDatabaseUrl)('receipts and history routes', () => {
     });
     expect((await get(cookie, `${url}?cursor=forged`)).statusCode).toBe(400);
   });
+
+  it("lists the caller's own diaries only and refuses a malformed date", async () => {
+    const { cookie } = await sessions.signIn();
+    const other = await sessions.signIn();
+    const mine = routes.openDiary.response.parse(
+      (await openDiary(cookie, { timezone: 'Asia/Shanghai' })).json(),
+    );
+    await openDiary(other.cookie, { timezone: 'Asia/Shanghai' });
+
+    const listed = routes.diaries.response.parse((await get(cookie, routes.diaries.path)).json());
+
+    expect(listed).toEqual({
+      diaries: [
+        {
+          diaryId: mine.diary.diaryId,
+          diaryDate: mine.diary.diaryDate,
+          excerpt: '',
+          updatedAt: expect.any(String),
+        },
+      ],
+      nextBefore: null,
+    });
+    expect((await get(cookie, `${routes.diaries.path}?before=yesterday`)).statusCode).toBe(400);
+  });
 });
