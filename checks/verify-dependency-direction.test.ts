@@ -8,7 +8,6 @@ describe('verify-dependency-direction', () => {
     expect(
       violations([
         file('apps/api/src/app.ts', "import { routes } from '@between-pages/contracts';"),
-        file('apps/web/src/editor.ts', "import { acceptBatch } from '@between-pages/collab';"),
         file(
           'packages/collab/src/validate.ts',
           "import * as Y from 'yjs';\nimport { BODY } from './doc.ts';",
@@ -22,6 +21,10 @@ describe('verify-dependency-direction', () => {
         ),
         file('apps/api/src/commit/commit.ts', "import type { Store } from '../store/store.ts';"),
         file('apps/api/src/app.sync.db.test.ts', "import { buildApp } from './app.ts';"),
+        file(
+          'apps/web/src/editor-binding/binding.ts',
+          "import { BODY } from '@between-pages/collab';\nimport { schema } from './schema.ts';",
+        ),
       ]),
     ).toEqual([]);
   });
@@ -34,8 +37,8 @@ describe('verify-dependency-direction', () => {
     ],
     [
       'one app importing the other',
-      'apps/web/src/x.ts',
-      "import { buildApp } from '../../api/src/app.ts';",
+      'apps/web/src/pages/x.ts',
+      "import { buildApp } from '../../../api/src/app.ts';",
     ],
     [
       'code importing a prototype',
@@ -79,6 +82,12 @@ describe('verify-dependency-direction', () => {
       "import type { CommitService } from '../commit/commit.ts';",
     ],
     ['an unlisted api sub-module', 'apps/api/src/reader/reader.ts', 'export const x = 1;'],
+    [
+      'the editor binding reaching the network',
+      'apps/web/src/editor-binding/binding.ts',
+      "import { callApi } from '../api/client.ts';",
+    ],
+    ['an unlisted web sub-module', 'apps/web/src/journal/journal.ts', 'export const x = 1;'],
   ])('rejects %s', (_, path, source) => {
     expect(violations([file(path, source)])).toHaveLength(1);
   });
