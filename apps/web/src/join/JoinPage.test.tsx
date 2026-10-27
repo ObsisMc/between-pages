@@ -77,6 +77,25 @@ describe('JoinPage', () => {
     expect(pendingInvite()).toBeNull();
   });
 
+  it('follows a new link opened while the page already shows an earlier one', async () => {
+    const OTHER = 'zyxwvutsrqponmlkjihgfedcbaZYXWVUTSRQPONMLKJ';
+    stubApi({
+      'GET /api/me': signedIn('alice'),
+      'POST /api/binding/invitations/preview': (init) =>
+        JSON.parse(init!.body as string).token === TOKEN
+          ? errorBody('INVITE_REVOKED', 409)()
+          : preview(),
+    });
+    const { router } = renderAt(`/join#token=${TOKEN}`);
+    expect((await screen.findByRole('alert')).textContent).toBe('这条邀请已被撤销');
+
+    await router.navigate(`/join#token=${OTHER}`);
+
+    expect(await screen.findByText('接受邀请')).toBeDefined();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(pendingInvite()).toBe(OTHER);
+  });
+
   it('forgets a token the server refuses for good, and keeps it after a network failure', async () => {
     sessionStorage.setItem('between-pages-pending-invite', TOKEN);
     let online = false;

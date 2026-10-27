@@ -28,20 +28,32 @@ export function JoinPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const client = useQueryClient();
-  const [token, setToken] = useState<string | null>(() => {
-    const fromLink = tokenFromHash(location.hash);
-    if (fromLink) keepPendingInvite(fromLink);
-    return fromLink ?? pendingInvite();
-  });
+  const [token, setToken] = useState<string | null>(
+    () => tokenFromHash(location.hash) ?? pendingInvite(),
+  );
   const [preview, setPreview] = useState<Preview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [choice, setChoice] = useState<RangeChoice>({ kind: 'selection', selection: ALL_DAYS });
   const [busy, setBusy] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
+  // A link opened while this page is already showing changes only the fragment, so the
+  // page follows it here instead of keeping the previous invitation's answer.
+  const [seenHash, setSeenHash] = useState(location.hash);
+  const fromLink = tokenFromHash(location.hash);
+  if (location.hash !== seenHash) {
+    setSeenHash(location.hash);
+    if (fromLink) {
+      setToken(fromLink);
+      setPreview(null);
+      setError(null);
+    }
+  }
+
   useEffect(() => {
+    if (fromLink) keepPendingInvite(fromLink);
     if (location.hash) void navigate('/join', { replace: true });
-  }, [location.hash, navigate]);
+  }, [fromLink, location.hash, navigate]);
 
   const signedIn = me.isSuccess;
   useEffect(() => {
