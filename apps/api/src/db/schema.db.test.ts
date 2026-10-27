@@ -1,10 +1,89 @@
+import { randomUUID } from 'node:crypto';
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { describe, expect, it } from 'vitest';
-import { runMigrations } from './migrate.ts';
+import { createDb } from './client.ts';
+import { migrationsFolder, runMigrations } from './migrate.ts';
 import { query, testDatabaseUrl } from '../../test/db.ts';
+
+/** The migrations folder cut after `lastTag`, standing in for an older release. */
+function migrationsUpTo(lastTag: string): string {
+  const folder = mkdtempSync(join(tmpdir(), 'migrations-'));
+  cpSync(migrationsFolder, folder, { recursive: true });
+  const journalPath = join(folder, 'meta', '_journal.json');
+  const journal = JSON.parse(readFileSync(journalPath, 'utf8')) as { entries: { tag: string }[] };
+  const end = journal.entries.findIndex((e) => e.tag === lastTag);
+  if (end < 0) throw new Error(`no migration ${lastTag}`);
+  journal.entries = journal.entries.slice(0, end + 1);
+  writeFileSync(journalPath, JSON.stringify(journal));
+  return folder;
+}
+
+/** A fresh database next to the test database, dropped by the returned function. */
+async function scratchDatabase(): Promise<{ url: string; drop: () => Promise<void> }> {
+  const name = `upgrade_${randomUUID().replaceAll('-', '')}`;
+  await query(`create database ${name}`);
+  const url = new URL(testDatabaseUrl!);
+  url.pathname = `/${name}`;
+  return { url: url.toString(), drop: () => query(`drop database ${name} with (force)`).then() };
+}
 
 describe.runIf(testDatabaseUrl)('database schema', () => {
   it('re-applies migrations without error once they are applied', async () => {
     await expect(runMigrations(testDatabaseUrl!)).resolves.toBeUndefined();
+  });
+
+  it('adds the relationship tables to a database that already has users and diaries', async () => {
+    const scratch = await scratchDatabase();
+    const older = migrationsUpTo('0002_personal_diaries');
+    const database = createDb(scratch.url);
+    try {
+      await migrate(database.db, { migrationsFolder: older });
+      const [userId, diaryId, generationId] = [randomUUID(), randomUUID(), randomUUID()];
+      await database.pool.query(`insert into users (id, display_name) values ($1, 'writer')`, [
+        userId,
+      ]);
+      await database.pool.query(
+        `insert into auth_user (id, name, email) values ($1, 'writer', 'writer@example.test')`,
+        [userId],
+      );
+      await database.pool.query(
+        `insert into diaries (id, owner_id, diary_date, created_timezone, generation_id)
+         values ($1, $2, '2026-10-26', 'Asia/Shanghai', $3)`,
+        [diaryId, userId, generationId],
+      );
+
+      await runMigrations(scratch.url);
+
+      const kept = await database.pool.query(
+        `select u.display_name, a.email, d.diary_date::text
+         from users u join auth_user a on a.id = u.id join diaries d on d.owner_id = u.id`,
+      );
+      expect(kept.rows).toEqual([
+        { display_name: 'writer', email: 'writer@example.test', diary_date: '2026-10-26' },
+      ]);
+      const tables = await database.pool.query(
+        `select table_name from information_schema.tables
+         where table_schema = 'public' and table_name = any($1) order by table_name`,
+        [
+          [
+            'active_bindings',
+            'binding_invitations',
+            'binding_periods',
+            'sharing_policies',
+            'sharing_policy_changes',
+            'spaces',
+          ],
+        ],
+      );
+      expect(tables.rowCount).toBe(6);
+    } finally {
+      await database.close();
+      rmSync(older, { recursive: true, force: true });
+      await scratch.drop();
+    }
   });
 
   it('[adr:authentication-and-sessions#1] keeps domain users free of auth data', async () => {
