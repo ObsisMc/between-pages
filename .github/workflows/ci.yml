@@ -1,5 +1,5 @@
-# Every job runs the same command a developer runs locally (AGENTS.md#commands). Each job
-# has a time limit, so a stuck step costs at most that many minutes.
+# Every job runs the same command a developer runs locally (AGENTS.md#commands). Browser
+# tests are in e2e.yml. Each job has a time limit, so a stuck step costs at most that.
 name: ci
 
 on:
@@ -107,29 +107,3 @@ jobs:
           DOCS_NOT_NEEDED: ${{ contains(github.event.pull_request.labels.*.name, 'docs-not-needed') }}
           ROADMAP_NOT_NEEDED: ${{ contains(github.event.pull_request.labels.*.name, 'roadmap-not-needed') }}
           ADR_AMEND: ${{ contains(github.event.pull_request.labels.*.name, 'adr-amend') }}
-
-  e2e:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    # Login (authentication-and-sessions E1-E6) and the diary screen (kernel phase 3) in
-    # Chromium, Firefox and WebKit; not a
-    # required check (the ADR leaves branch protection unchanged).
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_PASSWORD: test-only
-          POSTGRES_DB: between_pages_test
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd "pg_isready -h 127.0.0.1 -U postgres -d between_pages_test"
-          --health-interval 2s --health-timeout 5s --health-retries 30
-    env:
-      TEST_DATABASE_URL: postgresql://postgres:test-only@127.0.0.1:5432/between_pages_test
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with: { node-version-file: .nvmrc, cache: npm }
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium firefox webkit
-      - run: npm run test:e2e:all

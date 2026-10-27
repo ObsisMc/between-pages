@@ -1,0 +1,57 @@
+# Browser tests (authentication-and-sessions E1-E6, kernel phase 3) through the real API
+# and PostgreSQL; the same commands as AGENTS.md#commands. Not a required check (the ADR
+# leaves branch protection unchanged), so skipping a docs-only change blocks nothing.
+# A pull request runs Chromium and WebKit, like `npm run test:e2e` locally; a push to
+# main adds Firefox (`test:e2e:all`).
+name: e2e
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths-ignore: ['docs/**', '**/*.md']
+  push:
+    branches: [main]
+    paths-ignore: ['docs/**', '**/*.md']
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_PASSWORD: test-only
+          POSTGRES_DB: between_pages_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U postgres -d between_pages_test"
+          --health-interval 2s --health-timeout 5s --health-retries 30
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:test-only@127.0.0.1:5432/between_pages_test
+      BROWSERS: ${{ github.event_name == 'push' && 'chromium firefox webkit' || 'chromium webkit' }}
+      SUITE: ${{ github.event_name == 'push' && 'test:e2e:all' || 'test:e2e' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version-file: .nvmrc, cache: npm }
+      - run: npm ci
+      - id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      # Browser builds are tied to the Playwright version. Caches saved on main are
+      # readable by every pull request, and main's set includes the pull request's.
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-${{ env.BROWSERS }}
+          restore-keys: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-
+      # System libraries are not cached; installing them is the step's apt part.
+      - run: npx playwright install --with-deps $BROWSERS
+      - run: npm run "$SUITE"
