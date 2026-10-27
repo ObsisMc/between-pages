@@ -7,6 +7,9 @@ import * as Y from 'yjs';
 import { createSender, type SaveStatus, type Sender, type SubmitResult } from './sender.ts';
 
 const DIARY = '6f1c2d3e-4a5b-4c6d-8e7f-9a0b1c2d3e4f';
+// The journal works in real time even under fake timers, so "nothing was sent" waits in it.
+const realSetTimeout = globalThis.setTimeout;
+const quiet = () => new Promise((resolve) => realSetTimeout(resolve, 30));
 const GENERATION = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
 
 const cleanup: (() => void)[] = [];
@@ -143,7 +146,7 @@ describe('sender', () => {
     await vi.waitFor(() => expect(stand.calls).toHaveLength(1));
     await type(journal, sender, '二');
     await type(journal, sender, '三');
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await quiet();
     expect(stand.calls).toHaveLength(1);
 
     stand.ack(0);
@@ -181,6 +184,9 @@ describe('sender', () => {
     stand.fail(0, 'INTERNAL');
     await vi.waitFor(() => expect(statuses.at(-1)).toBe('offline'));
 
+    await type(journal, sender, '再'); // typing on does not cut the pause short
+    await quiet();
+    expect(stand.calls).toHaveLength(1);
     await vi.advanceTimersByTimeAsync(999);
     expect(stand.calls).toHaveLength(1);
     await vi.advanceTimersByTimeAsync(1);
@@ -246,7 +252,7 @@ describe('sender', () => {
     await vi.waitFor(() => expect(statuses.at(-1)).toBe('upgrade'));
 
     await type(journal, sender, '再');
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await quiet();
     expect(stand.calls).toHaveLength(1);
     expect((await journal.load(DIARY)).pending).toHaveLength(2);
   });

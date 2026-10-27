@@ -63,6 +63,7 @@ export function createSender<Intent>({
   let running = false;
   let again = false;
   let retryMs = RETRY_FIRST_MS;
+  /** Set while the server asked for a pause; new input does not cut it short. */
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   const status = (next: SaveStatus) => {
@@ -72,7 +73,10 @@ export function createSender<Intent>({
 
   const retryLater = () => {
     status('offline');
-    timer = setTimeout(wake, retryMs);
+    timer = setTimeout(() => {
+      timer = undefined;
+      wake();
+    }, retryMs);
     retryMs = Math.min(retryMs * 2, RETRY_MAX_MS);
   };
 
@@ -83,8 +87,9 @@ export function createSender<Intent>({
       retryMs = RETRY_FIRST_MS;
       return true;
     }
+    // No connection: the next wake, when it is back, resends the same batch.
     if (result.type === 'offline') {
-      retryLater();
+      status('offline');
       return false;
     }
     switch (errorCategory[result.code]) {
@@ -138,8 +143,7 @@ export function createSender<Intent>({
   }
 
   function wake() {
-    if (halted || !locks) return;
-    clearTimeout(timer);
+    if (halted || !locks || timer) return;
     if (running) {
       again = true;
       return;
