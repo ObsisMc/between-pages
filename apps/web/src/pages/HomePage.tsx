@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { signOut } from '../api/auth.ts';
 import { ApiError, callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
 import { DiaryList } from '../diary-list/index.ts';
+import { clearPendingInvite, pendingInvite } from '../join/index.ts';
+import { RelationshipPanel } from '../relationship/index.ts';
 
 /** The device's IANA zone decides which date "today" is (spec §4); the server checks it. */
 const timezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -23,12 +25,19 @@ export function HomePage() {
   const [opening, setOpening] = useState(false);
   const [date, setDate] = useState('');
 
+  // Login always lands here; an invitation opened before signing in continues at /join.
+  useEffect(() => {
+    if (pendingInvite()) void navigate('/join', { replace: true });
+  }, [navigate]);
+
   const onSignOut = async () => {
     setFailed(false);
     try {
       await signOut();
-      // Drop every cached answer of the old session before showing the login page.
+      // Drop every cached answer and a kept invitation of the old session before showing
+      // the login page.
       queryClient.clear();
+      clearPendingInvite();
       await navigate('/login', { replace: true });
     } catch {
       setFailed(true);
@@ -98,6 +107,7 @@ export function HomePage() {
           退出失败，请重试
         </p>
       )}
+      {me.data && <RelationshipPanel userId={me.data.user.id} />}
       <DiaryList />
     </main>
   );

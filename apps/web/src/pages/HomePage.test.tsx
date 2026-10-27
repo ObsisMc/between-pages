@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
-import { renderAt, signedIn, signedOut, stubApi } from '../../test/render.tsx';
+import { noRelationship, renderAt, signedIn, signedOut, stubApi } from '../../test/render.tsx';
 
 const diary = {
   diaryId: '7c1d2b8e-3f4a-4b5c-8d6e-9f0a1b2c3d4e',
@@ -23,6 +23,7 @@ describe('HomePage', () => {
   it('signs out, forgets the session and returns to /login', async () => {
     let session = true;
     stubApi({
+      ...noRelationship,
       'GET /api/me': () => (session ? signedIn('alice')() : signedOut()),
       'GET /api/diaries': noDiaries,
       'POST /api/auth/sign-out': () => ((session = false), Response.json({ success: true })),
@@ -36,6 +37,7 @@ describe('HomePage', () => {
 
   it('stays and says so when signing out fails', async () => {
     stubApi({
+      ...noRelationship,
       'GET /api/me': signedIn('alice'),
       'GET /api/diaries': noDiaries,
       'POST /api/auth/sign-out': () => new Response(null, { status: 500 }),
@@ -52,6 +54,7 @@ describe('HomePage', () => {
       return Response.json({ created: true, diary: { ...diary, diaryDate: '2026-10-27' } });
     });
     stubApi({
+      ...noRelationship,
       'GET /api/me': signedIn('alice'),
       'GET /api/diaries': noDiaries,
       'POST /api/diaries': opened,
@@ -70,6 +73,7 @@ describe('HomePage', () => {
       return Response.json({ created: true, diary });
     });
     stubApi({
+      ...noRelationship,
       'GET /api/me': signedIn('alice'),
       'GET /api/diaries': noDiaries,
       'POST /api/diaries': opened,
@@ -87,6 +91,7 @@ describe('HomePage', () => {
 
   it('does not claim to open today while offline', async () => {
     stubApi({
+      ...noRelationship,
       'GET /api/me': signedIn('alice'),
       'GET /api/diaries': noDiaries,
       'POST /api/diaries': () => Promise.reject(new TypeError('Failed to fetch')),

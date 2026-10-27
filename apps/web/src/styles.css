@@ -326,3 +326,120 @@ button.primary {
   color: var(--ink-soft);
   font-size: 0.875rem;
 }
+
+/* Relationship and sharing range (spaces-and-invitations D12). */
+.relationship,
+.my-range,
+.unbind {
+  margin-top: 2rem;
+  border-top: 1px dashed var(--line);
+  padding-top: 1.25rem;
+}
+
+.relationship h2,
+.relationship h3,
+.my-range h2,
+.space h2 {
+  font-family: var(--font-title);
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+}
+
+.relationship-note,
+.range-help,
+.range-summary {
+  color: var(--ink-soft);
+  font-size: 0.875rem;
+}
+
+.invitation input[readonly] {
+  width: 100%;
+  font: inherit;
+  padding: 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--ink);
+  margin-bottom: 0.5rem;
+}
+
+.range-editor [role='radiogroup'] {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.range-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.25rem 0.75rem;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.75rem 0.75rem;
+}
+
+.range-row legend {
+  color: var(--ink-soft);
+  font-size: 0.875rem;
+}
+
+.range-row input[type='date'] {
+  font: inherit;
+  margin-left: 0.5rem;
+}
+
+.range-open {
+  font-size: 0.875rem;
+}
+
+.month-view {
+  margin: 0.75rem 0;
+}
+
+.month-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.25rem;
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+.month-weekday {
+  color: var(--ink-soft);
+}
+
+.month-day {
+  padding: 0.25rem 0;
+  border-radius: 0.5rem;
+}
+
+.month-day.shared {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.space header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.periods {
+  padding-left: 1.25rem;
+}
+
+.range-confirm button,
+.unbind button {
+  margin-right: 0.5rem;
+}
