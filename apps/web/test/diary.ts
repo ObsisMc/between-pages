@@ -16,8 +16,17 @@ export class FakeSocket {
   static all: FakeSocket[] = [];
   static answer: (submit: Submit) => ErrorCode | 'ack' | 'hold' = () => 'ack';
   static seq = 0;
-  /** Sends the ACK of the submit last answered with `hold`. */
-  static release = () => {};
+  private static held: (() => void) | null = null;
+  private static releaseEarly = false;
+  /**
+   * ACKs the submit last answered with `hold`. A test may observe the pending state before
+   * the sender has handed the batch to the socket, so a release that comes first ACKs the
+   * held submit as soon as it arrives.
+   */
+  static release() {
+    if (FakeSocket.held) FakeSocket.held();
+    else FakeSocket.releaseEarly = true;
+  }
   sent: ClientMessage[] = [];
   onopen: (() => void) | null = null;
   onmessage: ((event: { data: string }) => void) | null = null;
@@ -42,7 +51,8 @@ export class FakeSocket {
       });
     const answer = FakeSocket.answer(message);
     if (answer === 'hold') {
-      FakeSocket.release = () => this.ack(message, reply);
+      FakeSocket.held = () => this.ack(message, reply);
+      if (FakeSocket.releaseEarly) FakeSocket.held();
       return;
     }
     if (answer !== 'ack')
@@ -95,7 +105,8 @@ export class FakeSocket {
     FakeSocket.all = [];
     FakeSocket.answer = () => 'ack';
     FakeSocket.seq = 0;
-    FakeSocket.release = () => {};
+    FakeSocket.held = null;
+    FakeSocket.releaseEarly = false;
   }
 }
 const base = { v: PROTOCOL_VERSION, diaryId: DIARY };
