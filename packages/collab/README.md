@@ -48,4 +48,4 @@ npx vitest run --project collab
 - Each update passed to `acceptBatch` must be one Yjs transaction as emitted by the `update` event. A state diff (`encodeStateAsUpdate(doc, vector)`) carries the whole delete set, including the other author's deletions, and is rejected as `FOREIGN_DELETE`.
 - The canonical batch bytes live here, not in `packages/contracts`, so web and API share one implementation; contracts will own only the wire fields.
 - Baselines remove deleted text but keep structure: clientIDs, clocks and deletion lengths can still hint at edit volume (kernel D4).
-- The API uses it since kernel phase 2; the web app adopts it in phase 3.
+- The API uses it since kernel phase 2; the web app's editor binding since phase 3.
