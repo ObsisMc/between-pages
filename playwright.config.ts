@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// End-to-end tests for the formal app (authentication-and-sessions acceptance E1-E6).
+// End-to-end tests for the formal app (authentication-and-sessions acceptance E1-E6, the
+// kernel phase-3 diary screen) in the three engines the kernel ADR requires.
 // Starts the mock issuer, the API and the web dev server on their own ports, so it never
 // talks to a developer's running servers. Needs TEST_DATABASE_URL: `npm run test:e2e:db`
 // locally, the PostgreSQL service in CI.
@@ -24,7 +25,11 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   reporter: process.env.CI ? 'github' : 'list',
   use: { baseURL: WEB, trace: 'retain-on-failure' },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+  ],
   webServer: [
     {
       command: 'npm run dev:oidc',

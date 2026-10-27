@@ -11,7 +11,7 @@ How this repository tests, tier by tier, and the rules that keep a green suite m
 | Database | same runner; needs `TEST_DATABASE_URL` (`npm run test:db` locally, a service container in CI) | Schema, constraints and transactions on real PostgreSQL 18 | `apps/api/src/**/*.db.test.ts` |
 | Component | same runner, `apps/web` project (jsdom) | Screens render and react to real contract responses | `apps/web/src/*.test.tsx` |
 | Prototype baseline | `npm run test:prototypes` — every PR; PG/browser suites on demand | The validated collaboration behavior still holds | `prototypes/**/test/` (node:test, frozen) |
-| End-to-end | `npm run test:e2e:db` locally (disposable PostgreSQL), `test:e2e` in the CI `e2e` job | The product through a real browser (Chromium): mock issuer, API and Vite dev server started by `playwright.config.ts` on their own ports | `e2e/*.spec.ts` |
+| End-to-end | `npm run test:e2e:db` locally (disposable PostgreSQL), `test:e2e` in the CI `e2e` job | The product through real browsers (Chromium, Firefox and WebKit, as the kernel ADR requires): mock issuer, API and Vite dev server started by `playwright.config.ts` on their own ports | `e2e/*.spec.ts` |
 
 Coverage gate: `npm run test:coverage` (`npm run test:db` locally, so database tests count) fails under **80% lines** across `apps/*/src` and `packages/*/src` (process entry points excluded, see `vitest.config.ts`). Coverage proves lines ran, not that behavior is right — necessary, never sufficient. An uncovered line is often dead code to delete, not a test to bolt on.
 

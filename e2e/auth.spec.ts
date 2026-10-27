@@ -1,7 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 
 // Acceptance E1-E6 of the authentication-and-sessions ADR, through the development login.
-// Names carry a per-run suffix so reruns against one database stay independent.
+// Names carry the browser and a per-run suffix, so projects running at once and reruns
+// against one database stay independent.
 const run = Date.now().toString(36);
 
 async function devLogin(page: Page, name: string) {
@@ -16,8 +17,8 @@ test('E1 sends a signed-out visitor from / to /login', async ({ page }) => {
   await expect(page.getByRole('button', { name: '使用 Google 登录' })).toBeVisible();
 });
 
-test('E2-E4 signs in, survives a reload and signs out', async ({ page }) => {
-  const name = `alice-${run}`;
+test('E2-E4 signs in, survives a reload and signs out', async ({ page, browserName }) => {
+  const name = `alice-${browserName}-${run}`;
   await devLogin(page, name);
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByText(`已登录为 ${name}`)).toBeVisible();
@@ -31,8 +32,8 @@ test('E2-E4 signs in, survives a reload and signs out', async ({ page }) => {
   await expect(page).toHaveURL(/\/login$/);
 });
 
-test('E5 refuses a second subject with an email already in use', async ({ page }) => {
-  const name = `carol-${run}`;
+test('E5 refuses a second subject with an email already in use', async ({ page, browserName }) => {
+  const name = `carol-${browserName}-${run}`;
   await devLogin(page, name);
   await expect(page.getByText(`已登录为 ${name}`)).toBeVisible();
   await page.getByRole('button', { name: '退出' }).click();
@@ -45,8 +46,8 @@ test('E5 refuses a second subject with an email already in use', async ({ page }
   );
 });
 
-test('E6 sends a signed-in user from /login to /', async ({ page }) => {
-  const name = `dave-${run}`;
+test('E6 sends a signed-in user from /login to /', async ({ page, browserName }) => {
+  const name = `dave-${browserName}-${run}`;
   await devLogin(page, name);
   await expect(page.getByText(`已登录为 ${name}`)).toBeVisible();
   await page.goto('/login');
