@@ -277,7 +277,10 @@ export function createEditorBinding(
         // composition is complete once that microtask has run.
         clearTimeout(compositionTimer);
         compositionTimer = setTimeout(() => {
-          if (composition && !view.composing) finishComposition();
+          if (view.composing) return;
+          // With nothing composed, a caret move made while composing still goes out.
+          if (composition) finishComposition();
+          else sendCaret();
         });
         return false;
       },
@@ -286,8 +289,15 @@ export function createEditorBinding(
 
   /** Tells `onCaret` where the user's own caret is, after the user moved it. */
   function reportCaret(tr: Transaction) {
-    if (!onCaret || tr.getMeta(MIRROR) || !(tr.selectionSet || tr.docChanged) || !view.hasFocus())
-      return;
+    // A composing view shows candidate text `Y.Text` lacks, so its positions would land
+    // past where the other person's copy has text; the composition's end reports instead.
+    if (composition || view.composing) return;
+    if (!tr.getMeta(MIRROR) && (tr.selectionSet || tr.docChanged)) sendCaret();
+  }
+
+  /** Sends the own caret while this editor has focus; the view must match `Y.Text`. */
+  function sendCaret() {
+    if (!onCaret || !view.hasFocus()) return;
     const { anchor, head } = view.state.selection;
     const at = (pos: number) =>
       Y.encodeRelativePosition(
@@ -397,6 +407,7 @@ export function createEditorBinding(
     settleComposition();
     // Decorations were only mapped while composing; drawn again from `Y.Text` now.
     if (authorClass || ownOnly) view.dispatch(view.state.tr.setMeta(MIRROR, true));
+    sendCaret();
   }
 
   function settleComposition() {

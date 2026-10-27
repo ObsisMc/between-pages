@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { MAX_PASTE_BYTES } from './input.ts';
 import { WRITE_SESSION_GAP_MS } from './write-session.ts';
-import { createEditorBinding, type EditorOperation, type Refusal } from './index.ts';
+import { createEditorBinding, type Caret, type EditorOperation, type Refusal } from './index.ts';
 
 const ALICE = 'alice';
 const BOB = 'bob';
@@ -30,9 +30,11 @@ function setup(state?: { server: Y.Doc; bindings: Map<number, string> }) {
   document.body.append(place);
   const operations: EditorOperation[] = [];
   const refusals: Refusal[] = [];
+  const carets: (Caret | null)[] = [];
   const binding = createEditorBinding(place, {
     userId: ALICE,
     authorClass: (author) => SLOTS[author] ?? null,
+    onCaret: (caret) => carets.push(caret),
     onOperation: (operation) => operations.push(operation),
     onRefuse: (refusal) => refusals.push(refusal),
   });
@@ -45,6 +47,7 @@ function setup(state?: { server: Y.Doc; bindings: Map<number, string> }) {
     view,
     operations,
     refusals,
+    carets,
     server,
     bindings,
     text: () => view.state.doc.textContent,
@@ -578,6 +581,125 @@ describe('IME composition', () => {
     expect(editor.serverText()).toBe(editor.text());
     expect(editor.caret()).toEqual([7, 7]);
     expect(insertedStrings(editor.operations.at(-1)!.update)).toEqual(['在']);
+  });
+
+  describe('the own caret the other person sees', () => {
+    /** Where a sent caret lands in the committed text, as the other person's copy resolves it. */
+    const landing = (editor: ReturnType<typeof setup>, caret: Caret | null) =>
+      caret &&
+      Y.createAbsolutePositionFromRelativePosition(
+        Y.decodeRelativePosition(caret.head),
+        editor.server,
+      )?.index;
+    /** Shows each candidate in turn where the caret is, as an input method does. */
+    const compose = (editor: ReturnType<typeof setup>, candidates: string[], shown = '') => {
+      const { view } = editor;
+      const at = view.state.selection.from - shown.length;
+      for (const candidate of candidates) {
+        view.dispatch(view.state.tr.insertText(candidate, at, at + shown.length));
+        shown = candidate;
+      }
+      return shown;
+    };
+    /** "AB" committed, the caret between A and B, focused. */
+    const betweenAB = () => {
+      const editor = setup();
+      editor.view.focus();
+      editor.type('AB');
+      editor.commit();
+      editor.select(1);
+      return editor;
+    };
+    const ended = () => new Promise((resolve) => setTimeout(resolve));
+
+    // Candidates as each input method shows them; the last is replaced by the confirmed text
+    // before the composition ends, as Chromium reads it.
+    it.each([
+      ['Chinese pinyin', ['n', 'ni', 'nih', 'niha', 'nihao'], '你好'],
+      ['Japanese conversion', ['n', 'に', 'にh', 'にほ', 'にほn', 'にほん', '日本'], '日本'],
+      ['a dead key', ['´'], 'é'],
+      ['Vietnamese Telex', ['v', 'vi', 'vie', 'viê', 'việt'], 'việt'],
+      ['a keyboard composing whole Latin words', ['h', 'he', 'hel', 'hell', 'hello'], 'hello'],
+    ])(
+      '%s: stays where composing began, then follows the confirmed text',
+      async (_method, candidates, confirmed) => {
+        const editor = betweenAB();
+        const before = editor.carets.length;
+        compositionEvent(editor, 'compositionstart');
+        const shown = compose(editor, candidates);
+        compose(editor, [confirmed], shown);
+        const during = editor.carets.slice(before);
+        compositionEvent(editor, 'compositionend');
+        await ended();
+        editor.commit();
+
+        expect(during.map((caret) => landing(editor, caret))).toEqual(during.map(() => 1));
+        expect(editor.serverText()).toBe(`A${confirmed}B`);
+        expect(landing(editor, editor.carets.at(-1)!)).toBe(1 + confirmed.length);
+      },
+    );
+
+    it('Korean: follows each syllable as it is confirmed', async () => {
+      const editor = betweenAB();
+      // The input method confirms each syllable as its last candidate and starts the next.
+      for (const candidates of [
+        ['ㅎ', '하', '한'],
+        ['ㄱ', '그', '글'],
+      ]) {
+        const confirmed = candidates.at(-1)!;
+        compositionEvent(editor, 'compositionstart');
+        compose(editor, candidates);
+        compositionEvent(editor, 'compositionend');
+        await ended();
+        editor.commit();
+        expect(landing(editor, editor.carets.at(-1)!)).toBe(
+          editor.serverText().indexOf(confirmed) + 1,
+        );
+      }
+      expect(editor.serverText()).toBe('A한글B');
+    });
+
+    it('returns to where it was when the composition is cancelled', async () => {
+      const editor = betweenAB();
+      compositionEvent(editor, 'compositionstart');
+      const shown = compose(editor, ['n', 'ni']);
+      compose(editor, [''], shown);
+      compositionEvent(editor, 'compositionend');
+      await ended();
+
+      expect(editor.serverText()).toBe('AB');
+      expect(landing(editor, editor.carets.at(-1)!)).toBe(1);
+    });
+
+    it('lands after the confirmed text when the other person wrote meanwhile', () => {
+      const editor = alongsideBob();
+      editor.view.focus();
+      editor.select(5);
+      compositionEvent(editor, 'compositionstart');
+      const { view } = editor;
+      view.dispatch(view.state.tr.insertText('z'));
+      editor.bob((text) => text.insert(0, '早'));
+      compositionEvent(editor, 'compositionend');
+      view.dispatch(view.state.tr.setMeta('composition', 1).insertText('在', 6, 7));
+      editor.commit();
+
+      expect(editor.serverText()).toBe('早今天很累，在抱抱！');
+      expect(landing(editor, editor.carets.at(-1)!)).toBe(7);
+    });
+
+    it("stays where the refused composition began over the other person's text", () => {
+      const editor = alongsideBob();
+      editor.view.focus();
+      editor.select(4, 6);
+      compositionEvent(editor, 'compositionstart');
+      const { view } = editor;
+      view.dispatch(view.state.tr.insertText('a'));
+      compositionEvent(editor, 'compositionend');
+      view.dispatch(view.state.tr.insertText('啊', 5, 6).setMeta('composition', 1));
+
+      expect(editor.refusals).toEqual(['FOREIGN_TEXT']);
+      expect(landing(editor, editor.carets.at(-1)!)).toBe(4);
+    });
   });
 
   it("[adr:diary-collaboration-kernel#3] refuses a composition over the other person's text", () => {
