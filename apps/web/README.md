@@ -73,6 +73,7 @@ npx vitest run --project web
 - No author colors and legend, click for author and write time, or "只看我的文字" yet (EDIT-13, EDIT-14, TIME-03): they come with kernel phase 4, when a diary can hold a second author; write time per character also needs a server route that does not exist. The history preview marks runs `author-self` / `author-other` for that. `src/main.tsx` (excluded from coverage) only mounts providers and the router.
 - History has no word-level diff (D6: not in the first release).
 - The home page lists only the owner's own diaries; diaries a partner shares come with kernel phase 4 and the relationship work, filtered by what was shared.
+- Offline, the home page shows no cards, only that it cannot read the list, although diaries opened on this device are in the journal and open and continue offline from their link. Listing them from the journal would need the diary date in the journal's baselines (spec §4 "离线可读本机已缓存……的日记"). The list also reports any failure that is not an API answer as offline.
 - Opening a diary while offline works only for one this device has stored; there is no offline list of diaries, and the page itself still needs the server to load (no service worker).
 - Refused input typed one character at a time is stored as one draft per character; only the display groups it.
 - Switching a diary to a new generation (reconcile pending, keep drafts, install the new baseline in one transaction) is kernel phase 4; until then `install` refuses another generation.
