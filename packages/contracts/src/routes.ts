@@ -13,6 +13,27 @@ import {
   ReceiptQuery,
   ReceiptResponse,
 } from './diaries.ts';
+import {
+  AcceptInvitationRequest,
+  AcceptInvitationResponse,
+  BindingResponse,
+  CreateInvitationRequest,
+  CreateInvitationResponse,
+  EmptyRequest,
+  InvitationParams,
+  MySharingResponse,
+  PreviewInvitationRequest,
+  PreviewInvitationResponse,
+  RevokeInvitationResponse,
+  SaveMySharingRequest,
+  SaveMySharingResponse,
+  SpaceParams,
+  SpaceResponse,
+  SpacesResponse,
+  UnbindRequest,
+  UnbindResponse,
+} from './spaces.ts';
+import { UserSummary } from './users.ts';
 
 // Every HTTP route the web client may call. The API registers handlers from these
 // definitions and the client builds requests from them, so the path, method and
@@ -36,15 +57,6 @@ export const HealthResponse = z
     status: z.literal('ok'),
   })
   .meta({ id: 'HealthResponse' });
-
-// What one member may learn about a user. Never add last-seen time or login data here
-// (authentication-and-sessions invariant 9).
-export const UserSummary = z
-  .object({
-    id: z.uuid(),
-    displayName: z.string(),
-  })
-  .meta({ id: 'UserSummary' });
 
 export const MeResponse = z.object({ user: UserSummary }).meta({ id: 'MeResponse' });
 
@@ -113,6 +125,91 @@ export const routes = {
     access: 'user',
     params: HistoryVersionParams,
     response: HistoryVersion,
+  },
+  binding: {
+    method: 'GET',
+    path: '/api/binding',
+    summary: "The caller's current binding and their latest open invitation.",
+    access: 'user',
+    response: BindingResponse,
+  },
+  spaces: {
+    method: 'GET',
+    path: '/api/spaces',
+    summary: 'Spaces the caller takes part in, current or archived.',
+    access: 'user',
+    response: SpacesResponse,
+  },
+  space: {
+    method: 'GET',
+    path: '/api/spaces/:spaceId',
+    summary: 'One space the caller takes part in, with its binding periods. No sharing range.',
+    access: 'user',
+    params: SpaceParams,
+    response: SpaceResponse,
+  },
+  createInvitation: {
+    method: 'POST',
+    path: '/api/binding/invitations',
+    summary:
+      "Open a seven-day invitation link, closing the caller's previous one; a repeated requestId returns it without its token.",
+    access: 'user',
+    body: CreateInvitationRequest,
+    response: CreateInvitationResponse,
+  },
+  revokeInvitation: {
+    method: 'POST',
+    path: '/api/binding/invitations/:inviteId/revoke',
+    summary: "Revoke one of the caller's invitations; revoking it again changes nothing.",
+    access: 'user',
+    params: InvitationParams,
+    body: EmptyRequest,
+    response: RevokeInvitationResponse,
+  },
+  previewInvitation: {
+    method: 'POST',
+    path: '/api/binding/invitations/preview',
+    summary:
+      'Show who invited the caller and whether it starts or restores a space; binds nothing.',
+    access: 'user',
+    body: PreviewInvitationRequest,
+    response: PreviewInvitationResponse,
+  },
+  acceptInvitation: {
+    method: 'POST',
+    path: '/api/binding/invitations/accept',
+    summary:
+      'Bind the caller to the inviter, storing each confirmed sharing range; publishes no diary text.',
+    access: 'user',
+    body: AcceptInvitationRequest,
+    response: AcceptInvitationResponse,
+  },
+  unbind: {
+    method: 'POST',
+    path: '/api/spaces/:spaceId/unbind',
+    summary: 'End the given binding period for both participants; the space and its history stay.',
+    access: 'user',
+    params: SpaceParams,
+    body: UnbindRequest,
+    response: UnbindResponse,
+  },
+  mySharing: {
+    method: 'GET',
+    path: '/api/spaces/:spaceId/my-sharing',
+    summary: "The caller's own sharing range in a space; never the partner's.",
+    access: 'user',
+    params: SpaceParams,
+    response: MySharingResponse,
+  },
+  saveMySharing: {
+    method: 'PUT',
+    path: '/api/spaces/:spaceId/my-sharing',
+    summary:
+      "Confirm the caller's sharing range for the open period; configures a range and publishes no diary text.",
+    access: 'user',
+    params: SpaceParams,
+    body: SaveMySharingRequest,
+    response: SaveMySharingResponse,
   },
 } as const satisfies Record<string, RouteDefinition>;
 

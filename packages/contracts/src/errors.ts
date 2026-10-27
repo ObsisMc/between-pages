@@ -15,6 +15,15 @@ export const ErrorCode = z.enum([
   'PAYLOAD_TOO_LARGE',
   'PROTOCOL_UNSUPPORTED',
   'VERSION_UNREADABLE',
+  'INVITE_INVALID',
+  'INVITE_EXPIRED',
+  'INVITE_REVOKED',
+  'INVITE_USED',
+  'SELF_INVITE',
+  'ALREADY_BOUND',
+  'PARTNER_FIXED',
+  'PERIOD_CLOSED',
+  'POLICY_CONFLICT',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
 
@@ -38,6 +47,15 @@ export const errorStatus = {
   PAYLOAD_TOO_LARGE: 413,
   PROTOCOL_UNSUPPORTED: 400,
   VERSION_UNREADABLE: 500,
+  INVITE_INVALID: 404,
+  INVITE_EXPIRED: 409,
+  INVITE_REVOKED: 409,
+  INVITE_USED: 409,
+  SELF_INVITE: 409,
+  ALREADY_BOUND: 409,
+  PARTNER_FIXED: 409,
+  PERIOD_CLOSED: 409,
+  POLICY_CONFLICT: 409,
 } as const satisfies Record<ErrorCode, number>;
 
 /**
@@ -63,4 +81,14 @@ export const errorCategory = {
   PAYLOAD_TOO_LARGE: 'stop',
   PROTOCOL_UNSUPPORTED: 'upgrade',
   VERSION_UNREADABLE: 'show',
+  // Relationship refusals (spaces-and-invitations D11): the screen explains and reloads.
+  INVITE_INVALID: 'show',
+  INVITE_EXPIRED: 'show',
+  INVITE_REVOKED: 'show',
+  INVITE_USED: 'show',
+  SELF_INVITE: 'show',
+  ALREADY_BOUND: 'show',
+  PARTNER_FIXED: 'show',
+  PERIOD_CLOSED: 'show',
+  POLICY_CONFLICT: 'show',
 } as const satisfies Record<ErrorCode, ErrorCategory>;

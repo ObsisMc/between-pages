@@ -62,4 +62,14 @@ describe('route contracts', () => {
     expect(ApiErrorBody.safeParse(body).success).toBe(true);
     expect(ApiErrorBody.safeParse({ error: { code: 'TEAPOT', message: '' } }).success).toBe(false);
   });
+
+  it('[adr:spaces-and-invitations#9] carries a sharing range only in the owner’s own range response', () => {
+    const withRange = Object.entries(routes)
+      .filter(([, route]) => {
+        const names = propertyNames(z.toJSONSchema(route.response));
+        return names.includes('include') || names.includes('exclude');
+      })
+      .map(([name]) => name);
+    expect(withRange).toEqual(['mySharing']);
+  });
 });
