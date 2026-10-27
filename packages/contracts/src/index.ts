@@ -43,3 +43,4 @@ export {
   closeCode,
   syncSocket,
 } from './sync.ts';
+export { DateRange, DateSelection } from './sharing.ts';
