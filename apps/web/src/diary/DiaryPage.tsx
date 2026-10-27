@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { useMe } from '../auth/me.ts';
+import { HistoryPanel, HistoryPreview, type HistoryPointView } from '../history/index.ts';
 import { DraftList } from './DraftList.tsx';
 import { createDiarySession, type DiarySession, type DiaryState } from './session.ts';
 import { failureText, refusalText, statusLine } from './status.ts';
 
 const REFUSAL_SHOWN_MS = 4_000;
 
-/** One diary: the editor, its save status and its recovery drafts (kernel phase 3). */
+/** One open history preview, and where the current text stood when it opened. */
+type Preview = { point: HistoryPointView; remoteChanges: number; scrollY: number };
+
+/** One diary: the editor, its save status, recovery drafts and own history (kernel phase 3). */
 export function DiaryPage() {
   const { diaryId } = useParams();
   const userId = useMe().data?.user.id;
@@ -16,6 +20,8 @@ export function DiaryPage() {
   const [state, setState] = useState<DiaryState | null>(null);
   /** The refusal count the notice was last hidden at. */
   const [dismissed, setDismissed] = useState(0);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [preview, setPreview] = useState<Preview | null>(null);
 
   useEffect(() => {
     if (!place.current || !userId || !diaryId) return;
@@ -52,15 +58,42 @@ export function DiaryPage() {
     URL.revokeObjectURL(url);
   };
 
+  // The editor stays mounted, hidden, while a version is previewed, so pending input, undo
+  // and the caret are untouched; the scroll position comes back with it (kernel D6).
+  const showVersion = (point: HistoryPointView) =>
+    setPreview((open) => ({
+      point,
+      remoteChanges: open?.remoteChanges ?? state?.remoteChanges ?? 0,
+      scrollY: open?.scrollY ?? window.scrollY,
+    }));
+  const closePreview = () => {
+    const scrollY = preview?.scrollY ?? 0;
+    setPreview(null);
+    requestAnimationFrame(() => window.scrollTo(0, scrollY));
+  };
+
   const status = state ? statusLine(state) : null;
+  const open = state?.phase === 'open';
   return (
     <main className="page diary">
       <header>
         <Link to="/">← 返回</Link>
-        {state?.phase === 'open' && status && (
+        {open && status && (
           <p className={`save-status ${status.tone}`} role="status">
             {status.text}
           </p>
+        )}
+        {open && diaryId && (
+          <button
+            type="button"
+            aria-expanded={historyOpen}
+            onClick={() => {
+              if (historyOpen) closePreview();
+              setHistoryOpen(!historyOpen);
+            }}
+          >
+            {historyOpen ? '收起历史' : '历史'}
+          </button>
         )}
       </header>
       {(!state || state.phase === 'opening') && <p className="status">正在打开…</p>}
@@ -85,13 +118,33 @@ export function DiaryPage() {
           {refusal}
         </p>
       )}
-      <div ref={place} className="diary-editor" hidden={state?.phase !== 'open'} />
-      {state && (
-        <DraftList
-          drafts={state.drafts}
-          onDelete={(draftIds) => void session.current?.deleteDrafts(draftIds)}
-        />
-      )}
+      <div className={historyOpen ? 'diary-body with-history' : 'diary-body'}>
+        <div className="diary-main">
+          {preview && diaryId && userId && (
+            <HistoryPreview
+              diaryId={diaryId}
+              publicId={preview.point.publicId}
+              userId={userId}
+              currentChanged={(state?.remoteChanges ?? 0) !== preview.remoteChanges}
+              onClose={closePreview}
+            />
+          )}
+          <div ref={place} className="diary-editor" hidden={!open || preview !== null} />
+          {state && (
+            <DraftList
+              drafts={state.drafts}
+              onDelete={(draftIds) => void session.current?.deleteDrafts(draftIds)}
+            />
+          )}
+        </div>
+        {open && historyOpen && diaryId && (
+          <HistoryPanel
+            diaryId={diaryId}
+            selected={preview?.point.publicId ?? null}
+            onSelect={showVersion}
+          />
+        )}
+      </div>
     </main>
   );
 }
