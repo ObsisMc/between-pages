@@ -1,7 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 // End-to-end tests for the formal app (authentication-and-sessions acceptance E1-E6, the
-// kernel phase-3 diary screen) in the three engines the kernel ADR requires.
+// kernel phase-3 diary screen) in the three engines the kernel ADR requires. Locally
+// `npm run test:e2e` runs Chromium and WebKit; CI runs all three (`test:e2e:all`).
 // Starts the mock issuer, the API and the web dev server on their own ports, so it never
 // talks to a developer's running servers. Needs TEST_DATABASE_URL: `npm run test:e2e:db`
 // locally, the PostgreSQL service in CI.
@@ -18,6 +19,8 @@ const env = {
   BETTER_AUTH_SECRET: 'e2e-only-secret-never-used-outside-tests-0000',
   AUTH_PROVIDER: 'dev',
   DEV_OIDC_ISSUER: ISSUER,
+  // History points close after 3 s instead of two minutes, so EDIT-16 needs no long wait.
+  HISTORY_IDLE_MS: '3000',
 };
 
 export default defineConfig({

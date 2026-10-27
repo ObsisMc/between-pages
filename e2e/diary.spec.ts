@@ -236,33 +236,30 @@ test('EDIT-16 previews the own history read-only and returns to the current text
   page,
   browserName,
 }) => {
-  // A history point closes two minutes after the last commit (kernel D6), on the server's
-  // clock; the wait is the rule under test, so it polls the API rather than sleeping.
-  test.setTimeout(240_000);
+  // A history point closes once the server sees no commit for HISTORY_IDLE_MS (3 s here,
+  // two minutes in production, kernel D6); the test polls the API rather than sleeping.
   await devLogin(page, `history-${browserName}-${run}`);
   const diaryId = await writeToday(page);
+  const points = () =>
+    page.evaluate(async (id) => {
+      const res = await fetch(`/api/diaries/${id}/history`);
+      return ((await res.json()) as { points: unknown[] }).points.length;
+    }, diaryId);
+  const closed = (n: number) =>
+    expect.poll(points, { timeout: 15_000, intervals: [1_000] }).toBe(n);
+
   await typeAtEnd(page, '早上写的');
   await saved(page);
-  await page.getByRole('button', { name: '历史' }).click();
-  const panel = page.getByRole('complementary', { name: '历史版本' });
-  await expect(panel).toContainText('还没有历史版本');
-
-  await expect
-    .poll(
-      () =>
-        page.evaluate(async (id) => {
-          const res = await fetch(`/api/diaries/${id}/history`);
-          return ((await res.json()) as { points: unknown[] }).points.length;
-        }, diaryId),
-      { timeout: 180_000, intervals: [5_000] },
-    )
-    .toBe(1);
-  await page.getByRole('button', { name: '收起历史' }).click();
+  await closed(1);
   await typeAtEnd(page, '，下午补的');
   await saved(page);
+  await closed(2);
 
   await page.getByRole('button', { name: '历史' }).click();
-  await panel.getByRole('button').first().click();
+  const panel = page.getByRole('complementary', { name: '历史版本' });
+  // Newest first: the last entry is the morning version.
+  await expect(panel.getByRole('button')).toHaveCount(2);
+  await panel.getByRole('button').last().click();
   const preview = page.getByRole('region', { name: '历史版本预览' });
   await expect(preview.locator('.history-text')).toHaveText('早上写的');
   await expect(preview).toContainText('只读');
