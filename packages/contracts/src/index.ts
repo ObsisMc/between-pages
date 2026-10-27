@@ -11,9 +11,12 @@ export type {
 export {
   ClientBinding,
   CommitReceipt,
+  DiaryListPage,
+  DiaryListQuery,
   DiaryParams,
   DiaryResponse,
   DiaryState,
+  DiarySummary,
   HistoryPage,
   HistoryPoint,
   HistoryQuery,

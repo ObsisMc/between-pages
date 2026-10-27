@@ -76,7 +76,7 @@ describe('DiaryPage', () => {
     await waitFor(async () => expect((await status()).textContent).toBe('已保存到服务器'));
     await paste('字'.repeat(300_000));
     expect((await screen.findByRole('alert')).textContent).toBe(
-      '粘贴内容超过约 30 万字，请分段粘贴',
+      '粘贴内容超过约 26 万字，请分段粘贴',
     );
   });
 

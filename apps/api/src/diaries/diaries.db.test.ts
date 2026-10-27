@@ -2,9 +2,9 @@ import { randomUUID } from 'node:crypto';
 import * as Y from 'yjs';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Store } from '../store/store.ts';
-import { openTestStore, testDatabaseUrl } from '../../test/db.ts';
+import { openTestStore, query, testDatabaseUrl } from '../../test/db.ts';
 import { client, createUser, edit, textOf } from '../../test/diary.ts';
-import { createDiaryService } from './diaries.ts';
+import { EXCERPT_LENGTH, LIST_PAGE_SIZE, createDiaryService } from './diaries.ts';
 
 let store: Store;
 let close: (() => Promise<void>) | undefined;
@@ -116,5 +116,83 @@ describe.runIf(testDatabaseUrl)('catching up', () => {
     expect(await diaries.catchUp(owner, diaryId, randomUUID(), 0)).toBe('STALE_CONTEXT');
     expect(await diaries.catchUp(owner, diaryId, generationId, 5)).toBe('STALE_CONTEXT');
     expect(await diaries.catchUp(await createUser(), diaryId, generationId, 0)).toBe('NOT_FOUND');
+  });
+});
+
+describe.runIf(testDatabaseUrl)("listing the owner's diaries", () => {
+  const openOn = async (
+    diaries: ReturnType<typeof createDiaryService>,
+    owner: string,
+    date: string,
+  ) => {
+    const opened = await diaries.open(owner, { timezone: 'UTC', date });
+    if (opened === 'FUTURE_DATE') throw new Error(opened);
+    return opened.diary.diaryId;
+  };
+
+  it("lists only the owner's diaries, newest date first, with the start of the text", async () => {
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-10-26T12:00:00Z') });
+    const diaries = createDiaryService(store);
+    const owner = await createUser();
+    const blank = await openOn(diaries, owner, '2026-10-20');
+    const written = await openOn(diaries, owner, '2026-10-25');
+    await openOn(diaries, await createUser(), '2026-10-26');
+    const commit = await commitText(written, 501, '第一行\n\n第二行  末尾 ');
+
+    const { diaries: cards, nextBefore } = await diaries.list(owner, undefined);
+
+    expect(cards).toEqual([
+      {
+        diaryId: written,
+        diaryDate: '2026-10-25',
+        excerpt: '第一行 第二行 末尾',
+        updatedAt: commit!.receipt.committedAt,
+      },
+      { diaryId: blank, diaryDate: '2026-10-20', excerpt: '', updatedAt: expect.any(Date) },
+    ]);
+    expect(nextBefore).toBeNull();
+  });
+
+  it('pages by date and cuts the excerpt by characters, never inside an emoji', async () => {
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-10-26T12:00:00Z') });
+    const diaries = createDiaryService(store);
+    const owner = await createUser();
+    const dates = Array.from({ length: LIST_PAGE_SIZE + 1 }, (_, i) =>
+      new Date(Date.UTC(2026, 8, 1 + i)).toISOString().slice(0, 10),
+    );
+    const ids: string[] = [];
+    for (const date of dates) ids.push(await openOn(diaries, owner, date));
+    await commitText(ids.at(-1)!, 502, '😀'.repeat(EXCERPT_LENGTH + 20));
+
+    const first = await diaries.list(owner, undefined);
+    const second = await diaries.list(owner, first.nextBefore!);
+
+    expect(first.diaries[0]!.excerpt).toBe('😀'.repeat(EXCERPT_LENGTH));
+    expect(first.diaries).toHaveLength(LIST_PAGE_SIZE);
+    expect(second).toEqual({
+      diaries: [expect.objectContaining({ diaryId: ids[0] })],
+      nextBefore: null,
+    });
+    expect([...first.diaries, ...second.diaries].map((d) => d.diaryDate)).toEqual(
+      dates.toReversed(),
+    );
+  });
+
+  it('keeps the card of a diary whose stored text fails verification, without an excerpt', async () => {
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-10-26T12:00:00Z') });
+    const diaries = createDiaryService(store);
+    const owner = await createUser();
+    const broken = await openOn(diaries, owner, '2026-10-24');
+    const fine = await openOn(diaries, owner, '2026-10-25');
+    await commitText(broken, 503, 'lost');
+    await commitText(fine, 504, 'kept');
+    await query(`update diary_commits set delta_sha256 = $2 where diary_id = $1`, [
+      broken,
+      Buffer.alloc(32),
+    ]);
+
+    const { diaries: cards } = await diaries.list(owner, undefined);
+
+    expect(cards.map((d) => d.excerpt)).toEqual(['kept', null]);
   });
 });

@@ -29,7 +29,7 @@ export function statusLine(state: DiaryState): StatusLine {
 
 export const refusalText: Record<Refusal, string> = {
   FOREIGN_TEXT: '不能修改或删除对方写的字',
-  PASTE_TOO_LARGE: '粘贴内容超过约 30 万字，请分段粘贴',
+  PASTE_TOO_LARGE: '粘贴内容超过约 26 万字，请分段粘贴',
   CONTROL_CHARACTER: '内容包含无法保存的控制字符',
 };
 

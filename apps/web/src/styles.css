@@ -270,3 +270,59 @@ button.primary {
   line-height: 1.9;
   border-top: 1px dashed var(--line);
 }
+
+.diary-list {
+  margin-top: 2.5rem;
+  border-top: 1px dashed var(--line);
+  padding-top: 1.5rem;
+}
+
+.diary-list h2 {
+  font-family: var(--font-title);
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 1rem;
+}
+
+.diary-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.diary-card {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.diary-card:hover,
+.diary-card:focus-visible {
+  border-color: var(--accent);
+}
+
+.diary-card-date {
+  font-family: var(--font-title);
+  font-weight: 600;
+}
+
+.diary-card-excerpt {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.diary-card-excerpt.empty,
+.diary-card-updated,
+.list-note {
+  color: var(--ink-soft);
+  font-size: 0.875rem;
+}

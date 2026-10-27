@@ -39,6 +39,14 @@ export function diaryHandlers(services: {
   history: HistoryService;
 }) {
   return {
+    async diaries(request: ContractRequest<'diaries'>) {
+      const page = await services.diaries.list(request.user!.id, request.query.before);
+      return {
+        diaries: page.diaries.map((d) => ({ ...d, updatedAt: d.updatedAt.toISOString() })),
+        nextBefore: page.nextBefore,
+      };
+    },
+
     async openDiary(request: ContractRequest<'openDiary'>, reply: FastifyReply) {
       const opened = await services.diaries.open(request.user!.id, request.body);
       if (opened === 'FUTURE_DATE')

@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { and, asc, desc, eq, gt, inArray, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, lt, lte, sql } from 'drizzle-orm';
 import * as Y from 'yjs';
 import { createDiaryDoc, type CharacterRange } from '@between-pages/collab';
 import type { Db } from '../db/client.ts';
@@ -108,6 +108,36 @@ export class DiaryQueries {
   async findDiary(diaryId: string): Promise<DiaryRow | null> {
     const [row] = await this.tx.select(diaryColumns).from(diaries).where(eq(diaries.id, diaryId));
     return row ?? null;
+  }
+
+  /**
+   * The owner's diaries dated before `before` (all when null), newest date first, at most
+   * `limit`; `updatedAt` is the last commit, or the creation time before any.
+   */
+  async ownedDiaries(
+    ownerId: string,
+    before: string | null,
+    limit: number,
+  ): Promise<(DiaryRow & { updatedAt: Date })[]> {
+    const lastCommit = sql`(select ${diaryCommits.committedAt} from ${diaryCommits}
+      where ${diaryCommits.diaryId} = ${diaries.id}
+      order by ${diaryCommits.version} desc limit 1)`;
+    return this.tx
+      .select({
+        ...diaryColumns,
+        updatedAt: sql<Date>`coalesce(${lastCommit}, ${diaries.createdAt})`.mapWith(
+          diaries.createdAt,
+        ),
+      })
+      .from(diaries)
+      .where(
+        and(
+          eq(diaries.ownerId, ownerId),
+          before === null ? undefined : lt(diaries.diaryDate, before),
+        ),
+      )
+      .orderBy(desc(diaries.diaryDate))
+      .limit(limit);
   }
 
   async bindings(diaryId: string): Promise<Map<number, string>> {

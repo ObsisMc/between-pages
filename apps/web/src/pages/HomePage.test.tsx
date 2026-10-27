@@ -12,6 +12,8 @@ const diary = {
   bindings: [],
 };
 
+const noDiaries = () => Response.json({ diaries: [], nextBefore: null });
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -22,6 +24,7 @@ describe('HomePage', () => {
     let session = true;
     stubApi({
       'GET /api/me': () => (session ? signedIn('alice')() : signedOut()),
+      'GET /api/diaries': noDiaries,
       'POST /api/auth/sign-out': () => ((session = false), Response.json({ success: true })),
     });
     const { router, client } = renderAt('/');
@@ -34,6 +37,7 @@ describe('HomePage', () => {
   it('stays and says so when signing out fails', async () => {
     stubApi({
       'GET /api/me': signedIn('alice'),
+      'GET /api/diaries': noDiaries,
       'POST /api/auth/sign-out': () => new Response(null, { status: 500 }),
     });
     const { router } = renderAt('/');
@@ -47,7 +51,11 @@ describe('HomePage', () => {
       void init;
       return Response.json({ created: true, diary: { ...diary, diaryDate: '2026-10-27' } });
     });
-    stubApi({ 'GET /api/me': signedIn('alice'), 'POST /api/diaries': opened });
+    stubApi({
+      'GET /api/me': signedIn('alice'),
+      'GET /api/diaries': noDiaries,
+      'POST /api/diaries': opened,
+    });
     const { router } = renderAt('/');
     fireEvent.click(await screen.findByText('写今天'));
     await waitFor(() => expect(router.state.location.pathname).toBe(`/diaries/${diary.diaryId}`));
@@ -61,7 +69,11 @@ describe('HomePage', () => {
       void init;
       return Response.json({ created: true, diary });
     });
-    stubApi({ 'GET /api/me': signedIn('alice'), 'POST /api/diaries': opened });
+    stubApi({
+      'GET /api/me': signedIn('alice'),
+      'GET /api/diaries': noDiaries,
+      'POST /api/diaries': opened,
+    });
     const { router } = renderAt('/');
     fireEvent.change(await screen.findByLabelText('打开或补写过去的日期'), {
       target: { value: '2026-10-05' },
@@ -76,6 +88,7 @@ describe('HomePage', () => {
   it('does not claim to open today while offline', async () => {
     stubApi({
       'GET /api/me': signedIn('alice'),
+      'GET /api/diaries': noDiaries,
       'POST /api/diaries': () => Promise.reject(new TypeError('Failed to fetch')),
     });
     const { router } = renderAt('/');

@@ -106,6 +106,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 
   contractRoute('health', () => ({ status: 'ok' as const }));
   contractRoute('me', meHandler);
+  contractRoute('diaries', handlers.diaries);
   contractRoute('openDiary', handlers.openDiary);
   contractRoute('diary', handlers.diary);
   contractRoute('receipt', handlers.receipt);

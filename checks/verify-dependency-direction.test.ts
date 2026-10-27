@@ -112,6 +112,11 @@ describe('verify-dependency-direction', () => {
       'apps/web/src/history/HistoryPreview.tsx',
       "import { openJournal } from '../journal/index.ts';",
     ],
+    [
+      'the diary list opening the editor session',
+      'apps/web/src/diary-list/DiaryList.tsx',
+      "import { createDiarySession } from '../diary/session.ts';",
+    ],
     ['an unlisted web sub-module', 'apps/web/src/reader/reader.ts', 'export const x = 1;'],
   ])('rejects %s', (_, path, source) => {
     expect(violations([file(path, source)])).toHaveLength(1);
