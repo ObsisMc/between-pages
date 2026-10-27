@@ -8,6 +8,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+const noneShared = () => Response.json({ diaries: [], nextBefore: null });
 const OCTOBER = { include: [{ from: '2026-10-01', to: '2026-10-31' }], exclude: [] };
 const mine = (revision: number, confirmedPeriodId: string | null) => () =>
   Response.json({ selection: OCTOBER, revision, confirmedPeriodId });
@@ -18,6 +19,7 @@ describe('SpacePage', () => {
       'GET /api/me': signedIn('alice'),
       [`GET /api/spaces/${SPACE}`]: () => Response.json({ space: space(), periods: periods(true) }),
       [`GET /api/spaces/${SPACE}/my-sharing`]: mine(1, PERIOD),
+      [`GET /api/spaces/${SPACE}/shared-diaries`]: noneShared,
     });
     renderAt(`/spaces/${SPACE}`);
 
@@ -40,6 +42,7 @@ describe('SpacePage', () => {
       'GET /api/me': signedIn('alice'),
       [`GET /api/spaces/${SPACE}`]: () => Response.json({ space: space(), periods: periods(true) }),
       [`GET /api/spaces/${SPACE}/my-sharing`]: () => mine(revision, PERIOD)(),
+      [`GET /api/spaces/${SPACE}/shared-diaries`]: noneShared,
       [`PUT /api/spaces/${SPACE}/my-sharing`]: saved,
     });
     renderAt(`/spaces/${SPACE}`);
@@ -63,6 +66,7 @@ describe('SpacePage', () => {
       'GET /api/me': signedIn('alice'),
       [`GET /api/spaces/${SPACE}`]: () => Response.json({ space: space(), periods: periods(true) }),
       [`GET /api/spaces/${SPACE}/my-sharing`]: mine(1, PERIOD),
+      [`GET /api/spaces/${SPACE}/shared-diaries`]: noneShared,
     });
     renderAt(`/spaces/${SPACE}`);
 
@@ -80,6 +84,7 @@ describe('SpacePage', () => {
       [`GET /api/spaces/${SPACE}`]: () => Response.json({ space: space(), periods: periods(true) }),
       // Confirmed for an earlier binding only: nothing is shared now.
       [`GET /api/spaces/${SPACE}/my-sharing`]: mine(1, null),
+      [`GET /api/spaces/${SPACE}/shared-diaries`]: noneShared,
     });
     renderAt(`/spaces/${SPACE}`);
 
@@ -93,6 +98,7 @@ describe('SpacePage', () => {
       'GET /api/me': signedIn('alice'),
       [`GET /api/spaces/${SPACE}`]: () => Response.json({ space: space(), periods: periods(true) }),
       [`GET /api/spaces/${SPACE}/my-sharing`]: mine(1, PERIOD),
+      [`GET /api/spaces/${SPACE}/shared-diaries`]: noneShared,
       [`PUT /api/spaces/${SPACE}/my-sharing`]: () =>
         Response.json(
           {
@@ -120,6 +126,7 @@ describe('SpacePage', () => {
       'GET /api/me': signedIn('alice'),
       [`GET /api/spaces/${SPACE}`]: () => Response.json({ space: space(), periods: periods(true) }),
       [`GET /api/spaces/${SPACE}/my-sharing`]: mine(1, PERIOD),
+      [`GET /api/spaces/${SPACE}/shared-diaries`]: noneShared,
       [`PUT /api/spaces/${SPACE}/my-sharing`]: errorBody('POLICY_CONFLICT', 409),
     });
     renderAt(`/spaces/${SPACE}`);
@@ -143,6 +150,7 @@ describe('SpacePage', () => {
       [`GET /api/spaces/${SPACE}`]: () =>
         Response.json({ space: space(open ? 'active' : 'archived'), periods: periods(open) }),
       [`GET /api/spaces/${SPACE}/my-sharing`]: mine(1, PERIOD),
+      [`GET /api/spaces/${SPACE}/shared-diaries`]: noneShared,
       'GET /api/binding': () => Response.json({ binding: null, invitation: null }),
       'GET /api/spaces': () => Response.json({ spaces: [] }),
       [`POST /api/spaces/${SPACE}/unbind`]: unbound,
@@ -165,6 +173,7 @@ describe('SpacePage', () => {
       'GET /api/me': signedIn('carol'),
       [`GET /api/spaces/${SPACE}`]: errorBody('NOT_FOUND', 404),
       [`GET /api/spaces/${SPACE}/my-sharing`]: errorBody('NOT_FOUND', 404),
+      [`GET /api/spaces/${SPACE}/shared-diaries`]: noneShared,
     });
     renderAt(`/spaces/${SPACE}`);
     expect((await screen.findByRole('alert')).textContent).toBe('找不到这个空间');

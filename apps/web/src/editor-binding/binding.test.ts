@@ -21,6 +21,8 @@ const BOB = 'bob';
  * checked with the server's own `acceptBatch`, and Bob's edits reach the editor only as
  * the re-encoded deltas the server would broadcast.
  */
+const SLOTS: Record<string, string> = { [ALICE]: 'author-slot-1', [BOB]: 'author-slot-2' };
+
 function setup(state?: { server: Y.Doc; bindings: Map<number, string> }) {
   const server = state?.server ?? createDiaryDoc();
   const bindings = state?.bindings ?? new Map<number, string>();
@@ -30,6 +32,7 @@ function setup(state?: { server: Y.Doc; bindings: Map<number, string> }) {
   const refusals: Refusal[] = [];
   const binding = createEditorBinding(place, {
     userId: ALICE,
+    authorClass: (author) => SLOTS[author] ?? null,
     onOperation: (operation) => operations.push(operation),
     onRefuse: (refusal) => refusals.push(refusal),
   });
@@ -224,6 +227,54 @@ describe('characters by identity', () => {
     expect(editor.binding.othersCharacters(0, 20)).toEqual([{ client: bob, clock: 0, length: 3 }]);
     expect(editor.binding.othersCharacters(6, 7)).toEqual([{ client: bob, clock: 1, length: 1 }]);
     expect(editor.binding.othersCharacters(0, 5)).toEqual([]);
+  });
+});
+
+describe('authors on screen', () => {
+  const colored = (editor: ReturnType<typeof setup>) =>
+    [...editor.view.dom.querySelectorAll('[class*="author-slot"]')].map((el) => [
+      el.className,
+      el.textContent,
+    ]);
+
+  it('colors each author’s text by their slot, with no background', () => {
+    const editor = alongsideBob();
+
+    expect(colored(editor)).toEqual([
+      ['author-slot-1', '今天很累，'],
+      ['author-slot-2', '抱抱！'],
+    ]);
+    editor.type('嗯');
+    expect(colored(editor).at(-1)).toEqual(['author-slot-1', '嗯']);
+  });
+
+  it('[adr:diary-collaboration-kernel#3] shows only the own text read-only, changing nothing, and restores both', () => {
+    const editor = alongsideBob();
+    editor.commit();
+    const before = Y.encodeStateVector(editor.server);
+    const made = editor.operations.length;
+
+    editor.binding.setOwnTextOnly(true);
+    expect(editor.view.dom.querySelector('.author-hidden')?.textContent).toBe('抱抱！');
+    editor.select(5);
+    editor.type('不该写入');
+    editor.press('z', { ctrlKey: true });
+    expect(editor.operations).toHaveLength(made);
+
+    editor.binding.setOwnTextOnly(false);
+    expect(editor.view.dom.querySelector('.author-hidden')).toBeNull();
+    editor.type('好');
+    expect(editor.operations).toHaveLength(made + 1);
+    expect(Y.encodeStateVector(editor.server)).toEqual(before);
+  });
+
+  it('names the character at an index by identity and author', () => {
+    const editor = alongsideBob();
+    const bob = [...editor.bindings].find(([, user]) => user === BOB)![0];
+
+    expect(editor.binding.characterAt(6)).toEqual({ client: bob, clock: 1, author: BOB });
+    expect(editor.binding.characterAt(0)).toMatchObject({ clock: 0, author: ALICE });
+    expect(editor.binding.characterAt(8)).toBeNull();
   });
 });
 
@@ -434,6 +485,8 @@ describe('IME composition', () => {
     ]);
     expect(insertedStrings(editor.operations[1]!.update)).toEqual(['你']);
     expect(editor.serverText()).toBe('我你');
+    // The composed text takes its author's color once the composition ends.
+    expect(editor.view.dom.querySelector('.author-slot-1')?.textContent).toBe('我你');
   });
 
   it('completes a composition whose last change was read before it ended', async () => {

@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router';
+import { callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
 import { HistoryPanel, HistoryPreview, type HistoryPointView } from '../history/index.ts';
 import { DraftList } from './DraftList.tsx';
@@ -11,10 +13,33 @@ const REFUSAL_SHOWN_MS = 4_000;
 /** One open history preview, and where the current text stood when it opened. */
 type Preview = { point: HistoryPointView; remoteChanges: number; scrollY: number };
 
-/** One diary: the editor, its save status, recovery drafts and own history (kernel phase 3). */
+type Person = { name: string; slot: 1 | 2 };
+/** Who wrote a clicked character and when (TIME-03). */
+type Origin = { name: string; at: string; adjusted: boolean };
+
+const writtenText = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+
+/**
+ * One diary: the own diary, or the partner's shared one by its epoch (`/shares/:epochId`).
+ * The editor with each author's color and a legend, "只看我的文字", a click on a character
+ * for its author and written time, the save status, recovery drafts and the history the
+ * viewer may read (kernel D5, D6, D10; EDIT-13, EDIT-14, TIME-03).
+ */
 export function DiaryPage() {
-  const { diaryId } = useParams();
+  const { diaryId, epochId } = useParams();
   const userId = useMe().data?.user.id;
+  // Author colors follow the space's slots, so one person has one color everywhere.
+  const spaces = useQuery({ queryKey: ['spaces'], queryFn: () => callApi('spaces') });
+  const people = new Map<string, Person>(
+    (spaces.data?.spaces ?? []).flatMap((space) =>
+      space.participants.map((p) => [p.user.id, { name: p.user.displayName, slot: p.authorSlot }]),
+    ),
+  );
+  const peopleRef = useRef(people);
+  useEffect(() => {
+    peopleRef.current = people;
+  });
+  const [origin, setOrigin] = useState<Origin | null>(null);
   const place = useRef<HTMLDivElement>(null);
   const session = useRef<DiarySession | null>(null);
   const [state, setState] = useState<DiaryState | null>(null);
@@ -23,12 +48,18 @@ export function DiaryPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null);
 
+  const peopleKnown = !spaces.isPending;
   useEffect(() => {
-    if (!place.current || !userId || !diaryId) return;
+    if (!place.current || !userId || !diaryId || !peopleKnown) return;
     const opened = createDiarySession({
       place: place.current,
       userId,
       diaryId,
+      epochId,
+      authorClass: (author) => {
+        const slot = peopleRef.current.get(author)?.slot;
+        return slot ? `author-slot-${slot}` : null;
+      },
       onChange: setState,
     });
     session.current = opened;
@@ -36,7 +67,26 @@ export function DiaryPage() {
       opened.destroy();
       session.current = null;
     };
-  }, [userId, diaryId]);
+  }, [userId, diaryId, epochId, peopleKnown]);
+
+  // A click on a character asks the server who wrote it and when; the name comes from the space.
+  const showOrigin = async (event: MouseEvent) => {
+    const hit = session.current?.characterAt(event.clientX, event.clientY);
+    if (!hit || !diaryId) return setOrigin(null);
+    try {
+      const info = await callApi('character', {
+        params: { diaryId, clientId: hit.client, clock: hit.clock },
+        query: epochId ? { epochId } : {},
+      });
+      setOrigin({
+        name: peopleRef.current.get(info.author)?.name ?? '我',
+        at: writtenText.format(new Date(info.writtenAt)),
+        adjusted: info.clockAdjusted,
+      });
+    } catch {
+      setOrigin(null);
+    }
+  };
 
   const refused = state?.refusal;
   useEffect(() => {
@@ -96,6 +146,42 @@ export function DiaryPage() {
           </button>
         )}
       </header>
+      {open && people.size > 0 && (
+        <div className="author-legend" aria-label="作者">
+          {[...people.values()]
+            .sort((a, b) => a.slot - b.slot)
+            .map((person) => (
+              <span key={person.slot} className={`author-slot-${person.slot}`}>
+                {person.name}
+              </span>
+            ))}
+          <label className="own-only">
+            <input
+              type="checkbox"
+              checked={state.ownOnly}
+              onChange={(e) => session.current?.setOwnTextOnly(e.target.checked)}
+            />
+            只看我的文字
+          </label>
+        </div>
+      )}
+      {state?.share === 'frozen' && (
+        <p className="notice" role="status">
+          已停止共享，内容不再更新
+        </p>
+      )}
+      {state?.reopened && diaryId && (
+        <p className="notice">
+          对方重新共享了这篇日记。
+          <Link to={`/diaries/${diaryId}/shares/${state.reopened}`}>打开最新的版本</Link>
+        </p>
+      )}
+      {origin && (
+        <p className="author-info" role="status">
+          {origin.name} 写于 {origin.at}
+          {origin.adjusted && '（设备时间不准，按服务器收到的时间）'}
+        </p>
+      )}
       {(!state || state.phase === 'opening') && <p className="status">正在打开…</p>}
       {state?.phase === 'failed' && (
         <p className="notice" role="alert">
@@ -129,7 +215,12 @@ export function DiaryPage() {
               onClose={closePreview}
             />
           )}
-          <div ref={place} className="diary-editor" hidden={!open || preview !== null} />
+          <div
+            ref={place}
+            className="diary-editor"
+            hidden={!open || preview !== null}
+            onClick={(event) => void showOrigin(event)}
+          />
           {state && (
             <DraftList
               drafts={state.drafts}

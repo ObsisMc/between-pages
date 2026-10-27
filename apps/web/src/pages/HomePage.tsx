@@ -6,7 +6,8 @@ import { ApiError, callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
 import { DiaryList } from '../diary-list/index.ts';
 import { clearPendingInvite, pendingInvite } from '../join/index.ts';
-import { RelationshipPanel } from '../relationship/index.ts';
+import { RelationshipPanel, partnerOf, useSpaces } from '../relationship/index.ts';
+import { SharedDiaryList } from '../shared-diaries/index.ts';
 
 /** The device's IANA zone decides which date "today" is (spec §4); the server checks it. */
 const timezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -18,6 +19,7 @@ const todayIn = (zone: string) =>
 /** Home behind RequireAuth: write today, open or back-fill a past day, the diary cards, sign out. */
 export function HomePage() {
   const me = useMe();
+  const spaces = useSpaces();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [failed, setFailed] = useState(false);
@@ -109,6 +111,14 @@ export function HomePage() {
       )}
       {me.data && <RelationshipPanel userId={me.data.user.id} />}
       <DiaryList />
+      {me.data &&
+        spaces.data?.spaces.map((space) => (
+          <SharedDiaryList
+            key={space.id}
+            spaceId={space.id}
+            partner={partnerOf(space, me.data.user.id).displayName}
+          />
+        ))}
     </main>
   );
 }

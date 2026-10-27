@@ -10,6 +10,7 @@ import {
   refusalText,
   relationshipKeys,
 } from '../relationship/index.ts';
+import { SharedDiaryList } from '../shared-diaries/index.ts';
 import {
   MonthView,
   NO_DAYS,
@@ -246,6 +247,7 @@ export function SpacePage() {
           ))}
         </ul>
       </section>
+      <SharedDiaryList key={spaceId} spaceId={spaceId} partner={partner.displayName} />
       <MyRange
         key={`${mine.data.revision}:${open?.id ?? ''}`}
         spaceId={spaceId}

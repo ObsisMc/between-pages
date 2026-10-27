@@ -40,6 +40,12 @@ export type DiaryState = {
   remoteChanges: number;
   /** The last input the editor refused, for a short notice; `count` tells repeats apart. */
   refusal?: { reason: Refusal; count: number };
+  /** The partner's view of a shared diary: `live` writes the own text, `frozen` is read-only. */
+  share?: 'live' | 'frozen';
+  /** The owner shared this diary again as this new epoch; the frozen one stays as it is. */
+  reopened?: string;
+  /** "只看我的文字" is on: the other person's text is hidden and nothing can be edited. */
+  ownOnly: boolean;
 };
 
 export type DiarySession = {
@@ -47,6 +53,10 @@ export type DiarySession = {
   text(): string;
   /** Deletes drafts on the user's explicit request; nothing else ever does (D7). */
   deleteDrafts(draftIds: string[]): Promise<void>;
+  /** "只看我的文字" (EDIT-14): a reading filter; changes no text, sends nothing. */
+  setOwnTextOnly(on: boolean): void;
+  /** The character under a point of the window, by identity and author; null off the text. */
+  characterAt(left: number, top: number): { client: number; clock: number; author: string } | null;
   destroy(): void;
 };
 
@@ -56,6 +66,10 @@ export type DiarySessionOptions = {
   place: HTMLElement;
   userId: string;
   diaryId: string;
+  /** Opens the partner's shared diary as this epoch instead of the own diary (kernel D10). */
+  epochId?: string | undefined;
+  /** The class coloring an author's text (EDIT-13), by their slot in the space. */
+  authorClass?: (author: string) => string | null;
   onChange: (state: DiaryState) => void;
 };
 
@@ -63,10 +77,13 @@ export function createDiarySession({
   place,
   userId,
   diaryId,
+  epochId,
+  authorClass,
   onChange,
 }: DiarySessionOptions): DiarySession {
   let state: DiaryState = {
     phase: 'opening',
+    ownOnly: false,
     unstored: 0,
     storeFailed: false,
     drafts: [],
@@ -118,16 +135,11 @@ export function createDiarySession({
   }
 
   /** Shows the journal's state in a new editor: new clientID, empty undo (D4, D8). */
-  async function mount() {
-    arriving = [];
-    const { baseline, pending } = await journal!.load(diaryId);
-    if (destroyed || !baseline) return;
-    for (const op of pending)
-      for (const client of Y.parseUpdateMeta(op.update).from.keys()) authors.set(client, userId);
-    bind(baseline.bindings);
+  function newEditor() {
     editor?.destroy();
     editor = createEditorBinding(place, {
       userId,
+      ...(authorClass ? { authorClass } : {}),
       onOperation: (operation) => {
         unstored.push(operation);
         set({ unstored: unstored.length });
@@ -135,6 +147,18 @@ export function createDiarySession({
       },
       onRefuse: (reason) => set({ refusal: { reason, count: (state.refusal?.count ?? 0) + 1 } }),
     });
+    if (state.ownOnly) editor.setOwnTextOnly(true);
+    return editor;
+  }
+
+  async function mount() {
+    arriving = [];
+    const { baseline, pending } = await journal!.load(diaryId);
+    if (destroyed || !baseline) return;
+    for (const op of pending)
+      for (const client of Y.parseUpdateMeta(op.update).from.keys()) authors.set(client, userId);
+    bind(baseline.bindings);
+    const editor = newEditor();
     editor.applyUpdate(baseline.state, authors);
     for (const op of pending) editor.applyUpdate(op.update, authors);
     for (const delta of arriving) editor.applyUpdate(delta, authors);
@@ -183,14 +207,45 @@ export function createDiarySession({
     }
   }
 
-  async function serverBaseline(): Promise<Baseline | 'offline' | ErrorCode> {
+  /** A frozen share as its partner may read it: shown read-only, never written to the journal. */
+  function mountFrozen(view: Baseline) {
+    sender?.stop();
+    sync?.close();
+    sender = undefined;
+    sync = undefined;
+    arriving = null;
+    bind(view.bindings);
+    const editor = newEditor();
+    editor.applyUpdate(view.state, authors);
+    editor.setEditable(false);
+    set({ share: 'frozen', save: 'saved' });
+  }
+
+  /** The current state from the server: the own diary, or the partner's epoch and whether it is live. */
+  async function serverBaseline(): Promise<
+    (Baseline & { share?: 'live' | 'frozen' }) | 'offline' | ErrorCode
+  > {
+    const bytes = (state: string) => Uint8Array.from(atob(state), (c) => c.charCodeAt(0));
     try {
+      if (epochId) {
+        const { diary } = await callApi('sharedDiary', { params: { diaryId, epochId } });
+        return {
+          diaryId,
+          generationId: diary.generationId,
+          // Only a live share has input of its own to send.
+          ...(diary.share === 'live' ? { epochId } : {}),
+          seq: diary.seq,
+          state: bytes(diary.state),
+          bindings: diary.bindings,
+          share: diary.share,
+        };
+      }
       const { diary } = await callApi('diary', { params: { diaryId } });
       return {
         diaryId,
         generationId: diary.generationId,
         seq: diary.seq,
-        state: Uint8Array.from(atob(diary.state), (c) => c.charCodeAt(0)),
+        state: bytes(diary.state),
         bindings: diary.bindings,
       };
     } catch (error) {
@@ -200,6 +255,13 @@ export function createDiarySession({
     }
   }
 
+  /** What the journal keeps of a server state: everything but the share's state. */
+  const baselineOf = (server: Baseline & { share?: unknown }): Baseline => {
+    const baseline = { ...server };
+    delete baseline.share;
+    return baseline;
+  };
+
   const receiptOf = async (batchId: string) =>
     (await callApi('receipt', { params: { diaryId }, query: { batchId } })).receipt;
 
@@ -208,6 +270,7 @@ export function createDiarySession({
     sync = createSyncClient({
       diaryId,
       generationId,
+      ...(state.share === 'live' && epochId ? { epochId } : {}),
       knownSeq: seq,
       onCommits: (commits, bindings) => {
         bind(bindings);
@@ -224,7 +287,13 @@ export function createDiarySession({
         // The generation changed while this device was away (kernel D7, D14).
         if (status === 'refused' && code === 'STALE_CONTEXT') void switchGeneration();
       },
-      onContext: ({ change, generationId: next }) => {
+      onContext: ({ change, generationId: next, epochId: changed }) => {
+        // The partner's share: stopping freezes this view; reopening is a new epoch to open.
+        if (epochId) {
+          if (change === 'stopped' && changed === epochId) void switchGeneration();
+          if (change === 'opened' && changed !== epochId) set({ reopened: changed });
+          return;
+        }
         if (change === 'opened' && next !== generationId) void switchGeneration();
       },
     });
@@ -269,7 +338,13 @@ export function createDiarySession({
         switchTimer = setTimeout(() => void switchGeneration(), STORE_RETRY_MS);
         return;
       }
-      await journal.switchTo(server, receiptOf);
+      if (server.share === 'frozen') {
+        // The share froze: input not committed before it stays only as drafts (invariant 20).
+        await journal.retire(diaryId, receiptOf);
+        mountFrozen(server);
+        return await refreshDrafts();
+      }
+      await journal.switchTo(baselineOf(server), receiptOf);
       const { baseline } = await journal.load(diaryId);
       if (destroyed || !baseline) return;
       generationId = baseline.generationId;
@@ -290,8 +365,16 @@ export function createDiarySession({
     if (destroyed) return journal.close();
     const server = await serverBaseline();
     if (destroyed) return;
-    if (typeof server === 'object') await journal.switchTo(server, receiptOf);
-    else if (server !== 'offline') return set({ phase: 'failed', failure: server });
+    if (typeof server === 'object' && server.share === 'frozen') {
+      await journal.retire(diaryId, receiptOf).catch(() => undefined);
+      mountFrozen(server);
+      set({ phase: 'open' });
+      return refreshDrafts();
+    }
+    if (typeof server === 'object') {
+      if (server.share) set({ share: server.share });
+      await journal.switchTo(baselineOf(server), receiptOf);
+    } else if (server !== 'offline') return set({ phase: 'failed', failure: server });
     const { baseline } = await journal.load(diaryId);
     if (!baseline) return set({ phase: 'failed', failure: 'offline' });
     generationId = baseline.generationId;
@@ -326,6 +409,20 @@ export function createDiarySession({
 
   return {
     text: () => editor?.view.state.doc.textContent ?? '',
+    setOwnTextOnly(on) {
+      set({ ownOnly: on });
+      editor?.setOwnTextOnly(on);
+    },
+    characterAt(left, top) {
+      if (!editor) return null;
+      const { view } = editor;
+      const pos = view.posAtCoords({ left, top });
+      if (!pos) return null;
+      // A boundary is returned; left of it means the character before was hit.
+      const index = pos.pos - 1;
+      const hitBefore = index > 0 && left < view.coordsAtPos(pos.pos).left;
+      return editor.characterAt(hitBefore ? index - 1 : index);
+    },
     async deleteDrafts(draftIds) {
       for (const draftId of draftIds) await journal?.deleteDraft(draftId);
       await refreshDrafts();

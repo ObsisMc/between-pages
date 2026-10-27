@@ -27,6 +27,15 @@ export const appRoutes: RouteObject[] = [
       </RequireAuth>
     ),
   },
+  // The partner's view of a shared diary, addressed by its epoch (kernel D10).
+  {
+    path: '/diaries/:diaryId/shares/:epochId',
+    element: (
+      <RequireAuth>
+        <DiaryPage />
+      </RequireAuth>
+    ),
+  },
   { path: '/join', element: <JoinPage /> },
   {
     path: '/spaces/:spaceId',

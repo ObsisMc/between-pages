@@ -1,9 +1,9 @@
 import { BODY, authorRuns, createDiaryDoc, type ClientBindings } from '@between-pages/collab';
 import { keymap } from 'prosemirror-keymap';
 import type { Node } from 'prosemirror-model';
-import { EditorState, TextSelection, type Transaction } from 'prosemirror-state';
+import { EditorState, Plugin, PluginKey, TextSelection, type Transaction } from 'prosemirror-state';
 import { Mapping, Transform, type Step } from 'prosemirror-transform';
-import { EditorView } from 'prosemirror-view';
+import { Decoration, DecorationSet, EditorView } from 'prosemirror-view';
 import * as Y from 'yjs';
 import { hasControlCharacter, pasteFits, plainText } from './input.ts';
 import { changesOf, intentOf, type Change, type EditIntent } from './intent.ts';
@@ -34,6 +34,11 @@ export type Refusal =
 export type EditorBindingOptions = {
   /** The session user; characters bound to anyone else are the other person's. */
   userId: string;
+  /**
+   * The class that colors one author's text (EDIT-13): by the author's slot in the space,
+   * so a person has one color on every device. Null leaves the text uncolored.
+   */
+  authorClass?: (author: string) => string | null;
   /** Called synchronously for every operation, in order; nothing else records it. */
   onOperation: (operation: EditorOperation) => void;
   onRefuse: (refusal: Refusal) => void;
@@ -51,6 +56,13 @@ export type EditorBinding = {
   applyUpdate(update: Uint8Array, bindings: ClientBindings): void;
   /** Read-only stops every edit path, undo included; applied updates are still shown. */
   setEditable(editable: boolean): void;
+  /**
+   * "只看我的文字" (EDIT-14): hides the other person's text and stops every edit path while
+   * on; nothing in the document changes. Off restores the editability it had.
+   */
+  setOwnTextOnly(on: boolean): void;
+  /** The character at a text index, by identity, with its author; null past the end. */
+  characterAt(index: number): { client: number; clock: number; author: string } | null;
   /**
    * The characters between text indexes `from` and `to` that someone other than the user
    * wrote, as runs of one clientID with consecutive clocks: what a reader saw there, by
@@ -82,7 +94,7 @@ type Composition = { start: Node; steps: Step[]; deferred: Transform };
  */
 export function createEditorBinding(
   place: HTMLElement,
-  { userId, onOperation, onRefuse }: EditorBindingOptions,
+  { userId, authorClass, onOperation, onRefuse }: EditorBindingOptions,
 ): EditorBinding {
   const doc = createDiaryDoc();
   const text = doc.getText(BODY);
@@ -115,11 +127,44 @@ export function createEditorBinding(
   });
 
   let editable = true;
+  let ownOnly = false;
+  const writable = () => editable && !ownOnly;
+
+  /** Author colors and the own-text-only filter, from `Y.Text` while it matches the view. */
+  function decorationsOf(pmDoc: Node): DecorationSet {
+    if (composition || (!authorClass && !ownOnly)) return DecorationSet.empty;
+    const marks: Decoration[] = [];
+    let offset = 0;
+    for (const run of authorRuns(doc, authors())) {
+      const from = offset + 1;
+      offset += run.text.length;
+      const classes = [
+        authorClass?.(run.author),
+        ownOnly && run.author !== userId ? 'author-hidden' : null,
+      ].filter(Boolean);
+      if (classes.length)
+        marks.push(Decoration.inline(from, offset + 1, { class: classes.join(' ') }));
+    }
+    return DecorationSet.create(pmDoc, marks);
+  }
+  const authorKey = new PluginKey<DecorationSet>('authorship');
+  const authorship = new Plugin<DecorationSet>({
+    key: authorKey,
+    state: {
+      init: (_config, state) => decorationsOf(state.doc),
+      // During a composition the view is ahead of `Y.Text`; the old set is mapped along.
+      apply: (tr, old, _before, state) =>
+        composition ? old.map(tr.mapping, tr.doc) : decorationsOf(state.doc),
+    },
+    props: { decorations: (state) => authorKey.getState(state) },
+  });
+
   const view: EditorView = new EditorView(place, {
-    editable: () => editable,
+    editable: writable,
     state: EditorState.create({
       doc: docOf(''),
       plugins: [
+        authorship,
         keymap({
           Enter: () => insert('\n'),
           'Shift-Enter': () => insert('\n'),
@@ -189,7 +234,7 @@ export function createEditorBinding(
 
   function dispatch(tr: Transaction) {
     if (tr.getMeta(MIRROR) || !tr.docChanged) return view.updateState(view.state.apply(tr));
-    if (!editable) return view.updateState(view.state);
+    if (!writable()) return view.updateState(view.state);
     if (composition || view.composing || tr.getMeta('composition') !== undefined)
       return compose(tr);
     const edits = editsOf(tr);
@@ -280,6 +325,12 @@ export function createEditorBinding(
   }
 
   function finishComposition() {
+    settleComposition();
+    // Decorations were only mapped while composing; drawn again from `Y.Text` now.
+    if (authorClass || ownOnly) view.dispatch(view.state.tr.setMeta(MIRROR, true));
+  }
+
+  function settleComposition() {
     clearTimeout(compositionTimer);
     const { deferred } = composition!;
     const net = netChange(composition!);
@@ -404,7 +455,7 @@ export function createEditorBinding(
   }
 
   function history(direction: 'undo' | 'redo'): boolean {
-    if (composition || view.composing || !editable) return false;
+    if (composition || view.composing || !writable()) return false;
     own.add(doc.clientID);
     if (direction === 'undo') undoManager.undo();
     else undoManager.redo();
@@ -451,7 +502,22 @@ export function createEditorBinding(
     },
     setEditable(value) {
       editable = value;
-      view.setProps({ editable: () => editable });
+      view.setProps({ editable: writable });
+    },
+    setOwnTextOnly(on) {
+      ownOnly = on;
+      view.setProps({ editable: writable });
+      // Redraws the decorations without changing the document.
+      view.dispatch(view.state.tr.setMeta(MIRROR, true));
+    },
+    characterAt(index) {
+      let offset = 0;
+      for (const run of authorRuns(doc, authors())) {
+        if (index < offset + run.text.length)
+          return { client: run.client, clock: run.clock + index - offset, author: run.author };
+        offset += run.text.length;
+      }
+      return null;
     },
     destroy() {
       clearTimeout(compositionTimer);
