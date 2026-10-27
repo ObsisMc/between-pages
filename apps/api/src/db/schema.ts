@@ -7,14 +7,17 @@ import {
   foreignKey,
   index,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   smallint,
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
+import type { DateSelection } from '@between-pages/contracts';
 
 // Domain users (authentication-and-sessions ADR): written only by our code, keyed by the
 // same UUID the auth layer issues. No email, no login method, and no foreign key into
@@ -217,6 +220,173 @@ export const backupOutbox = pgTable(
       foreignColumns: [diaryCommits.diaryId, diaryCommits.version],
     }),
     unique('backup_outbox_target').on(t.diaryId, t.version, t.target),
+  ],
+);
+
+// Relationship and sharing range tables (spaces-and-invitations ADR D10, phase 1). Rules
+// that span tables — each account belongs to at most one space, a policy owner is a
+// participant, both bindings of a period commit together — hold through the binding
+// transaction that locks both users rows first, not through constraints.
+
+// The permanent two-person space; the pair is stored in UUID order so one pair has one row
+// (D2). Unbinding never deletes it.
+export const spaces = pgTable(
+  'spaces',
+  {
+    id: uuid('id').primaryKey(),
+    userLow: uuid('user_low')
+      .notNull()
+      .references(() => users.id),
+    userHigh: uuid('user_high')
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('spaces_pair').on(t.userLow, t.userHigh),
+    index('spaces_user_high').on(t.userHigh),
+    check('spaces_pair_ordered', sql`${t.userLow} < ${t.userHigh}`),
+  ],
+);
+
+// One binding of a space, from confirmation to unbinding; a rebind adds a period and never
+// reopens an old one (D2).
+export const bindingPeriods = pgTable(
+  'binding_periods',
+  {
+    id: uuid('id').primaryKey(),
+    spaceId: uuid('space_id')
+      .notNull()
+      .references(() => spaces.id),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+    endedAt: timestamp('ended_at', { withTimezone: true }),
+    endedBy: uuid('ended_by').references(() => users.id),
+  },
+  (t) => [
+    unique('binding_periods_id_space').on(t.id, t.spaceId),
+    uniqueIndex('binding_periods_one_open')
+      .on(t.spaceId)
+      .where(sql`${t.endedAt} is null`),
+    check('binding_periods_end_fields', sql`num_nulls(${t.endedAt}, ${t.endedBy}) in (0, 2)`),
+    check('binding_periods_end_order', sql`${t.endedAt} >= ${t.startedAt}`),
+  ],
+);
+
+// The current binding of each user; the primary key keeps it to one per user. Rows exist
+// only while their period is open.
+export const activeBindings = pgTable(
+  'active_bindings',
+  {
+    userId: uuid('user_id')
+      .primaryKey()
+      .references(() => users.id),
+    periodId: uuid('period_id').notNull(),
+    spaceId: uuid('space_id').notNull(),
+  },
+  (t) => [
+    foreignKey({
+      name: 'active_bindings_period',
+      columns: [t.periodId, t.spaceId],
+      foreignColumns: [bindingPeriods.id, bindingPeriods.spaceId],
+    }),
+  ],
+);
+
+// Invitation links (D8). Only the SHA-256 of the token is stored. An invitation is closed
+// once revoked or accepted; rotation closes the previous one, expired or not, so the
+// one-open rule does not depend on the current time.
+export const bindingInvitations = pgTable(
+  'binding_invitations',
+  {
+    id: uuid('id').primaryKey(),
+    createdBy: uuid('created_by')
+      .notNull()
+      .references(() => users.id),
+    requestId: uuid('request_id').notNull(),
+    tokenHash: bytea('token_hash').notNull().unique(),
+    /** The inviter's selection confirmed for this invitation; null restores the relationship only. */
+    confirmedSelection: jsonb('confirmed_selection').$type<DateSelection>(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+    acceptedBy: uuid('accepted_by').references(() => users.id),
+  },
+  (t) => [
+    unique('binding_invitations_request').on(t.createdBy, t.requestId),
+    uniqueIndex('binding_invitations_one_open')
+      .on(t.createdBy)
+      .where(sql`${t.revokedAt} is null and ${t.acceptedAt} is null`),
+    check('binding_invitations_expiry', sql`${t.expiresAt} > ${t.createdAt}`),
+    check(
+      'binding_invitations_accept_fields',
+      sql`num_nulls(${t.acceptedAt}, ${t.acceptedBy}) in (0, 2)`,
+    ),
+    check(
+      'binding_invitations_closed_once',
+      sql`${t.revokedAt} is null or ${t.acceptedAt} is null`,
+    ),
+  ],
+);
+
+// Each person's own sharing range in a space (D3, D5). Saving it configures a range; it is
+// not a grant to read any diary text. `confirmed_period_id` is the period the selection was
+// last confirmed for, so a confirmation never carries over to a later period.
+export const sharingPolicies = pgTable(
+  'sharing_policies',
+  {
+    spaceId: uuid('space_id')
+      .notNull()
+      .references(() => spaces.id),
+    ownerId: uuid('owner_id')
+      .notNull()
+      .references(() => users.id),
+    selection: jsonb('selection')
+      .$type<DateSelection>()
+      .notNull()
+      .default({ include: [], exclude: [] }),
+    revision: integer('revision').notNull().default(0),
+    confirmedPeriodId: uuid('confirmed_period_id'),
+  },
+  (t) => [
+    primaryKey({ columns: [t.spaceId, t.ownerId] }),
+    foreignKey({
+      name: 'sharing_policies_confirmed_period',
+      columns: [t.confirmedPeriodId, t.spaceId],
+      foreignColumns: [bindingPeriods.id, bindingPeriods.spaceId],
+    }),
+    check('sharing_policies_revision', sql`${t.revision} >= 0`),
+  ],
+);
+
+// One row per committed range change, readable by its owner only; `(owner_id, request_id)`
+// returns the original result when a lost response is retried (D5, D11).
+export const sharingPolicyChanges = pgTable(
+  'sharing_policy_changes',
+  {
+    id: uuid('id').primaryKey(),
+    spaceId: uuid('space_id').notNull(),
+    ownerId: uuid('owner_id').notNull(),
+    requestId: uuid('request_id').notNull(),
+    fromRevision: integer('from_revision').notNull(),
+    toRevision: integer('to_revision').notNull(),
+    selection: jsonb('selection').$type<DateSelection>().notNull(),
+    periodId: uuid('period_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('sharing_policy_changes_request').on(t.ownerId, t.requestId),
+    foreignKey({
+      name: 'sharing_policy_changes_policy',
+      columns: [t.spaceId, t.ownerId],
+      foreignColumns: [sharingPolicies.spaceId, sharingPolicies.ownerId],
+    }),
+    foreignKey({
+      name: 'sharing_policy_changes_period',
+      columns: [t.periodId, t.spaceId],
+      foreignColumns: [bindingPeriods.id, bindingPeriods.spaceId],
+    }),
+    check('sharing_policy_changes_step', sql`${t.toRevision} = ${t.fromRevision} + 1`),
   ],
 );
 

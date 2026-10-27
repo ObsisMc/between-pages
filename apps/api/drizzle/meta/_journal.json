@@ -22,6 +22,13 @@
       "when": 1793056473347,
       "tag": "0002_personal_diaries",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793103609011,
+      "tag": "0003_spaces_and_sharing",
+      "breakpoints": true
     }
   ]
 }
