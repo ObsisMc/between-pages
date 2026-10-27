@@ -237,29 +237,22 @@ test('EDIT-16 previews the own history read-only and returns to the current text
   browserName,
 }) => {
   // A history point closes once the server sees no commit for HISTORY_IDLE_MS (3 s here,
-  // two minutes in production, kernel D6); the test polls the API rather than sleeping.
+  // two minutes in production, kernel D6); the open panel shows it without reopening.
   await devLogin(page, `history-${browserName}-${run}`);
   const diaryId = await writeToday(page);
-  const points = () =>
-    page.evaluate(async (id) => {
-      const res = await fetch(`/api/diaries/${id}/history`);
-      return ((await res.json()) as { points: unknown[] }).points.length;
-    }, diaryId);
-  const closed = (n: number) =>
-    expect.poll(points, { timeout: 15_000, intervals: [1_000] }).toBe(n);
+  await page.getByRole('button', { name: '历史' }).click();
+  const panel = page.getByRole('complementary', { name: '历史版本' });
+  await expect(panel).toContainText('还没有历史版本');
+  const points = panel.getByRole('button');
 
   await typeAtEnd(page, '早上写的');
   await saved(page);
-  await closed(1);
+  await expect(points).toHaveCount(1, { timeout: 15_000 });
   await typeAtEnd(page, '，下午补的');
   await saved(page);
-  await closed(2);
-
-  await page.getByRole('button', { name: '历史' }).click();
-  const panel = page.getByRole('complementary', { name: '历史版本' });
   // Newest first: the last entry is the morning version.
-  await expect(panel.getByRole('button')).toHaveCount(2);
-  await panel.getByRole('button').last().click();
+  await expect(points).toHaveCount(2, { timeout: 15_000 });
+  await points.last().click();
   const preview = page.getByRole('region', { name: '历史版本预览' });
   await expect(preview.locator('.history-text')).toHaveText('早上写的');
   await expect(preview).toContainText('只读');

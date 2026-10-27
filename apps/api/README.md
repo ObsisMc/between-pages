@@ -14,7 +14,7 @@ The Fastify process: registers the routes defined in `@between-pages/contracts`,
 | `POST /api/diaries` | `{ timezone, date? }` → `{ created, diary }`: the caller's diary for `date`, or for today in `timezone` from the server's UTC clock; created with its first generation when missing. A future date or a zone that is not an IANA name is `400 VALIDATION_FAILED`. |
 | `GET /api/diaries/:diaryId` | `{ diary }`: the current generation's committed state (base64 Yjs update), `generationId`, `seq`, clientID bindings. |
 | `GET /api/diaries/:diaryId/receipt?batchId=… \| ?operationId=…` | `{ receipt }` of the caller's committed batch, or `{ receipt: null }`. The same shape as the ACK; answerable forever. |
-| `GET /api/diaries/:diaryId/history[?cursor=…]` | History points newest first, 50 per page, computed at read time (kernel D6); the cursor is opaque. |
+| `GET /api/diaries/:diaryId/history[?cursor=…]` | History points newest first, 50 per page, computed at read time (kernel D6); the cursor is opaque. `nextPointInMs` is how long until the group being written becomes a point, or `null` when none is open. |
 | `GET /api/diaries/:diaryId/history/:publicId` | One committed version as server-rendered author runs; `500 VERSION_UNREADABLE` when its stored parts fail their sha256. |
 | `GET /api/sync` (WebSocket) | The collaboration socket, messages per `@between-pages/contracts` `ClientMessage` / `ServerMessage`. Handshake: `Origin` and session, else `403` / `401` before upgrading. `subscribe` → `synced` (commits after `knownSeq`) then live `commit`s; `submit` → `ack` after PG COMMIT, then a `commit` broadcast, or `error` with the D10 code. A session that ends closes the socket with `4401`. |
 | Diary routes, everyone else | A diary the caller does not own answers exactly like one that does not exist: `404 NOT_FOUND` / `NOT_FOUND`. |
@@ -40,7 +40,7 @@ Sub-modules of `src/` (kernel D11), top to bottom; each imports only from the la
 | Transport | `ws/` | `registerSyncSocket(app, deps)`, `SESSION_RECHECK_MS` (60 s), `TRANSPORT_MAX_BYTES`. |
 | Service | `commit/` | `createCommitService(store)` → `commit(actor, batch)` (`CommitOutcome`; throws on PG failure, lock timeout or `VersionUnreadable`) and `receipt(actor, diaryId, { batchId } \| { operationId })`. |
 | Service | `diaries/` | `createDiaryService(store)` → `open(owner, { timezone, date? })`, `view(viewer, diaryId)`, `catchUp(viewer, diaryId, generationId, knownSeq)`. |
-| Service | `history/` | `createHistoryService(store, idleMs?)` → `page(viewer, diaryId, cursor, now)`, `version(viewer, diaryId, publicId)`; `historyPoints(timeline, now)`. |
+| Service | `history/` | `createHistoryService(store, idleMs?)` → `page(viewer, diaryId, cursor, now)`, `version(viewer, diaryId, publicId)`; `historyPoints(timeline, now)`, `nextPointIn(timeline, now)`. |
 | Service | `outbox/` | `registerBackups(locked, version)`: the backup tasks of one commit, in its transaction. |
 | Service | `events/` | `createEvents()` → `publish(event)`, `subscribe(diaryId, listener)` (returns unsubscribe). In-process only. |
 | Storage | `store/` | `createStore(db)` → `read(fn)` (one read-only snapshot), `withDiaryLock(diaryId, fn)`, `openPersonal(...)`; `DiaryQueries`, `LockedDiary`, `COMMIT_LOCK_TIMEOUT`, `SNAPSHOT_EVERY`. |

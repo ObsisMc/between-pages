@@ -263,11 +263,24 @@
               "string",
               "null"
             ]
+          },
+          "nextPointInMs": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "points",
-          "nextCursor"
+          "nextCursor",
+          "nextPointInMs"
         ]
       },
       "HistoryVersionInput": {
@@ -616,11 +629,24 @@
               "string",
               "null"
             ]
+          },
+          "nextPointInMs": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "points",
-          "nextCursor"
+          "nextCursor",
+          "nextPointInMs"
         ],
         "additionalProperties": false
       },

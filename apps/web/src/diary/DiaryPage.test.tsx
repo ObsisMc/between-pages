@@ -94,6 +94,7 @@ describe('DiaryPage', () => {
         Response.json({
           points: [{ publicId: version, committedAt: '2026-10-27T08:00:00Z', authors: [USER] }],
           nextCursor: null,
+          nextPointInMs: null,
         }),
       [`GET /api/diaries/${DIARY}/history/${version}`]: () =>
         Response.json({

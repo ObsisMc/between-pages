@@ -140,6 +140,7 @@ export function DiaryPage() {
         {open && historyOpen && diaryId && (
           <HistoryPanel
             diaryId={diaryId}
+            commits={state.remoteChanges}
             selected={preview?.point.publicId ?? null}
             onSelect={showVersion}
           />

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CommitPoint } from '../store/store.ts';
-import { historyPoints } from './history.ts';
+import { historyPoints, nextPointIn } from './history.ts';
 
 const T0 = Date.parse('2026-10-26T08:00:00Z');
 const at = (seconds: number) => new Date(T0 + seconds * 1000);
@@ -52,5 +52,20 @@ describe('historyPoints', () => {
     expect(historyPoints(timeline, at(1000))).toEqual([
       { publicId: 'g1-30', committedAt: at(30), authors: ['a', 'b'] },
     ]);
+  });
+});
+
+describe('nextPointIn', () => {
+  it('says when the group being written closes: two minutes after its last commit', () => {
+    expect(nextPointIn(commits([0, 60, 200, 230]), at(300))).toBe(50_000);
+  });
+
+  it('says so at five minutes from its first commit when editing never pauses', () => {
+    expect(nextPointIn(commits([0, 100, 200, 280]), at(290))).toBe(10_000);
+  });
+
+  it('is null once the newest group is a point, or before any commit', () => {
+    expect(nextPointIn(commits([0, 60]), at(180))).toBeNull();
+    expect(nextPointIn([], at(0))).toBeNull();
   });
 });

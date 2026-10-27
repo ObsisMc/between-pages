@@ -81,6 +81,12 @@ describe.runIf(testDatabaseUrl)('history', () => {
     expect(first.points).toHaveLength(PAGE_SIZE);
     expect(first.points[0]).toMatchObject({ publicId: ids.at(-1), authors: [ownerId] });
     expect(second).toMatchObject({ nextCursor: null });
+    expect(first.nextPointInMs).toBeNull();
+    // A minute after the last commit its group is still open: it closes a minute later.
+    const lastCommit = Date.parse('2026-10-26T08:00:00Z') + (PAGE_SIZE + 1) * 3 * 60_000;
+    expect(
+      await history.page(ownerId, diaryId, undefined, new Date(lastCommit + 60_000)),
+    ).toMatchObject({ nextPointInMs: 60_000 });
     expect([...first.points, ...second.points].map((p) => p.publicId)).toEqual(ids.toReversed());
     expect(await history.page(ownerId, diaryId, 'not-a-cursor', later)).toBe('BAD_CURSOR');
     expect(await history.page(await createUser(), diaryId, undefined, later)).toBe('NOT_FOUND');

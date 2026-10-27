@@ -9,19 +9,14 @@ export const PAGE_SIZE = 50;
 
 export type HistoryPoint = { publicId: string; committedAt: Date; authors: string[] };
 
+type Group = { first: CommitPoint; last: CommitPoint; authors: Set<string> };
+
 /**
- * History points computed at read time (kernel D6), oldest first. A group starts at a
- * commit and takes later ones while each is within IDLE_MS of the previous and GROUP_MS of
- * the group's first, inside one generation (sharing boundaries never merge); its point is
- * its last commit. The newest group becomes a point only once closed by `now`, so a
- * point never changes after it appears.
+ * Groups commits as kernel D6 does: a group starts at a commit and takes later ones while
+ * each is within `idleMs` of the previous and GROUP_MS of the group's first, inside one
+ * generation (sharing boundaries never merge).
  */
-export function historyPoints(
-  timeline: readonly CommitPoint[],
-  now: Date,
-  idleMs = IDLE_MS,
-): HistoryPoint[] {
-  type Group = { first: CommitPoint; last: CommitPoint; authors: Set<string> };
+function groupsOf(timeline: readonly CommitPoint[], idleMs: number): Group[] {
   const groups: Group[] = [];
   for (const commit of timeline) {
     const group = groups.at(-1);
@@ -42,18 +37,49 @@ export function historyPoints(
       authors: new Set(commit.authorId ? [commit.authorId] : []),
     });
   }
-  const open = groups.at(-1);
-  if (
-    open &&
-    now.getTime() - open.last.committedAt.getTime() < idleMs &&
-    now.getTime() - open.first.committedAt.getTime() < GROUP_MS
-  )
-    groups.pop();
+  return groups;
+}
+
+/** When a group closes unless another commit joins it first. */
+const closesAt = ({ first, last }: Group, idleMs: number) =>
+  Math.min(last.committedAt.getTime() + idleMs, first.committedAt.getTime() + GROUP_MS);
+
+/** The newest group while it is still open at `now`: it has no point yet. */
+function openGroup(groups: readonly Group[], now: Date, idleMs: number): Group | undefined {
+  const newest = groups.at(-1);
+  return newest && now.getTime() < closesAt(newest, idleMs) ? newest : undefined;
+}
+
+/**
+ * History points computed at read time (kernel D6), oldest first; each is its group's
+ * last commit. The newest group becomes a point only once closed by `now`, so a point
+ * never changes after it appears.
+ */
+export function historyPoints(
+  timeline: readonly CommitPoint[],
+  now: Date,
+  idleMs = IDLE_MS,
+): HistoryPoint[] {
+  const groups = groupsOf(timeline, idleMs);
+  if (openGroup(groups, now, idleMs)) groups.pop();
   return groups.map(({ last, authors }) => ({
     publicId: last.publicId,
     committedAt: last.committedAt,
     authors: [...authors].sort(),
   }));
+}
+
+/**
+ * Milliseconds from `now` until the open group becomes a point if no commit joins it, or
+ * null when no group is open; lets a client fetch the new point when it appears.
+ */
+export function nextPointIn(
+  timeline: readonly CommitPoint[],
+  now: Date,
+  idleMs = IDLE_MS,
+): number | null {
+  const open = openGroup(groupsOf(timeline, idleMs), now, idleMs);
+  return open ? closesAt(open, idleMs) - now.getTime() : null;
 }
 
 // Opaque to clients; inside it is the (commit time, publicId) of the last point served.
@@ -90,7 +116,11 @@ export function createHistoryService(store: Store, idleMs = IDLE_MS) {
       diaryId: string,
       cursor: string | undefined,
       now: Date,
-    ): Promise<{ points: HistoryPoint[]; nextCursor: string | null } | 'NOT_FOUND' | 'BAD_CURSOR'> {
+    ): Promise<
+      | { points: HistoryPoint[]; nextCursor: string | null; nextPointInMs: number | null }
+      | 'NOT_FOUND'
+      | 'BAD_CURSOR'
+    > {
       const after = cursor === undefined ? null : decodeCursor(cursor);
       if (cursor !== undefined && !after) return 'BAD_CURSOR';
       const timeline = await store.read(async (queries) => {
@@ -110,6 +140,7 @@ export function createHistoryService(store: Store, idleMs = IDLE_MS) {
       return {
         points,
         nextCursor: rest.length > PAGE_SIZE ? encodeCursor(points.at(-1)!) : null,
+        nextPointInMs: nextPointIn(timeline, now, idleMs),
       };
     },
 

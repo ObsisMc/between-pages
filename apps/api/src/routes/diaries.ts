@@ -74,6 +74,7 @@ export function diaryHandlers(services: {
       return {
         points: page.points.map((p) => ({ ...p, committedAt: p.committedAt.toISOString() })),
         nextCursor: page.nextCursor,
+        nextPointInMs: page.nextPointInMs,
       };
     },
 
