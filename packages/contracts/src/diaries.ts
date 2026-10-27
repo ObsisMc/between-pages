@@ -35,6 +35,7 @@ export const OpenDiaryRequest = z
 export const ClientBinding = z
   .object({ clientId: z.int().min(0).max(0xffffffff), userId: Uuid })
   .meta({ id: 'ClientBinding' });
+export type ClientBinding = z.infer<typeof ClientBinding>;
 
 export const DiaryState = z
   .object({
@@ -67,6 +68,7 @@ export const CommitReceipt = z
     committedAt: z.iso.datetime({ offset: true }),
   })
   .meta({ id: 'CommitReceipt' });
+export type CommitReceipt = z.infer<typeof CommitReceipt>;
 
 export const ReceiptQuery = z
   .strictObject({ batchId: Uuid.optional(), operationId: Uuid.optional() })
