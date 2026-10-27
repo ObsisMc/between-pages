@@ -59,6 +59,19 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       store: ['db', 'errors'],
     },
   },
+  {
+    // Kernel ADR D11: editor-binding knows neither the network nor IndexedDB, so it imports
+    // no other web sub-module (the API client today, the journal and sender later).
+    dir: 'apps/web/src',
+    units: {
+      main: ['*'],
+      routes: ['auth', 'pages'],
+      api: [],
+      auth: ['api'],
+      pages: ['api', 'auth'],
+      'editor-binding': [],
+    },
+  },
 ];
 
 const SOURCE = /\.(?:ts|tsx|mts|js|mjs|cjs)$/;
