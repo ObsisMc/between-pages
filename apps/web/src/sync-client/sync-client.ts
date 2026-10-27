@@ -56,6 +56,11 @@ export type SyncClientOptions = {
   onStatus: (status: SyncStatus, code?: ErrorCode) => void;
   /** Told after the server committed it; the screen reconciles before switching (D7). */
   onContext?: (change: ContextChange) => void;
+  /**
+   * The owner's diary is in a live share as of each catch-up, before it reports `live`;
+   * changes after it come through `onContext`. Never told on the partner's epoch.
+   */
+  onShared?: (shared: boolean) => void;
   /** Another person's caret in this generation, or null when it left (kernel D8). */
   onCaret?: (user: string, caret: { anchor: Uint8Array; head: Uint8Array } | null) => void;
 };
@@ -88,6 +93,7 @@ export function createSyncClient({
   onCommits,
   onStatus,
   onContext,
+  onShared,
   onCaret,
 }: SyncClientOptions): SyncClient {
   let seq = knownSeq;
@@ -162,6 +168,7 @@ export function createSyncClient({
       case 'synced':
         if (message.diaryId !== diaryId || message.generationId !== generationId) return;
         if (!deliver(message.commits, message.bindings)) return subscribe(ws);
+        if (message.shared !== undefined) onShared?.(message.shared);
         live = true;
         retryMs = RECONNECT_FIRST_MS;
         return onStatus('live');

@@ -103,6 +103,12 @@ export const SyncedMessage = z.object({
   seq: z.int().nonnegative(),
   commits: z.array(z.object(CommittedDelta)),
   bindings: z.array(ClientBinding),
+  /**
+   * The owner's subscription only: whether the diary is in a live share as of this reply,
+   * so what commits from now on the partner can read. Later changes arrive as `context`
+   * messages after it, none missed in between.
+   */
+  shared: z.boolean().optional(),
 });
 
 /**

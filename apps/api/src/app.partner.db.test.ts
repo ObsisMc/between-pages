@@ -519,6 +519,30 @@ describe.runIf(testDatabaseUrl)('across generations and restarts', () => {
   });
 });
 
+describe.runIf(testDatabaseUrl)("the owner's subscription", () => {
+  it('says whether the diary is shared as of the reply, and only to its owner', async () => {
+    const { a, b, spaceId, saveRange } = await pair();
+    const diary = await ownDiary(a);
+    const ownerSide = await subscribe(a, diary);
+    expect(ownerSide.first).toMatchObject({ type: 'synced', shared: true });
+    const [listed] = await sharedList(b, spaceId);
+    const partner = await subscribe(b, diary, listed!.epochId);
+    expect(partner.first).toMatchObject({ type: 'synced' });
+    expect(partner.first).not.toHaveProperty('shared');
+
+    // A stop keeps the generation: the owner is told, and a new subscription says so.
+    await saveRange(NOTHING);
+    expect(await ownerSide.socket.next()).toMatchObject({ type: 'context', change: 'stopped' });
+    const again = await subscribe(a, diary);
+    expect(again.first).toMatchObject({ type: 'synced', shared: false });
+
+    // Created while nothing is shared: private from the start.
+    const later = await subscribe(a, await ownDiary(a, '2026-10-21'));
+    expect(later.first).toMatchObject({ type: 'synced', shared: false });
+    for (const side of [ownerSide, partner, again, later]) side.socket.close();
+  });
+});
+
 describe.runIf(testDatabaseUrl)('carets', () => {
   const caret = (diary: { diaryId: string; generationId: string }, head: string | null) => ({
     v: 1,

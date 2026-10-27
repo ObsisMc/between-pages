@@ -321,6 +321,26 @@ describe('shared diaries', () => {
     expect(changes).toEqual([{ change: 'opened', generationId: next, epochId: EPOCH }]);
   });
 
+  it('hands over whether the owner’s diary is shared at each catch-up, before it is live', () => {
+    vi.stubGlobal('WebSocket', FakeSocket);
+    const heard: string[] = [];
+    const client = createSyncClient({
+      diaryId: DIARY,
+      generationId: GENERATION,
+      knownSeq: 0,
+      onCommits: () => undefined,
+      onStatus: (status) => heard.push(status),
+      onShared: (shared) => heard.push(`shared ${shared}`),
+    });
+    clients.push(client);
+    const socket = FakeSocket.all.at(-1)!;
+    socket.open();
+    socket.receive({ ...synced(0, []), shared: true });
+    socket.receive({ ...synced(0, []), shared: false });
+    socket.receive(synced(0, []));
+    expect(heard).toEqual(['connecting', 'shared true', 'live', 'shared false', 'live', 'live']);
+  });
+
   it('sends no epoch on the owner’s own diary', () => {
     const { socket } = setup();
     socket().open();

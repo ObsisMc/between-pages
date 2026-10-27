@@ -43,6 +43,11 @@ export type DiaryState = {
   refusal?: { reason: Refusal; count: number };
   /** The partner's view of a shared diary: `live` writes the own text, `frozen` is read-only. */
   share?: 'live' | 'frozen';
+  /**
+   * The own diary is in a live share, so what is saved the partner can read: as the last
+   * catch-up said, until a `stopped` notice. Undefined until the server has said so.
+   */
+  shared?: boolean;
   /** The owner shared this diary again as this new epoch; the frozen one stays as it is. */
   reopened?: string;
   /** "只看我的文字" is on: the other person's text is hidden and nothing can be edited. */
@@ -307,6 +312,7 @@ export function createDiarySession({
         // The generation changed while this device was away (kernel D7, D14).
         if (status === 'refused' && code === 'STALE_CONTEXT') void switchGeneration();
       },
+      onShared: (shared) => set({ shared }),
       onCaret: (user, caret) =>
         editor?.showCaret(user, caret, {
           name: nameOf?.(user) ?? '',
@@ -319,6 +325,8 @@ export function createDiarySession({
           if (change === 'opened' && changed !== epochId) set({ reopened: changed });
           return;
         }
+        // A diary has one live epoch at most, so any stop ends its sharing.
+        if (change === 'stopped') set({ shared: false });
         if (change === 'opened' && next !== generationId) void switchGeneration();
       },
     });

@@ -238,6 +238,10 @@ function serve(socket: WebSocket, request: FastifyRequest, deps: Deps) {
       seq: result.seq,
       commits: result.commits.map((c) => ({ ...c, delta: base64(c.delta) })),
       bindings: bindingList(result.bindings),
+      // Only the owner's catch-up says whether the diary is shared.
+      ...('shared' in result && typeof result.shared === 'boolean'
+        ? { shared: result.shared }
+        : {}),
     });
     live = true;
     following.set(diaryId, sub);

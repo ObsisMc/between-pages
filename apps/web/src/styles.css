@@ -7,6 +7,8 @@
   --accent-ink: #fffaf4;
   --line: #e7ddd0;
   --notice: #f6e7d8;
+  /* Saved, or synced with the other person: settled, never a warning. */
+  --done: #44704a;
   /* Two author ink colors, by slot (EDIT-13): text color only, never a background. */
   --author-1: #8a4a2b;
   --author-2: #2d5e66;
@@ -25,6 +27,7 @@
     --accent-ink: #221d19;
     --line: #3a322b;
     --notice: #3a2b21;
+    --done: #93c49a;
     --author-1: #e3a37d;
     --author-2: #8cc3ca;
     color-scheme: dark;
@@ -177,6 +180,17 @@ button.primary {
 
 .save-status.warn {
   color: var(--accent);
+}
+
+.save-status.calm {
+  color: var(--done);
+  font-weight: 500;
+}
+
+/* A mark for the eye only: the status text alone is what is announced. */
+.save-status.calm::before {
+  content: '✓ ';
+  content: '✓ ' / '';
 }
 
 .diary-editor .ProseMirror {

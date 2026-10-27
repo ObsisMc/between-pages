@@ -5,7 +5,8 @@ export type StatusLine = { text: string; tone: 'calm' | 'busy' | 'warn' };
 
 /**
  * The one line the screen shows about saving (kernel "失败与恢复"): what is stored where,
- * most urgent first, so "已保存到服务器" appears only when nothing waits anywhere.
+ * most urgent first, so "已保存到服务器" appears only when nothing waits anywhere. While the
+ * other person can read what is saved, the saved line says so instead.
  */
 export function statusLine(state: DiaryState): StatusLine {
   const { save, sync } = state;
@@ -23,7 +24,10 @@ export function statusLine(state: DiaryState): StatusLine {
   if (save === 'offline') return { text: '暂时无法同步，已保存在本机', tone: 'warn' };
   if (save === 'syncing') return { text: '正在同步', tone: 'busy' };
   if (save === 'attention') return { text: '需要处理', tone: 'warn' };
-  if (save === 'saved') return { text: '已保存到服务器', tone: 'calm' };
+  if (save === 'saved')
+    return state.share === 'live' || state.shared
+      ? { text: '已同步 · 对方可以看到', tone: 'calm' }
+      : { text: '已保存到服务器', tone: 'calm' };
   return { text: '正在连接', tone: 'busy' };
 }
 

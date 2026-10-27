@@ -21,6 +21,9 @@ const editor = (page: Page) => page.getByRole('textbox');
 const status = (page: Page) => page.locator('.save-status');
 const saved = (page: Page) =>
   expect(status(page)).toHaveText('已保存到服务器', { timeout: 15_000 });
+/** Saved where the other person can read it: the own diary while shared, or a live share. */
+const synced = (page: Page) =>
+  expect(status(page)).toHaveText('已同步 · 对方可以看到', { timeout: 15_000 });
 
 async function typeAtEnd(page: Page, text: string) {
   await editor(page).click();
@@ -136,15 +139,15 @@ test('K8 K7 opening while another device is offline: committed input stays text,
     timeout: 60_000,
   });
   await expect(editor(a1)).toHaveText('公开的字甲');
-  await saved(a1);
+  await synced(a1);
 
   // K7: undo reaches only what was typed in the new generation.
   await typeAtEnd(a1, '丙');
-  await saved(a1);
+  await synced(a1);
   await editor(a1).press('ControlOrMeta+z');
   await editor(a1).press('ControlOrMeta+z');
   await expect(editor(a1)).toHaveText('公开的字甲');
-  await saved(a1);
+  await synced(a1);
   expect(await serverText(a1, diaryId)).toBe('公开的字甲');
   expect(await partnerText(b, spaceId)).toBe('公开的字甲');
 });
@@ -172,7 +175,7 @@ test('EDIT-13 EDIT-14 TIME-03 K11 the partner reads and writes a shared diary in
   await expect(a).toHaveURL(/\/diaries\/[0-9a-f-]{36}$/);
   const ownDiary = a.url();
   await typeAtEnd(a, 'A的字');
-  await saved(a);
+  await synced(a);
 
   // B finds it on the home page and opens it as a live share.
   await b.goto('/');
@@ -186,7 +189,7 @@ test('EDIT-13 EDIT-14 TIME-03 K11 the partner reads and writes a shared diary in
 
   // B writes; A sees it live, each author in their own color.
   await typeAtEnd(b, 'B的字');
-  await saved(b);
+  await synced(b);
   await expect(editor(a)).toHaveText('A的字B的字');
   const colorOf = (page: Page, text: string) =>
     page.locator('.diary-editor [class*="author-slot"]', { hasText: text }).getAttribute('class');
