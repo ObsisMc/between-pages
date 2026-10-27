@@ -63,8 +63,9 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
     // Kernel ADR D11: editor-binding knows neither the network nor IndexedDB, and the
     // journal knows neither the editor nor the network, so both import no other web
     // sub-module; the sender reaches the network only through the transport it is given,
-    // and the sync client owns the socket and the API calls it needs. `diary` is the screen
-    // that wires them together, and nothing below imports it.
+    // and the sync client owns the socket and the API calls it needs. `history` reads the
+    // server's rendered versions and knows no editor or journal. `diary` is the screen that
+    // wires them together, and nothing below imports it.
     dir: 'apps/web/src',
     units: {
       main: ['*'],
@@ -76,7 +77,8 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       journal: [],
       sender: ['journal'],
       'sync-client': ['api'],
-      diary: ['api', 'auth', 'editor-binding', 'journal', 'sender', 'sync-client'],
+      history: ['api'],
+      diary: ['api', 'auth', 'editor-binding', 'journal', 'sender', 'sync-client', 'history'],
     },
   },
 ];
