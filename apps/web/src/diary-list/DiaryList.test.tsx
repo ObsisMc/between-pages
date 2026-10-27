@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { renderAt, signedIn, stubApi } from '../../test/render.tsx';
+import { noRelationship, renderAt, signedIn, stubApi } from '../../test/render.tsx';
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const card = (n: number, diaryDate: string, excerpt: string | null) => ({
@@ -20,6 +20,7 @@ const list = () => screen.findByRole('region', { name: '我的日记' });
 describe('DiaryList', () => {
   it('shows the diaries as cards, newest first, loads older ones and opens a card', async () => {
     stubApi({
+      ...noRelationship,
       'GET /api/me': signedIn('alice'),
       'GET /api/diaries': () =>
         Response.json({
@@ -50,6 +51,7 @@ describe('DiaryList', () => {
 
   it('invites a first diary when there is none', async () => {
     stubApi({
+      ...noRelationship,
       'GET /api/me': signedIn('alice'),
       'GET /api/diaries': () => Response.json({ diaries: [], nextBefore: null }),
     });
@@ -59,6 +61,7 @@ describe('DiaryList', () => {
 
   it('says it cannot read the list offline instead of showing none', async () => {
     stubApi({
+      ...noRelationship,
       'GET /api/me': signedIn('alice'),
       'GET /api/diaries': () => Promise.reject(new TypeError('Failed to fetch')),
     });
