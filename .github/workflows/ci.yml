@@ -1,4 +1,5 @@
-# Every job runs the same command a developer runs locally (AGENTS.md#commands).
+# Every job runs the same command a developer runs locally (AGENTS.md#commands). Each job
+# has a time limit, so a stuck step costs at most that many minutes.
 name: ci
 
 on:
@@ -23,6 +24,7 @@ env:
 jobs:
   format:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -32,6 +34,7 @@ jobs:
 
   lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -41,6 +44,7 @@ jobs:
 
   typecheck:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -50,6 +54,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # Database tests (*.db.test.ts) need a real PostgreSQL; the password is test data.
     services:
       postgres:
@@ -73,6 +78,7 @@ jobs:
 
   commit-convention:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
@@ -83,6 +89,7 @@ jobs:
 
   docs-gates:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
@@ -103,6 +110,7 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     # Login (authentication-and-sessions E1-E6) and the diary screen (kernel phase 3) in
     # Chromium, Firefox and WebKit; not a
     # required check (the ADR leaves branch protection unchanged).
