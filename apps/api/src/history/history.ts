@@ -16,7 +16,11 @@ export type HistoryPoint = { publicId: string; committedAt: Date; authors: strin
  * its last commit. The newest group becomes a point only once closed by `now`, so a
  * point never changes after it appears.
  */
-export function historyPoints(timeline: readonly CommitPoint[], now: Date): HistoryPoint[] {
+export function historyPoints(
+  timeline: readonly CommitPoint[],
+  now: Date,
+  idleMs = IDLE_MS,
+): HistoryPoint[] {
   type Group = { first: CommitPoint; last: CommitPoint; authors: Set<string> };
   const groups: Group[] = [];
   for (const commit of timeline) {
@@ -25,7 +29,7 @@ export function historyPoints(timeline: readonly CommitPoint[], now: Date): Hist
     if (
       group &&
       group.first.generationId === commit.generationId &&
-      at - group.last.committedAt.getTime() < IDLE_MS &&
+      at - group.last.committedAt.getTime() < idleMs &&
       at - group.first.committedAt.getTime() < GROUP_MS
     ) {
       group.last = commit;
@@ -41,7 +45,7 @@ export function historyPoints(timeline: readonly CommitPoint[], now: Date): Hist
   const open = groups.at(-1);
   if (
     open &&
-    now.getTime() - open.last.committedAt.getTime() < IDLE_MS &&
+    now.getTime() - open.last.committedAt.getTime() < idleMs &&
     now.getTime() - open.first.committedAt.getTime() < GROUP_MS
   )
     groups.pop();
@@ -77,7 +81,8 @@ const newestFirst = (a: HistoryPoint, b: HistoryPoint) =>
  * reads it; anyone else gets NOT_FOUND. Phase 4 filters commits by the viewer's epochs
  * before grouping, so counts and pages never reflect private commits (invariant 15).
  */
-export function createHistoryService(store: Store) {
+/** `idleMs` is shortened only by the end-to-end suite (`HISTORY_IDLE_MS`, dev login only). */
+export function createHistoryService(store: Store, idleMs = IDLE_MS) {
   return {
     /** One page, newest first. Authorization and points are recomputed for every page. */
     async page(
@@ -93,7 +98,7 @@ export function createHistoryService(store: Store) {
         return diary?.ownerId === viewer ? queries.timeline(diaryId) : null;
       });
       if (!timeline) return 'NOT_FOUND';
-      const all = historyPoints(timeline, now).sort(newestFirst);
+      const all = historyPoints(timeline, now, idleMs).sort(newestFirst);
       const rest = after
         ? all.filter(
             (p) =>

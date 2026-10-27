@@ -6,7 +6,7 @@ The Fastify process: registers the routes defined in `@between-pages/contracts`,
 
 | Export | Contract |
 | --- | --- |
-| `buildApp(deps)` (`src/app.ts`) | Returns a ready, non-listening Fastify instance with every contract route and the sync socket registered. `deps`: `publicOrigin` (the only trusted `Origin`), `currentUser(headers)` (the caller or `null`), `db` (diary storage; registration never queries it), optional `authHandler` (mounted at `/api/auth/*`), `logger`, `onClose`. Tests and the OpenAPI generator use it, so they exercise the same registration production serves. |
+| `buildApp(deps)` (`src/app.ts`) | Returns a ready, non-listening Fastify instance with every contract route and the sync socket registered. `deps`: `publicOrigin` (the only trusted `Origin`), `currentUser(headers)` (the caller or `null`), `db` (diary storage; registration never queries it), optional `authHandler` (mounted at `/api/auth/*`), `logger`, `onClose`, `historyIdleMs`. Tests and the OpenAPI generator use it, so they exercise the same registration production serves. |
 | `renderOpenApi()` (`src/openapi.ts`) | The OpenAPI 3.1 document as the exact text committed in `openapi.json`. |
 | `npm run dev` / `npm start -w @between-pages/api` | Listens on `HOST:PORT` (defaults `127.0.0.1:3000`), reading the repo-root `.env` if present. |
 | `GET /api/health` | Public. `200 { "status": "ok" }` while the process serves requests. |
@@ -23,7 +23,7 @@ The Fastify process: registers the routes defined in `@between-pages/contracts`,
 | `createDb(url)` (`src/db/client.ts`) | `{ db, pool, close() }`: a Drizzle instance over one `pg` pool. The caller owns it and must `close()` it. |
 | `runMigrations(url)` (`src/db/migrate.ts`) | Applies every pending migration in `drizzle/`; already-applied ones are skipped. Used by `npm run db:migrate` and the test setup, so production needs no drizzle-kit. |
 | `users` (`src/db/schema.ts`) | Domain users: `id` (UUID issued by the auth layer), `display_name`, `created_at`, `last_seen_at`. |
-| `parseConfig(env)` (`src/config.ts`) | Parses the environment at startup; throws `ConfigError` naming every bad variable. Refuses `AUTH_PROVIDER=dev` in production or on a non-local `PUBLIC_ORIGIN`. Variables: `.env.example`. |
+| `parseConfig(env)` (`src/config.ts`) | Parses the environment at startup; throws `ConfigError` naming every bad variable. Refuses `AUTH_PROVIDER=dev` in production or on a non-local `PUBLIC_ORIGIN`, and `HISTORY_IDLE_MS` (the end-to-end suite's shorter history idle time) without `AUTH_PROVIDER=dev`. Variables: `.env.example`. |
 | `createAuth(config, db)` (`src/auth/auth.ts`) | The Better Auth instance: Google (`google`) or the mock issuer (`dev`, via the `genericOAuth` plugin), database sessions, no provider tokens kept, no implicit account merge. |
 | `createCurrentUser(auth, db)` (`src/auth/current-user.ts`) | The `currentUser` for `buildApp`: session → `{ id, displayName }` or `null`; creates the `users` row on first use and writes `last_seen_at` at most every 5 minutes. Authenticated HTTP requests count as activity; the WebSocket handshake and heartbeat will too. |
 | `/api/auth/*` | Better Auth's own endpoints (sign-in, callback, sign-out, link). Not in the contract or OpenAPI. |
@@ -40,7 +40,7 @@ Sub-modules of `src/` (kernel D11), top to bottom; each imports only from the la
 | Transport | `ws/` | `registerSyncSocket(app, deps)`, `SESSION_RECHECK_MS` (60 s), `TRANSPORT_MAX_BYTES`. |
 | Service | `commit/` | `createCommitService(store)` → `commit(actor, batch)` (`CommitOutcome`; throws on PG failure, lock timeout or `VersionUnreadable`) and `receipt(actor, diaryId, { batchId } \| { operationId })`. |
 | Service | `diaries/` | `createDiaryService(store)` → `open(owner, { timezone, date? })`, `view(viewer, diaryId)`, `catchUp(viewer, diaryId, generationId, knownSeq)`. |
-| Service | `history/` | `createHistoryService(store)` → `page(viewer, diaryId, cursor, now)`, `version(viewer, diaryId, publicId)`; `historyPoints(timeline, now)`. |
+| Service | `history/` | `createHistoryService(store, idleMs?)` → `page(viewer, diaryId, cursor, now)`, `version(viewer, diaryId, publicId)`; `historyPoints(timeline, now)`. |
 | Service | `outbox/` | `registerBackups(locked, version)`: the backup tasks of one commit, in its transaction. |
 | Service | `events/` | `createEvents()` → `publish(event)`, `subscribe(diaryId, listener)` (returns unsubscribe). In-process only. |
 | Storage | `store/` | `createStore(db)` → `read(fn)` (one read-only snapshot), `withDiaryLock(diaryId, fn)`, `openPersonal(...)`; `DiaryQueries`, `LockedDiary`, `COMMIT_LOCK_TIMEOUT`, `SNAPSHOT_EVERY`. |

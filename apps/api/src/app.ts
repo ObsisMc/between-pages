@@ -38,6 +38,8 @@ export interface AppDeps {
   logger?: FastifyServerOptions['logger'];
   /** Releases resources the caller owns (e.g. the database pool) when the app closes. */
   onClose?: () => Promise<void>;
+  /** Shortens the history idle rule for the end-to-end suite; production keeps two minutes. */
+  historyIdleMs?: number;
 }
 
 // Builds the app without listening so tests and the OpenAPI generator use the exact
@@ -96,7 +98,11 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const events = createEvents();
   const diaries = createDiaryService(store);
   const commit = createCommitService(store);
-  const handlers = diaryHandlers({ diaries, commit, history: createHistoryService(store) });
+  const handlers = diaryHandlers({
+    diaries,
+    commit,
+    history: createHistoryService(store, deps.historyIdleMs),
+  });
 
   contractRoute('health', () => ({ status: 'ok' as const }));
   contractRoute('me', meHandler);

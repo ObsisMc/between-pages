@@ -31,6 +31,10 @@ describe('historyPoints', () => {
     expect(pointTimes(historyPoints(commits([0, 60, 200, 230]), at(400)))).toEqual([60, 230]);
   });
 
+  it('closes groups after a shorter idle time when the end-to-end suite asks for one', () => {
+    expect(pointTimes(historyPoints(commits([0, 5, 30]), at(40), 10_000))).toEqual([5, 30]);
+  });
+
   it('shows no point for a group still being written', () => {
     expect(pointTimes(historyPoints(commits([0, 60, 200, 230]), at(300)))).toEqual([60]);
     expect(historyPoints([], at(0))).toEqual([]);

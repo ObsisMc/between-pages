@@ -14,6 +14,8 @@ const Env = z
     GOOGLE_CLIENT_ID: z.string().min(1).optional(),
     GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
     DEV_OIDC_ISSUER: z.url().default('http://127.0.0.1:4010'),
+    /** End-to-end tests only: closes history points sooner than the two-minute rule. */
+    HISTORY_IDLE_MS: z.coerce.number().int().positive().optional(),
   })
   .superRefine((env, ctx) => {
     const issue = (path: string, message: string) =>
@@ -30,6 +32,10 @@ const Env = z
       if (!LOCAL_HOSTS.has(new URL(env.PUBLIC_ORIGIN).hostname))
         issue('AUTH_PROVIDER', 'dev requires PUBLIC_ORIGIN on localhost or 127.0.0.1');
     }
+    // A shorter history rule is a test setting; tying it to the mock login keeps it out of
+    // anything real, whose history must follow kernel D6.
+    if (env.HISTORY_IDLE_MS !== undefined && env.AUTH_PROVIDER !== 'dev')
+      issue('HISTORY_IDLE_MS', 'allowed only with AUTH_PROVIDER=dev');
   });
 
 export type Config = z.infer<typeof Env> & { publicOrigin: string };
