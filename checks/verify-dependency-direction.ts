@@ -69,20 +69,27 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
     // sub-module; the sender reaches the network only through the transport it is given,
     // and the sync client owns the socket and the API calls it needs. `history` reads the
     // server's rendered versions and knows no editor or journal. `diary` is the screen that
-    // wires them together, and nothing below imports it.
+    // wires them together, and nothing below imports it. The relationship screens
+    // (spaces-and-invitations D12) know no diary module: `sharing-range` edits a range and
+    // imports nothing, `relationship` owns the relationship queries the `join` and `space`
+    // pages reuse.
     dir: 'apps/web/src',
     units: {
       main: ['*'],
-      routes: ['auth', 'pages', 'diary'],
+      routes: ['auth', 'pages', 'diary', 'join', 'space'],
       api: [],
       auth: ['api'],
-      pages: ['api', 'auth', 'diary-list'],
+      pages: ['api', 'auth', 'diary-list', 'join', 'relationship'],
       'editor-binding': [],
       journal: [],
       sender: ['journal'],
       'sync-client': ['api'],
       history: ['api'],
       'diary-list': ['api'],
+      'sharing-range': [],
+      relationship: ['api', 'sharing-range'],
+      join: ['api', 'auth', 'relationship', 'sharing-range'],
+      space: ['api', 'auth', 'relationship', 'sharing-range'],
       diary: ['api', 'auth', 'editor-binding', 'journal', 'sender', 'sync-client', 'history'],
     },
   },
