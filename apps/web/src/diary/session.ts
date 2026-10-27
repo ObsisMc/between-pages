@@ -3,6 +3,7 @@ import * as Y from 'yjs';
 import { ApiError, callApi } from '../api/client.ts';
 import {
   createEditorBinding,
+  type Caret,
   type EditIntent,
   type EditorBinding,
   type EditorOperation,
@@ -61,6 +62,7 @@ export type DiarySession = {
 };
 
 const STORE_RETRY_MS = 5_000;
+const CARET_EVERY_MS = 100;
 
 export type DiarySessionOptions = {
   place: HTMLElement;
@@ -70,6 +72,8 @@ export type DiarySessionOptions = {
   epochId?: string | undefined;
   /** The class coloring an author's text (EDIT-13), by their slot in the space. */
   authorClass?: (author: string) => string | null;
+  /** The name shown on another person's caret. */
+  nameOf?: (user: string) => string;
   onChange: (state: DiaryState) => void;
 };
 
@@ -79,6 +83,7 @@ export function createDiarySession({
   diaryId,
   epochId,
   authorClass,
+  nameOf,
   onChange,
 }: DiarySessionOptions): DiarySession {
   let state: DiaryState = {
@@ -140,6 +145,7 @@ export function createDiarySession({
     editor = createEditorBinding(place, {
       userId,
       ...(authorClass ? { authorClass } : {}),
+      onCaret: sendCaret,
       onOperation: (operation) => {
         unstored.push(operation);
         set({ unstored: unstored.length });
@@ -265,6 +271,20 @@ export function createDiarySession({
   const receiptOf = async (batchId: string) =>
     (await callApi('receipt', { params: { diaryId }, query: { batchId } })).receipt;
 
+  // The own caret goes out at most every CARET_EVERY_MS, the latest position winning (D8).
+  let caretTimer: ReturnType<typeof setTimeout> | undefined;
+  let caretWaiting: Caret | null | undefined;
+  function sendCaret(caret: Caret | null) {
+    caretWaiting = caret;
+    if (caretTimer) return;
+    sync?.caret(caret);
+    caretWaiting = undefined;
+    caretTimer = setTimeout(() => {
+      caretTimer = undefined;
+      if (caretWaiting !== undefined) sendCaret(caretWaiting);
+    }, CARET_EVERY_MS);
+  }
+
   /** The sync client and sender of the current generation. */
   function connect(seq: number) {
     sync = createSyncClient({
@@ -287,6 +307,11 @@ export function createDiarySession({
         // The generation changed while this device was away (kernel D7, D14).
         if (status === 'refused' && code === 'STALE_CONTEXT') void switchGeneration();
       },
+      onCaret: (user, caret) =>
+        editor?.showCaret(user, caret, {
+          name: nameOf?.(user) ?? '',
+          className: authorClass?.(user) ?? null,
+        }),
       onContext: ({ change, generationId: next, epochId: changed }) => {
         // The partner's share: stopping freezes this view; reopening is a new epoch to open.
         if (epochId) {
@@ -431,6 +456,7 @@ export function createDiarySession({
       destroyed = true;
       clearTimeout(storeTimer);
       clearTimeout(switchTimer);
+      clearTimeout(caretTimer);
       window.removeEventListener('beforeunload', guardUnload);
       sender?.stop();
       reads?.stop();

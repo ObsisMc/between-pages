@@ -1,5 +1,6 @@
 export {
   createEditorBinding,
+  type Caret,
   type CharacterRun,
   type EditorBinding,
   type EditorBindingOptions,

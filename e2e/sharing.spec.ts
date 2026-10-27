@@ -2,7 +2,8 @@ import { expect, test, type Browser, type Page, type WebSocketRoute } from '@pla
 import * as Y from 'yjs';
 
 // Kernel phase 4 through the real stack: opening a range while another device of the
-// same account is offline (K8) and the undo that starts again in the new generation (K7).
+// same account is offline (K8), the undo that starts again in the new generation (K7),
+// and the partner's side of a shared diary (EDIT-13, EDIT-14, TIME-03, K11, K14).
 // A1 and A2 are two browser contexts of one account, so two devices with their own
 // IndexedDB; B is the partner. Failures are made at A1's socket; everything behind is real.
 const run = Date.now().toString(36);
@@ -191,6 +192,11 @@ test('EDIT-13 EDIT-14 TIME-03 K11 the partner reads and writes a shared diary in
     page.locator('.diary-editor [class*="author-slot"]', { hasText: text }).getAttribute('class');
   expect(await colorOf(a, 'A的字')).toBe(await colorOf(b, 'A的字'));
   expect(await colorOf(b, 'A的字')).not.toBe(await colorOf(b, 'B的字'));
+
+  // K14: A's caret shows on B's page with A's name, in A's color.
+  await editor(a).click();
+  await a.keyboard.press('ControlOrMeta+Home');
+  await expect(b.locator(`.diary-editor .remote-caret[data-name="${name('pa')}"]`)).toBeVisible();
 
   // TIME-03: a click names the author and the time written.
   await b.locator('.diary-editor [class*="author-slot"]', { hasText: 'A的字' }).click();

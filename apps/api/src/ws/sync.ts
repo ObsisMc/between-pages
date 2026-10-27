@@ -14,7 +14,7 @@ import type { CommitService } from '../commit/commit.ts';
 import type { DiaryService } from '../diaries/diaries.ts';
 import type { CommittedEvent, DiaryEvent, Events } from '../events/events.ts';
 import { VersionUnreadable } from '../errors.ts';
-import type { Reader } from '../reader/reader.ts';
+import type { Reader, Subscription } from '../reader/reader.ts';
 
 /** Fallback session check per connection (kernel D10), for sessions that end without an event (expiry, another instance). */
 export const SESSION_RECHECK_MS = 60_000;
@@ -80,17 +80,45 @@ function serve(socket: WebSocket, request: FastifyRequest, deps: Deps) {
       delta: base64(event.delta),
       bindings: event.bindings,
     });
-  const sendEvent = (event: DiaryEvent) =>
-    event.type === 'commit'
-      ? sendCommit(event)
-      : send({
-          v: PROTOCOL_VERSION,
-          type: 'context',
-          diaryId: event.diaryId,
-          change: event.change,
-          generationId: event.generationId,
-          epochId: event.epochId,
-        });
+  const sendEvent = (event: DiaryEvent) => {
+    if (event.type === 'commit') return sendCommit(event);
+    if (event.type === 'cursor')
+      return send({
+        v: PROTOCOL_VERSION,
+        type: 'cursor',
+        diaryId: event.diaryId,
+        generationId: event.generationId,
+        user: event.user,
+        anchor: event.anchor,
+        head: event.head,
+      });
+    send({
+      v: PROTOCOL_VERSION,
+      type: 'context',
+      diaryId: event.diaryId,
+      change: event.change,
+      generationId: event.generationId,
+      epochId: event.epochId,
+    });
+  };
+
+  /** This connection's caught-up subscriptions, by diary: what its carets may reach (D8). */
+  type Following = Subscription & { owner: boolean; caret: boolean };
+  const following = new Map<string, Following>();
+  /** Takes this connection's caret out of a diary, for everyone who saw it. */
+  const clearCaret = (diaryId: string) => {
+    const sub = following.get(diaryId);
+    if (!sub?.caret) return;
+    sub.caret = false;
+    deps.events.publish({
+      type: 'cursor',
+      diaryId,
+      generationId: sub.generationId,
+      user: user.id,
+      anchor: null,
+      head: null,
+    });
+  };
 
   // The handshake's cookie must still name the same user; otherwise the connection ends
   // with a close code the client reads as "sign in again", keeping its pending edits.
@@ -125,6 +153,8 @@ function serve(socket: WebSocket, request: FastifyRequest, deps: Deps) {
   socket.on('close', () => {
     clearInterval(recheck);
     unsubscribeSession();
+    for (const diaryId of following.keys()) clearCaret(diaryId);
+    following.clear();
     for (const unsubscribe of subscriptions.values()) unsubscribe();
     subscriptions.clear();
   });
@@ -153,6 +183,8 @@ function serve(socket: WebSocket, request: FastifyRequest, deps: Deps) {
         return subscribe(message);
       case 'submit':
         return submit(message);
+      case 'cursor':
+        return cursor(message);
       default:
         return message satisfies never;
     }
@@ -160,19 +192,30 @@ function serve(socket: WebSocket, request: FastifyRequest, deps: Deps) {
 
   async function subscribe(message: Extract<ClientMessage, { type: 'subscribe' }>) {
     const { diaryId, generationId, epochId, knownSeq } = message;
-    const sub = { viewer: user.id, generationId, epochId: epochId ?? null };
+    const sub: Following = {
+      viewer: user.id,
+      generationId,
+      epochId: epochId ?? null,
+      owner: false,
+      caret: false,
+    };
+    clearCaret(diaryId);
+    following.delete(diaryId);
     // Listen before reading, so a commit landing during the catch-up read is held back
     // and sent after it instead of lost. Who receives what is decided from the event
     // alone (D10): the owner their generation, the partner their epoch.
     let live = false;
-    let owner = false;
     const held: DiaryEvent[] = [];
     subscriptions.get(diaryId)?.();
     subscriptions.set(
       diaryId,
       deps.events.subscribe({ diaryId }, (event) => {
         if (!live) return void held.push(event);
-        if (deps.reader.deliverable(event, sub, owner)) sendEvent(event);
+        if (!deps.reader.deliverable(event, sub, sub.owner)) return;
+        // From now on this partner reads a frozen version: no caret reaches or leaves it.
+        if (event.type === 'context' && event.change === 'stopped' && event.epochId === sub.epochId)
+          sub.stopped = true;
+        sendEvent(event);
       }),
     );
     const result =
@@ -186,7 +229,7 @@ function serve(socket: WebSocket, request: FastifyRequest, deps: Deps) {
         diaryId,
       });
     }
-    owner = epochId === undefined;
+    sub.owner = epochId === undefined;
     send({
       v: PROTOCOL_VERSION,
       type: 'synced',
@@ -197,12 +240,32 @@ function serve(socket: WebSocket, request: FastifyRequest, deps: Deps) {
       bindings: bindingList(result.bindings),
     });
     live = true;
+    following.set(diaryId, sub);
     for (const event of held)
       if (
-        deps.reader.deliverable(event, sub, owner) &&
-        (event.type === 'context' || event.seq > result.seq)
+        deps.reader.deliverable(event, sub, sub.owner) &&
+        (event.type !== 'commit' || event.seq > result.seq)
       )
         sendEvent(event);
+  }
+
+  /**
+   * Relays a caret to whoever reads the same generation now (kernel D8): only from a
+   * caught-up subscription of that generation, and from a partner only while their share
+   * is live. Nothing is stored or answered; a caret that does not fit is dropped.
+   */
+  function cursor(message: Extract<ClientMessage, { type: 'cursor' }>) {
+    const sub = following.get(message.diaryId);
+    if (!sub || sub.generationId !== message.generationId || (!sub.owner && sub.stopped)) return;
+    sub.caret = message.head !== null;
+    deps.events.publish({
+      type: 'cursor',
+      diaryId: message.diaryId,
+      generationId: message.generationId,
+      user: user.id,
+      anchor: message.anchor,
+      head: message.head,
+    });
   }
 
   async function submit(message: Extract<ClientMessage, { type: 'submit' }>) {

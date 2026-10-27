@@ -278,6 +278,63 @@ describe('authors on screen', () => {
   });
 });
 
+describe('carets', () => {
+  const caretOf = (doc: Y.Doc, index: number) => {
+    const bytes = Y.encodeRelativePosition(
+      Y.createRelativePositionFromTypeIndex(doc.getText(BODY), index),
+    );
+    return { anchor: bytes, head: bytes };
+  };
+
+  it('[adr:diary-collaboration-kernel#25] shows a caret on text not received yet only once that text arrives', () => {
+    const editor = setup();
+    editor.type('早安');
+    editor.commit();
+    // Bob types in his copy and puts his caret inside his new text, before it reaches Alice.
+    const copy = createDiaryDoc();
+    Y.applyUpdate(copy, Y.encodeStateAsUpdate(editor.server));
+    let update: Uint8Array | undefined;
+    copy.on('update', (u: Uint8Array) => (update = u));
+    copy.getText(BODY).insert(2, '！？');
+    const ahead = caretOf(copy, 3);
+
+    editor.binding.showCaret(BOB, ahead, { name: 'bob', className: 'author-slot-2' });
+    expect(editor.view.dom.querySelector('.remote-caret')).toBeNull();
+
+    const result = acceptBatch(editor.server, [update!], BOB, editor.bindings);
+    if (!result.ok) throw new Error(result.reason);
+    for (const client of result.claimedClientIds) editor.bindings.set(client, BOB);
+    editor.binding.applyUpdate(result.delta, editor.bindings);
+
+    const shown = editor.view.dom.querySelector('.remote-caret');
+    expect(shown?.getAttribute('data-name')).toBe('bob');
+    expect(shown?.previousSibling?.textContent).toBe('！');
+    editor.binding.showCaret(BOB, null, { name: 'bob', className: null });
+    expect(editor.view.dom.querySelector('.remote-caret')).toBeNull();
+  });
+
+  it('reports the own caret as a relative position after the user moves it, and its leaving', () => {
+    const place = document.createElement('div');
+    document.body.append(place);
+    const carets: ({ anchor: Uint8Array; head: Uint8Array } | null)[] = [];
+    const binding = createEditorBinding(place, {
+      userId: ALICE,
+      onCaret: (caret) => carets.push(caret),
+      onOperation: () => undefined,
+      onRefuse: () => undefined,
+    });
+    binding.view.focus();
+    binding.view.dispatch(binding.view.state.tr.insertText('你好'));
+    const last = carets.at(-1)!;
+    expect(last).not.toBeNull();
+    expect(Y.decodeRelativePosition(last.head)).toMatchObject({ assoc: 0 });
+
+    binding.view.dom.dispatchEvent(new FocusEvent('blur'));
+    expect(carets.at(-1)).toBeNull();
+    binding.destroy();
+  });
+});
+
 describe('author protection', () => {
   it("[adr:diary-collaboration-kernel#3] Backspace jumps over the other person's text without deleting it", () => {
     const editor = alongsideBob();

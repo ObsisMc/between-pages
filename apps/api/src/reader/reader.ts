@@ -30,8 +30,16 @@ export type SharedCatchUp = {
   bindings: Map<number, string>;
 };
 
-/** One subscription of a socket: the owner's (no epoch) or a partner's live epoch. */
-export type Subscription = { viewer: string; generationId: string; epochId: string | null };
+/**
+ * One subscription of a socket: the owner's (no epoch) or a partner's live epoch.
+ * `stopped` is set once its epoch's stop notice reached it: no private caret follows.
+ */
+export type Subscription = {
+  viewer: string;
+  generationId: string;
+  epochId: string | null;
+  stopped?: boolean;
+};
 
 export type SharedSummary = {
   diaryId: string;
@@ -177,9 +185,18 @@ export function createReader(store: Store) {
      * Whether a socket subscription receives an event, decided from the event alone (D10):
      * the owner every commit of their generation; the partner only commits stamped with
      * their epoch, so a private commit never reaches them whenever the stop notice
-     * arrives. Context changes go to the owner, and to the partner they concern.
+     * arrives. Context changes go to the owner, and to the partner they concern; carets to
+     * the other person in the same generation while their share is live.
      */
     deliverable(event: DiaryEvent, sub: Subscription, owner: boolean): boolean {
+      // Carets go to the other person reading the same generation now (D8); a partner
+      // whose share stopped is no longer reading it, and nobody gets their own back.
+      if (event.type === 'cursor')
+        return (
+          event.generationId === sub.generationId &&
+          event.user !== sub.viewer &&
+          (owner || !sub.stopped)
+        );
       if (event.type === 'context')
         return (
           owner ||

@@ -327,3 +327,47 @@ describe('shared diaries', () => {
     expect(socket().sent[0]).not.toHaveProperty('epochId');
   });
 });
+
+describe('carets', () => {
+  it('sends the own caret only while live and hands over others’', () => {
+    vi.stubGlobal('WebSocket', FakeSocket);
+    const heard: unknown[] = [];
+    const client = createSyncClient({
+      diaryId: DIARY,
+      generationId: GENERATION,
+      knownSeq: 0,
+      onCommits: () => undefined,
+      onStatus: () => undefined,
+      onCaret: (user, caret) => heard.push([user, caret]),
+    });
+    clients.push(client);
+    const socket = FakeSocket.all.at(-1)!;
+    const caret = { anchor: new Uint8Array([1]), head: new Uint8Array([2]) };
+
+    client.caret(caret);
+    socket.open();
+    expect(socket.sent.map((m) => m.type)).toEqual(['subscribe']);
+    socket.receive(synced(0, []));
+    client.caret(caret);
+    client.caret(null);
+    expect(socket.sent.slice(1)).toEqual([
+      {
+        v: 1,
+        type: 'cursor',
+        diaryId: DIARY,
+        generationId: GENERATION,
+        anchor: 'AQ==',
+        head: 'Ag==',
+      },
+      { v: 1, type: 'cursor', diaryId: DIARY, generationId: GENERATION, anchor: null, head: null },
+    ]);
+
+    const remote = { v: 1, type: 'cursor', diaryId: DIARY, generationId: GENERATION, user: USER };
+    socket.receive({ ...remote, anchor: 'AQ==', head: 'Ag==' });
+    socket.receive({ ...remote, anchor: null, head: null });
+    expect(heard).toEqual([
+      [USER, { anchor: new Uint8Array([1]), head: new Uint8Array([2]) }],
+      [USER, null],
+    ]);
+  });
+});

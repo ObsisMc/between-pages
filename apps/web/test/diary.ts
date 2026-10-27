@@ -49,6 +49,8 @@ export class FakeSocket {
         commits: [],
         bindings: [],
       });
+    // Carets are relayed to others only; the sender hears nothing back.
+    if (message.type === 'cursor') return;
     const answer = FakeSocket.answer(message);
     if (answer === 'hold') {
       FakeSocket.held = () => this.ack(message, reply);
