@@ -10,6 +10,7 @@ async function signedIn(browser: Browser, name: string): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
   await page.goto('/login');
   await devLogin(page, name);
+  await expect(page.getByText(`已登录为 ${name}`)).toBeVisible();
   return page;
 }
 
@@ -35,7 +36,6 @@ test('AUTH-02 AUTH-07 AUTH-08 AUTH-11 SHARE-03 binds, unbinds and restores one f
 }) => {
   const name = (who: string) => `${who}${browserName}${run}`;
   const a = await signedIn(browser, name('a'));
-  await expect(a).toHaveURL(/\/$/);
 
   // A keeps the default: all history and later.
   const link = await inviteLink(a);
