@@ -106,14 +106,22 @@ export type Journal<Intent = unknown> = {
     commits: { seq: number; delta: Uint8Array }[],
     bindings: ClientBinding[],
   ): Promise<number>;
-  /** Turns the batch and every pending operation after it into drafts and returns them. */
+  /**
+   * Turns the batch, and every pending operation that may build on it, into drafts and
+   * returns them. Operations of another editor instance that touch none of that text stay.
+   */
   reject(diaryId: string, batchId: string, reason: DraftReason): Promise<Draft<Intent>[]>;
   drafts(diaryId: string): Promise<Draft<Intent>[]>;
   deleteDraft(draftId: string): Promise<void>;
   close(): void;
 };
 
-type BaselineRecord = Baseline & { nextSequence: number };
+type RefusedRange = { client: number; from: number; to: number };
+type BaselineRecord = Baseline & {
+  nextSequence: number;
+  /** Characters of refused input; anything building on them becomes a draft too. */
+  refused?: RefusedRange[];
+};
 type ReceiptRecord = CommitReceipt & { diaryId: string };
 
 const BASELINES = 'baselines';
@@ -220,13 +228,24 @@ export async function openJournal<Intent = unknown>(userId: string): Promise<Jou
           generationId,
           localSequence,
         };
-        tx.objectStore(BASELINES).put({ ...baseline, nextSequence: localSequence + 1 });
+        const next: BaselineRecord = { ...baseline, nextSequence: localSequence + 1 };
         // Rechecked inside the write: a tab still showing an old generation must not
         // queue its input for the new one (D7, old tabs).
         if (baseline.generationId !== generationId) {
+          tx.objectStore(BASELINES).put(next);
           toDrafts(tx, [pending], 'stale-generation');
           return 'draft';
         }
+        // Input the editor made before it was rebuilt without refused text can still build
+        // on it; queued, it would take whatever batch it joins down with it.
+        const refused = new Refused(baseline.refused);
+        if (refused.touchedBy(operation.update)) {
+          refused.add(operation.update);
+          tx.objectStore(BASELINES).put({ ...next, refused: refused.ranges });
+          toDrafts(tx, [pending], 'rejected');
+          return 'draft';
+        }
+        tx.objectStore(BASELINES).put(next);
         tx.objectStore(PENDING).put(pending);
         return 'pending';
       }),
@@ -312,17 +331,25 @@ export async function openJournal<Intent = unknown>(userId: string): Promise<Jou
       }),
 
     reject: (diaryId, batchId, reason) =>
-      run([PENDING, BATCHES, DRAFTS], 'readwrite', async (tx) => {
+      run([BASELINES, PENDING, BATCHES, DRAFTS], 'readwrite', async (tx) => {
         const batch = await request<SendBatch | undefined>(tx.objectStore(BATCHES).get(diaryId));
         if (!batch || batch.batchId !== batchId)
           throw new Error(`Batch ${batchId} is not the diary's unconfirmed batch`);
-        // Later operations may build on the refused ones, so none of them is sent either.
         const pending = await request<PendingOperation<Intent>[]>(
           tx.objectStore(PENDING).getAll(ofDiary(diaryId)),
         );
-        tx.objectStore(PENDING).delete(ofDiary(diaryId));
+        const members = new Set(batch.operations.map((op) => op.localSequence));
+        const baseline = await baselineOf(tx, diaryId);
+        const refused = new Refused(baseline.refused);
+        const drafted = pending.filter((op) => {
+          if (!members.has(op.localSequence) && !refused.touchedBy(op.update)) return false;
+          refused.add(op.update);
+          tx.objectStore(PENDING).delete([diaryId, op.localSequence]);
+          return true;
+        });
         tx.objectStore(BATCHES).delete(diaryId);
-        return toDrafts(tx, pending, reason);
+        tx.objectStore(BASELINES).put({ ...baseline, refused: refused.ranges });
+        return toDrafts(tx, drafted, reason);
       }),
 
     drafts: (diaryId) =>
@@ -356,6 +383,40 @@ async function skipOwn(tx: IDBTransaction, diaryId: string, seq: number): Promis
   while (bySeq.has(seq + 1)) seq += 1;
   for (const r of receipts) if (r.seq <= seq) store.delete([diaryId, r.batchId]);
   return seq;
+}
+
+/**
+ * Text that will not reach the server, by Yjs clientID. A later operation may build on it
+ * when it inserts as one of those clients (the same editor instance, whose next items
+ * chain onto it) or deletes any of its characters. Another instance's inserts cannot
+ * build on it: that editor never showed it.
+ */
+class Refused {
+  readonly ranges: RefusedRange[];
+  private readonly clients: Set<number>;
+
+  constructor(ranges: RefusedRange[] = []) {
+    this.ranges = [...ranges];
+    this.clients = new Set(ranges.map((r) => r.client));
+  }
+
+  add(update: Uint8Array) {
+    const { from, to } = Y.parseUpdateMeta(update);
+    for (const [client, clock] of from) {
+      this.clients.add(client);
+      this.ranges.push({ client, from: clock, to: to.get(client) ?? clock });
+    }
+  }
+
+  touchedBy(update: Uint8Array): boolean {
+    const { structs, ds } = Y.decodeUpdate(update);
+    if (structs.some((struct) => this.clients.has(struct.id.client))) return true;
+    for (const [client, deletes] of ds.clients)
+      for (const { clock, len } of deletes)
+        if (this.ranges.some((r) => r.client === client && clock < r.to && clock + len > r.from))
+          return true;
+    return false;
+  }
 }
 
 function draftOf<Intent>(

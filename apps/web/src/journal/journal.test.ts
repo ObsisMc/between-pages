@@ -218,6 +218,32 @@ describe('journal', () => {
     expect((await reopened.drafts(DIARY)).map((d) => d.intent)).toEqual(['乙']);
   });
 
+  it('keeps input of a rebuilt editor pending, and drafts whatever still builds on refused text', async () => {
+    const { journal } = await setup();
+    const old = writer();
+    await journal.append(DIARY, GENERATION, old.type('拒'));
+    const batch = (await journal.nextBatch(DIARY))!;
+    const rebuilt = writer();
+    await journal.append(DIARY, GENERATION, rebuilt.type('新'));
+    await journal.reject(DIARY, batch.batchId, 'rejected');
+    expect((await journal.load(DIARY)).pending.map((op) => op.intent)).toEqual(['新']);
+
+    // The old editor was still on screen: its next input chains onto the refused text.
+    expect(await journal.append(DIARY, GENERATION, old.type('绝'))).toBe('draft');
+    let deletion: Uint8Array = new Uint8Array();
+    old.doc.once('update', (u: Uint8Array) => (deletion = u));
+    old.doc.getText(BODY).delete(0, 1);
+    const erase = {
+      operationId: crypto.randomUUID(),
+      update: deletion,
+      writtenAt: new Date(),
+      intent: '-',
+    };
+    expect(await journal.append(DIARY, GENERATION, erase)).toBe('draft');
+    expect((await journal.load(DIARY)).pending.map((op) => op.intent)).toEqual(['新']);
+    expect((await journal.drafts(DIARY)).map((d) => d.intent)).toEqual(['拒', '绝', '-']);
+  });
+
   it('keeps input written against an old generation as a draft instead of queueing it', async () => {
     const { journal } = await setup();
     const old = crypto.randomUUID();
