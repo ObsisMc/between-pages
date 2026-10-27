@@ -9,6 +9,7 @@ Between Pages is a shared diary for two people: each character has an immutable 
 | `apps/api/` | Fastify API, OpenAPI generation (`openapi.json` is generated) |
 | `apps/web/` | React app and the typed API client |
 | `packages/contracts/` | Zod schemas and the route table both apps use |
+| `packages/collab/` | Pure Yjs collaboration model: validation, baselines, digest, authorship |
 | `prototypes/` | Frozen behavior baseline for collaboration; do not edit or import |
 | `docs/` | Spec, acceptance, ADRs, standards ([index](docs/README.md)) |
 | `checks/` | Verify scripts; `npm run check -- <group>` runs them |
@@ -20,7 +21,7 @@ nvm use && npm ci                 # Node 26; also installs the git hooks
 npm run format:check              # fix with: npm run format
 npm run lint                      # fix with: npx eslint --fix <file>
 npm run typecheck
-npx vitest run --project <name>   # contracts | api | web — one module
+npx vitest run --project <name>   # contracts | collab | api | web | checks
 npm run openapi                   # after any contract or route change
 npm run db:generate -- --name <x> # after any change to apps/api/src/db/schema.ts
 npm run test:db                   # all tests incl. *.db.test.ts on a disposable PostgreSQL

@@ -5,6 +5,7 @@ export default defineConfig({
   test: {
     projects: [
       { test: { name: 'contracts', root: 'packages/contracts', environment: 'node' } },
+      { test: { name: 'collab', root: 'packages/collab', environment: 'node' } },
       {
         test: {
           name: 'api',
@@ -14,6 +15,8 @@ export default defineConfig({
         },
       },
       { test: { name: 'web', root: 'apps/web', environment: 'jsdom' } },
+      // Tests of the checks themselves; outside the coverage include on purpose.
+      { test: { name: 'checks', root: 'checks', environment: 'node' } },
     ],
     coverage: {
       provider: 'v8',
