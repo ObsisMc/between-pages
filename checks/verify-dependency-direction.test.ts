@@ -25,6 +25,11 @@ describe('verify-dependency-direction', () => {
           'apps/web/src/editor-binding/binding.ts',
           "import { BODY } from '@between-pages/collab';\nimport { schema } from './schema.ts';",
         ),
+        file('apps/web/src/sender/sender.ts', "import { openJournal } from '../journal/index.ts';"),
+        file(
+          'apps/web/src/sync-client/sync-client.ts',
+          "import { callApi } from '../api/client.ts';",
+        ),
       ]),
     ).toEqual([]);
   });
@@ -87,7 +92,17 @@ describe('verify-dependency-direction', () => {
       'apps/web/src/editor-binding/binding.ts',
       "import { callApi } from '../api/client.ts';",
     ],
-    ['an unlisted web sub-module', 'apps/web/src/journal/journal.ts', 'export const x = 1;'],
+    [
+      'the journal reaching the editor',
+      'apps/web/src/journal/journal.ts',
+      "import type { EditIntent } from '../editor-binding/intent.ts';",
+    ],
+    [
+      'the sender opening a socket itself',
+      'apps/web/src/sender/sender.ts',
+      "import { createSyncClient } from '../sync-client/index.ts';",
+    ],
+    ['an unlisted web sub-module', 'apps/web/src/history/history.ts', 'export const x = 1;'],
   ])('rejects %s', (_, path, source) => {
     expect(violations([file(path, source)])).toHaveLength(1);
   });
