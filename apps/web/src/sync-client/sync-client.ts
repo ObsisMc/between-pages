@@ -22,6 +22,7 @@ export type OutgoingBatch = {
   diaryId: string;
   batchId: string;
   generationId: string;
+  epochId?: string;
   operations: { operationId: string; update: Uint8Array; writtenAt: Date }[];
 };
 
@@ -40,14 +41,21 @@ export type CommittedDelta = { seq: number; publicId: string; delta: Uint8Array 
  */
 export type SyncStatus = 'connecting' | 'live' | 'offline' | 'reauth' | 'upgrade' | 'refused';
 
+/** The diary's sharing changed (kernel D10): `opened` a new generation, or `stopped` an epoch. */
+export type ContextChange = { change: 'opened' | 'stopped'; generationId: string; epochId: string };
+
 export type SyncClientOptions = {
   diaryId: string;
   generationId: string;
+  /** The partner's live epoch; absent on the owner's own diary. */
+  epochId?: string;
   /** The highest seq the caller already holds; catch-up starts after it. */
   knownSeq: number;
   /** Contiguous commits after the last delivered seq, and the bindings naming their authors. */
   onCommits: (commits: CommittedDelta[], bindings: ClientBinding[]) => void;
   onStatus: (status: SyncStatus, code?: ErrorCode) => void;
+  /** Told after the server committed it; the screen reconciles before switching (D7). */
+  onContext?: (change: ContextChange) => void;
 };
 
 export type SyncClient = {
@@ -68,9 +76,11 @@ function socketUrl(): string {
 export function createSyncClient({
   diaryId,
   generationId,
+  epochId,
   knownSeq,
   onCommits,
   onStatus,
+  onContext,
 }: SyncClientOptions): SyncClient {
   let seq = knownSeq;
   let socket: WebSocket | null = null;
@@ -83,7 +93,14 @@ export function createSyncClient({
 
   const send = (ws: WebSocket, message: ClientMessage) => ws.send(JSON.stringify(message));
   const subscribe = (ws: WebSocket) =>
-    send(ws, { v: PROTOCOL_VERSION, type: 'subscribe', diaryId, generationId, knownSeq: seq });
+    send(ws, {
+      v: PROTOCOL_VERSION,
+      type: 'subscribe',
+      diaryId,
+      generationId,
+      ...(epochId ? { epochId } : {}),
+      knownSeq: seq,
+    });
 
   const answer = (batchId: string, result: SubmitResult) => {
     waiting.get(batchId)?.(result);
@@ -147,6 +164,13 @@ export function createSyncClient({
         return;
       case 'ack':
         return answer(message.receipt.batchId, { type: 'ack', receipt: message.receipt });
+      case 'context':
+        if (message.diaryId !== diaryId) return;
+        return onContext?.({
+          change: message.change,
+          generationId: message.generationId,
+          epochId: message.epochId,
+        });
       case 'error': {
         // Errors the server could not tie to a message's diary (bad frame, protocol) answer
         // the batch in flight, if any; the rest concern the subscription.
@@ -195,6 +219,7 @@ export function createSyncClient({
           diaryId: batch.diaryId,
           batchId: batch.batchId,
           generationId: batch.generationId,
+          ...(batch.epochId ? { epochId: batch.epochId } : {}),
           operations: batch.operations.map((op) => ({
             operationId: op.operationId,
             update: toBase64(op.update),

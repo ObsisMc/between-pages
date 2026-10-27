@@ -17,7 +17,7 @@ const pending = {
 };
 
 describe('RelationshipPanel', () => {
-  it('[adr:spaces-and-invitations#12] creates an invitation with the chosen range and shows its link once', async () => {
+  it('creates an invitation with the chosen range and shows its link once', async () => {
     let invitation: typeof pending | null = null;
     const created = vi.fn((init: RequestInit | undefined) => {
       invitation = pending;
@@ -33,7 +33,7 @@ describe('RelationshipPanel', () => {
     });
     renderAt('/');
 
-    expect(await screen.findByText('范围已设置，日记共享尚未开放')).toBeDefined();
+    expect(await screen.findByText('每人只共享自己确认过的日期')).toBeDefined();
     fireEvent.click(await screen.findByText('生成邀请链接'));
 
     const link = (await screen.findByLabelText('邀请链接')) as HTMLInputElement;

@@ -12,7 +12,10 @@ import {
 } from '../relationship/index.ts';
 import {
   MonthView,
+  NO_DAYS,
   RangeEditor,
+  daysOnlyIn,
+  describeRanges,
   describeSelection,
   type RangeChoice,
 } from '../sharing-range/index.ts';
@@ -20,6 +23,31 @@ import {
 type Mine = ResponseOf<'mySharing'>;
 
 const timeText = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+
+/**
+ * What confirming `next` does to the caller's diaries (kernel D5): the days it starts
+ * sharing and the days it stops, compared with what is shared now.
+ */
+function ChangePreview({ now, next }: { now: DateSelection; next: DateSelection }) {
+  const opening = daysOnlyIn(next, now);
+  const stopping = daysOnlyIn(now, next);
+  return (
+    <>
+      {opening.length > 0 && (
+        <p className="share-change">
+          将开放：{describeRanges(opening)}
+          。对方会看到这些日期日记的当前正文和以后的编辑，看不到未共享期间的历史；这些日记的撤销记录从开放时重新开始。
+        </p>
+      )}
+      {stopping.length > 0 && (
+        <p className="share-change">
+          将停止更新：{describeRanges(stopping)}。对方保留已共享的只读版本，之后的修改不再给对方。
+        </p>
+      )}
+      {opening.length === 0 && stopping.length === 0 && <p>共享的日期没有变化。</p>}
+    </>
+  );
+}
 
 /** The caller's own range: shown always, editable while the space is active (D5, D12). */
 function MyRange({
@@ -73,11 +101,15 @@ function MyRange({
   return (
     <section className="my-range" aria-labelledby="my-range-title">
       <h2 id="my-range-title">我的共享范围</h2>
-      <p className="range-help">只有你能看到这个设置。范围已设置，日记共享尚未开放。</p>
+      <p className="range-help">
+        只有你能看到这个设置。确认后，范围内的日记会共享给对方并持续更新；移出范围的日记停止更新，对方保留已共享的只读版本。
+      </p>
       <p>
         {mine.revision === 0 ? '还没有设置过共享范围' : describeSelection(mine.selection)}
         {periodId !== null &&
-          (confirmedNow ? '（已为本次绑定确认）' : '（尚未为本次绑定确认，之前的设置仅供参考）')}
+          (confirmedNow
+            ? '（已为本次绑定确认，正在共享）'
+            : '（尚未为本次绑定确认，日记没有共享；之前的设置仅供参考）')}
       </p>
       {periodId === null ? (
         <MonthView selection={mine.selection} />
@@ -85,14 +117,14 @@ function MyRange({
         <div className="range-confirm">
           <p>原来：{mine.revision === 0 ? '未设置' : describeSelection(mine.selection)}</p>
           <p>保存后：{describeSelection(confirming)}</p>
-          <p className="range-help">保存只记录范围配置；以后开放日记共享时会再请你确认。</p>
+          <ChangePreview now={confirmedNow ? mine.selection : NO_DAYS} next={confirming} />
           <button
             type="button"
             className="primary"
             disabled={busy}
             onClick={() => void save(confirming)}
           >
-            确认保存
+            {busy ? '正在准备共享…' : '确认保存'}
           </button>
           <button type="button" disabled={busy} onClick={() => setConfirming(null)}>
             取消
@@ -140,8 +172,8 @@ function MyRange({
 
 /**
  * `/spaces/:spaceId` (spaces-and-invitations D12): the two participants, the binding
- * history, the caller's own range and unbinding. Never shows a diary, a snapshot or a
- * frozen state; none exists yet.
+ * history, the caller's own range, which opens and stops sharing once confirmed (kernel
+ * D5), and unbinding.
  */
 export function SpacePage() {
   const { spaceId = '' } = useParams();
@@ -201,7 +233,7 @@ export function SpacePage() {
       </header>
       <h1>与 {partner.displayName} 的空间</h1>
       <p>{summary.state === 'active' ? '当前绑定中' : '已解绑，只能与原搭档恢复'}</p>
-      <p className="relationship-note">范围已设置，日记共享尚未开放</p>
+      <p className="relationship-note">每人只共享自己确认过的日期</p>
       <p>参与者：{summary.participants.map((p) => p.user.displayName).join('、')}</p>
       <section aria-labelledby="periods-title">
         <h2 id="periods-title">绑定记录</h2>

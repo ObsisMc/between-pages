@@ -1,6 +1,7 @@
 export { createSyncClient } from './sync-client.ts';
 export type {
   CommittedDelta,
+  ContextChange,
   OutgoingBatch,
   SubmitResult,
   SyncClient,

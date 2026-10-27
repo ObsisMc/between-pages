@@ -13,10 +13,13 @@ export class ApiError extends Error {
   readonly status: number;
   /** From the contract error body; `INTERNAL` when the body is missing or unreadable. */
   readonly code: ErrorCode;
-  constructor(route: RouteName, status: number, code: ErrorCode) {
+  /** `SHARE_OPEN_FAILED` only: the diary dates that could not be opened. */
+  readonly dates: string[];
+  constructor(route: RouteName, status: number, code: ErrorCode, dates: string[] = []) {
     super(`${route} failed with HTTP ${status} (${code})`);
     this.status = status;
     this.code = code;
+    this.dates = dates;
   }
 }
 
@@ -65,14 +68,17 @@ export async function callApi<Name extends RouteName>(
       ? {}
       : { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }),
   });
-  if (!res.ok) throw new ApiError(name, res.status, await errorCode(res));
+  if (!res.ok) {
+    const { code, dates } = await errorOf(res);
+    throw new ApiError(name, res.status, code, dates);
+  }
   return route.response.parse(await res.json()) as ResponseOf<Name>;
 }
 
-async function errorCode(res: Response): Promise<ErrorCode> {
+async function errorOf(res: Response): Promise<{ code: ErrorCode; dates?: string[] | undefined }> {
   try {
-    return ApiErrorBody.parse(await res.json()).error.code;
+    return ApiErrorBody.parse(await res.json()).error;
   } catch {
-    return 'INTERNAL';
+    return { code: 'INTERNAL' };
   }
 }

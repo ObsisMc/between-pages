@@ -298,6 +298,99 @@ describe('journal', () => {
     ).rejects.toThrow();
   });
 
+  describe('switching to a new generation', () => {
+    const NEXT = '9f8e7d6c-5b4a-4c3d-8e2f-1a0b9c8d7e6f';
+    const reopened = (text: string, epochId?: string) => {
+      const doc = createDiaryDoc();
+      doc.getText(BODY).insert(0, text);
+      return {
+        diaryId: DIARY,
+        generationId: NEXT,
+        ...(epochId ? { epochId } : {}),
+        seq: 0,
+        state: Y.encodeStateAsUpdate(doc),
+        bindings: [],
+      };
+    };
+
+    it('[adr:diary-collaboration-kernel#20] [adr:diary-collaboration-kernel#21] keeps committed input as saved, makes the rest drafts and installs the new baseline at once', async () => {
+      const { journal } = await setup();
+      const a = writer();
+      await journal.append(DIARY, GENERATION, a.type('已提交'));
+      const batch = (await journal.nextBatch(DIARY))!;
+      await journal.append(DIARY, GENERATION, a.type('未发送'));
+      const asked: string[] = [];
+
+      const drafts = await journal.switchTo(reopened('已提交'), async (batchId) => {
+        asked.push(batchId);
+        return receiptOf(batch, 1);
+      });
+
+      expect(asked).toEqual([batch.batchId]);
+      expect(drafts.map((d) => [d.intent, d.reason])).toEqual([['未发送', 'stale-generation']]);
+      const { baseline, pending, batch: left } = await journal.load(DIARY);
+      expect(baseline).toMatchObject({ generationId: NEXT, seq: 0 });
+      expect(textOf(baseline!.state)).toBe('已提交');
+      expect(pending).toEqual([]);
+      expect(left).toBeNull();
+      // Sequence numbers keep counting, so a draft's order never repeats.
+      await journal.append(DIARY, NEXT, a.type('新'));
+      expect((await journal.load(DIARY)).pending[0]!.localSequence).toBe(3);
+    });
+
+    it('[adr:diary-collaboration-kernel#20] makes an unconfirmed batch a draft when the server never committed it', async () => {
+      const { journal } = await setup();
+      await journal.append(DIARY, GENERATION, writer().type('离线写的'));
+      await journal.nextBatch(DIARY);
+
+      const drafts = await journal.switchTo(reopened(''), async () => null);
+
+      expect(drafts.map((d) => d.intent)).toEqual(['离线写的']);
+      expect((await journal.drafts(DIARY)).map((d) => d.intent)).toEqual(['离线写的']);
+    });
+
+    it('[adr:diary-collaboration-kernel#23] starts over when the queue changed while the receipt was fetched', async () => {
+      const { journal, userId } = await setup();
+      const a = writer();
+      await journal.append(DIARY, GENERATION, a.type('一'));
+      const batch = (await journal.nextBatch(DIARY))!;
+      const otherTab = await journalOf(userId);
+      let calls = 0;
+
+      const drafts = await journal.switchTo(reopened('一'), async () => {
+        // The first time, another tab appends meanwhile; that switch must not install.
+        if (calls++ === 0) await otherTab.append(DIARY, GENERATION, a.type('二'));
+        return receiptOf(batch, 1);
+      });
+
+      expect(calls).toBe(2);
+      expect(drafts.map((d) => d.intent)).toEqual(['二']);
+      expect((await journal.load(DIARY)).baseline?.generationId).toBe(NEXT);
+    });
+
+    it('changes nothing when the receipt cannot be fetched, and carries the epoch into batches', async () => {
+      const { journal } = await setup();
+      await journal.append(DIARY, GENERATION, writer().type('等'));
+      await journal.nextBatch(DIARY);
+
+      await expect(
+        journal.switchTo(reopened(''), () => Promise.reject(new TypeError('offline'))),
+      ).rejects.toThrow('offline');
+      expect((await journal.load(DIARY)).baseline?.generationId).toBe(GENERATION);
+
+      const partner = await setup();
+      await partner.journal.switchTo(
+        reopened('', 'e1e1e1e1-0000-4000-8000-000000000001'),
+        async () => null,
+      );
+      await partner.journal.append(DIARY, NEXT, writer().type('搭'));
+      expect(await partner.journal.nextBatch(DIARY)).toMatchObject({
+        generationId: NEXT,
+        epochId: 'e1e1e1e1-0000-4000-8000-000000000001',
+      });
+    });
+  });
+
   it('stops writing once a newer tab upgrades the database, leaving pending in place', async () => {
     const { journal, userId } = await setup();
     await journal.append(DIARY, GENERATION, writer().type('留'));

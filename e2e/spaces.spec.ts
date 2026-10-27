@@ -2,7 +2,7 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 
 // Spaces-and-invitations acceptance R7 through the real stack: three independent accounts
 // (A, B, C) in their own browser contexts, the mock issuer, the API and PostgreSQL. No
-// diary text takes part; every screen says diary sharing is not open yet. Names carry the
+// diary text takes part; every screen says each person shares only the dates they confirm. Names carry the
 // browser and a per-run suffix, so projects running at once and reruns stay independent.
 const run = Date.now().toString(36);
 
@@ -27,8 +27,8 @@ async function inviteLink(page: Page, choose?: (page: Page) => Promise<void>) {
   return page.getByLabel('邀请链接').inputValue();
 }
 
-const notOpenYet = (page: Page) =>
-  expect(page.getByText('范围已设置，日记共享尚未开放').first()).toBeVisible();
+const ownDatesOnly = (page: Page) =>
+  expect(page.getByText('每人只共享自己确认过的日期').first()).toBeVisible();
 
 test('AUTH-02 AUTH-07 AUTH-08 AUTH-11 SHARE-03 binds, unbinds and restores one fixed pair with private ranges', async ({
   browser,
@@ -40,7 +40,7 @@ test('AUTH-02 AUTH-07 AUTH-08 AUTH-11 SHARE-03 binds, unbinds and restores one f
   // A keeps the default: all history and later.
   const link = await inviteLink(a);
   expect(link).toMatch(/\/join#token=[A-Za-z0-9_-]{43}$/);
-  await notOpenYet(a);
+  await ownDatesOnly(a);
 
   // B opens the link signed out, signs in, and comes back to it.
   const b = await (await browser.newContext()).newPage();
@@ -63,13 +63,13 @@ test('AUTH-02 AUTH-07 AUTH-08 AUTH-11 SHARE-03 binds, unbinds and restores one f
   await expect(b).toHaveURL(/\/spaces\/[0-9a-f-]{36}$/);
   const spaceUrl = new URL(b.url()).pathname;
   await expect(b.getByText(`与 ${name('a')} 的空间`)).toBeVisible();
-  await expect(b.getByText('共享：2026-10-05（已为本次绑定确认）')).toBeVisible();
-  await notOpenYet(b);
+  await expect(b.getByText('共享：2026-10-05（已为本次绑定确认，正在共享）')).toBeVisible();
+  await ownDatesOnly(b);
 
   // A sees the space and only A's own range.
   await a.goto('/');
   await a.getByRole('link', { name: `与 ${name('b')} 的空间` }).click();
-  await expect(a.getByText('共享：全部历史与以后（已为本次绑定确认）')).toBeVisible();
+  await expect(a.getByText('共享：全部历史与以后（已为本次绑定确认，正在共享）')).toBeVisible();
   await expect(a.locator('body')).not.toContainText('2026-10-05');
 
   // C may not see it.
@@ -100,6 +100,6 @@ test('AUTH-02 AUTH-07 AUTH-08 AUTH-11 SHARE-03 binds, unbinds and restores one f
   await expect(a.getByText('当前绑定中')).toBeVisible();
   await expect(a.locator('.periods li')).toHaveCount(2);
   await expect(
-    a.getByText('共享：全部历史与以后（尚未为本次绑定确认，之前的设置仅供参考）'),
+    a.getByText('共享：全部历史与以后（尚未为本次绑定确认，日记没有共享；之前的设置仅供参考）'),
   ).toBeVisible();
 });

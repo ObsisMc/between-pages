@@ -100,7 +100,7 @@ export function RelationshipPanel({ userId }: { userId: string }) {
   return (
     <section className="relationship" aria-labelledby="relationship-title">
       <h2 id="relationship-title">双人空间</h2>
-      <p className="relationship-note">范围已设置，日记共享尚未开放</p>
+      <p className="relationship-note">每人只共享自己确认过的日期</p>
       {current && (
         <p>
           <Link to={`/spaces/${current.space.id}`}>
