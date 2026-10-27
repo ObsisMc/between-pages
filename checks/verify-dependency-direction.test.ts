@@ -102,6 +102,11 @@ describe('verify-dependency-direction', () => {
       'apps/web/src/sender/sender.ts',
       "import { createSyncClient } from '../sync-client/index.ts';",
     ],
+    [
+      'a building block importing the screen that wires it',
+      'apps/web/src/journal/journal.ts',
+      "import { DiaryPage } from '../diary/index.ts';",
+    ],
     ['an unlisted web sub-module', 'apps/web/src/history/history.ts', 'export const x = 1;'],
   ])('rejects %s', (_, path, source) => {
     expect(violations([file(path, source)])).toHaveLength(1);
