@@ -231,3 +231,45 @@ test('stays read-only in a browser without Web Locks', async ({ page, browserNam
   await expect(status(page)).toHaveText('只读：这个浏览器无法安全保存，请升级浏览器');
   await expect(editor(page)).toHaveAttribute('contenteditable', 'false');
 });
+
+test('EDIT-16 previews the own history read-only and returns to the current text', async ({
+  page,
+  browserName,
+}) => {
+  // A history point closes two minutes after the last commit (kernel D6), on the server's
+  // clock; the wait is the rule under test, so it polls the API rather than sleeping.
+  test.setTimeout(240_000);
+  await devLogin(page, `history-${browserName}-${run}`);
+  const diaryId = await writeToday(page);
+  await typeAtEnd(page, '早上写的');
+  await saved(page);
+  await page.getByRole('button', { name: '历史' }).click();
+  const panel = page.getByRole('complementary', { name: '历史版本' });
+  await expect(panel).toContainText('还没有历史版本');
+
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async (id) => {
+          const res = await fetch(`/api/diaries/${id}/history`);
+          return ((await res.json()) as { points: unknown[] }).points.length;
+        }, diaryId),
+      { timeout: 180_000, intervals: [5_000] },
+    )
+    .toBe(1);
+  await page.getByRole('button', { name: '收起历史' }).click();
+  await typeAtEnd(page, '，下午补的');
+  await saved(page);
+
+  await page.getByRole('button', { name: '历史' }).click();
+  await panel.getByRole('button').first().click();
+  const preview = page.getByRole('region', { name: '历史版本预览' });
+  await expect(preview.locator('.history-text')).toHaveText('早上写的');
+  await expect(preview).toContainText('只读');
+  await expect(page.getByRole('button', { name: /恢复|回滚/ })).toHaveCount(0);
+  await expect(editor(page)).toBeHidden();
+
+  await preview.getByRole('button', { name: '返回当前正文' }).click();
+  await expect(editor(page)).toHaveText('早上写的，下午补的');
+  expect(await serverText(page, diaryId)).toBe('早上写的，下午补的');
+});
