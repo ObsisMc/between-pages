@@ -16,6 +16,7 @@ import {
 import { ApiErrorBody, routes, type RouteName } from '@between-pages/contracts';
 import { registerErrorHandling } from './errors.ts';
 import { registerOriginGuard, requireUser, type CurrentUser } from './auth/guards.ts';
+import { createBindingService } from './bindings/bindings.ts';
 import { createCommitService } from './commit/commit.ts';
 import type { Db } from './db/client.ts';
 import { createDiaryService } from './diaries/diaries.ts';
@@ -24,6 +25,9 @@ import { createHistoryService } from './history/history.ts';
 import type { ContractRequest } from './routes/contract.ts';
 import { diaryHandlers } from './routes/diaries.ts';
 import { meHandler } from './routes/me.ts';
+import { spaceHandlers } from './routes/spaces.ts';
+import { createSharingService } from './sharing/sharing.ts';
+import { createRelationStore } from './store/relations.ts';
 import { createStore } from './store/store.ts';
 import { TRANSPORT_MAX_BYTES, registerSyncSocket } from './ws/sync.ts';
 
@@ -112,6 +116,22 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   contractRoute('receipt', handlers.receipt);
   contractRoute('history', handlers.history);
   contractRoute('historyVersion', handlers.historyVersion);
+
+  const relations = createRelationStore(deps.db);
+  const spaces = spaceHandlers({
+    bindings: createBindingService(relations),
+    sharing: createSharingService(relations),
+  });
+  contractRoute('binding', spaces.binding);
+  contractRoute('spaces', spaces.spaces);
+  contractRoute('space', spaces.space);
+  contractRoute('createInvitation', spaces.createInvitation);
+  contractRoute('revokeInvitation', spaces.revokeInvitation);
+  contractRoute('previewInvitation', spaces.previewInvitation);
+  contractRoute('acceptInvitation', spaces.acceptInvitation);
+  contractRoute('unbind', spaces.unbind);
+  contractRoute('mySharing', spaces.mySharing);
+  contractRoute('saveMySharing', spaces.saveMySharing);
 
   await app.register(websocket, { options: { maxPayload: TRANSPORT_MAX_BYTES } });
   registerSyncSocket(app, {

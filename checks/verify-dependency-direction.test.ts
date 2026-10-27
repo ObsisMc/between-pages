@@ -20,6 +20,10 @@ describe('verify-dependency-direction', () => {
           "import type { CommitService } from '../commit/commit.ts';",
         ),
         file('apps/api/src/commit/commit.ts', "import type { Store } from '../store/store.ts';"),
+        file(
+          'apps/api/src/bindings/bindings.ts',
+          "import { normalizeSelection } from '../sharing/selection.ts';",
+        ),
         file('apps/api/src/app.sync.db.test.ts', "import { buildApp } from './app.ts';"),
         file(
           'apps/web/src/editor-binding/binding.ts',
@@ -71,6 +75,16 @@ describe('verify-dependency-direction', () => {
       "export { sha256 } from './digest.ts';",
     ],
     ['an unlisted collab sub-module', 'packages/collab/src/helpers.ts', 'export const x = 1;'],
+    [
+      'the sharing service importing the binding service',
+      'apps/api/src/sharing/sharing.ts',
+      "import type { BindingService } from '../bindings/bindings.ts';",
+    ],
+    [
+      'api transport reaching the relationship store past the services',
+      'apps/api/src/routes/spaces.ts',
+      "import { createRelationStore } from '../store/relations.ts';",
+    ],
     [
       'api transport reaching the store past the services',
       'apps/api/src/routes/diaries.ts',

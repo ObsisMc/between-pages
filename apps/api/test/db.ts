@@ -1,5 +1,6 @@
 import pg from 'pg';
 import { createDb } from '../src/db/client.ts';
+import { createRelationStore } from '../src/store/relations.ts';
 import { createStore } from '../src/store/store.ts';
 
 export const testDatabaseUrl = process.env.TEST_DATABASE_URL;
@@ -22,4 +23,10 @@ export async function query<Row extends pg.QueryResultRow>(sql: string, params: 
 export function openTestStore() {
   const database = createDb(testDatabaseUrl!);
   return { store: createStore(database.db), close: () => database.close() };
+}
+
+/** The relationship store over its own pool on the test database. The caller closes it. */
+export function openTestRelationStore() {
+  const database = createDb(testDatabaseUrl!);
+  return { relations: createRelationStore(database.db), close: () => database.close() };
 }

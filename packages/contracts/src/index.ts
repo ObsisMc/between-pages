@@ -1,5 +1,6 @@
 export { ApiErrorBody, ErrorCategory, ErrorCode, errorCategory, errorStatus } from './errors.ts';
-export { HealthResponse, MeResponse, routes, UserSummary } from './routes.ts';
+export { HealthResponse, MeResponse, routes } from './routes.ts';
+export { UserSummary } from './users.ts';
 export type {
   BodyOf,
   ParamsOf,
@@ -44,3 +45,25 @@ export {
   syncSocket,
 } from './sync.ts';
 export { DateRange, DateSelection } from './sharing.ts';
+export {
+  AcceptInvitationRequest,
+  AcceptInvitationResponse,
+  BindingResponse,
+  BindingSummary,
+  CreateInvitationRequest,
+  CreateInvitationResponse,
+  InvitationSummary,
+  InvitationToken,
+  MySharingResponse,
+  PeriodSummary,
+  PreviewInvitationRequest,
+  PreviewInvitationResponse,
+  SaveMySharingRequest,
+  SaveMySharingResponse,
+  SpaceParticipant,
+  SpaceResponse,
+  SpaceSummary,
+  SpacesResponse,
+  UnbindRequest,
+  UnbindResponse,
+} from './spaces.ts';
