@@ -10,6 +10,7 @@ import type { RelationStore } from './store/relations.ts';
 import type { Store } from './store/store.ts';
 import { openTestRelationStore, query, testDatabaseUrl } from '../test/db.ts';
 import { client, createUser, edit, operation, textOf } from '../test/diary.ts';
+import { createEvents } from './events/events.ts';
 import { createSharingService, type SharingService } from './sharing/sharing.ts';
 
 // Opening and freezing (kernel D4, D5) across the services as app.ts composes them, on real
@@ -26,7 +27,7 @@ beforeAll(() => {
   if (!testDatabaseUrl) return;
   opened = openTestRelationStore();
   ({ relations, store } = opened);
-  sharing = createSharingService(relations, store);
+  sharing = createSharingService(relations, store, createEvents());
   bindings = createBindingService(relations, sharing);
   commit = createCommitService(store);
 });
@@ -269,7 +270,7 @@ describe.runIf(testDatabaseUrl)('opening a range', () => {
       });
     });
 
-    expect(applied).toEqual({ opened: 1, frozen: 0, rebuilt: 1 });
+    expect(applied).toMatchObject({ opened: 1, frozen: 0, rebuilt: 1 });
     const { generation_id } = await diaryRow(diaryId);
     const [baseline] = await query<{ delta: Buffer }>(
       'select delta from diary_commits where diary_id = $1 and generation_id = $2 and seq = 0',

@@ -135,3 +135,74 @@ export const HistoryVersion = z
     runs: z.array(z.object({ author: Uuid, text: z.string() })),
   })
   .meta({ id: 'HistoryVersion' });
+
+// The partner's view of a shared diary (kernel D5, D10, D17). A shared diary is addressed
+// by its epoch: the live one follows the owner's current text, a frozen one stays at the
+// version it froze at. Everything here comes from the server's authorized-state reader.
+
+export const ShareParams = z.object({ diaryId: Uuid, epochId: Uuid });
+
+/** `live` while shared (the partner may write their own text); `frozen` read-only since sharing stopped. */
+export const ShareState = z.enum(['live', 'frozen']);
+
+/** One partner's diary as its recipient may open it: the epoch's baseline plus its authorized commits. */
+export const SharedDiaryState = z
+  .object({
+    diaryId: Uuid,
+    diaryDate: z.iso.date(),
+    ownerId: Uuid,
+    epochId: Uuid,
+    share: ShareState,
+    generationId: Uuid,
+    /** Authorized commits since the epoch's baseline; no gap for private commits (D2). */
+    seq: z.int().nonnegative(),
+    /** The authorized Yjs state, base64. */
+    state: z.base64(),
+    bindings: z.array(ClientBinding),
+  })
+  .meta({ id: 'SharedDiaryState' });
+
+export const SharedDiaryResponse = z
+  .object({ diary: SharedDiaryState })
+  .meta({ id: 'SharedDiaryResponse' });
+
+/** The partner's shared diary on a list: its live share, or else its last frozen one. */
+export const SharedDiarySummary = z
+  .object({
+    diaryId: Uuid,
+    diaryDate: z.iso.date(),
+    ownerId: Uuid,
+    epochId: Uuid,
+    share: ShareState,
+    /** As `DiarySummary.excerpt`, from the authorized text. */
+    excerpt: z.string().nullable(),
+    /** The last authorized commit. */
+    updatedAt: z.iso.datetime({ offset: true }),
+  })
+  .meta({ id: 'SharedDiarySummary' });
+
+export const SharedDiaryListPage = z
+  .object({ diaries: z.array(SharedDiarySummary), nextBefore: z.iso.date().nullable() })
+  .meta({ id: 'SharedDiaryListPage' });
+
+export const CharacterParams = z.object({
+  diaryId: Uuid,
+  clientId: z.coerce.number().int().min(0).max(0xffffffff),
+  clock: z.coerce.number().int().nonnegative(),
+});
+
+/** Which text view the character was seen in: the partner's epoch; omitted for the owner's own diary. */
+export const CharacterQuery = z.strictObject({ epochId: Uuid.optional() });
+
+/**
+ * Who wrote one visible character and when (kernel D15, TIME-03). `writtenAt` is the
+ * writer's clock, or the server's receipt time when that clock ran more than a minute
+ * ahead, which `clockAdjusted` then says.
+ */
+export const CharacterInfo = z
+  .object({
+    author: Uuid,
+    writtenAt: z.iso.datetime({ offset: true }),
+    clockAdjusted: z.boolean(),
+  })
+  .meta({ id: 'CharacterInfo' });

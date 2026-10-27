@@ -19,6 +19,14 @@ describe('client messages', () => {
     expect(ClientMessage.safeParse({ ...subscribe, knownSeq: 0 }).success).toBe(true);
   });
 
+  it('accepts the partner entry: subscribe and submit naming an epoch', () => {
+    expect(ClientMessage.safeParse({ ...submit, epochId: uuid(5) }).success).toBe(true);
+    const subscribe = { v: 1, type: 'subscribe', diaryId: uuid(1), generationId: uuid(3) };
+    expect(ClientMessage.safeParse({ ...subscribe, epochId: uuid(5), knownSeq: 0 }).success).toBe(
+      true,
+    );
+  });
+
   it('rejects unknown fields, so a client cannot claim an author or actor', () => {
     expect(ClientMessage.safeParse({ ...submit, actor: uuid(9) }).success).toBe(false);
     const operations = [{ ...submit.operations[0], author: uuid(9) }];

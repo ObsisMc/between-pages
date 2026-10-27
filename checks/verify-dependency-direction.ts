@@ -35,8 +35,9 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
     },
   },
   {
-    // Kernel ADR D11: transport (routes, ws) → services (commit, diaries, history, outbox,
-    // events) → storage (store), never upwards; transport never reaches the store, and
+    // Kernel ADR D11: transport (routes, ws) → services (commit, diaries, reader, history,
+    // outbox, events) → storage (store), never upwards; `reader` is the only producer of
+    // what a partner sees, and `history` groups the timeline it authorizes; transport never reaches the store, and
     // events imports no other service; `errors` is a leaf the layers may use. The
     // relationship services of spaces-and-invitations sit in the same service layer:
     // `sharing` owns ranges and what they share (kernel D5 opening and freezing), which
@@ -53,15 +54,16 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       errors: [],
       auth: ['config', 'db', 'errors'],
       db: [],
-      routes: ['errors', 'commit', 'diaries', 'history', 'bindings', 'sharing'],
-      ws: ['auth', 'errors', 'commit', 'diaries', 'events'],
+      routes: ['errors', 'commit', 'diaries', 'history', 'reader', 'bindings', 'sharing'],
+      ws: ['auth', 'errors', 'commit', 'diaries', 'reader', 'events'],
       commit: ['store', 'outbox', 'events', 'errors'],
       diaries: ['store', 'sharing', 'errors'],
-      history: ['store', 'errors'],
+      reader: ['store', 'events', 'errors'],
+      history: ['store', 'reader', 'errors'],
       outbox: ['store', 'errors'],
       events: [],
-      bindings: ['store', 'sharing', 'errors'],
-      sharing: ['store', 'errors'],
+      bindings: ['store', 'sharing', 'events', 'errors'],
+      sharing: ['store', 'events', 'errors'],
       store: ['db', 'errors'],
     },
   },

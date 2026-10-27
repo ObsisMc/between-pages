@@ -16,6 +16,8 @@ export type SubmitBatch = {
   diaryId: string;
   batchId: string;
   generationId: string;
+  /** The live epoch a partner writes in; absent on the owner's personal entry (kernel D7). */
+  epochId?: string | undefined;
   operations: { operationId: string; update: Uint8Array<ArrayBuffer>; writtenAt: Date }[];
 };
 
@@ -80,7 +82,7 @@ export function createCommitService(store: Store) {
       const hashes = await Promise.all(updates.map((update) => sha256(update)));
       const identity = {
         generationId: batch.generationId,
-        epochId: null,
+        epochId: batch.epochId ?? null,
         operations: batch.operations.map((op, i) => ({
           operationId: op.operationId,
           updateSha256: hashes[i]!,
@@ -92,9 +94,12 @@ export function createCommitService(store: Store) {
       const outcome = await store
         .withDiaryLock(batch.diaryId, async (locked): Promise<CommitOutcome> => {
           const { diary } = locked;
-          // Phase 2 serves only the owner's personal entry; a partner's write right comes
-          // from a live epoch in phase 4. Not-owned looks the same as missing (D10).
-          if (diary.ownerId !== actor) return { ok: false, code: 'NOT_FOUND' };
+          const isOwner = diary.ownerId === actor;
+          // Someone the diary was never shared with sees it as missing (D10). A former
+          // recipient keeps their receipts, so a batch of theirs committed before the
+          // share froze still replays below.
+          if (!isOwner && !(await locked.epochs.recipientEpochs(diary.id, actor)).length)
+            return { ok: false, code: 'NOT_FOUND' };
 
           const committed = await locked.batch(diary.id, batch.batchId);
           if (committed) {
@@ -112,7 +117,15 @@ export function createCommitService(store: Store) {
           const operationIds = batch.operations.map((op) => op.operationId);
           if ((await locked.committedOperations(diary.id, actor, operationIds)).length)
             return { ok: false, code: 'OPERATION_ALREADY_COMMITTED' };
-          if (batch.generationId !== diary.generationId)
+          // The owner writes through the personal entry, a partner only in the live epoch
+          // they opened; an old share's request never turns into a personal one (D7). The
+          // diary lock orders this check against freezing: a batch either commits inside
+          // the epoch, before it froze, or is refused (invariant 16).
+          const live = (await locked.epochs.liveEpochs([diary.id])).get(diary.id) ?? null;
+          const allowed = isOwner
+            ? batch.epochId === undefined
+            : live?.recipientId === actor && batch.epochId === live.id;
+          if (!allowed || batch.generationId !== diary.generationId)
             return { ok: false, code: 'STALE_CONTEXT' };
 
           const state = await activeState(locked);
@@ -127,6 +140,7 @@ export function createCommitService(store: Store) {
             batchId: batch.batchId,
             authorId: actor,
             generationId: batch.generationId,
+            epochId: live?.id ?? null,
             batchDigest: digest,
             digestAlgorithm: DIGEST_ALGORITHM,
             delta: result.delta,
@@ -139,7 +153,7 @@ export function createCommitService(store: Store) {
             claimedClientIds: result.claimedClientIds,
             state: () => Y.encodeStateAsUpdate(state.doc),
           });
-          await registerBackups(locked, version);
+          await registerBackups(locked, version, live);
           for (const clientId of result.claimedClientIds) state.bindings.set(clientId, actor);
           accepted = { ...state, version };
           return {
@@ -147,8 +161,10 @@ export function createCommitService(store: Store) {
             receipt,
             replayed: false,
             event: {
+              type: 'commit',
               diaryId: diary.id,
               generationId: receipt.generationId,
+              epochId: live?.id ?? null,
               seq: receipt.seq,
               publicId: receipt.publicId,
               delta: result.delta,
@@ -177,7 +193,12 @@ export function createCommitService(store: Store) {
     ): Promise<Receipt | null | 'NOT_FOUND'> {
       return store.read(async (queries) => {
         const diary = await queries.findDiary(diaryId);
-        if (diary?.ownerId !== actor) return 'NOT_FOUND';
+        if (!diary) return 'NOT_FOUND';
+        if (
+          diary.ownerId !== actor &&
+          !(await queries.epochs.recipientEpochs(diaryId, actor)).length
+        )
+          return 'NOT_FOUND';
         if ('operationId' in lookup)
           return queries.receiptByOperation(diaryId, actor, lookup.operationId);
         const committed = await queries.batch(diaryId, lookup.batchId);

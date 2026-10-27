@@ -1,5 +1,5 @@
-import { authorRuns } from '@between-pages/collab';
-import type { CommitPoint, Store } from '../store/store.ts';
+import type { Reader } from '../reader/reader.ts';
+import type { CommitPoint } from '../store/store.ts';
 
 /** Continuous editing forms one history point per this span (kernel D6). */
 export const GROUP_MS = 5 * 60_000;
@@ -14,7 +14,8 @@ type Group = { first: CommitPoint; last: CommitPoint; authors: Set<string> };
 /**
  * Groups commits as kernel D6 does: a group starts at a commit and takes later ones while
  * each is within `idleMs` of the previous and GROUP_MS of the group's first, inside one
- * generation (sharing boundaries never merge).
+ * generation and one epoch (opening, stopping and reopening each start a point; private
+ * and shared commits never merge).
  */
 function groupsOf(timeline: readonly CommitPoint[], idleMs: number): Group[] {
   const groups: Group[] = [];
@@ -24,6 +25,7 @@ function groupsOf(timeline: readonly CommitPoint[], idleMs: number): Group[] {
     if (
       group &&
       group.first.generationId === commit.generationId &&
+      group.first.epochId === commit.epochId &&
       at - group.last.committedAt.getTime() < idleMs &&
       at - group.first.committedAt.getTime() < GROUP_MS
     ) {
@@ -103,12 +105,12 @@ const newestFirst = (a: HistoryPoint, b: HistoryPoint) =>
   b.committedAt.getTime() - a.committedAt.getTime() || (a.publicId < b.publicId ? 1 : -1);
 
 /**
- * The owner's read-only history (kernel D6). Phase 2 has no sharing, so only the owner
- * reads it; anyone else gets NOT_FOUND. Phase 4 filters commits by the viewer's epochs
- * before grouping, so counts and pages never reflect private commits (invariant 15).
+ * Read-only history (kernel D6) for the owner and for the partner a diary is shared with.
+ * The reader authorizes the timeline before grouping, so the partner's points, counts and
+ * pages never reflect private commits (invariant 15); anyone else gets NOT_FOUND.
+ * `idleMs` is shortened only by the end-to-end suite (`HISTORY_IDLE_MS`, dev login only).
  */
-/** `idleMs` is shortened only by the end-to-end suite (`HISTORY_IDLE_MS`, dev login only). */
-export function createHistoryService(store: Store, idleMs = IDLE_MS) {
+export function createHistoryService(reader: Reader, idleMs = IDLE_MS) {
   return {
     /** One page, newest first. Authorization and points are recomputed for every page. */
     async page(
@@ -123,10 +125,7 @@ export function createHistoryService(store: Store, idleMs = IDLE_MS) {
     > {
       const after = cursor === undefined ? null : decodeCursor(cursor);
       if (cursor !== undefined && !after) return 'BAD_CURSOR';
-      const timeline = await store.read(async (queries) => {
-        const diary = await queries.findDiary(diaryId);
-        return diary?.ownerId === viewer ? queries.timeline(diaryId) : null;
-      });
+      const timeline = await reader.timeline(viewer, diaryId);
       if (!timeline) return 'NOT_FOUND';
       const all = historyPoints(timeline, now, idleMs).sort(newestFirst);
       const rest = after
@@ -145,24 +144,11 @@ export function createHistoryService(store: Store, idleMs = IDLE_MS) {
     },
 
     /**
-     * One committed version rendered on the server as author runs: no CRDT data leaves
-     * (D6). Throws VersionUnreadable when its stored parts fail their sha256.
+     * One committed version the viewer may see, rendered on the server as author runs: no
+     * CRDT data leaves (D6). Throws VersionUnreadable when its stored parts fail their sha256.
      */
-    async version(viewer: string, diaryId: string, publicId: string) {
-      return store.read(async (queries) => {
-        const diary = await queries.findDiary(diaryId);
-        if (diary?.ownerId !== viewer) return null;
-        const commit = (await queries.timeline(diaryId)).find((c) => c.publicId === publicId);
-        if (!commit) return null;
-        const doc = await queries.state(diaryId, commit.generationId, commit.version);
-        const runs: { author: string; text: string }[] = [];
-        for (const run of authorRuns(doc, await queries.bindings(diaryId))) {
-          const last = runs.at(-1);
-          if (last?.author === run.author) last.text += run.text;
-          else runs.push({ author: run.author, text: run.text });
-        }
-        return { publicId, committedAt: commit.committedAt, runs };
-      });
+    version(viewer: string, diaryId: string, publicId: string) {
+      return reader.version(viewer, diaryId, publicId);
     },
   };
 }

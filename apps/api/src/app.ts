@@ -22,6 +22,7 @@ import type { Db } from './db/client.ts';
 import { createDiaryService } from './diaries/diaries.ts';
 import { createEvents } from './events/events.ts';
 import { createHistoryService } from './history/history.ts';
+import { createReader } from './reader/reader.ts';
 import type { ContractRequest } from './routes/contract.ts';
 import { diaryHandlers } from './routes/diaries.ts';
 import { meHandler } from './routes/me.ts';
@@ -101,11 +102,13 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const store = createStore(deps.db);
   const events = createEvents();
   const diaries = createDiaryService(store);
+  const reader = createReader(store);
   const commit = createCommitService(store);
   const handlers = diaryHandlers({
     diaries,
     commit,
-    history: createHistoryService(store, deps.historyIdleMs),
+    reader,
+    history: createHistoryService(reader, deps.historyIdleMs),
   });
 
   contractRoute('health', () => ({ status: 'ok' as const }));
@@ -116,9 +119,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   contractRoute('receipt', handlers.receipt);
   contractRoute('history', handlers.history);
   contractRoute('historyVersion', handlers.historyVersion);
+  contractRoute('sharedDiary', handlers.sharedDiary);
+  contractRoute('character', handlers.character);
+  contractRoute('sharedDiaries', handlers.sharedDiaries);
 
   const relations = createRelationStore(deps.db);
-  const sharing = createSharingService(relations, store);
+  const sharing = createSharingService(relations, store, events);
   const spaces = spaceHandlers({
     bindings: createBindingService(relations, sharing),
     sharing,
@@ -139,6 +145,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     publicOrigin: deps.publicOrigin,
     currentUser: deps.currentUser,
     diaries,
+    reader,
     commit,
     events,
   });

@@ -54,6 +54,8 @@ export type CommitPoint = {
   version: number;
   publicId: string;
   generationId: string;
+  /** The epoch live when it committed; null for a private commit. */
+  epochId: string | null;
   authorId: string | null;
   committedAt: Date;
 };
@@ -62,6 +64,8 @@ export type NewCommit = {
   batchId: string;
   authorId: string;
   generationId: string;
+  /** The diary's live epoch at commit time, null when private (kernel D10). */
+  epochId: string | null;
   batchDigest: Uint8Array;
   digestAlgorithm: number;
   delta: Uint8Array;
@@ -219,8 +223,11 @@ export class DiaryQueries {
     return doc;
   }
 
-  /** Committed deltas of one generation after `seq`, in seq order, each checked against its sha256. */
-  async deltasAfter(diaryId: string, generationId: string, seq: number) {
+  /**
+   * Committed deltas of one generation after `seq`, in seq order, each checked against its
+   * sha256; only those of `epochId` when given (kernel D10 recipient rule).
+   */
+  async deltasAfter(diaryId: string, generationId: string, seq: number, epochId?: string) {
     const rows = await this.tx
       .select({
         seq: diaryCommits.seq,
@@ -234,6 +241,7 @@ export class DiaryQueries {
           eq(diaryCommits.diaryId, diaryId),
           eq(diaryCommits.generationId, generationId),
           gt(diaryCommits.seq, seq),
+          epochId === undefined ? undefined : eq(diaryCommits.epochId, epochId),
         ),
       )
       .orderBy(asc(diaryCommits.seq));
@@ -318,12 +326,55 @@ export class DiaryQueries {
         version: diaryCommits.version,
         publicId: diaryCommits.publicId,
         generationId: diaryCommits.generationId,
+        epochId: diaryCommits.epochId,
         authorId: diaryCommits.authorId,
         committedAt: diaryCommits.committedAt,
       })
       .from(diaryCommits)
       .where(eq(diaryCommits.diaryId, diaryId))
       .orderBy(asc(diaryCommits.version));
+  }
+
+  /**
+   * The operation that inserted the character `(clientId, clock)`, with its author (the
+   * clientID's binding) and both clocks (kernel D15); null when none did.
+   */
+  async characterOrigin(
+    diaryId: string,
+    clientId: number,
+    clock: number,
+  ): Promise<{ authorId: string; writtenAt: Date; receivedAt: Date } | null> {
+    const [row] = await this.tx
+      .select({
+        authorId: diaryOperations.authorId,
+        writtenAt: diaryOperations.writtenAt,
+        receivedAt: diaryOperations.receivedAt,
+      })
+      .from(diaryCharacterRanges)
+      .innerJoin(
+        diaryClientBindings,
+        and(
+          eq(diaryClientBindings.diaryId, diaryCharacterRanges.diaryId),
+          eq(diaryClientBindings.clientId, diaryCharacterRanges.clientId),
+        ),
+      )
+      .innerJoin(
+        diaryOperations,
+        and(
+          eq(diaryOperations.diaryId, diaryCharacterRanges.diaryId),
+          eq(diaryOperations.authorId, diaryClientBindings.userId),
+          eq(diaryOperations.operationId, diaryCharacterRanges.operationId),
+        ),
+      )
+      .where(
+        and(
+          eq(diaryCharacterRanges.diaryId, diaryId),
+          eq(diaryCharacterRanges.clientId, clientId),
+          lte(diaryCharacterRanges.clockStart, clock),
+          gt(diaryCharacterRanges.clockEnd, clock),
+        ),
+      );
+    return row ?? null;
   }
 
   private async receiptOf(
@@ -385,6 +436,7 @@ export class LockedDiary extends DiaryQueries {
         digestAlgorithm: commit.digestAlgorithm,
         delta: commit.delta,
         deltaSha256: digest(commit.delta),
+        epochId: commit.epochId,
       })
       .returning({ publicId: diaryCommits.publicId, committedAt: diaryCommits.committedAt });
     await this.tx.update(diaries).set({ version }).where(eq(diaries.id, diaryId));
@@ -436,10 +488,14 @@ export class LockedDiary extends DiaryQueries {
     };
   }
 
-  async insertBackupTasks(version: number, targets: readonly 'personal'[]): Promise<void> {
+  /** The owner's personal task, and the space task while an epoch is live (kernel D16). */
+  async insertBackupTasks(version: number, live: { spaceId: string; epochId: string } | null) {
     await this.tx
       .insert(backupOutbox)
-      .values(targets.map((target) => ({ diaryId: this.diary.id, version, target })));
+      .values([
+        { diaryId: this.diary.id, version, target: 'personal' as const },
+        ...(live ? [{ diaryId: this.diary.id, version, target: 'space' as const, ...live }] : []),
+      ]);
   }
 }
 

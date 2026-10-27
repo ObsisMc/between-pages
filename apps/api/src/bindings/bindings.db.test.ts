@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { openTestRelationStore, testDatabaseUrl } from '../../test/db.ts';
 import { createUser } from '../../test/diary.ts';
+import { createEvents } from '../events/events.ts';
 import { createSharingService } from '../sharing/sharing.ts';
 import { INVITATION_TTL_MS, createBindingService, type BindingService } from './bindings.ts';
 
@@ -15,7 +16,7 @@ beforeAll(() => {
   opened = openTestRelationStore();
   bindings = createBindingService(
     opened.relations,
-    createSharingService(opened.relations, opened.store),
+    createSharingService(opened.relations, opened.store, createEvents()),
   );
 });
 afterAll(async () => {

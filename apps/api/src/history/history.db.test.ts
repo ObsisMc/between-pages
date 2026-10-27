@@ -6,6 +6,7 @@ import { VersionUnreadable } from '../errors.ts';
 import type { Store } from '../store/store.ts';
 import { openTestStore, query, testDatabaseUrl } from '../../test/db.ts';
 import { client, createUser, edit } from '../../test/diary.ts';
+import { createReader } from '../reader/reader.ts';
 import { PAGE_SIZE, createHistoryService } from './history.ts';
 
 let store: Store;
@@ -35,6 +36,7 @@ async function commitAt(diaryId: string, update: Uint8Array, clientID: number, m
       batchId: randomUUID(),
       authorId: locked.diary.ownerId,
       generationId: locked.diary.generationId,
+      epochId: null,
       batchDigest: new Uint8Array(32),
       digestAlgorithm: 1,
       delta: update,
@@ -58,7 +60,7 @@ const later = new Date('2026-10-27T00:00:00Z');
 
 describe.runIf(testDatabaseUrl)('history', () => {
   it('pages points newest first with an opaque cursor', async () => {
-    const history = createHistoryService(store);
+    const history = createHistoryService(createReader(store));
     const { ownerId, diaryId } = await newDiary();
     const tab = client(401);
     const ids: string[] = [];
@@ -93,7 +95,7 @@ describe.runIf(testDatabaseUrl)('history', () => {
   });
 
   it('renders a past version as author runs without changing the current one', async () => {
-    const history = createHistoryService(store);
+    const history = createHistoryService(createReader(store));
     const { ownerId, diaryId } = await newDiary();
     const tab = client(402);
     const morning = await commitAt(
@@ -118,7 +120,7 @@ describe.runIf(testDatabaseUrl)('history', () => {
   });
 
   it('reports a version whose stored delta fails its sha256 as unreadable, not another version', async () => {
-    const history = createHistoryService(store);
+    const history = createHistoryService(createReader(store));
     const { ownerId, diaryId } = await newDiary();
     const publicId = await commitAt(
       diaryId,

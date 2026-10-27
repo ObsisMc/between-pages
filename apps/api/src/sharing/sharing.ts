@@ -1,4 +1,5 @@
 import type { DateSelection } from '@between-pages/contracts';
+import type { ContextEvent, Events } from '../events/events.ts';
 import type { LockedRelations, RelationStore, SpaceRow } from '../store/relations.ts';
 import type { Store } from '../store/store.ts';
 import {
@@ -46,7 +47,7 @@ export async function refusingFailedOpen<T>(flow: () => Promise<T>): Promise<T |
   }
 }
 
-export function createSharingService(relations: RelationStore, store: Store) {
+export function createSharingService(relations: RelationStore, store: Store, events: Events) {
   return {
     /** Readable in current and archived spaces; NOT_FOUND unless the caller takes part (D7). */
     mine(caller: string, spaceId: string): Promise<MySharing | 'NOT_FOUND'> {
@@ -90,8 +91,13 @@ export function createSharingService(relations: RelationStore, store: Store) {
     },
 
     /** Freezes every live share of the space, inside the unbinding transaction (D5). */
-    freezeSpace(locked: LockedRelations, spaceId: string, at: Date): Promise<number> {
+    freezeSpace(locked: LockedRelations, spaceId: string, at: Date): Promise<ContextEvent[]> {
       return freezeSpace(locked, spaceId, at);
+    },
+
+    /** Tells open sockets what `apply` or `freezeSpace` changed; call only after their COMMIT. */
+    announce(changes: readonly ContextEvent[]): void {
+      for (const change of changes) events.publish(change);
     },
 
     /**
@@ -138,7 +144,8 @@ export function createSharingService(relations: RelationStore, store: Store) {
         : await prepareOpen(store, caller, selection);
       if (failed.length) return { code: 'SHARE_OPEN_FAILED', dates: failed };
 
-      return refusingFailedOpen(() =>
+      let changes: ContextEvent[] = [];
+      const result = await refusingFailedOpen(() =>
         relations.withUsersLocked([caller], async (locked) => {
           const space = await locked.lockSpace(spaceId);
           if (!space || !isParticipant(space, caller)) return 'NOT_FOUND' as const;
@@ -165,7 +172,7 @@ export function createSharingService(relations: RelationStore, store: Store) {
             selection,
             at: now,
           });
-          await applyOpen(locked, {
+          ({ changes } = await applyOpen(locked, {
             ownerId: caller,
             spaceId,
             periodId: open,
@@ -173,10 +180,14 @@ export function createSharingService(relations: RelationStore, store: Store) {
             selection,
             prepared,
             at: now,
-          });
+          }));
           return saved;
         }),
       );
+      // Only now has PG committed; a rolled-back attempt left `changes` unannounced.
+      if (typeof result === 'object' && 'changeId' in result)
+        for (const c of changes) events.publish(c);
+      return result;
     },
   };
 }
