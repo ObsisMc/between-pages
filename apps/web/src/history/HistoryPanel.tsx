@@ -1,20 +1,23 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { callApi } from '../api/client.ts';
 import type { HistoryPointView } from './format.ts';
-import { dayOf, dayLabel, timeLabel } from './format.ts';
+import { countdownLabel, dayOf, dayLabel, timeLabel } from './format.ts';
 
 /** The cache key of one diary's history pages; metadata only, never diary text. */
 export const historyQueryKey = (diaryId: string) => ['history', diaryId] as const;
 
 /** Past the server's estimate, so the group is closed when asked again. */
 const CLOSE_MARGIN_MS = 500;
+/** Commits closer together than this are one stretch of typing, asked about once. */
+const SETTLE_MS = 1_000;
 
 /**
  * The diary's own read-only history (kernel D6): points newest first, grouped by the
  * viewer's local day, one server page at a time. The points carry no text. A point
- * appears only once its group closes, so the open panel asks again when the server says
- * the group being written will close, and after a commit starts a new group.
+ * appears only once its group closes, so the open panel counts down to the close the
+ * server reports, asks again then, and asks again once commits settle, since each one may
+ * start a group or move its close later.
  */
 export function HistoryPanel({
   diaryId,
@@ -23,7 +26,7 @@ export function HistoryPanel({
   onSelect,
 }: {
   diaryId: string;
-  /** Commits applied to the open diary so far; a change may start a new group. */
+  /** Commits applied to the open diary so far; a change may start or extend a group. */
   commits: number;
   selected: string | null;
   onSelect: (point: HistoryPointView) => void;
@@ -38,24 +41,33 @@ export function HistoryPanel({
     initialPageParam: null as string | null,
     getNextPageParam: (page) => page.nextCursor,
   });
-  const { refetch, dataUpdatedAt, isFetching } = history;
+  const { refetch, dataUpdatedAt } = history;
   const nextPointInMs = history.data?.pages[0]?.nextPointInMs ?? null;
+  // By this device's clock: the server reports a duration, not its own time.
+  const closesAt = nextPointInMs === null ? null : dataUpdatedAt + nextPointInMs;
 
-  // Each answer either holds the new point or says when to ask next; a commit that joins
-  // the open group only moves that time later, which the next answer reports.
   useEffect(() => {
-    if (nextPointInMs === null) return;
-    const timer = setTimeout(() => void refetch(), nextPointInMs + CLOSE_MARGIN_MS);
+    if (closesAt === null) return;
+    const timer = setTimeout(() => void refetch(), closesAt - Date.now() + CLOSE_MARGIN_MS);
     return () => clearTimeout(timer);
-  }, [nextPointInMs, dataUpdatedAt, refetch]);
+  }, [closesAt, refetch]);
 
-  // An answer already on its way may predate the commit, so it is asked again too.
   const seenCommits = useRef(commits);
   useEffect(() => {
     if (commits === seenCommits.current) return;
     seenCommits.current = commits;
-    if (nextPointInMs === null || isFetching) void refetch();
-  }, [commits, nextPointInMs, isFetching, refetch]);
+    const timer = setTimeout(() => void refetch(), SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [commits, refetch]);
+
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (closesAt === null) return;
+    const tick = setInterval(() => setNow(Date.now()), 1_000);
+    return () => clearInterval(tick);
+  }, [closesAt]);
+  // `now` stops ticking while no group is open; the answer's own time is never older.
+  const left = closesAt === null ? null : closesAt - Math.max(now, dataUpdatedAt);
 
   const points = history.data?.pages.flatMap((page) => page.points) ?? [];
   const days: { day: string; points: typeof points }[] = [];
@@ -72,6 +84,11 @@ export function HistoryPanel({
       {history.isError && (
         <p className="notice" role="alert">
           历史读取失败，请稍后再试
+        </p>
+      )}
+      {left !== null && (
+        <p className="history-note">
+          {left > 0 ? `正在写的这段约 ${countdownLabel(left)}后成为历史版本` : '正在生成历史版本…'}
         </p>
       )}
       {history.isSuccess && points.length === 0 && <p className="history-note">还没有历史版本</p>}

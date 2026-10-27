@@ -74,20 +74,25 @@ describe('HistoryPanel', () => {
     await waitFor(() => expect(screen.getAllByRole('button')).toHaveLength(1), { timeout: 3000 });
   });
 
-  it('asks again when a commit arrives while no group is open', async () => {
+  it('counts down to when the text being written becomes a version', async () => {
+    historyAnswers({ points: [], nextCursor: null, nextPointInMs: 100_000 });
+    renderPanel();
+    expect(await screen.findByText('正在写的这段约 1 分 40 秒后成为历史版本')).toBeDefined();
+  });
+
+  it('asks again once commits settle, since they may start a group or move its close', async () => {
     const fetchMock = historyAnswers(
       { points: [], nextCursor: null, nextPointInMs: null },
       { points: [], nextCursor: null, nextPointInMs: 120_000 },
     );
     const { commit } = renderPanel();
     await screen.findByText('还没有历史版本');
-    expect(fetchMock).toHaveBeenCalledTimes(1);
 
     commit(1);
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-    // The group is open now; joining commits only move its close later.
     commit(2);
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(
+      await screen.findByText('正在写的这段约 2 分钟后成为历史版本', {}, { timeout: 3000 }),
+    ).toBeDefined();
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 

@@ -13,3 +13,11 @@ export const dayOf = (at: string) => day.format(new Date(at));
 export const dayLabel = (at: string) => dayText.format(new Date(at));
 export const timeLabel = (at: string) => timeText.format(new Date(at));
 export const fullLabel = (at: string) => fullText.format(new Date(at));
+
+/** A countdown in whole seconds, rounded up: "1 分 40 秒", "2 分钟", "40 秒". */
+export function countdownLabel(ms: number): string {
+  const seconds = Math.ceil(ms / 1000);
+  const [minutes, rest] = [Math.floor(seconds / 60), seconds % 60];
+  if (minutes === 0) return `${rest} 秒`;
+  return rest === 0 ? `${minutes} 分钟` : `${minutes} 分 ${rest} 秒`;
+}
