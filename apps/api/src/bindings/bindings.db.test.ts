@@ -1,23 +1,21 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createDb, type Database } from '../db/client.ts';
-import { createRelationStore } from '../store/relations.ts';
-import { testDatabaseUrl } from '../../test/db.ts';
+import { openTestRelationStore, testDatabaseUrl } from '../../test/db.ts';
 import { createUser } from '../../test/diary.ts';
 import { INVITATION_TTL_MS, createBindingService, type BindingService } from './bindings.ts';
 
 // The invitation clock without the transport: the seven-day limit and its equal boundary
 // (spaces-and-invitations D8), with the time passed in as the routes do.
 
-let database: Database;
+let opened: ReturnType<typeof openTestRelationStore> | undefined;
 let bindings: BindingService;
 beforeAll(() => {
   if (!testDatabaseUrl) return;
-  database = createDb(testDatabaseUrl);
-  bindings = createBindingService(createRelationStore(database.db));
+  opened = openTestRelationStore();
+  bindings = createBindingService(opened.relations);
 });
 afterAll(async () => {
-  await database?.close();
+  await opened?.close();
 });
 
 const CREATED = new Date('2026-10-01T12:00:00Z');
