@@ -39,7 +39,9 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
     // events) → storage (store), never upwards; transport never reaches the store, and
     // events imports no other service; `errors` is a leaf the layers may use. The
     // relationship services of spaces-and-invitations sit in the same service layer:
-    // `sharing` owns range normalization, which `bindings` reuses at binding time. `app` and
+    // `sharing` owns ranges and what they share (kernel D5 opening and freezing), which
+    // `bindings` runs inside its binding and unbinding transactions and `diaries` asks
+    // when creating a diary. `app` and
     // `server` compose everything, so tests through the real router (app.*.test.ts)
     // belong to `app`.
     dir: 'apps/api/src',
@@ -54,7 +56,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       routes: ['errors', 'commit', 'diaries', 'history', 'bindings', 'sharing'],
       ws: ['auth', 'errors', 'commit', 'diaries', 'events'],
       commit: ['store', 'outbox', 'events', 'errors'],
-      diaries: ['store', 'errors'],
+      diaries: ['store', 'sharing', 'errors'],
       history: ['store', 'errors'],
       outbox: ['store', 'errors'],
       events: [],

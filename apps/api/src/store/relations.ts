@@ -6,11 +6,14 @@ import {
   activeBindings,
   bindingInvitations,
   bindingPeriods,
+  diaries,
   sharingPolicies,
   sharingPolicyChanges,
   spaces,
   users,
 } from '../db/schema.ts';
+import { EpochQueries, LockedBoundaries } from './boundaries.ts';
+import { DiaryQueries, type DiaryRow } from './store.ts';
 
 // SQL for the relationship and sharing range tables (spaces-and-invitations D9, D10).
 // Every write runs under `withUsersLocked`: the users rows of everyone the flow touches,
@@ -213,8 +216,46 @@ export class RelationQueries {
   }
 }
 
+/** Diary rows locked FOR UPDATE inside a relationship flow, with their reads and boundary writes. */
+export type LockedDiaries = {
+  /** Fresh under the lock, in ID order. */
+  rows: DiaryRow[];
+  queries: DiaryQueries;
+  boundaries: LockedBoundaries;
+};
+
 /** Writes; only reachable while the users rows of the flow are locked. */
 export class LockedRelations extends RelationQueries {
+  /** Diaries and share epochs, read in this transaction after the users locks. */
+  get epochs(): EpochQueries {
+    return new EpochQueries(this.tx);
+  }
+
+  /**
+   * Locks these diary rows FOR UPDATE in ID order, the last locks of every flow that
+   * changes sharing (kernel D9): users, then space and period, then policy, then diaries.
+   * A commit holds only its diary row, so it finishes before or after this flow, never
+   * across it.
+   */
+  async lockDiaries(diaryIds: readonly string[]): Promise<LockedDiaries> {
+    // LockRows sits above the sort, so PG takes the row locks in ID order.
+    const rows = diaryIds.length
+      ? await this.tx
+          .select({
+            id: diaries.id,
+            ownerId: diaries.ownerId,
+            diaryDate: diaries.diaryDate,
+            generationId: diaries.generationId,
+            version: diaries.version,
+          })
+          .from(diaries)
+          .where(inArray(diaries.id, [...diaryIds]))
+          .orderBy(asc(diaries.id))
+          .for('update')
+      : [];
+    return { rows, queries: new DiaryQueries(this.tx), boundaries: new LockedBoundaries(this.tx) };
+  }
+
   /** Locks the space row; the lock order is users, then space, then period (D9). */
   async lockSpace(spaceId: string): Promise<SpaceRow | null> {
     const [row] = await this.tx

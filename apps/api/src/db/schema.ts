@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  type AnyPgColumn,
   bigint,
   check,
   customType,
@@ -36,10 +37,12 @@ const bytea = customType<{ data: Uint8Array; driverData: Buffer }>({
 });
 // Internal versions, clocks and Yjs clientIDs (uint32) need more than int4.
 const int8 = (name: string) => bigint(name, { mode: 'number' });
+// PG's text form, e.g. {[0,5),[9,12)}; only src/store reads or writes it.
+const int8multirange = customType<{ data: string }>({ dataType: () => 'int8multirange' });
 
-// Personal diary tables of the collaboration kernel (kernel ADR D9, phase 2). The sharing
-// tables and columns (share epochs, commit epoch, space backup targets, read ranges) come
-// with phase 4. Only src/store writes these tables.
+// Diary tables of the collaboration kernel (kernel ADR D9): the personal part from phase 2,
+// the sharing part (share epochs, commit epoch, space backup targets, read ranges) from
+// phase 4. Only src/store writes these tables.
 //
 // Rows a commit writes carry user IDs without a foreign key to users: checking one takes
 // FOR KEY SHARE on the users row, so a commit would wait behind, and could deadlock with,
@@ -97,9 +100,58 @@ export const diaryClientBindings = pgTable(
   (t) => [primaryKey({ columns: [t.diaryId, t.clientId] })],
 );
 
+// One share of one diary with the owner's partner (kernel D5, spaces-and-invitations D4):
+// its baseline is seq 0 of `generation_id`, and it authorizes that baseline and the later
+// commits stamped with its ID. `closed_at` and `frozen_version` are set together when it
+// freezes and never change again. At most one is live per diary, because a commit carries
+// one epoch ID. `recipient_id` has no foreign key to users for the reason above: the
+// owner's opening flow would otherwise wait on, and could deadlock with, the partner's
+// own flow holding the partner's users row.
+export const shareEpochs = pgTable(
+  'share_epochs',
+  {
+    id: uuid('id').primaryKey(),
+    spaceId: uuid('space_id')
+      .notNull()
+      .references(() => spaces.id),
+    diaryId: uuid('diary_id')
+      .notNull()
+      .references(() => diaries.id),
+    periodId: uuid('period_id').notNull(),
+    recipientId: uuid('recipient_id').notNull(),
+    generationId: uuid('generation_id').notNull(),
+    openedAt: timestamp('opened_at', { withTimezone: true }).notNull().defaultNow(),
+    closedAt: timestamp('closed_at', { withTimezone: true }),
+    frozenVersion: int8('frozen_version'),
+  },
+  (t) => [
+    foreignKey({
+      name: 'share_epochs_period',
+      columns: [t.periodId, t.spaceId],
+      foreignColumns: [bindingPeriods.id, bindingPeriods.spaceId],
+    }),
+    foreignKey({
+      name: 'share_epochs_generation',
+      columns: [t.diaryId, t.generationId],
+      foreignColumns: [diaryGenerations.diaryId, diaryGenerations.id],
+    }),
+    foreignKey({
+      name: 'share_epochs_frozen',
+      columns: [t.diaryId, t.frozenVersion],
+      foreignColumns: [diaryCommits.diaryId, diaryCommits.version],
+    }),
+    uniqueIndex('share_epochs_one_live')
+      .on(t.diaryId)
+      .where(sql`${t.closedAt} is null`),
+    index('share_epochs_recipient').on(t.recipientId, t.spaceId),
+    check('share_epochs_close_fields', sql`num_nulls(${t.closedAt}, ${t.frozenVersion}) in (0, 2)`),
+  ],
+);
+
 // One row per committed send batch; the batch receipt is this row (kernel D9). `delta` is
-// re-encoded by the server, never the uploaded bytes. Batch columns are null together,
-// for the generation baseline commits phase 4 adds.
+// re-encoded by the server, never the uploaded bytes. Batch columns are null together, on
+// the seq-0 commit of a generation that opens a share (its delta is the baseline).
+// `epoch_id` is the epoch live when it committed, null for a private commit (kernel D10).
 export const diaryCommits = pgTable(
   'diary_commits',
   {
@@ -114,6 +166,7 @@ export const diaryCommits = pgTable(
     digestAlgorithm: smallint('digest_algorithm'),
     delta: bytea('delta').notNull(),
     deltaSha256: bytea('delta_sha256').notNull(),
+    epochId: uuid('epoch_id').references((): AnyPgColumn => shareEpochs.id),
     committedAt: timestamp('committed_at', { withTimezone: true })
       .notNull()
       .default(sql`clock_timestamp()`),
@@ -124,6 +177,7 @@ export const diaryCommits = pgTable(
       columns: [t.diaryId, t.generationId],
       foreignColumns: [diaryGenerations.diaryId, diaryGenerations.id],
     }),
+    index('diary_commits_epoch').on(t.epochId),
     unique('diary_commits_generation_seq').on(t.diaryId, t.generationId, t.seq),
     unique('diary_commits_batch').on(t.diaryId, t.batchId),
     check(
@@ -199,16 +253,20 @@ export const diarySnapshots = pgTable(
   ],
 );
 
-// Backup tasks registered in the commit transaction (ADR-0003, kernel D16). Only the
-// personal target exists until phase 4 adds the space target's columns; registering a
-// task never means the backup is done.
+// Backup tasks registered in the commit transaction (ADR-0003, kernel D16): the owner's
+// personal target for every commit, and the space target, with its space and epoch, for
+// commits inside a live epoch. Registering a task never means the backup is done.
+// `space_id` has no foreign key: a commit registers the task under the diary lock, and the
+// key check would wait on the space row that relationship flows lock before diary rows.
 export const backupOutbox = pgTable(
   'backup_outbox',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     diaryId: uuid('diary_id').notNull(),
     version: int8('version').notNull(),
-    target: text('target', { enum: ['personal'] }).notNull(),
+    target: text('target', { enum: ['personal', 'space'] }).notNull(),
+    spaceId: uuid('space_id'),
+    epochId: uuid('epoch_id').references(() => shareEpochs.id),
     status: text('status', { enum: ['pending'] })
       .notNull()
       .default('pending'),
@@ -220,7 +278,28 @@ export const backupOutbox = pgTable(
       foreignColumns: [diaryCommits.diaryId, diaryCommits.version],
     }),
     unique('backup_outbox_target').on(t.diaryId, t.version, t.target),
+    check(
+      'backup_outbox_space_fields',
+      sql`case ${t.target} when 'space' then num_nulls(${t.spaceId}, ${t.epochId}) = 0
+        else num_nonnulls(${t.spaceId}, ${t.epochId}) = 0 end`,
+    ),
   ],
+);
+
+// What each reader has read of a diary, per clientID, as clock ranges (kernel D15). Keyed
+// by character identity, not by epoch, so it survives reopening; devices report into one
+// union. No foreign key to users, so reporting takes no lock on the users row.
+export const diaryReadRanges = pgTable(
+  'diary_read_ranges',
+  {
+    userId: uuid('user_id').notNull(),
+    diaryId: uuid('diary_id')
+      .notNull()
+      .references(() => diaries.id),
+    clientId: int8('client_id').notNull(),
+    clocks: int8multirange('clocks').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.diaryId, t.clientId] })],
 );
 
 // Relationship and sharing range tables (spaces-and-invitations ADR D10, phase 1). Rules

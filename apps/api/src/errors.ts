@@ -13,6 +13,18 @@ export function sendError(reply: FastifyReply, code: ErrorCode, message: string)
   return reply.status(errorStatus[code]).send(body);
 }
 
+/** Nothing was opened: these diaries could not get a clean baseline (kernel D5). */
+export function sendShareOpenFailed(reply: FastifyReply, dates: string[]) {
+  const body: ApiErrorBody = {
+    error: {
+      code: 'SHARE_OPEN_FAILED',
+      message: 'A diary in the range could not be prepared for sharing',
+      dates,
+    },
+  };
+  return reply.status(errorStatus.SHARE_OPEN_FAILED).send(body);
+}
+
 // Every /api/* failure we own leaves in the contract's ApiErrorBody shape
 // (authentication-and-sessions D9). Internal details go to the log, never the response.
 export function registerErrorHandling(app: FastifyInstance) {

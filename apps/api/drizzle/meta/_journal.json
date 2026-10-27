@@ -29,6 +29,13 @@
       "when": 1793103609011,
       "tag": "0003_spaces_and_sharing",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793108617739,
+      "tag": "0004_share_epochs",
+      "breakpoints": true
     }
   ]
 }

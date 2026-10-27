@@ -118,9 +118,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   contractRoute('historyVersion', handlers.historyVersion);
 
   const relations = createRelationStore(deps.db);
+  const sharing = createSharingService(relations, store);
   const spaces = spaceHandlers({
-    bindings: createBindingService(relations),
-    sharing: createSharingService(relations),
+    bindings: createBindingService(relations, sharing),
+    sharing,
   });
   contractRoute('binding', spaces.binding);
   contractRoute('spaces', spaces.spaces);

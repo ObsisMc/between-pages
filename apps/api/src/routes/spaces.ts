@@ -1,7 +1,7 @@
 import type { FastifyReply } from 'fastify';
 import type { ResponseOf } from '@between-pages/contracts';
 import type { Binding, BindingService, Invitation, Space } from '../bindings/bindings.ts';
-import { sendError } from '../errors.ts';
+import { sendError, sendShareOpenFailed } from '../errors.ts';
 import type { SharingService } from '../sharing/sharing.ts';
 import type { ContractRequest } from './contract.ts';
 
@@ -106,6 +106,7 @@ export function spaceHandlers(services: { bindings: BindingService; sharing: Sha
       reply.header('cache-control', 'no-store');
       const accepted = await services.bindings.accept(request.user!.id, request.body, new Date());
       if (typeof accepted === 'string') return refuse(reply, accepted);
+      if ('code' in accepted) return sendShareOpenFailed(reply, accepted.dates);
       return { binding: bindingBody(accepted.binding), restored: accepted.restored };
     },
 
@@ -137,6 +138,7 @@ export function spaceHandlers(services: { bindings: BindingService; sharing: Sha
         new Date(),
       );
       if (typeof saved === 'string') return refuse(reply, saved);
+      if ('code' in saved) return sendShareOpenFailed(reply, saved.dates);
       return saved;
     },
   };

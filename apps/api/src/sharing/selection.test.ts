@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeSelection, sameSelection } from './selection.ts';
+import { covers, normalizeSelection, sameSelection } from './selection.ts';
 
 describe('normalizeSelection', () => {
   it('[adr:spaces-and-invitations#6] sorts and merges overlapping and touching ranges, open ends included', () => {
@@ -64,5 +64,29 @@ describe('normalizeSelection', () => {
     expect(
       sameSelection(whole, { include: [{ from: '2026-10-01', to: '2026-10-05' }], exclude: [] }),
     ).toBe(false);
+  });
+});
+
+describe('covers', () => {
+  it('[adr:spaces-and-invitations#6] takes a day in some include range and in no exclude range, ends inclusive', () => {
+    const selection = {
+      include: [
+        { from: null, to: '2026-01-31' },
+        { from: '2026-10-01', to: null },
+      ],
+      exclude: [{ from: '2026-10-07', to: '2026-10-08' }],
+    };
+    expect(
+      [
+        '2025-06-01',
+        '2026-01-31',
+        '2026-02-01',
+        '2026-10-01',
+        '2026-10-07',
+        '2026-10-08',
+        '2026-10-09',
+      ].map((date) => covers(selection, date)),
+    ).toEqual([true, true, false, true, false, false, true]);
+    expect(covers({ include: [], exclude: [] }, '2026-10-01')).toBe(false);
   });
 });

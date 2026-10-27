@@ -37,3 +37,10 @@ export function normalizeSelection(selection: DateSelection): DateSelection {
 
 export const sameSelection = (a: DateSelection, b: DateSelection) =>
   JSON.stringify(normalizeSelection(a)) === JSON.stringify(normalizeSelection(b));
+
+const within = (range: DateRange, date: string) =>
+  (range.from === null || range.from <= date) && (range.to === null || date <= range.to);
+
+/** Whether `date` (YYYY-MM-DD) is a shared day: in some include range and in no exclude range (D3). */
+export const covers = (selection: DateSelection, date: string) =>
+  selection.include.some((r) => within(r, date)) && !selection.exclude.some((r) => within(r, date));
