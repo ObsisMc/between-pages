@@ -8,4 +8,4 @@ export {
   type BatchIdentity,
   type DigestAlgorithm,
 } from './digest.ts';
-export { authorRuns, type AuthorRun } from './authorship.ts';
+export { authorRuns, insertedRanges, type AuthorRun, type CharacterRange } from './authorship.ts';

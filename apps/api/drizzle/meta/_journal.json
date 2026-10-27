@@ -15,6 +15,13 @@
       "when": 1792904411147,
       "tag": "0001_auth_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793056473347,
+      "tag": "0002_personal_diaries",
+      "breakpoints": true
     }
   ]
 }

@@ -16,6 +16,7 @@ Everything is exported from the package root (`src/index.ts`). Each sub-module o
 | `digest` | `batchDigest(batch, algorithm)`, `DIGEST_ALGORITHM`, `DigestAlgorithm`, `BatchIdentity` | sha256 over the canonical bytes of `{ generationId, epochId, operations: [{ operationId, updateSha256 }] }`. Algorithm 1: the algorithm byte, then length-prefixed fields: generation, an epoch flag with the epoch, member count, and each member's ID and hash in order. A retry is compared using the algorithm stored with its commit. |
 | `digest` | `sha256(bytes)` | SHA-256 via Web Crypto, available in Node and browsers alike. |
 | `authorship` | `authorRuns(doc, bindings)`, `AuthorRun` | Visible text in document order as `{ author, client, clock, text }` runs, each one clientID with consecutive clocks. Throws if a visible clientID has no binding. |
+| `authorship` | `insertedRanges(stateVector, updates)`, `CharacterRange` | For each update of an accepted batch, in order, the characters it newly inserts as `{ client, clock, length }` runs (clocks count UTF-16 code units, as Yjs does). `stateVector` is the document's before the batch. Re-sent items and deletion placeholders yield nothing. The API stores one row per run with the operation's ID, which gives every character its written time (kernel D15). |
 
 ## Invariants
 
@@ -46,6 +47,5 @@ npx vitest run --project collab
 
 - Each update passed to `acceptBatch` must be one Yjs transaction as emitted by the `update` event. A state diff (`encodeStateAsUpdate(doc, vector)`) carries the whole delete set, including the other author's deletions, and is rejected as `FOREIGN_DELETE`.
 - The canonical batch bytes live here, not in `packages/contracts`, so web and API share one implementation; contracts will own only the wire fields.
-- The character ranges each operation inserts (`diary_character_ranges`) are not derived yet; that arrives with the store in kernel phase 2.
 - Baselines remove deleted text but keep structure: clientIDs, clocks and deletion lengths can still hint at edit volume (kernel D4).
-- Nothing outside this package's tests uses it yet; the API adopts it in kernel phase 2, the web app in phase 3.
+- The API uses it since kernel phase 2; the web app adopts it in phase 3.
