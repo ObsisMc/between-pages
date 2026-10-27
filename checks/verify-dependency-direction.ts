@@ -37,7 +37,9 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
   {
     // Kernel ADR D11: transport (routes, ws) → services (commit, diaries, history, outbox,
     // events) → storage (store), never upwards; transport never reaches the store, and
-    // events imports no other service; `errors` is a leaf the layers may use. `app` and
+    // events imports no other service; `errors` is a leaf the layers may use. The
+    // relationship services of spaces-and-invitations sit in the same service layer:
+    // `sharing` owns range normalization, which `bindings` reuses at binding time. `app` and
     // `server` compose everything, so tests through the real router (app.*.test.ts)
     // belong to `app`.
     dir: 'apps/api/src',
@@ -49,13 +51,15 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       errors: [],
       auth: ['config', 'db', 'errors'],
       db: [],
-      routes: ['errors', 'commit', 'diaries', 'history'],
+      routes: ['errors', 'commit', 'diaries', 'history', 'bindings', 'sharing'],
       ws: ['auth', 'errors', 'commit', 'diaries', 'events'],
       commit: ['store', 'outbox', 'events', 'errors'],
       diaries: ['store', 'errors'],
       history: ['store', 'errors'],
       outbox: ['store', 'errors'],
       events: [],
+      bindings: ['store', 'sharing', 'errors'],
+      sharing: ['store', 'errors'],
       store: ['db', 'errors'],
     },
   },
