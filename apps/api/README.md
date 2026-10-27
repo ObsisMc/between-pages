@@ -87,7 +87,7 @@ npm run test:db                   # all tests against a disposable PostgreSQL 18
 - Personal diaries only (kernel phase 2): no epochs, partner writes, authorized-state reader or space backup targets; anyone but the owner gets `NOT_FOUND`. Those arrive in phase 4.
 - Sign-out publishes no event yet, so an open socket learns of it on its next `submit` or within the 60 s recheck (the "session invalidated" event is phase 4).
 - Commit events are in-process: one API instance (kernel D11). Correctness does not depend on it; a missed broadcast is caught up by seq.
-- The 1 MB cap applies to the JSON message, so base64 leaves about 750 KB for the updates of one batch. The phase-3 paste limit must count the encoded message.
+- The 1 MB cap applies to the JSON message, so base64 leaves about 750 KB for the updates of one batch. The web editor's paste limit counts the encoded message (`MAX_PASTE_BYTES`, about 780 KB of UTF-8, about 260,000 Chinese characters).
 - The diary list rebuilds each listed diary's state to take its excerpt (at most 100 deltas past the latest snapshot each, 30 per page). If that becomes slow, keep the excerpt beside the commit instead; that is a schema change.
 - `backup_outbox` tasks are registered but nothing runs them yet; the worker arrives with the Google backup phase.
 - `ws` ships no types and `@types/ws` is not a dependency, so the socket object is untyped inside `src/ws/`.
