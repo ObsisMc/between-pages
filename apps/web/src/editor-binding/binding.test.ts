@@ -363,6 +363,26 @@ describe('personal undo', () => {
     expect(editor.serverText()).toBe('一\n');
   });
 
+  it('read-only makes no operation from typing, pasting or undo, and still shows remote text', () => {
+    const editor = alongsideBob();
+    editor.type('累');
+    editor.commit();
+    const before = editor.operations.length;
+    editor.binding.setEditable(false);
+    expect(editor.view.dom.getAttribute('contenteditable')).toBe('false');
+
+    editor.type('字');
+    editor.paste('贴');
+    editor.press('z', { ctrlKey: true });
+    expect(editor.operations).toHaveLength(before);
+    editor.bob((text) => text.insert(0, '早'));
+    expect(editor.text()).toBe(editor.serverText());
+
+    editor.binding.setEditable(true);
+    editor.type('好');
+    expect(editor.operations).toHaveLength(before + 1);
+  });
+
   it('[adr:diary-collaboration-kernel#19] a new generation starts with an empty undo history', () => {
     const first = setup();
     first.type('上一起点');

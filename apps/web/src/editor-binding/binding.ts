@@ -49,6 +49,8 @@ export type EditorBinding = {
    * Throws when the update carries text whose clientID has no author.
    */
   applyUpdate(update: Uint8Array, bindings: ClientBindings): void;
+  /** Read-only stops every edit path, undo included; applied updates are still shown. */
+  setEditable(editable: boolean): void;
   destroy(): void;
 };
 
@@ -103,7 +105,9 @@ export function createEditorBinding(
     onOperation({ operationId, update, writtenAt: writtenAt(changes, origin === LOCAL), intent });
   });
 
+  let editable = true;
   const view: EditorView = new EditorView(place, {
+    editable: () => editable,
     state: EditorState.create({
       doc: docOf(''),
       plugins: [
@@ -176,6 +180,7 @@ export function createEditorBinding(
 
   function dispatch(tr: Transaction) {
     if (tr.getMeta(MIRROR) || !tr.docChanged) return view.updateState(view.state.apply(tr));
+    if (!editable) return view.updateState(view.state);
     if (composition || view.composing || tr.getMeta('composition') !== undefined)
       return compose(tr);
     const edits = editsOf(tr);
@@ -390,7 +395,7 @@ export function createEditorBinding(
   }
 
   function history(direction: 'undo' | 'redo'): boolean {
-    if (composition || view.composing) return false;
+    if (composition || view.composing || !editable) return false;
     own.add(doc.clientID);
     if (direction === 'undo') undoManager.undo();
     else undoManager.redo();
@@ -421,6 +426,10 @@ export function createEditorBinding(
             throw new Error(`clientID ${client} has no bound author`);
       }
       Y.applyUpdate(doc, update, APPLIED);
+    },
+    setEditable(value) {
+      editable = value;
+      view.setProps({ editable: () => editable });
     },
     destroy() {
       clearTimeout(compositionTimer);

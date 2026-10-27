@@ -103,7 +103,8 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
-    # Login through the browser (authentication-and-sessions acceptance E1-E6); not a
+    # Login (authentication-and-sessions E1-E6) and the diary screen (kernel phase 3) in
+    # Chromium, Firefox and WebKit; not a
     # required check (the ADR leaves branch protection unchanged).
     services:
       postgres:
@@ -122,5 +123,5 @@ jobs:
       - uses: actions/setup-node@v7
         with: { node-version-file: .nvmrc, cache: npm }
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium firefox webkit
       - run: npm run test:e2e

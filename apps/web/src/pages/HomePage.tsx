@@ -2,14 +2,25 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { signOut } from '../api/auth.ts';
+import { ApiError, callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
 
-/** Placeholder home behind RequireAuth until the diary space exists. */
+/** The device's IANA zone decides which date "today" is (spec §4); the server checks it. */
+const timezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+/** Today in `zone` as YYYY-MM-DD; only bounds the date picker, the server decides. */
+const todayIn = (zone: string) =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: zone }).format(new Date());
+
+/** Home behind RequireAuth: write today, open or back-fill a past day, sign out. */
 export function HomePage() {
   const me = useMe();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [failed, setFailed] = useState(false);
+  const [openError, setOpenError] = useState<string | null>(null);
+  const [opening, setOpening] = useState(false);
+  const [date, setDate] = useState('');
 
   const onSignOut = async () => {
     setFailed(false);
@@ -23,6 +34,29 @@ export function HomePage() {
     }
   };
 
+  // Offline there is no way to know whether the diary exists, so nothing is created
+  // locally and nothing claims to be (DATE-06).
+  const openDiary = async (past?: string) => {
+    setOpenError(null);
+    setOpening(true);
+    try {
+      const { diary } = await callApi('openDiary', {
+        body: { timezone: timezone(), ...(past ? { date: past } : {}) },
+      });
+      await navigate(`/diaries/${diary.diaryId}`);
+    } catch (error) {
+      setOpenError(
+        !(error instanceof ApiError)
+          ? '离线时无法确认要打开的日记，请联网后再试'
+          : error.code === 'VALIDATION_FAILED'
+            ? '只能打开今天或过去的日期'
+            : '打开失败，请稍后再试',
+      );
+    } finally {
+      setOpening(false);
+    }
+  };
+
   return (
     <main className="page home">
       <header>
@@ -31,7 +65,33 @@ export function HomePage() {
         </button>
       </header>
       <p className="greeting">已登录为 {me.data?.user.displayName}</p>
-      <p>日记空间即将开放。</p>
+      <button type="button" className="primary" disabled={opening} onClick={() => void openDiary()}>
+        写今天
+      </button>
+      <form
+        className="past-date"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (date) void openDiary(date);
+        }}
+      >
+        <label htmlFor="past-date">打开或补写过去的日期</label>
+        <input
+          id="past-date"
+          type="date"
+          max={todayIn(timezone())}
+          value={date}
+          onChange={(event) => setDate(event.target.value)}
+        />
+        <button type="submit" disabled={opening || !date}>
+          打开
+        </button>
+      </form>
+      {openError && (
+        <p className="notice" role="alert">
+          {openError}
+        </p>
+      )}
       {failed && (
         <p className="notice" role="alert">
           退出失败，请重试

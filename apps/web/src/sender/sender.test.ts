@@ -124,10 +124,10 @@ function senderOn(journal: Journal<string>, userId: string, stand: ReturnType<ty
 }
 
 const doc = createDiaryDoc();
-function op(content: string) {
+function op(content: string, from = doc) {
   let update: Uint8Array = new Uint8Array();
-  doc.once('update', (u: Uint8Array) => (update = u));
-  doc.getText(BODY).insert(0, content);
+  from.once('update', (u: Uint8Array) => (update = u));
+  from.getText(BODY).insert(0, content);
   return { operationId: crypto.randomUUID(), update, writtenAt: new Date(), intent: content };
 }
 
@@ -156,6 +156,16 @@ describe('sender', () => {
     await vi.waitFor(() => expect(statuses.at(-1)).toBe('saved'));
     expect(await journal.load(DIARY)).toMatchObject({ pending: [], batch: null });
     expect((await journal.load(DIARY)).baseline!.seq).toBe(2);
+  });
+
+  it('stops saying saved as soon as it is woken for new input', async () => {
+    const { journal, sender, stand, statuses } = await setup();
+    sender.wake();
+    await vi.waitFor(() => expect(statuses.at(-1)).toBe('saved'));
+    await journal.append(DIARY, GENERATION, op('新'));
+    sender.wake();
+    expect(statuses.at(-1)).toBe('syncing');
+    await vi.waitFor(() => expect(stand.calls).toHaveLength(1));
   });
 
   it('[adr:diary-collaboration-kernel#10] resends the same batch after a lost answer and confirms it once', async () => {
@@ -205,7 +215,9 @@ describe('sender', () => {
     expect(statuses).toContain('attention');
     expect(stand.committed.size).toBe(0);
 
-    await type(journal, sender, '丙');
+    // The screen rebuilds the editor without the refused text; its input sends normally.
+    await journal.append(DIARY, GENERATION, op('丙', createDiaryDoc()));
+    sender.wake();
     await vi.waitFor(() => expect(stand.calls).toHaveLength(2));
     expect(stand.calls[1]!.batch.operations).toHaveLength(1);
     expect((await journal.drafts(DIARY)).map((d) => d.intent)).toEqual(['甲', '乙']);

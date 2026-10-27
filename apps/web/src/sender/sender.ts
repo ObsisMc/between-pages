@@ -150,6 +150,8 @@ export function createSender<Intent>({
     }
     running = true;
     again = false;
+    // Something may wait from now on, so "saved" no longer holds until the queue says so.
+    status('syncing');
     void locks
       .request(sendLockName(userId, diaryId), () =>
         drain().catch((error: unknown) => {
