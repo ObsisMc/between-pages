@@ -419,9 +419,12 @@ export function createDiarySession({
     sender?.wake();
   }
 
-  /** The other person's characters in the part of the editor inside the window (kernel D15). */
+  /**
+   * The other person's characters in the part of the editor inside the window (kernel D15);
+   * none while the own-text-only filter hides them, since filtering changes no unread (EDIT-14).
+   */
   function onScreen(): VisibleRun[] {
-    if (!editor || place.hidden) return [];
+    if (!editor || place.hidden || state.ownOnly) return [];
     const rect = place.getBoundingClientRect();
     const top = Math.max(rect.top, 0);
     const bottom = Math.min(rect.bottom, window.innerHeight);
