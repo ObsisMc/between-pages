@@ -5,6 +5,7 @@ import { createDiaryDoc, type CharacterRange } from '@between-pages/collab';
 import type { DateSelection } from '@between-pages/contracts';
 import type { Db } from '../db/client.ts';
 import { EpochQueries, LockedBoundaries } from './boundaries.ts';
+import { coverage, type ClockRange } from './reading.ts';
 import { VersionUnreadable } from '../errors.ts';
 import {
   backupOutbox,
@@ -333,6 +334,41 @@ export class DiaryQueries {
       .from(diaryCommits)
       .where(eq(diaryCommits.diaryId, diaryId))
       .orderBy(asc(diaryCommits.version));
+  }
+
+  /** `userId`'s own read coverage of the diary in this snapshot (kernel D15). */
+  readRanges(userId: string, diaryId: string): Promise<ClockRange[]> {
+    return coverage(this.tx, userId, diaryId);
+  }
+
+  /**
+   * The characters inserted by commits after `version`, as clock ranges, whatever became
+   * of them since; what a history point does not yet hold (unread-and-day-page D2).
+   */
+  async insertedAfter(diaryId: string, version: number): Promise<ClockRange[]> {
+    return this.tx
+      .select({
+        clientId: diaryCharacterRanges.clientId,
+        from: diaryCharacterRanges.clockStart,
+        to: diaryCharacterRanges.clockEnd,
+      })
+      .from(diaryCharacterRanges)
+      .innerJoin(
+        diaryClientBindings,
+        and(
+          eq(diaryClientBindings.diaryId, diaryCharacterRanges.diaryId),
+          eq(diaryClientBindings.clientId, diaryCharacterRanges.clientId),
+        ),
+      )
+      .innerJoin(
+        diaryOperations,
+        and(
+          eq(diaryOperations.diaryId, diaryCharacterRanges.diaryId),
+          eq(diaryOperations.authorId, diaryClientBindings.userId),
+          eq(diaryOperations.operationId, diaryCharacterRanges.operationId),
+        ),
+      )
+      .where(and(eq(diaryCharacterRanges.diaryId, diaryId), gt(diaryOperations.version, version)));
   }
 
   /**

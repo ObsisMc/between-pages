@@ -131,6 +131,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   contractRoute('sharedDiary', handlers.sharedDiary);
   contractRoute('character', handlers.character);
   contractRoute('sharedDiaries', handlers.sharedDiaries);
+  contractRoute('days', handlers.days);
+  contractRoute('day', handlers.day);
 
   const relations = createRelationStore(deps.db);
   const sharing = createSharingService(relations, store, events);

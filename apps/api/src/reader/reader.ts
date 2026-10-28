@@ -3,13 +3,16 @@ import { BODY, authorRuns } from '@between-pages/collab';
 import { VersionUnreadable } from '../errors.ts';
 import type { DiaryEvent } from '../events/events.ts';
 import type { EpochRow } from '../store/boundaries.ts';
+import type { ClockRange } from '../store/reading.ts';
 import type { CommitPoint, DiaryQueries, DiaryRow, Store } from '../store/store.ts';
 
 // The authorized-state reader (kernel D17): the only producer of what a diary's partner
 // sees. Its input is (diary, viewer, epoch or version). A partner reads an epoch's
 // baseline and the commits stamped with that epoch, never past its frozen version, never
 // a private commit, and opens or follows live only the diary's current generation. History
-// computed elsewhere starts from the timeline this module authorizes.
+// computed elsewhere starts from the timeline this module authorizes. The day list is built
+// here too, the viewer's own diaries beside the partner's, with its unread marks
+// (unread-and-day-page D2, D3).
 
 /** A partner's view of one shared diary (D10 "打开共享/冻结版本"). */
 export type SharedView = {
@@ -53,7 +56,41 @@ export type SharedSummary = {
 
 export type CharacterInfo = { author: string; writtenAt: Date; clockAdjusted: boolean };
 
+/** The caller's own diary on the day list (unread-and-day-page D3). */
+export type OwnDayCard = {
+  diaryId: string;
+  excerpt: string | null;
+  updatedAt: Date;
+  hasText: boolean;
+  unread: boolean;
+  sharedWithPartner: boolean;
+};
+
+/** The partner's diary on the day list, by its live share or else its last frozen one. */
+export type PartnerDayCard = {
+  diaryId: string;
+  epochId: string;
+  share: 'live' | 'frozen';
+  excerpt: string | null;
+  updatedAt: Date;
+  hasText: boolean;
+  unread: boolean;
+};
+
+export type DayCard = {
+  diaryDate: string;
+  mine: OwnDayCard | null;
+  partner: PartnerDayCard | null;
+};
+
+/**
+ * The commit of the newest history point of a timeline (kernel D6), or null before any;
+ * the history service owns the grouping rule and its idle time.
+ */
+export type SettledPoint = (timeline: readonly CommitPoint[]) => CommitPoint | null;
+
 export const SHARED_PAGE_SIZE = 30;
+export const DAYS_PAGE_SIZE = 20;
 /** Characters, not UTF-16 units, as on the owner's list. */
 const EXCERPT_LENGTH = 80;
 /** A writer clock this far ahead of the server's receipt is not shown (kernel D15). */
@@ -74,6 +111,66 @@ function bindingsIn(doc: Y.Doc, all: Map<number, string>): Map<number, string> {
   }
   return out;
 }
+
+/** Whether some clock in `[from, to)` lies outside every range of `covered`, sorted by `from`. */
+function uncovered(from: number, to: number, covered: readonly ClockRange[]): boolean {
+  let at = from;
+  for (const range of covered) {
+    if (range.to <= at) continue;
+    if (range.from > at) return true;
+    at = range.to;
+    if (at >= to) return false;
+  }
+  return at < to;
+}
+
+/**
+ * Whether `viewer` has list unread in `doc` (unread-and-day-page D2): a visible character
+ * another author wrote that is neither in the viewer's read coverage nor inserted after
+ * `cutoff`, the version of the newest history point. Character identity decides, never a
+ * version or time comparison of the whole diary (invariant 2).
+ */
+async function listUnread(
+  queries: DiaryQueries,
+  viewer: string,
+  diaryId: string,
+  doc: Y.Doc,
+  cutoff: number,
+  bound: number,
+): Promise<boolean> {
+  const others = authorRuns(doc, await queries.bindings(diaryId)).filter(
+    (run) => run.author !== viewer,
+  );
+  if (!others.length) return false;
+  const covered = await queries.readRanges(viewer, diaryId);
+  if (cutoff < bound) covered.push(...(await queries.insertedAfter(diaryId, cutoff)));
+  const byClient = Map.groupBy(
+    covered.sort((a, b) => a.from - b.from),
+    (range) => range.clientId,
+  );
+  return others.some((run) =>
+    uncovered(run.clock, run.clock + run.text.length, byClient.get(run.client) ?? []),
+  );
+}
+
+/** The list facts of one text; an unreadable one keeps its card without them. */
+async function summarize(
+  build: () => Promise<Y.Doc>,
+  unread: (doc: Y.Doc) => Promise<boolean>,
+): Promise<{ excerpt: string | null; hasText: boolean; unread: boolean }> {
+  let doc: Y.Doc;
+  try {
+    doc = await build();
+  } catch (error) {
+    if (!(error instanceof VersionUnreadable)) throw error;
+    return { excerpt: null, hasText: false, unread: false };
+  }
+  const excerpt = excerptOf(doc.getText(BODY).toString());
+  return { excerpt, hasText: excerpt !== '', unread: await unread(doc) };
+}
+
+const dayAfter = (date: string) =>
+  new Date(Date.parse(date) + 86_400_000).toISOString().slice(0, 10);
 
 function clientsOf(deltas: readonly Uint8Array[], all: Map<number, string>) {
   const out = new Map<number, string>();
@@ -102,6 +199,77 @@ async function authorizedTimeline(
   return timeline.filter(
     (c) => c.epochId !== null && bounds.has(c.epochId) && c.version <= bounds.get(c.epochId)!,
   );
+}
+
+/** The viewer's own diary on the day list; partner text counts once a history point holds it. */
+async function ownCard(
+  queries: DiaryQueries,
+  viewer: string,
+  row: DiaryRow & { updatedAt: Date },
+  sharedWithPartner: boolean,
+  settled: SettledPoint,
+): Promise<OwnDayCard> {
+  const facts = await summarize(
+    () => queries.state(row.id, row.generationId, row.version),
+    async (doc) => {
+      const point = settled(await queries.timeline(row.id));
+      return listUnread(queries, viewer, row.id, doc, point?.version ?? -1, row.version);
+    },
+  );
+  return { diaryId: row.id, updatedAt: row.updatedAt, sharedWithPartner, ...facts };
+}
+
+/**
+ * The partner's diary on the day list, from the epoch's authorized text only (D17). Its
+ * history points are those of the viewer's authorized timeline; a frozen share became a
+ * point when it stopped, so all of its text counts (D2).
+ */
+async function partnerCard(
+  queries: DiaryQueries,
+  viewer: string,
+  epoch: EpochRow,
+  settled: SettledPoint,
+): Promise<PartnerDayCard> {
+  const diary = (await queries.findDiary(epoch.diaryId))!;
+  const bound = boundOf(epoch, diary);
+  const timeline = (await authorizedTimeline(queries, viewer, diary))!;
+  const facts = await summarize(
+    () => queries.state(diary.id, epoch.generationId, bound),
+    (doc) => {
+      const cutoff = epoch.closedAt ? bound : (settled(timeline)?.version ?? -1);
+      return listUnread(queries, viewer, diary.id, doc, cutoff, bound);
+    },
+  );
+  return {
+    diaryId: diary.id,
+    epochId: epoch.id,
+    share: epoch.closedAt ? 'frozen' : 'live',
+    updatedAt: timeline.filter((c) => c.epochId === epoch.id).at(-1)!.committedAt,
+    ...facts,
+  };
+}
+
+/** The day cards of `dates`, newest first, from the viewer's own diaries and their shares. */
+async function dayCards(
+  queries: DiaryQueries,
+  viewer: string,
+  dates: readonly string[],
+  own: readonly (DiaryRow & { updatedAt: Date })[],
+  shared: readonly (EpochRow & { diaryDate: string })[],
+  settled: SettledPoint,
+): Promise<DayCard[]> {
+  const live = await queries.epochs.liveEpochs(own.map((row) => row.id));
+  const cards: DayCard[] = [];
+  for (const diaryDate of dates) {
+    const row = own.find((r) => r.diaryDate === diaryDate);
+    const epoch = shared.find((e) => e.diaryDate === diaryDate);
+    cards.push({
+      diaryDate,
+      mine: row ? await ownCard(queries, viewer, row, live.has(row.id), settled) : null,
+      partner: epoch ? await partnerCard(queries, viewer, epoch, settled) : null,
+    });
+  }
+  return cards;
 }
 
 export function createReader(store: Store) {
@@ -281,6 +449,46 @@ export function createReader(store: Store) {
           diaries,
           nextBefore: shared.length > SHARED_PAGE_SIZE ? page.at(-1)!.diaryDate : null,
         };
+      });
+    },
+
+    /**
+     * The dates with the viewer's own diary or one the partner shared with them, newest
+     * first, one page of DAYS_PAGE_SIZE before `before` (unread-and-day-page D3). A diary
+     * never shared with the viewer leaves no trace (invariant 10).
+     */
+    days(
+      viewer: string,
+      before: string | undefined,
+      settled: SettledPoint,
+    ): Promise<{ days: DayCard[]; nextBefore: string | null }> {
+      return store.read(async (queries) => {
+        // The newest DAYS_PAGE_SIZE + 1 own dates and every shared one hold the page's
+        // dates and whether another page follows.
+        const own = await queries.ownedDiaries(viewer, before ?? null, DAYS_PAGE_SIZE + 1);
+        const shared = (await queries.epochs.sharedWith(viewer, null)).filter(
+          (e) => before === undefined || e.diaryDate < before,
+        );
+        const dates = [...new Set([...own, ...shared].map((d) => d.diaryDate))].sort().reverse();
+        const page = dates.slice(0, DAYS_PAGE_SIZE);
+        return {
+          days: await dayCards(queries, viewer, page, own, shared, settled),
+          nextBefore: dates.length > DAYS_PAGE_SIZE ? page.at(-1)! : null,
+        };
+      });
+    },
+
+    /** One date as on the day list; both sides null when the viewer can see no diary on it. */
+    day(viewer: string, diaryDate: string, settled: SettledPoint): Promise<DayCard> {
+      return store.read(async (queries) => {
+        const own = (await queries.ownedDiaries(viewer, dayAfter(diaryDate), 1)).filter(
+          (row) => row.diaryDate === diaryDate,
+        );
+        const shared = (await queries.epochs.sharedWith(viewer, null)).filter(
+          (e) => e.diaryDate === diaryDate,
+        );
+        const [card] = await dayCards(queries, viewer, [diaryDate], own, shared, settled);
+        return card!;
       });
     },
 

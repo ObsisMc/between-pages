@@ -59,6 +59,7 @@ export {
   closeCode,
   syncSocket,
 } from './sync.ts';
+export { Day, DayParams, DayResponse, DaysPage, DaysQuery, OwnDay, PartnerDay } from './days.ts';
 export { DateRange, DateSelection } from './sharing.ts';
 export {
   AcceptInvitationRequest,

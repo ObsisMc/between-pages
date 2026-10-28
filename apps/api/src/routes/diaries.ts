@@ -4,7 +4,7 @@ import type { CommitService } from '../commit/commit.ts';
 import type { DiaryService, DiaryView } from '../diaries/diaries.ts';
 import { sendError } from '../errors.ts';
 import type { HistoryService } from '../history/history.ts';
-import type { Reader, SharedView } from '../reader/reader.ts';
+import type { DayCard, Reader, SharedView } from '../reader/reader.ts';
 import type { ReadingService } from '../reading/reading.ts';
 import type { ContractRequest } from './contract.ts';
 
@@ -44,6 +44,14 @@ const receiptBody = (receipt: {
   publicId: string;
   committedAt: Date;
 }) => ({ ...receipt, committedAt: receipt.committedAt.toISOString() });
+
+function dayBody(card: DayCard): ResponseOf<'day'>['day'] {
+  return {
+    diaryDate: card.diaryDate,
+    mine: card.mine && { ...card.mine, updatedAt: card.mine.updatedAt.toISOString() },
+    partner: card.partner && { ...card.partner, updatedAt: card.partner.updatedAt.toISOString() },
+  };
+}
 
 const notFound = (reply: FastifyReply) => sendError(reply, 'NOT_FOUND', 'No such diary');
 
@@ -134,6 +142,26 @@ export function diaryHandlers(services: {
         diaries: page.diaries.map((d) => ({ ...d, updatedAt: d.updatedAt.toISOString() })),
         nextBefore: page.nextBefore,
       };
+    },
+
+    async days(request: ContractRequest<'days'>, reply: FastifyReply) {
+      reply.header('cache-control', 'no-store');
+      const page = await services.reader.days(
+        request.user!.id,
+        request.query.before,
+        services.history.settled(new Date()),
+      );
+      return { days: page.days.map(dayBody), nextBefore: page.nextBefore };
+    },
+
+    async day(request: ContractRequest<'day'>, reply: FastifyReply) {
+      reply.header('cache-control', 'no-store');
+      const card = await services.reader.day(
+        request.user!.id,
+        request.params.date,
+        services.history.settled(new Date()),
+      );
+      return { day: dayBody(card) };
     },
 
     async sharedDiary(request: ContractRequest<'sharedDiary'>, reply: FastifyReply) {

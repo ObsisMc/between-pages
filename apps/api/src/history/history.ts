@@ -1,4 +1,4 @@
-import type { Reader } from '../reader/reader.ts';
+import type { Reader, SettledPoint } from '../reader/reader.ts';
 import type { CommitPoint } from '../store/store.ts';
 
 /** Continuous editing forms one history point per this span (kernel D6). */
@@ -140,6 +140,17 @@ export function createHistoryService(reader: Reader, idleMs = IDLE_MS) {
         points,
         nextCursor: rest.length > PAGE_SIZE ? encodeCursor(points.at(-1)!) : null,
         nextPointInMs: nextPointIn(timeline, now, idleMs),
+      };
+    },
+
+    /**
+     * The commit of a timeline's newest point at `now`, for the day list's unread marks
+     * (unread-and-day-page D2): what a history point holds stops changing the list.
+     */
+    settled(now: Date): SettledPoint {
+      return (timeline) => {
+        const newest = historyPoints(timeline, now, idleMs).at(-1);
+        return newest ? timeline.find((c) => c.publicId === newest.publicId)! : null;
       };
     },
 
