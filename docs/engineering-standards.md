@@ -86,7 +86,7 @@ socket.send(ack);
 
 ## Errors and failure
 
-**Never report a state that has not happened.** "Saved" means committed in PG; "backed up" means both Google artifacts cover that version ([spec INV-07](diary-spec.md)). A failure keeps the user's text and says so.
+**Never report a state that has not happened.** "Saved" means committed in PG; "backed up to Google" means that day's Doc in the reader's own Drive was written and covers that version ([spec INV-07](diary-spec.md)); the server backup is proven by its daily check-in and weekly restore drill, never by a task being registered. A failure keeps the user's text and says so.
 
 **Every action has a visible outcome or a recorded intentional non-outcome.** A rejected update becomes a recovery draft plus a message, not a silent drop.
 
@@ -145,7 +145,8 @@ function label(state: SaveState): string {
 | committed / saved | Durably in PG, acknowledged by the server |
 | pending | Applied locally, persisted in IndexedDB, not yet acknowledged |
 | recovery draft | Local text the server refused, kept for the user to copy or retry |
-| backup | A diary version present in both the Google Doc and the data snapshot |
+| backed up to Google | A diary version covered by the day's Doc written into the reader's own Drive |
+| server backup | The encrypted, continuously archived copy of the PostgreSQL database in Cloudflare R2, restorable to any minute of the last 30 days |
 
 ## Dependencies
 
