@@ -241,8 +241,13 @@ describe('a shared diary', () => {
   it('[adr:diary-collaboration-kernel#26] counts nothing hidden by the own-text-only filter as read (EDIT-14)', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
     // jsdom has no layout: the editor fills the window and no point maps to a position,
-    // so the whole text counts as on screen.
+    // so the whole text counts as on screen; text measures as a zero box at the top.
     Object.defineProperty(document, 'elementFromPoint', { value: () => null, configurable: true });
+    for (const [name, value] of [
+      ['getClientRects', () => []],
+      ['getBoundingClientRect', () => new DOMRect()],
+    ] as const)
+      Object.defineProperty(Range.prototype, name, { value, configurable: true });
     const reports: unknown[] = [];
     openShared('live', {
       [`POST /api/diaries/${DIARY}/read`]: (init) => {
@@ -272,6 +277,87 @@ describe('a shared diary', () => {
     } finally {
       vi.useRealTimers();
       delete (document as { elementFromPoint?: unknown }).elementFromPoint;
+      for (const name of ['getClientRects', 'getBoundingClientRect'])
+        delete (Range.prototype as unknown as Record<string, unknown>)[name];
     }
+  });
+  describe('unread', () => {
+    /** Alice has read "勃的" of Bob's "鲍勃的字": "鲍" and "字" are left, two passages. */
+    const halfRead = () => Response.json({ ranges: [{ clientId: BOB_CLIENT, from: 1, to: 3 }] });
+
+    it('[adr:unread-and-day-page#6] [adr:unread-and-day-page#14] offers the unread on opening without moving, jumps only when asked and sends nothing', async () => {
+      const scrolled = vi.fn();
+      vi.stubGlobal('scrollTo', scrolled);
+      vi.stubGlobal('scrollBy', scrolled);
+      openShared('live', { [`GET /api/diaries/${DIARY}/read`]: halfRead });
+
+      expect((await screen.findByText(/有 2 处新内容/)).textContent).toBe(
+        '有 2 处新内容 · 跳到第一处',
+      );
+      expect(screen.getByRole('button', { name: '下一处未读' })).toBeDefined();
+      expect(scrolled).not.toHaveBeenCalled();
+      const editor = screen.getByRole('textbox');
+      expect(editor.querySelector('.unread-flash')).toBeNull();
+
+      fireEvent.click(screen.getByRole('button', { name: '跳到第一处' }));
+      await waitFor(() => expect(editor.querySelector('.unread-flash')?.textContent).toBe('鲍'));
+      expect(screen.queryByText(/有 2 处新内容/)).toBeNull();
+      expect(screen.getByRole('button', { name: '下一处未读' })).toBeDefined();
+      expect(editor.textContent).toBe('鲍勃的字');
+      const sent = FakeSocket.all.flatMap((socket) => socket.sent).map((m) => m.type);
+      expect(sent.filter((type) => type !== 'subscribe')).toEqual([]);
+    });
+
+    it('[adr:unread-and-day-page#7] shows no unread while 只看我的文字 hides the other person’s text', async () => {
+      openShared('live', { [`GET /api/diaries/${DIARY}/read`]: halfRead });
+      await screen.findByRole('button', { name: '下一处未读' });
+
+      fireEvent.click(screen.getByLabelText('只看我的文字'));
+      await waitFor(() => expect(screen.queryByRole('button', { name: '下一处未读' })).toBeNull());
+      expect(screen.queryByText(/处新内容/)).toBeNull();
+
+      fireEvent.click(screen.getByLabelText('只看我的文字'));
+      expect(await screen.findByRole('button', { name: '下一处未读' })).toBeDefined();
+    });
+
+    it('[adr:unread-and-day-page#5] drops unread text the other person deletes, and counts what they type again', async () => {
+      openShared('live', { [`GET /api/diaries/${DIARY}/read`]: halfRead });
+      await screen.findByRole('button', { name: '下一处未读' });
+
+      const bob = createDiaryDoc();
+      const served = await (sharedResponse('live')().json() as Promise<{
+        diary: { state: string };
+      }>);
+      Y.applyUpdate(
+        bob,
+        Uint8Array.from(atob(served.diary.state), (c) => c.charCodeAt(0)),
+      );
+      bob.clientID = BOB_CLIENT + 1;
+      const commit = (update: Uint8Array) =>
+        FakeSocket.all.at(-1)!.push({
+          v: PROTOCOL_VERSION,
+          type: 'commit',
+          diaryId: DIARY,
+          generationId: GENERATION,
+          seq: ++FakeSocket.seq,
+          publicId: crypto.randomUUID(),
+          delta: btoa(String.fromCharCode(...update)),
+          bindings: [{ clientId: BOB_CLIENT + 1, userId: PARTNER }],
+        });
+      const before = Y.encodeStateVector(bob);
+      bob.transact(() => {
+        bob.getText(BODY).delete(3, 1);
+        bob.getText(BODY).delete(0, 1);
+      });
+      commit(Y.encodeStateAsUpdate(bob, before));
+      const editor = screen.getByRole('textbox');
+      await waitFor(() => expect(editor.textContent).toBe('勃的'));
+      await waitFor(() => expect(screen.queryByRole('button', { name: '下一处未读' })).toBeNull());
+
+      const typed = Y.encodeStateVector(bob);
+      bob.getText(BODY).insert(0, '鲍');
+      commit(Y.encodeStateAsUpdate(bob, typed));
+      expect(await screen.findByRole('button', { name: '下一处未读' })).toBeDefined();
+    });
   });
 });

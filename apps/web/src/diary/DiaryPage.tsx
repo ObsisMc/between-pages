@@ -5,7 +5,7 @@ import { callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
 import { HistoryPanel, HistoryPreview, type HistoryPointView } from '../history/index.ts';
 import { DraftList } from './DraftList.tsx';
-import { createDiarySession, type DiarySession, type DiaryState } from './session.ts';
+import { createDiarySession, type DiarySession, type DiaryState, type Unread } from './session.ts';
 import { failureText, refusalText, statusLine } from './status.ts';
 
 const REFUSAL_SHOWN_MS = 4_000;
@@ -46,6 +46,8 @@ export function DiaryPage() {
   /** The refusal count the notice was last hidden at. */
   const [dismissed, setDismissed] = useState(0);
   const [historyOpen, setHistoryOpen] = useState(false);
+  /** "跳到第一处" was used: the opening notice has done its job. */
+  const [jumped, setJumped] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null);
 
   const peopleKnown = !spaces.isPending;
@@ -125,6 +127,7 @@ export function DiaryPage() {
 
   const status = state ? statusLine(state) : null;
   const open = state?.phase === 'open';
+  const unread = open && !preview ? state.unread : undefined;
   return (
     <main className="page diary">
       <header>
@@ -165,6 +168,16 @@ export function DiaryPage() {
             只看我的文字
           </label>
         </div>
+      )}
+      {open && (
+        <UnreadNotices
+          unread={unread}
+          jumped={jumped}
+          onJump={(which) => {
+            if (which === 'first') setJumped(true);
+            session.current?.jumpToUnread(which);
+          }}
+        />
       )}
       {state?.share === 'frozen' && (
         <p className="notice" role="status">
@@ -239,5 +252,56 @@ export function DiaryPage() {
         )}
       </div>
     </main>
+  );
+}
+
+/**
+ * What the reader has not read yet (unread-and-day-page D4): on opening, "有 N 处新内容 ·
+ * 跳到第一处" until used; "下一处未读" while any is left; and which way more lies outside
+ * the window, without a count. None of it moves the page by itself, and none of it moves
+ * the text either: the notice keeps its line while the diary is open, the rest floats over
+ * the window's edge, so the reading position holds when they come and go (D5).
+ */
+export function UnreadNotices({
+  unread,
+  jumped,
+  onJump,
+}: {
+  unread: Unread | undefined;
+  jumped: boolean;
+  onJump: (which: 'first' | 'next') => void;
+}) {
+  const left = unread?.left ?? 0;
+  const offer = !!unread && left > 0 && unread.atOpen > 0 && !jumped;
+  return (
+    <>
+      <p className={offer ? 'unread-banner' : 'unread-banner idle'} aria-hidden={!offer}>
+        {offer && (
+          <>
+            有 {unread.atOpen} 处新内容 ·{' '}
+            <button type="button" className="link" onClick={() => onJump('first')}>
+              跳到第一处
+            </button>
+          </>
+        )}
+      </p>
+      {left > 0 && (
+        <div className="unread-tools">
+          {unread?.above && (
+            <p className="unread-direction above" role="status">
+              ↑ 上面有新内容
+            </p>
+          )}
+          {unread?.below && (
+            <p className="unread-direction below" role="status">
+              ↓ 下面有新内容
+            </p>
+          )}
+          <button type="button" onClick={() => onJump('next')}>
+            下一处未读
+          </button>
+        </div>
+      )}
+    </>
   );
 }

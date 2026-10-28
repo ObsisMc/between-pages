@@ -1,4 +1,5 @@
 export {
+  FLASH_MS,
   createEditorBinding,
   type Caret,
   type CharacterRun,
