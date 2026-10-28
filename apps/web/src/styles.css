@@ -636,3 +636,55 @@ button.link {
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* One diary's own line: its title on the day page, its save status and history button. */
+.diary-block-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+/* The day page (unread-and-day-page D6): both diaries stacked at any width. */
+.day-date {
+  margin: 0;
+  font-family: var(--font-title);
+  font-size: 1.125rem;
+}
+
+.day-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.view-switch {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.view-switch button[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.day-diary {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--line);
+}
+
+.day-diary-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 auto 0 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.day .diary-editor .ProseMirror {
+  min-height: 8rem;
+}

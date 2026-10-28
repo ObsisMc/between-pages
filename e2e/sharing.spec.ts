@@ -177,9 +177,10 @@ test('EDIT-13 EDIT-14 TIME-03 K11 the partner reads and writes a shared diary in
   await typeAtEnd(a, 'A的字');
   await synced(a);
 
-  // B finds it on the home page and opens it as a live share.
-  await b.goto('/');
-  const shared = b.getByRole('region', { name: '日记', exact: true });
+  // B finds it among A's shared diaries on the space page and opens it as a live share
+  // (the home page's card opens the day page, e2e/day.spec.ts).
+  await b.goto(`/spaces/${spaceId}`);
+  const shared = b.getByRole('region', { name: `${name('pa')} 共享的日记` });
   await shared.getByRole('link', { name: /A的字/ }).click();
   await expect(b).toHaveURL(/\/diaries\/[0-9a-f-]{36}\/shares\/[0-9a-f-]{36}$/);
   await expect(editor(b)).toHaveText('A的字');

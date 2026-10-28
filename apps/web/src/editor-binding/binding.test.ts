@@ -243,6 +243,40 @@ describe('characters by identity', () => {
   });
 });
 
+describe('a selection that leaves the editor', () => {
+  it('[adr:unread-and-day-page#9] edits nothing while the page selection reaches into another editor', () => {
+    const editor = setup();
+    editor.type('我的字');
+    editor.commit();
+    const other = document.createElement('div');
+    other.contentEditable = 'true';
+    other.textContent = '另一篇';
+    document.body.append(other);
+    const inside = editor.view.dom.querySelector('p, div')!.firstChild ?? editor.view.dom;
+    document.getSelection()!.setBaseAndExtent(inside, 1, other.firstChild!, 2);
+    const before = editor.operations.length;
+
+    for (const key of ['Backspace', 'Delete', 'Enter', 'x']) editor.press(key);
+    const typed = new InputEvent('beforeinput', {
+      inputType: 'insertText',
+      data: 'y',
+      bubbles: true,
+      cancelable: true,
+    });
+    editor.view.dom.dispatchEvent(typed);
+    editor.paste('粘贴');
+    const cut = new Event('cut', { bubbles: true, cancelable: true });
+    editor.view.dom.dispatchEvent(cut);
+
+    expect(typed.defaultPrevented).toBe(true);
+    expect(cut.defaultPrevented).toBe(true);
+    expect(editor.operations.length).toBe(before);
+    expect(editor.text()).toBe('我的字');
+    expect(other.textContent).toBe('另一篇');
+    document.getSelection()!.removeAllRanges();
+  });
+});
+
 describe('reading position', () => {
   it('[adr:unread-and-day-page#8] keeps an anchor on its character while the other person writes before it', () => {
     const editor = alongsideBob(); // 今天很累，抱抱！ — Bob's from index 5

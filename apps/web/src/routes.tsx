@@ -1,6 +1,6 @@
 import { Navigate, type RouteObject } from 'react-router';
 import { RequireAuth } from './auth/RequireAuth.tsx';
-import { DiaryPage } from './diary/index.ts';
+import { DayPage, DiaryPage } from './diary/index.ts';
 import { JoinPage } from './join/index.ts';
 import { HomePage } from './pages/HomePage.tsx';
 import { LoginPage } from './pages/LoginPage.tsx';
@@ -33,6 +33,15 @@ export const appRoutes: RouteObject[] = [
     element: (
       <RequireAuth>
         <DiaryPage />
+      </RequireAuth>
+    ),
+  },
+  // Both people's diaries of one date (unread-and-day-page D6).
+  {
+    path: '/days/:date',
+    element: (
+      <RequireAuth>
+        <DayPage />
       </RequireAuth>
     ),
   },

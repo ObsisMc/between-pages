@@ -49,7 +49,7 @@ afterEach(() => {
 const list = () => screen.findByRole('region', { name: '日记' });
 
 describe('DayList', () => {
-  it('shows one card per date with both people’s avatars, an unread dot and a link to each diary', async () => {
+  it('shows one card per date with both people’s avatars, an unread dot and a link to the day', async () => {
     stubApi({
       ...bound,
       'GET /api/days': page(
@@ -89,21 +89,14 @@ describe('DayList', () => {
       within(region)
         .getAllByRole('link')
         .map((a) => a.getAttribute('href')),
-    ).toEqual([
-      `/diaries/${id(1)}`,
-      `/diaries/${id(2)}/shares/${id(102)}`,
-      `/diaries/${id(3)}/shares/${id(103)}`,
-      `/diaries/${id(4)}`,
-    ]);
+    ).toEqual(['/days/2026-10-27', '/days/2026-10-27', '/days/2026-10-26', `/diaries/${id(4)}`]);
 
     fireEvent.click(within(region).getByText('加载更早的日记'));
     await within(region).findByText('还没有写字');
     expect(within(region).queryByText('加载更早的日记')).toBeNull();
 
     fireEvent.click(within(region).getByText('我也写了'));
-    await waitFor(() =>
-      expect(router.state.location.pathname).toBe(`/diaries/${id(2)}/shares/${id(102)}`),
-    );
+    await waitFor(() => expect(router.state.location.pathname).toBe('/days/2026-10-27'));
   });
 
   it('reads the list again every 45 s and on coming back, keeping the pages loaded', async () => {

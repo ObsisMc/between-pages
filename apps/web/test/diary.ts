@@ -30,6 +30,9 @@ export class FakeSocket {
     else FakeSocket.releaseEarly = true;
   }
   sent: ClientMessage[] = [];
+  /** The diary and generation this socket subscribed to, which its replies name. */
+  private diaryId = DIARY;
+  private generationId = GENERATION;
   onopen: (() => void) | null = null;
   onmessage: ((event: { data: string }) => void) | null = null;
   onclose: ((event: { code: number }) => void) | null = null;
@@ -40,13 +43,19 @@ export class FakeSocket {
   send(data: string) {
     const message = ClientMessage.parse(JSON.parse(data));
     this.sent.push(message);
+    if (message.type === 'subscribe') {
+      this.diaryId = message.diaryId;
+      this.generationId = message.generationId;
+    }
     const reply = (m: object) =>
-      queueMicrotask(() => this.onmessage?.({ data: JSON.stringify(m) }));
+      queueMicrotask(() =>
+        this.onmessage?.({ data: JSON.stringify({ ...m, diaryId: this.diaryId }) }),
+      );
     if (message.type === 'subscribe')
       return reply({
         ...base,
         type: 'synced',
-        generationId: GENERATION,
+        generationId: this.generationId,
         seq: FakeSocket.seq,
         commits: [],
         bindings: [],
@@ -83,7 +92,7 @@ export class FakeSocket {
       receipt: {
         batchId: message.batchId,
         operationIds: message.operations.map((op) => op.operationId),
-        generationId: GENERATION,
+        generationId: this.generationId,
         seq,
         publicId,
         committedAt: new Date().toISOString(),
@@ -96,7 +105,7 @@ export class FakeSocket {
     reply({
       ...base,
       type: 'commit',
-      generationId: GENERATION,
+      generationId: this.generationId,
       seq,
       publicId,
       delta: btoa(String.fromCharCode(...delta)),
