@@ -32,7 +32,7 @@ describe('JoinPage', () => {
     stubApi({
       ...noRelationship,
       'GET /api/me': signedIn('alice'),
-      'GET /api/diaries': () => Response.json({ diaries: [], nextBefore: null }),
+      'GET /api/days': () => Response.json({ days: [], nextBefore: null }),
       'POST /api/binding/invitations/preview': preview,
     });
     const { router } = renderAt('/');

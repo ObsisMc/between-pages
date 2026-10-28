@@ -3,7 +3,7 @@ import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { renderAt, signedIn, stubApi } from '../../test/render.tsx';
 import { INVITE, SPACE, TOKEN, errorBody, space } from '../../test/relationship.ts';
 
-const noDiaries = () => Response.json({ diaries: [], nextBefore: null });
+const noDays = () => Response.json({ days: [], nextBefore: null });
 
 afterEach(() => {
   cleanup();
@@ -26,7 +26,7 @@ describe('RelationshipPanel', () => {
     });
     stubApi({
       'GET /api/me': signedIn('alice'),
-      'GET /api/diaries': noDiaries,
+      'GET /api/days': noDays,
       'GET /api/binding': () => Response.json({ binding: null, invitation }),
       'GET /api/spaces': () => Response.json({ spaces: [] }),
       'POST /api/binding/invitations': created,
@@ -46,7 +46,7 @@ describe('RelationshipPanel', () => {
   it('[adr:spaces-and-invitations#3] says a retried invitation has no link to show again', async () => {
     stubApi({
       'GET /api/me': signedIn('alice'),
-      'GET /api/diaries': noDiaries,
+      'GET /api/days': noDays,
       'GET /api/binding': () => Response.json({ binding: null, invitation: null }),
       'GET /api/spaces': () => Response.json({ spaces: [] }),
       'POST /api/binding/invitations': () => Response.json({ invitation: pending, token: null }),
@@ -65,7 +65,7 @@ describe('RelationshipPanel', () => {
     let invitation: typeof pending | null = pending;
     stubApi({
       'GET /api/me': signedIn('alice'),
-      'GET /api/diaries': noDiaries,
+      'GET /api/days': noDays,
       'GET /api/binding': () => Response.json({ binding: null, invitation }),
       'GET /api/spaces': () => Response.json({ spaces: [] }),
       [`POST /api/binding/invitations/${INVITE}/revoke`]: () => {
@@ -84,7 +84,7 @@ describe('RelationshipPanel', () => {
   it('links the current and archived spaces and offers no invitation while bound', async () => {
     stubApi({
       'GET /api/me': signedIn('alice'),
-      'GET /api/diaries': noDiaries,
+      'GET /api/days': noDays,
       'GET /api/binding': () =>
         Response.json({ binding: { space: space(), periodId: SPACE }, invitation: null }),
       'GET /api/spaces': () => Response.json({ spaces: [space()] }),
@@ -99,7 +99,7 @@ describe('RelationshipPanel', () => {
   it('names a bound caller’s refusal', async () => {
     stubApi({
       'GET /api/me': signedIn('alice'),
-      'GET /api/diaries': noDiaries,
+      'GET /api/days': noDays,
       'GET /api/binding': () => Response.json({ binding: null, invitation: null }),
       'GET /api/spaces': () => Response.json({ spaces: [] }),
       'POST /api/binding/invitations': errorBody('ALREADY_BOUND', 409),

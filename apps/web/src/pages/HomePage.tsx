@@ -4,10 +4,9 @@ import { useNavigate } from 'react-router';
 import { signOut } from '../api/auth.ts';
 import { ApiError, callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
-import { DiaryList } from '../diary-list/index.ts';
+import { DayList } from '../diary-list/index.ts';
 import { clearPendingInvite, pendingInvite } from '../join/index.ts';
 import { RelationshipPanel, partnerOf, useSpaces } from '../relationship/index.ts';
-import { SharedDiaryList } from '../shared-diaries/index.ts';
 
 /** The device's IANA zone decides which date "today" is (spec §4); the server checks it. */
 const timezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -16,7 +15,7 @@ const timezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 const todayIn = (zone: string) =>
   new Intl.DateTimeFormat('en-CA', { timeZone: zone }).format(new Date());
 
-/** Home behind RequireAuth: write today, open or back-fill a past day, the diary cards, sign out. */
+/** Home behind RequireAuth: write today, open or back-fill a past day, the day list, sign out. */
 export function HomePage() {
   const me = useMe();
   const spaces = useSpaces();
@@ -26,6 +25,16 @@ export function HomePage() {
   const [openError, setOpenError] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
   const [date, setDate] = useState('');
+
+  // The first release has one fixed partner, so every space is with the same person; their
+  // slot gives each avatar its author color. Without a space there is no color.
+  const space = spaces.data?.spaces[0];
+  const userId = me.data?.user.id ?? '';
+  const slotOf = (id: string) =>
+    space?.participants.find((p) => p.user.id === id)?.authorSlot ?? null;
+  const other = space && partnerOf(space, userId);
+  const self = { name: me.data?.user.displayName ?? '', slot: slotOf(userId) };
+  const partner = { name: other?.displayName ?? 'TA', slot: other ? slotOf(other.id) : null };
 
   // Login always lands here; an invitation opened before signing in continues at /join.
   useEffect(() => {
@@ -110,15 +119,7 @@ export function HomePage() {
         </p>
       )}
       {me.data && <RelationshipPanel userId={me.data.user.id} />}
-      <DiaryList />
-      {me.data &&
-        spaces.data?.spaces.map((space) => (
-          <SharedDiaryList
-            key={space.id}
-            spaceId={space.id}
-            partner={partnerOf(space, me.data.user.id).displayName}
-          />
-        ))}
+      {me.data && <DayList me={self} partner={partner} />}
     </main>
   );
 }

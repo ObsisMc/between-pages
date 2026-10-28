@@ -12,7 +12,7 @@ const diary = {
   bindings: [],
 };
 
-const noDiaries = () => Response.json({ diaries: [], nextBefore: null });
+const noDays = () => Response.json({ days: [], nextBefore: null });
 
 afterEach(() => {
   cleanup();
@@ -25,7 +25,7 @@ describe('HomePage', () => {
     stubApi({
       ...noRelationship,
       'GET /api/me': () => (session ? signedIn('alice')() : signedOut()),
-      'GET /api/diaries': noDiaries,
+      'GET /api/days': noDays,
       'POST /api/auth/sign-out': () => ((session = false), Response.json({ success: true })),
     });
     const { router, client } = renderAt('/');
@@ -39,7 +39,7 @@ describe('HomePage', () => {
     stubApi({
       ...noRelationship,
       'GET /api/me': signedIn('alice'),
-      'GET /api/diaries': noDiaries,
+      'GET /api/days': noDays,
       'POST /api/auth/sign-out': () => new Response(null, { status: 500 }),
     });
     const { router } = renderAt('/');
@@ -56,7 +56,7 @@ describe('HomePage', () => {
     stubApi({
       ...noRelationship,
       'GET /api/me': signedIn('alice'),
-      'GET /api/diaries': noDiaries,
+      'GET /api/days': noDays,
       'POST /api/diaries': opened,
     });
     const { router } = renderAt('/');
@@ -75,7 +75,7 @@ describe('HomePage', () => {
     stubApi({
       ...noRelationship,
       'GET /api/me': signedIn('alice'),
-      'GET /api/diaries': noDiaries,
+      'GET /api/days': noDays,
       'POST /api/diaries': opened,
     });
     const { router } = renderAt('/');
@@ -93,7 +93,7 @@ describe('HomePage', () => {
     stubApi({
       ...noRelationship,
       'GET /api/me': signedIn('alice'),
-      'GET /api/diaries': noDiaries,
+      'GET /api/days': noDays,
       'POST /api/diaries': () => Promise.reject(new TypeError('Failed to fetch')),
     });
     const { router } = renderAt('/');

@@ -130,6 +130,7 @@ npm run test:db                   # all tests against a disposable PostgreSQL 18
 - A session that ends without a deletion (expiry) has no event; its socket closes on its next `submit` or within the 60 s recheck.
 - Commit events are in-process: one API instance (kernel D11). Correctness does not depend on it; a missed broadcast is caught up by seq.
 - The 1 MB cap applies to the JSON message, so base64 leaves about 750 KB for the updates of one batch. The web editor's paste limit counts the encoded message (`MAX_PASTE_BYTES`, about 780 KB of UTF-8, about 260,000 Chinese characters).
+- `GET /api/diaries` has had no web consumer since the home page moved to the day list; it stays until deleting it is agreed (unread-and-day-page, 未解决的问题).
 - The day list rebuilds each listed diary's text and timeline and reads its coverage on every request (up to 40 diaries per page): fine at two people's sizes. If it gets slow, the ADR's next step is a cache keyed by diary and coverage versions, then an unread table; both need asking first.
 - The diary list rebuilds each listed diary's state to take its excerpt (at most 100 deltas past the latest snapshot each, 30 per page). If that becomes slow, keep the excerpt beside the commit instead; that is a schema change.
 - `backup_outbox` tasks are registered but nothing runs them yet; the worker arrives with the Google backup phase.

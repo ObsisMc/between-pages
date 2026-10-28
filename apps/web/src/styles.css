@@ -514,3 +514,61 @@ button.primary {
 .remote-selection {
   background: color-mix(in srgb, currentColor 15%, transparent);
 }
+
+/* The day list (unread-and-day-page D3): one card per date, avatars, an unread dot. */
+.day-card {
+  display: grid;
+  gap: 0.375rem;
+}
+
+.day-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.day-card-avatars {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.diary-card-who {
+  color: var(--ink-soft);
+  font-size: 0.875rem;
+}
+
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  background: currentColor;
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+/* Outside a space nobody has an author color. */
+.avatar:not(.author-slot-1, .author-slot-2) {
+  color: var(--ink-soft);
+}
+
+.avatar > span {
+  color: var(--paper);
+}
+
+.avatar.hollow {
+  background: transparent;
+}
+
+.avatar.hollow > span {
+  color: inherit;
+}
+
+.unread-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--accent);
+}
