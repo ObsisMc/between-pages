@@ -16,6 +16,7 @@ import {
 import { ApiErrorBody, routes, type RouteName } from '@between-pages/contracts';
 import { registerErrorHandling } from './errors.ts';
 import { registerOriginGuard, requireUser, type CurrentUser } from './auth/guards.ts';
+import { createBackupService, type DriveConfig } from './backup/backup.ts';
 import { createBindingService } from './bindings/bindings.ts';
 import { createCommitService } from './commit/commit.ts';
 import type { Db } from './db/client.ts';
@@ -25,11 +26,13 @@ import { createHistoryService } from './history/history.ts';
 import { createReader } from './reader/reader.ts';
 import { createReadingService } from './reading/reading.ts';
 import { createReadingStore } from './store/reading.ts';
+import { backupHandlers } from './routes/backup.ts';
 import type { ContractRequest } from './routes/contract.ts';
 import { diaryHandlers } from './routes/diaries.ts';
 import { meHandler } from './routes/me.ts';
 import { spaceHandlers } from './routes/spaces.ts';
 import { createSharingService } from './sharing/sharing.ts';
+import { createBackupStore } from './store/backup.ts';
 import { createRelationStore } from './store/relations.ts';
 import { createStore } from './store/store.ts';
 import { TRANSPORT_MAX_BYTES, registerSyncSocket } from './ws/sync.ts';
@@ -49,6 +52,8 @@ export interface AppDeps {
   historyIdleMs?: number;
   /** Registers a listener for sessions that ended (`Auth.onSessionEnded`); their sockets close at once. */
   sessionEnded?: (listener: (sessionId: string) => void) => void;
+  /** Google Drive for the readable copy; without it the backup page says "unavailable". */
+  drive?: DriveConfig;
 }
 
 // Builds the app without listening so tests and the OpenAPI generator use the exact
@@ -150,6 +155,14 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   contractRoute('unbind', spaces.unbind);
   contractRoute('mySharing', spaces.mySharing);
   contractRoute('saveMySharing', spaces.saveMySharing);
+
+  const backup = backupHandlers(
+    createBackupService(createBackupStore(deps.db), deps.drive ?? null),
+  );
+  contractRoute('backup', backup.backup);
+  contractRoute('startGoogleConnection', backup.startGoogleConnection);
+  contractRoute('finishGoogleConnection', backup.finishGoogleConnection);
+  contractRoute('disconnectGoogle', backup.disconnectGoogle);
 
   await app.register(websocket, { options: { maxPayload: TRANSPORT_MAX_BYTES } });
   registerSyncSocket(app, {

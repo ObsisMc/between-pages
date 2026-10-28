@@ -25,6 +25,10 @@ export const ErrorCode = z.enum([
   'PERIOD_CLOSED',
   'POLICY_CONFLICT',
   'SHARE_OPEN_FAILED',
+  'GOOGLE_UNAVAILABLE',
+  'GOOGLE_STATE_INVALID',
+  'GOOGLE_EXCHANGE_FAILED',
+  'GOOGLE_DISCONNECTING',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
 
@@ -63,6 +67,10 @@ export const errorStatus = {
   PERIOD_CLOSED: 409,
   POLICY_CONFLICT: 409,
   SHARE_OPEN_FAILED: 409,
+  GOOGLE_UNAVAILABLE: 503,
+  GOOGLE_STATE_INVALID: 400,
+  GOOGLE_EXCHANGE_FAILED: 502,
+  GOOGLE_DISCONNECTING: 409,
 } as const satisfies Record<ErrorCode, number>;
 
 /**
@@ -100,4 +108,10 @@ export const errorCategory = {
   POLICY_CONFLICT: 'show',
   // Kernel D5: nothing opened; the screen names the failing dates.
   SHARE_OPEN_FAILED: 'show',
+  // Google connection (server-backup-and-google-docs D10): the backup page explains and
+  // offers to connect again.
+  GOOGLE_UNAVAILABLE: 'show',
+  GOOGLE_STATE_INVALID: 'show',
+  GOOGLE_EXCHANGE_FAILED: 'show',
+  GOOGLE_DISCONNECTING: 'show',
 } as const satisfies Record<ErrorCode, ErrorCategory>;

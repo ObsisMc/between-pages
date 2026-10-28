@@ -177,16 +177,16 @@ Between Pages / 2026 / 10 / 2026-10-28 周三
 ### D10：令牌只以密文保存，只在后台进程里短暂解密
 
 1. **最小权限**：Drive 授权只申请 `https://www.googleapis.com/auth/drive.file`，只能访问应用自己建的文件；它是 Google 列为非敏感的权限。
-2. **与登录分开**：单独的授权流程，不经 Better Auth（认证 ADR：登录不保存 Google 令牌）。授权请求带 `state` 与 PKCE，`access_type=offline`；回调校验 `state`、会话用户与发起者一致，换得的令牌属于哪个 Google 账号就记为连接的账号。
+2. **与登录分开**：单独的授权流程，不经 Better Auth（认证 ADR：登录不保存 Google 令牌）。授权请求带 `state` 与 PKCE，`access_type=offline`；回调校验 `state`、会话用户与发起者一致，换得的令牌属于哪个 Google 账号就记为连接的账号。落地时确认：Google 把浏览器送回 web 的 `/backup/google/callback` 页，由它把 `code` 与 `state` 交给 `POST /api/backup/google/finish`，所有接口仍是 contracts 里的 JSON 路由；`state` 只能用一次、十分钟有效，按其 sha256 存放；账号用 Drive 的 `about`（`drive.file` 下即可读）取得，不为此多申请 `email` 权限。
 3. **加密存储**：刷新令牌用 AES-256-GCM（`node:crypto`）加密后存入 PG，每条带随机 nonce 与密钥编号；密钥 `GOOGLE_TOKEN_KEY` 只在服务器环境变量里，不进数据库、仓库或 R2。只拿到数据库或数据库备份的人解不开令牌；数据库备份上传前又整体加密一次（D2）。
 4. **只在后台进程里解密**：API 进程只写入密文（授权回调时），从不解密；后台进程用时解密、换取短期访问令牌，两者都只在内存里。任何 HTTP 响应、WebSocket 消息、浏览器存储里都没有令牌。
 5. **不进日志**：日志序列化时去掉令牌、授权码与 `Authorization` 头；出错时只记录 Google 返回的错误码。
-6. **断开**：向 Google 的撤销接口作废令牌，再删除密文与访问状态；Drive 里的文件和 Doc 映射保留。撤销请求失败也删除密文，并在备份页提示可以到 Google 账号的"第三方访问"里手动移除。
+6. **断开**：向 Google 的撤销接口作废令牌，再删除密文与访问状态；Drive 里的文件和 Doc 映射保留。撤销请求失败也删除密文，并在备份页提示可以到 Google 账号的"第三方访问"里手动移除。落地时确认：撤销由后台进程执行（API 不打开令牌），断开后到撤销完成前显示"正在断开"，并拒绝重新连接，因为 Google 撤销一个授权会连带作废它之后发出的令牌；撤销失败按 1 分钟到 1 小时退避重试，30 次后放弃。
 7. **换密钥或丢密钥**：旧密文全部作废，连接状态变为"需要重新连接"，各自重新连接一次即可，日记不受任何影响。
 
 ## 技术设计
 
-**进程**：后台进程 `apps/api/src/worker.ts`，与 API 同一代码库、分开启动（ADR-0006 第 20 条），开发时 `npm run dev:worker`。不引入任务队列库：用 `FOR UPDATE SKIP LOCKED` 取任务，失败重试间隔从 1 分钟翻倍到最多 1 小时，Google 限流（429）按其 `Retry-After`。
+**进程**：后台进程 `apps/api/src/worker/main.ts`（`worker/` 目录放它的各项任务），与 API 同一代码库、分开启动（ADR-0006 第 20 条），开发时 `npm run dev:worker`。不引入任务队列库：用 `FOR UPDATE SKIP LOCKED` 取任务，失败重试间隔从 1 分钟翻倍到最多 1 小时，Google 限流（429）按其 `Retry-After`。
 
 **任务流**：
 1. 提交事务里登记的 `backup_outbox` 行（已有）由后台进程转为"某人某天待写"：个人目标 → 日记主人的那一天；空间目标 → 该轮次接收方（搭档）的那一天。转完把 outbox 行标为已处理。
@@ -198,14 +198,15 @@ Between Pages / 2026 / 10 / 2026-10-28 周三
 
 | 表 | 内容 |
 | --- | --- |
-| `google_connections` | 用户、Google 账号 ID 与邮箱、刷新令牌密文、nonce、密钥编号、授权范围、状态（正常 / 需要重新连接）、连接时间、最近错误 |
+| `google_connections` | 用户、Google 账号 ID 与邮箱、刷新令牌密文、nonce、密钥编号、状态（正常 / 需要重新连接 / 撤销中）、连接时间、尝试次数、下次尝试时间、最近错误 |
+| `google_oauth_states` | 进行中的授权：`state` 的 sha256、发起的用户、PKCE verifier、过期时间（落地时增加：verifier 必须留在服务端） |
 | `google_folders` | 用户、路径（`Between Pages`、`2026`、`2026/10`）、Drive 文件夹 ID |
 | `google_day_docs` | 用户、日期、Doc ID、上次写入的修订号、内容校验值、覆盖的本人版本与对方轮次和版本、写入时间、状态（当前 / 已另存） |
-| `google_day_work` | 用户、日期、最早可处理时间、尝试次数、下次尝试时间、最近错误 |
+| `google_day_work` | 用户、日期、最早可处理时间（失败后即下次尝试时间）、"现在备份"标记、尝试次数、最近错误 |
 | `backup_outbox`（改） | 状态增加"已处理"、处理时间 |
 | `backup_events` | 用户、时间、类型（另存、重建、空间已满等）、日期；备份页的问题记录 |
 
-**接口**（contracts 与 OpenAPI 随实现）：`GET /api/backup`（备份页状态）、`POST /api/backup/google/start`（返回授权地址）、`GET /api/backup/google/callback`、`POST /api/backup/google/disconnect`、`POST /api/backup/run`（现在备份）；`GET /api/days/:date` 的每篇增加本人 Drive 中的备份状态与 Doc 链接。
+**接口**（contracts 与 OpenAPI 随实现）：`GET /api/backup`（备份页状态）、`POST /api/backup/google/start`（返回授权地址）、`POST /api/backup/google/finish`（web 回调页交来的 `code` 与 `state`）、`POST /api/backup/google/disconnect`、`POST /api/backup/run`（现在备份）；`GET /api/days/:date` 的每篇增加本人 Drive 中的备份状态与 Doc 链接。
 
 **模块**（`apps/api/src`）：`google`（调用 Google OAuth、Drive、Docs 的 REST 接口与令牌加解密，不访问数据库）；`backup`（连接、待写队列、渲染、状态，属于服务层，经 `reader` 取正文、经 `history` 判断是否已成历史）；`worker`（组装入口，与 `server` 同级）。登记进 `checks/verify-dependency-direction.ts`。调用 Google 用 `fetch`，不装 `googleapis`。
 

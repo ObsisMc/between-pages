@@ -1,4 +1,14 @@
 export { ApiErrorBody, ErrorCategory, ErrorCode, errorCategory, errorStatus } from './errors.ts';
+export {
+  BackupEvent,
+  BackupEventKind,
+  BackupResponse,
+  BackupStatus,
+  FinishGoogleRequest,
+  GoogleConnection,
+  GoogleConnectionState,
+  StartGoogleResponse,
+} from './backup.ts';
 export { HealthResponse, MeResponse, routes } from './routes.ts';
 export { UserSummary } from './users.ts';
 export type {
