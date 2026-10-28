@@ -116,6 +116,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'sync-client',
         'history',
         'read-tracker',
+        'avatar',
       ],
       'read-tracker': ['api'],
     },

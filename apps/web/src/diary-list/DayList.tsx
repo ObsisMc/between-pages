@@ -139,13 +139,12 @@ export function DayList({ me, partner }: { me: AvatarPerson; partner: AvatarPers
         <ul>
           {days.map((day) => {
             const unread = !failure && (day.mine?.unread || day.partner?.unread);
+            // A date with the partner's diary opens as the day page; one with only the
+            // own diary opens it alone (D6).
+            const to = day.partner ? `/days/${day.diaryDate}` : `/diaries/${day.mine?.diaryId}`;
             const sides = [
-              day.mine && { person: me, side: day.mine, to: `/diaries/${day.mine.diaryId}` },
-              day.partner && {
-                person: partner,
-                side: day.partner,
-                to: `/diaries/${day.partner.diaryId}/shares/${day.partner.epochId}`,
-              },
+              day.mine && { key: 'mine', person: me, side: day.mine },
+              day.partner && { key: 'partner', person: partner, side: day.partner },
             ]
               .filter((s) => !!s)
               .sort((a, b) => (a.person.slot ?? 1) - (b.person.slot ?? 1));
@@ -156,13 +155,13 @@ export function DayList({ me, partner }: { me: AvatarPerson; partner: AvatarPers
                   <span className="diary-card-date">{dateLabel(day.diaryDate)}</span>
                   <span className="day-card-avatars">
                     {sides.map((s) => (
-                      <Avatar key={s.to} person={s.person} hollow={!s.side.hasText} />
+                      <Avatar key={s.key} person={s.person} hollow={!s.side.hasText} />
                     ))}
                   </span>
                   {unread && <span className="unread-dot" role="img" aria-label="有新内容" />}
                 </div>
                 {sides.map((s) => (
-                  <Link key={s.to} className="diary-card" to={s.to}>
+                  <Link key={s.key} className="diary-card" to={to}>
                     {sides.length > 1 && <span className="diary-card-who">{s.person.name}</span>}
                     {'share' in s.side && s.side.share === 'frozen' && (
                       <span className="share-state">已停止共享</span>

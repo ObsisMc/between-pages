@@ -58,6 +58,8 @@ export type DiaryState = {
   reopened?: string;
   /** "只看我的文字" is on: the other person's text is hidden and nothing can be edited. */
   ownOnly: boolean;
+  /** The diary's date, once the server has answered. */
+  diaryDate?: string;
   /**
    * The reader's unread here (unread-and-day-page D4), once their read coverage is known:
    * `atOpen` passages when it first became known, which never changes after; `left`
@@ -69,13 +71,32 @@ export type DiaryState = {
 
 export type Unread = { atOpen: number; left: number; above: boolean; below: boolean };
 
+/**
+ * A character the reader is looking at, as a position that follows it through edits, and
+ * how far from the window's top it was (D5); `caret` when it is the focused caret's.
+ */
+export type ReadingPosition = { anchor: Uint8Array; top: number; caret: boolean };
+
 export type DiarySession = {
   /** The text on screen, for copying or downloading when it cannot be stored. */
   text(): string;
   /** Deletes drafts on the user's explicit request; nothing else ever does (D7). */
   deleteDrafts(draftIds: string[]): Promise<void>;
-  /** "只看我的文字" (EDIT-14): a reading filter; changes no text, sends nothing. */
-  setOwnTextOnly(on: boolean): void;
+  /**
+   * "只看我的文字" (EDIT-14): a reading filter; changes no text, sends nothing. With `keep`
+   * it holds its own reading position across the switch; a page holding several diaries
+   * passes false and holds the position itself.
+   */
+  setOwnTextOnly(on: boolean, keep?: boolean): void;
+  /**
+   * The reading position in this diary now (D5): the caret's character when the editor has
+   * focus and the caret is in the window, else the character at the window's top, or with
+   * `ownOnlyNext` the first one there that stays visible under the filter. Null when this
+   * diary is not at the window's top and has no caret in it, or is not laid out.
+   */
+  hold(ownOnlyNext?: boolean): ReadingPosition | null;
+  /** Scrolls so a held position's character is as far from the window's top as it was. */
+  restore(position: ReadingPosition | null): void;
   /** The character under a point of the window, by identity and author; null off the text. */
   characterAt(left: number, top: number): { client: number; clock: number; author: string } | null;
   /**
@@ -101,6 +122,11 @@ export type DiarySessionOptions = {
   /** The name shown on another person's caret. */
   nameOf?: (user: string) => string;
   onChange: (state: DiaryState) => void;
+  /**
+   * Wraps the applying of remote commits so the reading position holds (D5). By default
+   * this diary holds its own; a page with several diaries holds the one at the window's top.
+   */
+  keepPosition?: (apply: () => void) => void;
 };
 
 export function createDiarySession({
@@ -111,6 +137,7 @@ export function createDiarySession({
   authorClass,
   nameOf,
   onChange,
+  keepPosition,
 }: DiarySessionOptions): DiarySession {
   let state: DiaryState = {
     phase: 'opening',
@@ -258,7 +285,7 @@ export function createDiarySession({
 
   /** The current state from the server: the own diary, or the partner's epoch and whether it is live. */
   async function serverBaseline(): Promise<
-    (Baseline & { share?: 'live' | 'frozen' }) | 'offline' | ErrorCode
+    (Baseline & { share?: 'live' | 'frozen'; diaryDate: string }) | 'offline' | ErrorCode
   > {
     const bytes = (state: string) => Uint8Array.from(atob(state), (c) => c.charCodeAt(0));
     try {
@@ -273,6 +300,7 @@ export function createDiarySession({
           state: bytes(diary.state),
           bindings: diary.bindings,
           share: diary.share,
+          diaryDate: diary.diaryDate,
         };
       }
       const { diary } = await callApi('diary', { params: { diaryId } });
@@ -282,6 +310,7 @@ export function createDiarySession({
         seq: diary.seq,
         state: bytes(diary.state),
         bindings: diary.bindings,
+        diaryDate: diary.diaryDate,
       };
     } catch (error) {
       if (error instanceof ApiError && error.code !== 'INTERNAL') return error.code;
@@ -290,10 +319,11 @@ export function createDiarySession({
     }
   }
 
-  /** What the journal keeps of a server state: everything but the share's state. */
-  const baselineOf = (server: Baseline & { share?: unknown }): Baseline => {
+  /** What the journal keeps of a server state: everything but the share's state and the date. */
+  const baselineOf = (server: Baseline & { share?: unknown; diaryDate?: string }): Baseline => {
     const baseline = { ...server };
     delete baseline.share;
+    delete baseline.diaryDate;
     return baseline;
   };
 
@@ -324,12 +354,14 @@ export function createDiarySession({
       onCommits: (commits, bindings) => {
         bind(bindings);
         if (commits.length > 0) set({ remoteChanges: state.remoteChanges + commits.length });
+        const apply = () => {
+          for (const commit of commits)
+            if (arriving) arriving.push(commit.delta);
+            else editor?.applyUpdate(commit.delta, authors);
+        };
         // What the reader is looking at stays where it is however the text above changes (D5).
-        const held = arriving || !commits.length ? null : holdPosition();
-        for (const commit of commits)
-          if (arriving) arriving.push(commit.delta);
-          else editor?.applyUpdate(commit.delta, authors);
-        restorePosition(held);
+        if (arriving || !commits.length) apply();
+        else (keepPosition ?? keepOwnPosition)(apply);
         updateUnread();
         // A delta the journal fails to store is fetched again by the next catch-up.
         journal?.advance(diaryId, generationId, commits, bindings).catch(() => undefined);
@@ -429,11 +461,11 @@ export function createDiarySession({
     if (typeof server === 'object' && server.share === 'frozen') {
       await journal.retire(diaryId, receiptOf).catch(() => undefined);
       mountFrozen(server);
-      set({ phase: 'open' });
+      set({ phase: 'open', diaryDate: server.diaryDate });
       return refreshDrafts();
     }
     if (typeof server === 'object') {
-      if (server.share) set({ share: server.share });
+      set({ diaryDate: server.diaryDate, ...(server.share ? { share: server.share } : {}) });
       await journal.switchTo(baselineOf(server), receiptOf);
     } else if (server !== 'offline') return set({ phase: 'failed', failure: server });
     const { baseline } = await journal.load(diaryId);
@@ -523,22 +555,20 @@ export function createDiarySession({
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', onScroll);
 
-  /** A character the reader is looking at and how far from the window's top it is (D5). */
-  type Held = { anchor: Uint8Array; top: number };
-
   /**
    * Picks the anchor character before the text or filter changes (D5): the caret's
    * character when the editor has focus and the caret is in the window, else the first
    * character at the window's top, moved by `keep` to one that stays visible.
    */
-  function holdPosition(keep?: (index: number) => number | null): Held | null {
+  function holdPosition(keep?: (index: number) => number | null): ReadingPosition | null {
     if (!editor || !laidOut()) return null;
     const { view } = editor;
     let index: number | null = null;
+    let caret = false;
     if (view.hasFocus()) {
-      const caret = view.coordsAtPos(view.state.selection.head);
-      if (caret.top >= 0 && caret.bottom <= window.innerHeight)
-        index = view.state.selection.head - 1;
+      const at = view.coordsAtPos(view.state.selection.head);
+      caret = at.top >= 0 && at.bottom <= window.innerHeight;
+      if (caret) index = view.state.selection.head - 1;
     }
     if (index === null) {
       const rect = place.getBoundingClientRect();
@@ -549,17 +579,25 @@ export function createDiarySession({
     }
     if (keep) index = keep(index);
     if (index === null) return null;
-    return { anchor: editor.anchorAt(index), top: view.coordsAtPos(index + 1).top };
+    return { anchor: editor.anchorAt(index), top: view.coordsAtPos(index + 1).top, caret };
   }
 
   /** Scrolls so the anchor character is as far from the window's top as it was. */
-  function restorePosition(held: Held | null) {
+  function restorePosition(held: ReadingPosition | null) {
     if (!held || !editor || !laidOut()) return;
     const index = editor.indexOfAnchor(held.anchor);
     if (index === null) return;
     const moved = editor.view.coordsAtPos(index + 1).top - held.top;
     if (moved) window.scrollBy(0, moved);
   }
+
+  const keepOwnPosition = (apply: () => void) => {
+    const held = holdPosition();
+    apply();
+    restorePosition(held);
+  };
+
+  const visibleUnderFilter = (index: number) => editor?.ownCharacterFrom(index) ?? null;
 
   open()
     .then(() => {
@@ -577,16 +615,16 @@ export function createDiarySession({
 
   return {
     text: () => editor?.view.state.doc.textContent ?? '',
-    setOwnTextOnly(on) {
+    setOwnTextOnly(on, keep = true) {
       // Anchored on a character that stays visible after the switch (D5).
-      const held = holdPosition(
-        on ? (index) => editor?.ownCharacterFrom(index) ?? null : undefined,
-      );
+      const held = keep ? holdPosition(on ? visibleUnderFilter : undefined) : null;
       set({ ownOnly: on });
       editor?.setOwnTextOnly(on);
       restorePosition(held);
       updateUnread();
     },
+    hold: (ownOnlyNext) => holdPosition(ownOnlyNext ? visibleUnderFilter : undefined),
+    restore: restorePosition,
     jumpToUnread(which, wrap = true) {
       if (!editor || state.ownOnly) return false;
       const spans = unreadNow();

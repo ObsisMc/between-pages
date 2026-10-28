@@ -1,173 +1,124 @@
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router';
 import { callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
-import { HistoryPanel, HistoryPreview, type HistoryPointView } from '../history/index.ts';
-import { DraftList } from './DraftList.tsx';
-import { createDiarySession, type DiarySession, type DiaryState, type Unread } from './session.ts';
-import { failureText, refusalText, statusLine } from './status.ts';
+import { DiaryBlock, type BlockReport, type Person } from './DiaryBlock.tsx';
+import type { DiarySession, Unread } from './session.ts';
 
-const REFUSAL_SHOWN_MS = 4_000;
-
-/** One open history preview, and where the current text stood when it opened. */
-type Preview = { point: HistoryPointView; remoteChanges: number; scrollY: number };
-
-type Person = { name: string; slot: 1 | 2 };
-/** Who wrote a clicked character and when (TIME-03). */
-type Origin = { name: string; at: string; adjusted: boolean };
-
-const writtenText = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-
-/**
- * One diary: the own diary, or the partner's shared one by its epoch (`/shares/:epochId`).
- * The editor with each author's color and a legend, "只看我的文字", a click on a character
- * for its author and written time, the save status, recovery drafts and the history the
- * viewer may read (kernel D5, D6, D10; EDIT-13, EDIT-14, TIME-03).
- */
-export function DiaryPage() {
-  const { diaryId, epochId } = useParams();
-  const userId = useMe().data?.user.id;
-  // Author colors follow the space's slots, so one person has one color everywhere.
+/** The people of the caller's spaces by user ID, for author colors and names. */
+export function usePeople(): { people: Map<string, Person>; known: boolean } {
   const spaces = useQuery({ queryKey: ['spaces'], queryFn: () => callApi('spaces') });
   const people = new Map<string, Person>(
     (spaces.data?.spaces ?? []).flatMap((space) =>
       space.participants.map((p) => [p.user.id, { name: p.user.displayName, slot: p.authorSlot }]),
     ),
   );
-  const peopleRef = useRef(people);
+  return { people, known: !spaces.isPending };
+}
+
+/** The author legend with the one "只看我的文字" switch of the page (EDIT-13, EDIT-14). */
+export function AuthorLegend({
+  people,
+  ownOnly,
+  onOwnOnly,
+}: {
+  people: Map<string, Person>;
+  ownOnly: boolean;
+  onOwnOnly: (on: boolean) => void;
+}) {
+  if (people.size === 0) return null;
+  return (
+    <div className="author-legend" aria-label="作者">
+      {[...people.values()]
+        .sort((a, b) => a.slot - b.slot)
+        .map((person) => (
+          <span key={person.slot} className={`author-slot-${person.slot}`}>
+            {person.name}
+          </span>
+        ))}
+      <label className="own-only">
+        <input type="checkbox" checked={ownOnly} onChange={(e) => onOwnOnly(e.target.checked)} />
+        只看我的文字
+      </label>
+    </div>
+  );
+}
+
+/** How often an open own diary asks whether the partner wrote the same day (D6). */
+export const DAY_CHECK_MS = 45_000;
+
+/**
+ * Whether the partner has a diary they share with the caller on `date`, checked on entry,
+ * when the window comes back and every DAY_CHECK_MS; a failed check keeps the last answer
+ * (unread-and-day-page D6). The page never changes its layout by itself (invariant 13).
+ */
+function usePartnerWroteDay(date: string | undefined): boolean {
+  const [wrote, setWrote] = useState(false);
   useEffect(() => {
-    peopleRef.current = people;
-  });
-  const [origin, setOrigin] = useState<Origin | null>(null);
-  const place = useRef<HTMLDivElement>(null);
+    if (!date) return;
+    let live = true;
+    const check = () =>
+      callApi('day', { params: { date } }).then(
+        ({ day }) => live && setWrote(day.partner !== null),
+        () => undefined,
+      );
+    void check();
+    const onForeground = () => {
+      if (document.visibilityState === 'visible') void check();
+    };
+    const timer = setInterval(onForeground, DAY_CHECK_MS);
+    window.addEventListener('focus', onForeground);
+    document.addEventListener('visibilitychange', onForeground);
+    return () => {
+      live = false;
+      clearInterval(timer);
+      window.removeEventListener('focus', onForeground);
+      document.removeEventListener('visibilitychange', onForeground);
+    };
+  }, [date]);
+  return wrote;
+}
+
+/**
+ * One diary: the own diary, or the partner's shared one by its epoch (`/shares/:epochId`).
+ * The diary block, the author legend with "只看我的文字", and what is unread (kernel D5,
+ * D6, D10; EDIT-13, EDIT-14, TIME-03; unread-and-day-page D4). On the own diary, once the
+ * partner shares the same day, "TA 也写了这天 · 切到双人页" offers the day page (D6).
+ */
+export function DiaryPage() {
+  const { diaryId, epochId } = useParams();
+  const userId = useMe().data?.user.id;
+  const { people, known } = usePeople();
   const session = useRef<DiarySession | null>(null);
-  const [state, setState] = useState<DiaryState | null>(null);
-  /** The refusal count the notice was last hidden at. */
-  const [dismissed, setDismissed] = useState(0);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [report, setReport] = useState<BlockReport | null>(null);
   /** "跳到第一处" was used: the opening notice has done its job. */
   const [jumped, setJumped] = useState(false);
-  const [preview, setPreview] = useState<Preview | null>(null);
-
-  const peopleKnown = !spaces.isPending;
-  useEffect(() => {
-    if (!place.current || !userId || !diaryId || !peopleKnown) return;
-    const opened = createDiarySession({
-      place: place.current,
-      userId,
-      diaryId,
-      epochId,
-      authorClass: (author) => {
-        const slot = peopleRef.current.get(author)?.slot;
-        return slot ? `author-slot-${slot}` : null;
-      },
-      nameOf: (user) => peopleRef.current.get(user)?.name ?? '',
-      onChange: setState,
-    });
-    session.current = opened;
-    return () => {
-      opened.destroy();
-      session.current = null;
-    };
-  }, [userId, diaryId, epochId, peopleKnown]);
-
-  // A click on a character asks the server who wrote it and when; the name comes from the space.
-  const showOrigin = async (event: MouseEvent) => {
-    const hit = session.current?.characterAt(event.clientX, event.clientY);
-    if (!hit || !diaryId) return setOrigin(null);
-    try {
-      const info = await callApi('character', {
-        params: { diaryId, clientId: hit.client, clock: hit.clock },
-        query: epochId ? { epochId } : {},
-      });
-      setOrigin({
-        name: peopleRef.current.get(info.author)?.name ?? '我',
-        at: writtenText.format(new Date(info.writtenAt)),
-        adjusted: info.clockAdjusted,
-      });
-    } catch {
-      setOrigin(null);
-    }
-  };
-
-  const refused = state?.refusal;
-  useEffect(() => {
-    if (!refused) return;
-    const timer = setTimeout(() => setDismissed(refused.count), REFUSAL_SHOWN_MS);
-    return () => clearTimeout(timer);
-  }, [refused]);
-  const refusal = refused && refused.count !== dismissed ? refusalText[refused.reason] : null;
-
-  const copyText = () => void navigator.clipboard?.writeText(session.current?.text() ?? '');
-  const downloadText = () => {
-    const url = URL.createObjectURL(
-      new Blob([session.current?.text() ?? ''], { type: 'text/plain' }),
-    );
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'diary.txt';
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // The editor stays mounted, hidden, while a version is previewed, so pending input, undo
-  // and the caret are untouched; the scroll position comes back with it (kernel D6).
-  const showVersion = (point: HistoryPointView) =>
-    setPreview((open) => ({
-      point,
-      remoteChanges: open?.remoteChanges ?? state?.remoteChanges ?? 0,
-      scrollY: open?.scrollY ?? window.scrollY,
-    }));
-  const closePreview = () => {
-    const scrollY = preview?.scrollY ?? 0;
-    setPreview(null);
-    requestAnimationFrame(() => window.scrollTo(0, scrollY));
-  };
-
-  const status = state ? statusLine(state) : null;
+  // Held here so the switch shows the click at once; the session follows it.
+  const [ownOnly, setOwnOnly] = useState(false);
+  const state = report?.state;
   const open = state?.phase === 'open';
-  const unread = open && !preview ? state.unread : undefined;
+  const partnerWrote = usePartnerWroteDay(epochId ? undefined : state?.diaryDate);
+  const unread = open && !report?.previewing ? state.unread : undefined;
   return (
     <main className="page diary">
       <header>
         <Link to="/">← 返回</Link>
-        {open && status && (
-          <p className={`save-status ${status.tone}`} role="status">
-            {status.text}
-          </p>
-        )}
-        {open && diaryId && (
-          <button
-            type="button"
-            aria-expanded={historyOpen}
-            onClick={() => {
-              if (historyOpen) closePreview();
-              setHistoryOpen(!historyOpen);
-            }}
-          >
-            {historyOpen ? '收起历史' : '历史'}
-          </button>
-        )}
       </header>
-      {open && people.size > 0 && (
-        <div className="author-legend" aria-label="作者">
-          {[...people.values()]
-            .sort((a, b) => a.slot - b.slot)
-            .map((person) => (
-              <span key={person.slot} className={`author-slot-${person.slot}`}>
-                {person.name}
-              </span>
-            ))}
-          <label className="own-only">
-            <input
-              type="checkbox"
-              checked={state.ownOnly}
-              onChange={(e) => session.current?.setOwnTextOnly(e.target.checked)}
-            />
-            只看我的文字
-          </label>
-        </div>
+      {partnerWrote && state?.diaryDate && (
+        <p className="notice day-offer">
+          TA 也写了这天 · <Link to={`/days/${state.diaryDate}`}>切到双人页</Link>
+        </p>
+      )}
+      {open && (
+        <AuthorLegend
+          people={people}
+          ownOnly={ownOnly}
+          onOwnOnly={(on) => {
+            session.current?.setOwnTextOnly(on);
+            setOwnOnly(on);
+          }}
+        />
       )}
       {open && (
         <UnreadNotices
@@ -179,78 +130,20 @@ export function DiaryPage() {
           }}
         />
       )}
-      {state?.share === 'frozen' && (
-        <p className="notice" role="status">
-          已停止共享，内容不再更新
-        </p>
+      {userId && diaryId && known && (
+        <DiaryBlock
+          key={`${diaryId}:${epochId ?? ''}`}
+          userId={userId}
+          diaryId={diaryId}
+          epochId={epochId}
+          people={people}
+          onSession={(opened) => {
+            session.current = opened;
+            if (opened && ownOnly) opened.setOwnTextOnly(true);
+          }}
+          onReport={setReport}
+        />
       )}
-      {state?.reopened && diaryId && (
-        <p className="notice">
-          对方重新共享了这篇日记。
-          <Link to={`/diaries/${diaryId}/shares/${state.reopened}`}>打开最新的版本</Link>
-        </p>
-      )}
-      {origin && (
-        <p className="author-info" role="status">
-          {origin.name} 写于 {origin.at}
-          {origin.adjusted && '（设备时间不准，按服务器收到的时间）'}
-        </p>
-      )}
-      {(!state || state.phase === 'opening') && <p className="status">正在打开…</p>}
-      {state?.phase === 'failed' && (
-        <p className="notice" role="alert">
-          {failureText(state.failure)}
-        </p>
-      )}
-      {state?.storeFailed && (
-        <div className="notice" role="alert">
-          <p>这台设备暂时无法保存，刚写的字还没有存下。请先不要关闭页面。</p>
-          <button type="button" onClick={copyText}>
-            复制正文
-          </button>
-          <button type="button" onClick={downloadText}>
-            下载正文
-          </button>
-        </div>
-      )}
-      {refusal && (
-        <p className="notice refusal" role="alert">
-          {refusal}
-        </p>
-      )}
-      <div className={historyOpen ? 'diary-body with-history' : 'diary-body'}>
-        <div className="diary-main">
-          {preview && diaryId && userId && (
-            <HistoryPreview
-              diaryId={diaryId}
-              publicId={preview.point.publicId}
-              userId={userId}
-              currentChanged={(state?.remoteChanges ?? 0) !== preview.remoteChanges}
-              onClose={closePreview}
-            />
-          )}
-          <div
-            ref={place}
-            className="diary-editor"
-            hidden={!open || preview !== null}
-            onClick={(event) => void showOrigin(event)}
-          />
-          {state && (
-            <DraftList
-              drafts={state.drafts}
-              onDelete={(draftIds) => void session.current?.deleteDrafts(draftIds)}
-            />
-          )}
-        </div>
-        {open && historyOpen && diaryId && (
-          <HistoryPanel
-            diaryId={diaryId}
-            commits={state.remoteChanges}
-            selected={preview?.point.publicId ?? null}
-            onSelect={showVersion}
-          />
-        )}
-      </div>
     </main>
   );
 }

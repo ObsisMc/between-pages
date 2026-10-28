@@ -106,6 +106,9 @@ export type CharacterRun = { client: number; clock: number; length: number; inde
 /** How long a jumped-to passage stays highlighted; the style fades it out meanwhile. */
 export const FLASH_MS = 2_000;
 
+/** Keys that edit text without a character of their own. */
+const EDIT_KEYS = new Set(['Backspace', 'Delete', 'Enter']);
+
 // Transaction origins: edits translated from editor steps, and updates applied from outside.
 // Undo and redo run with the UndoManager as origin.
 const LOCAL = Symbol('editor edit');
@@ -253,6 +256,9 @@ export function createEditorBinding(
     attributes: { role: 'textbox', 'aria-multiline': 'true', style: 'white-space: pre-wrap' },
     dispatchTransaction: dispatch,
     handleKeyDown: (_view, event) => {
+      // A selection reaching outside this editor (into another diary on the same page)
+      // edits nothing, in either (unread-and-day-page D7).
+      if (selectionLeaves() && (event.key.length === 1 || EDIT_KEYS.has(event.key))) return true;
       if (event.key !== 'Backspace' && event.key !== 'Delete') return false;
       // Word and line deletion run natively and arrive as steps, which are checked.
       if (event.ctrlKey || event.metaKey || event.altKey || view.composing) return false;
@@ -274,6 +280,10 @@ export function createEditorBinding(
         return false;
       },
       beforeinput: (_view, event) => {
+        if (selectionLeaves()) {
+          event.preventDefault();
+          return true;
+        }
         const { inputType } = event as InputEvent;
         if (inputType === 'historyUndo' || inputType === 'historyRedo') {
           event.preventDefault();
@@ -292,7 +302,13 @@ export function createEditorBinding(
       },
       paste: (_view, event) => {
         event.preventDefault();
-        paste(event.clipboardData?.getData('text/plain') ?? '');
+        if (!selectionLeaves()) paste(event.clipboardData?.getData('text/plain') ?? '');
+        return true;
+      },
+      // Cutting across two diaries would delete from both; copying stays allowed.
+      cut: (_view, event) => {
+        if (!selectionLeaves()) return false;
+        event.preventDefault();
         return true;
       },
       // Dropping would move or copy text past the paste rules; dragging out still copies.
@@ -315,6 +331,13 @@ export function createEditorBinding(
       },
     },
   });
+
+  /** Whether the page's selection runs from inside this editor to outside it, or back. */
+  function selectionLeaves(): boolean {
+    const selection = view.dom.ownerDocument.getSelection();
+    if (!selection?.rangeCount) return false;
+    return view.dom.contains(selection.anchorNode) !== view.dom.contains(selection.focusNode);
+  }
 
   /** Tells `onCaret` where the user's own caret is, after the user moved it. */
   function reportCaret(tr: Transaction) {
