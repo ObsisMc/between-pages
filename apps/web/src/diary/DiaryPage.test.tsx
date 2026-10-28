@@ -136,3 +136,83 @@ describe('DiaryPage', () => {
     expect(editor.textContent).toContain('远端');
   });
 });
+
+describe('a shared diary', () => {
+  const EPOCH = 'e1e1e1e1-0000-4000-8000-000000000001';
+  const PARTNER = '6f1c1d0e-0000-4000-8000-000000000002';
+  const BOB_CLIENT = 77;
+
+  /** The partner Bob's diary as Alice may read it, in the given share state. */
+  function sharedResponse(share: 'live' | 'frozen') {
+    const doc = createDiaryDoc();
+    doc.clientID = BOB_CLIENT;
+    doc.getText(BODY).insert(0, '鲍勃的字');
+    return () =>
+      Response.json({
+        diary: {
+          diaryId: DIARY,
+          diaryDate: '2026-10-27',
+          ownerId: PARTNER,
+          epochId: EPOCH,
+          share,
+          generationId: GENERATION,
+          seq: 0,
+          state: Buffer.from(Y.encodeStateAsUpdate(doc)).toString('base64'),
+          bindings: [{ clientId: BOB_CLIENT, userId: PARTNER }],
+        },
+      });
+  }
+
+  function openShared(share: 'live' | 'frozen') {
+    vi.stubGlobal('WebSocket', FakeSocket);
+    vi.stubGlobal('navigator', { locks: stubLocks(), clipboard });
+    stubApi({
+      'GET /api/me': signedIn('alice'),
+      'GET /api/spaces': () =>
+        Response.json({
+          spaces: [
+            {
+              id: '2b0c1a9e-1111-4a2b-8c3d-4e5f6a7b8c9d',
+              createdAt: '2026-10-01T08:00:00.000Z',
+              state: 'active',
+              participants: [
+                { user: { id: USER, displayName: 'alice' }, authorSlot: 1 },
+                { user: { id: PARTNER, displayName: 'bob' }, authorSlot: 2 },
+              ],
+            },
+          ],
+        }),
+      [`GET /api/diaries/${DIARY}/shares/${EPOCH}`]: sharedResponse(share),
+      [`GET /api/diaries/${DIARY}/read`]: () => Response.json({ ranges: [] }),
+    });
+    renderAt(`/diaries/${DIARY}/shares/${EPOCH}`);
+  }
+
+  it('[adr:diary-collaboration-kernel#11] shows a frozen share read-only, says it no longer updates, and opens no socket', async () => {
+    openShared('frozen');
+
+    expect(await screen.findByText('已停止共享，内容不再更新')).toBeDefined();
+    const editor = await screen.findByRole('textbox');
+    await waitFor(() => expect(editor.textContent).toBe('鲍勃的字'));
+    expect(editor.getAttribute('contenteditable')).toBe('false');
+    expect(FakeSocket.all).toHaveLength(0);
+  });
+
+  it('colors the text by its author’s slot, names both in a legend, and filters to the own text', async () => {
+    openShared('live');
+    const editor = await screen.findByRole('textbox');
+    await waitFor(() =>
+      expect(editor.querySelector('.author-slot-2')?.textContent).toBe('鲍勃的字'),
+    );
+    const legend = screen.getByLabelText('作者');
+    expect(within(legend).getByText('alice').className).toBe('author-slot-1');
+    expect(within(legend).getByText('bob').className).toBe('author-slot-2');
+    expect(FakeSocket.all.at(-1)?.sent[0]).toMatchObject({ type: 'subscribe', epochId: EPOCH });
+
+    fireEvent.click(screen.getByLabelText('只看我的文字'));
+    await waitFor(() =>
+      expect(editor.querySelector('.author-hidden')?.textContent).toBe('鲍勃的字'),
+    );
+    expect(editor.getAttribute('contenteditable')).toBe('false');
+  });
+});

@@ -368,6 +368,22 @@ describe('journal', () => {
       expect((await journal.load(DIARY)).baseline?.generationId).toBe(NEXT);
     });
 
+    it('[adr:diary-collaboration-kernel#20] retires a frozen share: committed input saved, the rest drafts, the baseline kept', async () => {
+      const { journal } = await setup();
+      const a = writer();
+      await journal.append(DIARY, GENERATION, a.type('冻结前'));
+      const batch = (await journal.nextBatch(DIARY))!;
+      await journal.append(DIARY, GENERATION, a.type('冻结后'));
+
+      const drafts = await journal.retire(DIARY, async () => receiptOf(batch, 1));
+
+      expect(drafts.map((d) => d.intent)).toEqual(['冻结后']);
+      const { baseline, pending, batch: left } = await journal.load(DIARY);
+      expect(baseline?.generationId).toBe(GENERATION);
+      expect([pending, left]).toEqual([[], null]);
+      expect(await journal.retire(DIARY, () => Promise.reject(new Error('not asked')))).toEqual([]);
+    });
+
     it('changes nothing when the receipt cannot be fetched, and carries the epoch into batches', async () => {
       const { journal } = await setup();
       await journal.append(DIARY, GENERATION, writer().type('等'));

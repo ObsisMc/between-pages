@@ -147,3 +147,88 @@ test('K8 K7 opening while another device is offline: committed input stays text,
   expect(await serverText(a1, diaryId)).toBe('公开的字甲');
   expect(await partnerText(b, spaceId)).toBe('公开的字甲');
 });
+
+test('EDIT-13 EDIT-14 TIME-03 K11 the partner reads and writes a shared diary in real time, then keeps it read-only once it stops', async ({
+  browser,
+  browserName,
+}) => {
+  test.setTimeout(120_000);
+  const name = (who: string) => `${who}${browserName}${run}`;
+
+  // A shares every date (the invitation default); B shares nothing.
+  const a = await signedIn(browser, name('pa'));
+  await a.getByRole('button', { name: '生成邀请链接' }).click();
+  const link = await a.getByLabel('邀请链接').inputValue();
+  const b = await signedIn(browser, name('pb'));
+  await b.goto(link);
+  await b.getByLabel('暂不设置').check();
+  await b.getByRole('button', { name: '接受邀请' }).click();
+  await expect(b).toHaveURL(/\/spaces\/[0-9a-f-]{36}$/);
+  const spaceId = new URL(b.url()).pathname.split('/').at(-1)!;
+
+  await a.goto('/');
+  await a.getByRole('button', { name: '写今天' }).click();
+  await expect(a).toHaveURL(/\/diaries\/[0-9a-f-]{36}$/);
+  const ownDiary = a.url();
+  await typeAtEnd(a, 'A的字');
+  await saved(a);
+
+  // B finds it on the home page and opens it as a live share.
+  await b.goto('/');
+  const shared = b.getByRole('region', { name: `${name('pa')} 共享的日记` });
+  await shared.getByRole('link', { name: /A的字/ }).click();
+  await expect(b).toHaveURL(/\/diaries\/[0-9a-f-]{36}\/shares\/[0-9a-f-]{36}$/);
+  await expect(editor(b)).toHaveText('A的字');
+  const legend = b.getByLabel('作者');
+  await expect(legend).toContainText(name('pa'));
+  await expect(legend).toContainText(name('pb'));
+
+  // B writes; A sees it live, each author in their own color.
+  await typeAtEnd(b, 'B的字');
+  await saved(b);
+  await expect(editor(a)).toHaveText('A的字B的字');
+  const colorOf = (page: Page, text: string) =>
+    page.locator('.diary-editor [class*="author-slot"]', { hasText: text }).getAttribute('class');
+  expect(await colorOf(a, 'A的字')).toBe(await colorOf(b, 'A的字'));
+  expect(await colorOf(b, 'A的字')).not.toBe(await colorOf(b, 'B的字'));
+
+  // TIME-03: a click names the author and the time written.
+  await b.locator('.diary-editor [class*="author-slot"]', { hasText: 'A的字' }).click();
+  await expect(b.locator('.author-info')).toContainText(`${name('pa')} 写于`);
+
+  // EDIT-14: only the own text, read-only, then everything again.
+  await b.getByLabel('只看我的文字').check();
+  await expect(editor(b)).toHaveAttribute('contenteditable', 'false');
+  await expect(b.locator('.diary-editor .author-hidden')).toHaveText('A的字');
+  await b.getByLabel('只看我的文字').uncheck();
+  await expect(editor(b)).toHaveAttribute('contenteditable', 'true');
+
+  // K11: B reads the history it is allowed to.
+  await b.getByRole('button', { name: '历史' }).click();
+  const points = b.getByRole('complementary', { name: '历史版本' }).getByRole('button');
+  await expect(points.first()).toBeVisible({ timeout: 15_000 });
+  await points.first().click();
+  await expect(
+    b.getByRole('region', { name: '历史版本预览' }).locator('.history-text'),
+  ).toContainText('A的字');
+  await b.getByRole('button', { name: '返回当前正文' }).click();
+
+  // A stops sharing: B keeps the frozen text read-only and hears nothing private after it.
+  await a.goto('/');
+  await a.getByRole('link', { name: `与 ${name('pb')} 的空间` }).click();
+  await a.getByLabel('自选日期').check();
+  await a.getByRole('button', { name: '保存范围' }).click();
+  await expect(a.getByText(/^将停止更新：/)).toBeVisible();
+  await a.getByRole('button', { name: '确认保存' }).click();
+  await expect(a.getByText(/（已为本次绑定确认，正在共享）/)).toBeVisible();
+  await expect(b.getByText('已停止共享，内容不再更新')).toBeVisible({ timeout: 15_000 });
+  await expect(editor(b)).toHaveAttribute('contenteditable', 'false');
+
+  await a.goto(ownDiary);
+  await expect(editor(a)).toHaveText('A的字B的字');
+  await typeAtEnd(a, '私密');
+  await saved(a);
+  // What B may read is the frozen version, whatever the socket did meanwhile.
+  expect(await partnerText(b, spaceId)).toBe('A的字B的字');
+  await expect(editor(b)).toHaveText('A的字B的字');
+});

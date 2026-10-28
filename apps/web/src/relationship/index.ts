@@ -5,4 +5,5 @@ export {
   refusalText,
   relationshipKeys,
   useBinding,
+  useSpaces,
 } from './queries.ts';

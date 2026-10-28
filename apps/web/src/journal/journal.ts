@@ -104,6 +104,14 @@ export type Journal<Intent = unknown> = {
     receiptOf: (batchId: string) => Promise<CommitReceipt | null>,
   ): Promise<Draft<Intent>[]>;
   /**
+   * As `switchTo` for a context that ended without a next one, such as a share that froze:
+   * the queue is settled the same way and the baseline stays. Returns the drafts made.
+   */
+  retire(
+    diaryId: string,
+    receiptOf: (batchId: string) => Promise<CommitReceipt | null>,
+  ): Promise<Draft<Intent>[]>;
+  /**
    * Stores one operation behind the last one. Written against a generation that is no
    * longer current, it becomes a draft instead and is never sent (D7, old tabs).
    */
@@ -235,6 +243,55 @@ export async function openJournal<Intent = unknown>(userId: string): Promise<Jou
     return { record, pending, batch, key };
   };
 
+  /**
+   * Settles the queue of a context that ended (kernel D7): committed input of the
+   * unconfirmed batch is dropped as saved, the rest becomes drafts, and `next` (another
+   * context) is installed in the same transaction; null keeps the baseline as it is.
+   */
+  async function reconcile(
+    diaryId: string,
+    receiptOf: (batchId: string) => Promise<CommitReceipt | null>,
+    next: Baseline | null,
+  ): Promise<Draft<Intent>[]> {
+    const settled = (record: BaselineRecord | undefined) =>
+      next ? !record || sameContext(record, next) : !record;
+    for (;;) {
+      const seen = await run([BASELINES, PENDING, BATCHES], 'readonly', (tx) =>
+        queueOf(tx, diaryId),
+      );
+      if (settled(seen.record)) {
+        if (next) await install(next);
+        return [];
+      }
+      if (!next && !seen.batch && !seen.pending.length) return [];
+      // Outside any transaction: IndexedDB commits a transaction left idle over a fetch.
+      const receipt = seen.batch ? await receiptOf(seen.batch.batchId) : null;
+      const drafts = await run(
+        [BASELINES, PENDING, BATCHES, RECEIPTS, DRAFTS],
+        'readwrite',
+        async (tx) => {
+          const now = await queueOf(tx, diaryId);
+          if (now.key !== seen.key || settled(now.record)) return null;
+          const saved = new Set(receipt ? now.batch!.operations.map((op) => op.localSequence) : []);
+          for (const op of now.pending) tx.objectStore(PENDING).delete([diaryId, op.localSequence]);
+          tx.objectStore(BATCHES).delete(diaryId);
+          tx.objectStore(RECEIPTS).delete(receiptsOf(diaryId));
+          if (next)
+            tx.objectStore(BASELINES).put({
+              ...next,
+              nextSequence: now.record!.nextSequence,
+            } satisfies BaselineRecord);
+          return toDrafts(
+            tx,
+            now.pending.filter((op) => !saved.has(op.localSequence)),
+            'stale-generation',
+          );
+        },
+      );
+      if (drafts) return drafts;
+    }
+  }
+
   return {
     load: (diaryId) =>
       run([BASELINES, PENDING, BATCHES], 'readonly', async (tx) => {
@@ -250,44 +307,9 @@ export async function openJournal<Intent = unknown>(userId: string): Promise<Jou
 
     install,
 
-    async switchTo(server, receiptOf) {
-      for (;;) {
-        const seen = await run([BASELINES, PENDING, BATCHES], 'readonly', (tx) =>
-          queueOf(tx, server.diaryId),
-        );
-        if (!seen.record || sameContext(seen.record, server)) {
-          await install(server);
-          return [];
-        }
-        // Outside any transaction: IndexedDB commits a transaction left idle over a fetch.
-        const receipt = seen.batch ? await receiptOf(seen.batch.batchId) : null;
-        const drafts = await run(
-          [BASELINES, PENDING, BATCHES, RECEIPTS, DRAFTS],
-          'readwrite',
-          async (tx) => {
-            const now = await queueOf(tx, server.diaryId);
-            if (now.key !== seen.key || !now.record || sameContext(now.record, server)) return null;
-            const saved = new Set(
-              receipt ? now.batch!.operations.map((op) => op.localSequence) : [],
-            );
-            for (const op of now.pending)
-              tx.objectStore(PENDING).delete([server.diaryId, op.localSequence]);
-            tx.objectStore(BATCHES).delete(server.diaryId);
-            tx.objectStore(RECEIPTS).delete(receiptsOf(server.diaryId));
-            tx.objectStore(BASELINES).put({
-              ...server,
-              nextSequence: now.record.nextSequence,
-            } satisfies BaselineRecord);
-            return toDrafts(
-              tx,
-              now.pending.filter((op) => !saved.has(op.localSequence)),
-              'stale-generation',
-            );
-          },
-        );
-        if (drafts) return drafts;
-      }
-    },
+    switchTo: (server, receiptOf) => reconcile(server.diaryId, receiptOf, server),
+
+    retire: (diaryId, receiptOf) => reconcile(diaryId, receiptOf, null),
 
     append: (diaryId, generationId, operation) =>
       run([BASELINES, PENDING, DRAFTS], 'readwrite', async (tx) => {

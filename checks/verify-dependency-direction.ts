@@ -93,7 +93,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       routes: ['auth', 'pages', 'diary', 'join', 'space'],
       api: [],
       auth: ['api'],
-      pages: ['api', 'auth', 'diary-list', 'join', 'relationship'],
+      pages: ['api', 'auth', 'diary-list', 'join', 'relationship', 'shared-diaries'],
       'editor-binding': [],
       journal: [],
       sender: ['journal'],
@@ -103,7 +103,8 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       'sharing-range': [],
       relationship: ['api', 'sharing-range'],
       join: ['api', 'auth', 'relationship', 'sharing-range'],
-      space: ['api', 'auth', 'relationship', 'sharing-range'],
+      space: ['api', 'auth', 'relationship', 'sharing-range', 'shared-diaries'],
+      'shared-diaries': ['api'],
       diary: [
         'api',
         'auth',
