@@ -1,0 +1,6 @@
+# Test-only overlay on compose.backup.yaml: WAL-G writes to a local directory instead of R2
+# (backup.docker.test.ts).
+services:
+  postgres:
+    volumes:
+      - ${BACKUP_FILE_DIR}:/backup

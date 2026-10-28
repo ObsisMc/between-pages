@@ -1,0 +1,12 @@
+# Daily backup of the live database (ops/backup/README.md). Set WorkingDirectory to the
+# server checkout and ExecStart to its Node 26 binary (`nvm which 26`).
+[Unit]
+Description=Between Pages daily database backup
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/ubuntu/codebase/between-pages
+EnvironmentFile=/etc/between-pages/backup.env
+ExecStart=/home/ubuntu/.nvm/versions/node/v26.12.1/bin/node ops/backup/backup.ts

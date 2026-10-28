@@ -1,0 +1,24 @@
+# Overlay for the PostgreSQL that holds real diaries (server-backup-and-google-docs D2):
+#   COMPOSE_FILE=compose.yaml:ops/backup/compose.backup.yaml docker compose up -d --build postgres
+# Same data volume as compose.yaml; adds WAL-G, continuous archiving and the backup env file.
+# Development and tests keep using compose.yaml alone.
+services:
+  postgres:
+    image: between-pages-postgres-walg:3.0.9
+    build: ./ops/backup
+    env_file: ${BACKUP_ENV_FILE:-/etc/between-pages/backup.env}
+    environment:
+      # What WAL-G connects as for backup-push, and psql inside the container.
+      PGHOST: /var/run/postgresql
+      PGUSER: between_pages
+      PGDATABASE: between_pages
+    command:
+      - postgres
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_command=wal-g wal-push %p
+      # About a minute between uploads while there are changes; none while idle.
+      - -c
+      - archive_timeout=60
+    restart: unless-stopped
