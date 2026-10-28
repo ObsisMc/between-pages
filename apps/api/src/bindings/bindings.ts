@@ -8,6 +8,8 @@ import type {
   SpaceRow,
 } from '../store/relations.ts';
 import { normalizeSelection, sameSelection } from '../sharing/selection.ts';
+import type { Prepared } from '../sharing/open.ts';
+import { refusingFailedOpen, type OpenRefusal, type SharingService } from '../sharing/sharing.ts';
 
 // Invitations, binding, unbinding and the caller's spaces (spaces-and-invitations D2, D5,
 // D8, D9). The caller always comes from the session. Every flow that writes locks the users
@@ -103,7 +105,7 @@ async function spaceSummary(queries: RelationQueries, row: SpaceRow): Promise<Sp
 const isParticipant = (row: SpaceRow, userId: string) =>
   row.userLow === userId || row.userHigh === userId;
 
-export function createBindingService(relations: RelationStore) {
+export function createBindingService(relations: RelationStore, sharing: SharingService) {
   return {
     /** The caller's current binding and their latest open invitation. */
     binding(
@@ -215,56 +217,87 @@ export function createBindingService(relations: RelationStore) {
     /**
      * Binds the caller to the inviter in one transaction (D9): space found or created, a
      * new period with both current bindings, the invitation consumed, both people's other
-     * invitations closed, and each confirmed selection stored for the new period. Any
-     * failure rolls all of it back; success is returned only after COMMIT.
+     * invitations closed, and each confirmed selection stored for the new period and
+     * opened (kernel D5: the binding transaction is the opening's phase 2; phase 1 builds
+     * both people's baselines before it). Any failure rolls all of it back, a diary
+     * without a clean baseline as SHARE_OPEN_FAILED; success is returned only after COMMIT.
      */
     async accept(
       caller: string,
       input: { token: string; sharingSelection: DateSelection | null },
       now: Date,
-    ): Promise<{ binding: Binding; restored: boolean } | Refusal> {
+    ): Promise<{ binding: Binding; restored: boolean } | Refusal | OpenRefusal> {
       const tokenHash = hashToken(input.token);
       const found = await relations.read((queries) => queries.invitationByTokenHash(tokenHash));
       if (!found) return 'INVITE_INVALID';
       const selection = input.sharingSelection && normalizeSelection(input.sharingSelection);
-      return relations.withUsersLocked([found.createdBy, caller], async (locked) => {
-        const row = await locked.invitation(found.id);
-        const refusal =
-          invitationRefusal(row, caller, now) ??
-          (await pairRefusal(locked, row!.createdBy, caller));
-        if (refusal) return refusal;
-        const inviter = row!.createdBy;
-        const existing = await locked.spaceOfPair(inviter, caller);
-        const space = existing
-          ? (await locked.lockSpace(existing.id))!
-          : await locked.insertSpace(inviter, caller, now);
-        const periodId = await locked.startPeriod(space, now);
-        await locked.acceptInvitation(row!.id, caller, now);
-        await locked.closeOpenInvitations([inviter, caller], now);
-        for (const [ownerId, chosen, requestId] of [
-          [inviter, row!.confirmedSelection, row!.requestId],
-          [caller, selection, row!.id],
-        ] as const) {
-          if (chosen)
-            await locked.confirmSelection({
-              spaceId: space.id,
-              ownerId,
-              periodId,
-              requestId,
-              selection: chosen,
-              at: now,
-            });
-          else await locked.ensurePolicy(space.id, ownerId);
-        }
-        return {
-          binding: { space: await spaceSummary(locked, space), periodId },
-          restored: existing !== null,
-        };
-      });
+      const early =
+        invitationRefusal(found, caller, now) ??
+        (await relations.read((queries) => pairRefusal(queries, found.createdBy, caller)));
+      if (early) return early;
+      const prepared = new Map<string, Prepared>();
+      for (const [ownerId, chosen] of [
+        [found.createdBy, found.confirmedSelection],
+        [caller, selection],
+      ] as const) {
+        if (!chosen) continue;
+        const built = await sharing.prepare(ownerId, chosen);
+        if (built.failed.length) return { code: 'SHARE_OPEN_FAILED', dates: built.failed };
+        prepared.set(ownerId, built.prepared);
+      }
+      return refusingFailedOpen(() =>
+        relations.withUsersLocked([found.createdBy, caller], async (locked) => {
+          const row = await locked.invitation(found.id);
+          const refusal =
+            invitationRefusal(row, caller, now) ??
+            (await pairRefusal(locked, row!.createdBy, caller));
+          if (refusal) return refusal;
+          const inviter = row!.createdBy;
+          const existing = await locked.spaceOfPair(inviter, caller);
+          const space = existing
+            ? (await locked.lockSpace(existing.id))!
+            : await locked.insertSpace(inviter, caller, now);
+          const periodId = await locked.startPeriod(space, now);
+          await locked.acceptInvitation(row!.id, caller, now);
+          await locked.closeOpenInvitations([inviter, caller], now);
+          const choices = [
+            [inviter, row!.confirmedSelection, row!.requestId],
+            [caller, selection, row!.id],
+          ] as const;
+          for (const [ownerId, chosen, requestId] of choices) {
+            if (chosen)
+              await locked.confirmSelection({
+                spaceId: space.id,
+                ownerId,
+                periodId,
+                requestId,
+                selection: chosen,
+                at: now,
+              });
+            else await locked.ensurePolicy(space.id, ownerId);
+          }
+          // Diary rows lock last, after both policies (kernel D9).
+          for (const [ownerId, chosen] of choices)
+            if (chosen)
+              await sharing.apply(locked, {
+                ownerId,
+                space,
+                periodId,
+                selection: chosen,
+                prepared: prepared.get(ownerId)!,
+                at: now,
+              });
+          return {
+            binding: { space: await spaceSummary(locked, space), periodId },
+            restored: existing !== null,
+          };
+        }),
+      );
     },
 
     /**
-     * Ends `expectedPeriodId` for both participants. Repeating it for a period that already
+     * Ends `expectedPeriodId` for both participants and freezes every live share of the
+     * space in the same transaction (kernel D5). Repeating it for a period that already
      * ended returns that result again and never touches a later period (D9).
      */
     async unbind(
@@ -282,6 +315,7 @@ export function createBindingService(relations: RelationStore) {
         if (!period.endedAt) {
           await locked.endPeriod(period.id, caller, now);
           await locked.closeOpenInvitations([space.userLow, space.userHigh], now);
+          await sharing.freezeSpace(locked, space.id, now);
         }
         return { spaceId: space.id, closedPeriodId: period.id };
       });

@@ -24,12 +24,18 @@ export const ErrorCode = z.enum([
   'PARTNER_FIXED',
   'PERIOD_CLOSED',
   'POLICY_CONFLICT',
+  'SHARE_OPEN_FAILED',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
 
 export const ApiErrorBody = z
   .object({
-    error: z.object({ code: ErrorCode, message: z.string() }),
+    error: z.object({
+      code: ErrorCode,
+      message: z.string(),
+      /** SHARE_OPEN_FAILED only: the diary dates whose clean baseline could not be built. */
+      dates: z.array(z.iso.date()).optional(),
+    }),
   })
   .meta({ id: 'ApiErrorBody' });
 export type ApiErrorBody = z.infer<typeof ApiErrorBody>;
@@ -56,6 +62,7 @@ export const errorStatus = {
   PARTNER_FIXED: 409,
   PERIOD_CLOSED: 409,
   POLICY_CONFLICT: 409,
+  SHARE_OPEN_FAILED: 409,
 } as const satisfies Record<ErrorCode, number>;
 
 /**
@@ -91,4 +98,6 @@ export const errorCategory = {
   PARTNER_FIXED: 'show',
   PERIOD_CLOSED: 'show',
   POLICY_CONFLICT: 'show',
+  // Kernel D5: nothing opened; the screen names the failing dates.
+  SHARE_OPEN_FAILED: 'show',
 } as const satisfies Record<ErrorCode, ErrorCategory>;

@@ -432,6 +432,34 @@ describe.runIf(testDatabaseUrl)('sharing ranges', () => {
     });
   });
 
+  it('[adr:diary-collaboration-kernel#17] answers SHARE_OPEN_FAILED with the failing dates and stores nothing', async () => {
+    const a = await person();
+    const b = await person();
+    // B confirmed October when binding, so September is private until B saves ALL.
+    const { binding } = await bind(a, b);
+    const opened = await send(b, 'POST', routes.openDiary.path, {
+      timezone: 'Asia/Shanghai',
+      date: '2026-09-15',
+    });
+    const { diary } = routes.openDiary.response.parse(opened.json());
+    await query("update diary_generations set baseline_sha256 = '\\x00' where diary_id = $1", [
+      diary.diaryId,
+    ]);
+
+    const res = await save(b, binding.space.id, {
+      expectedPeriodId: binding.periodId,
+      expectedRevision: 1,
+      selection: ALL,
+    });
+
+    expect(res.statusCode).toBe(409);
+    expect(ApiErrorBody.parse(res.json()).error).toMatchObject({
+      code: 'SHARE_OPEN_FAILED',
+      dates: ['2026-09-15'],
+    });
+    expect(await mySharing(b, binding.space.id)).toMatchObject({ revision: 1, selection: OCTOBER });
+  });
+
   it('[adr:spaces-and-invitations#8] returns a retried save, refuses a changed one and an outdated revision', async () => {
     const a = await person();
     const b = await person();

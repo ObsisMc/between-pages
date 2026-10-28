@@ -25,8 +25,12 @@ export function openTestStore() {
   return { store: createStore(database.db), close: () => database.close() };
 }
 
-/** The relationship store over its own pool on the test database. The caller closes it. */
+/** The relationship and diary stores over one pool of their own on the test database. The caller closes it. */
 export function openTestRelationStore() {
   const database = createDb(testDatabaseUrl!);
-  return { relations: createRelationStore(database.db), close: () => database.close() };
+  return {
+    relations: createRelationStore(database.db),
+    store: createStore(database.db),
+    close: () => database.close(),
+  };
 }

@@ -1,8 +1,10 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { and, asc, desc, eq, gt, inArray, lt, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNotNull, lt, lte, sql } from 'drizzle-orm';
 import * as Y from 'yjs';
 import { createDiaryDoc, type CharacterRange } from '@between-pages/collab';
+import type { DateSelection } from '@between-pages/contracts';
 import type { Db } from '../db/client.ts';
+import { EpochQueries, LockedBoundaries } from './boundaries.ts';
 import { VersionUnreadable } from '../errors.ts';
 import {
   backupOutbox,
@@ -21,7 +23,7 @@ export const COMMIT_LOCK_TIMEOUT = '5s';
 /** A full state is kept every this many versions (kernel ADR D9, "未解决的问题"). */
 export const SNAPSHOT_EVERY = 100;
 
-type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
 export type DiaryRow = {
   id: string;
@@ -105,6 +107,11 @@ export class DiaryQueries {
     this.tx = tx;
   }
 
+  /** Share epochs and sharing context, in this same transaction. */
+  get epochs(): EpochQueries {
+    return new EpochQueries(this.tx);
+  }
+
   async findDiary(diaryId: string): Promise<DiaryRow | null> {
     const [row] = await this.tx.select(diaryColumns).from(diaries).where(eq(diaries.id, diaryId));
     return row ?? null;
@@ -112,7 +119,8 @@ export class DiaryQueries {
 
   /**
    * The owner's diaries dated before `before` (all when null), newest date first, at most
-   * `limit`; `updatedAt` is the last commit, or the creation time before any.
+   * `limit`; `updatedAt` is the last written batch, or the creation time before any. An
+   * opening's baseline commit writes no text, so it does not count.
    */
   async ownedDiaries(
     ownerId: string,
@@ -120,7 +128,7 @@ export class DiaryQueries {
     limit: number,
   ): Promise<(DiaryRow & { updatedAt: Date })[]> {
     const lastCommit = sql`(select ${diaryCommits.committedAt} from ${diaryCommits}
-      where ${diaryCommits.diaryId} = ${diaries.id}
+      where ${diaryCommits.diaryId} = ${diaries.id} and ${isNotNull(diaryCommits.batchId)}
       order by ${diaryCommits.version} desc limit 1)`;
     return this.tx
       .select({
@@ -471,13 +479,16 @@ export function createStore(db: Db) {
      * Locks the owner's users row FOR KEY SHARE before inserting (kernel D9), so a
      * concurrent sharing change that locks it FOR UPDATE sees this diary on one side of
      * its transaction; the (owner, date) unique key makes concurrent creators converge on
-     * one row.
+     * one row. A new diary whose date `sharedOn` the selection the owner confirmed for
+     * their open binding opens to the partner in the same transaction (spaces-and-invitations
+     * D3: a selected date shares diaries written later); without `sharedOn` it stays private.
      */
     async openPersonal(input: {
       ownerId: string;
       diaryDate: string;
       timezone: string;
       baseline: Uint8Array;
+      sharedOn?: (selection: DateSelection, diaryDate: string) => boolean;
     }): Promise<{ created: boolean; diaryId: string }> {
       return db.transaction(async (tx) => {
         await tx
@@ -506,6 +517,24 @@ export function createStore(db: Db) {
             baseline: input.baseline,
             baselineSha256: digest(input.baseline),
           });
+          const context =
+            input.sharedOn && (await new EpochQueries(tx).sharingContext(input.ownerId));
+          if (context && input.sharedOn!(context.selection, input.diaryDate))
+            await new LockedBoundaries(tx).open(
+              [
+                {
+                  diary: {
+                    id: diaryId,
+                    ownerId: input.ownerId,
+                    diaryDate: input.diaryDate,
+                    generationId,
+                    version: 0,
+                  },
+                  baseline: input.baseline,
+                },
+              ],
+              { ...context, newGeneration: false, at: new Date() },
+            );
           return { created: true, diaryId };
         }
         const [existing] = await tx

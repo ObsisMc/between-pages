@@ -179,7 +179,7 @@ export const routes = {
     method: 'POST',
     path: '/api/binding/invitations/accept',
     summary:
-      'Bind the caller to the inviter, storing each confirmed sharing range; publishes no diary text.',
+      "Bind the caller to the inviter, storing each confirmed sharing range and opening that person's covered diaries to the other.",
     access: 'user',
     body: AcceptInvitationRequest,
     response: AcceptInvitationResponse,
@@ -205,7 +205,7 @@ export const routes = {
     method: 'PUT',
     path: '/api/spaces/:spaceId/my-sharing',
     summary:
-      "Confirm the caller's sharing range for the open period; configures a range and publishes no diary text.",
+      "Confirm the caller's sharing range for the open period, opening covered diaries to the partner and freezing ones no longer covered.",
     access: 'user',
     params: SpaceParams,
     body: SaveMySharingRequest,

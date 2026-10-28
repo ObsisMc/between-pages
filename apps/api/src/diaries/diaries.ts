@@ -1,6 +1,7 @@
 import * as Y from 'yjs';
 import { BODY, createDiaryDoc } from '@between-pages/collab';
 import { VersionUnreadable } from '../errors.ts';
+import { covers } from '../sharing/selection.ts';
 import type { Store } from '../store/store.ts';
 
 /** The owner's view of a diary's current generation (kernel D10 "打开个人日记"). */
@@ -74,8 +75,9 @@ export function createDiaryService(store: Store) {
   return {
     /**
      * Opens the owner's diary for `date`, or for today in `timezone` from the server's
-     * UTC clock, never the device's (spec §4); creates it when missing. A future date is
-     * refused: the first release does not create diaries ahead (spec §4.6).
+     * UTC clock, never the device's (spec §4); creates it when missing, opened to the
+     * partner when the owner's confirmed range covers its date (kernel D5). A future date
+     * is refused: the first release does not create diaries ahead (spec §4.6).
      */
     async open(
       owner: string,
@@ -88,6 +90,7 @@ export function createDiaryService(store: Store) {
         diaryDate,
         timezone: request.timezone,
         baseline: EMPTY_BASELINE,
+        sharedOn: covers,
       });
       return { created, diary: (await view(owner, diaryId))! };
     },

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { openTestRelationStore, testDatabaseUrl } from '../../test/db.ts';
 import { createUser } from '../../test/diary.ts';
+import { createSharingService } from '../sharing/sharing.ts';
 import { INVITATION_TTL_MS, createBindingService, type BindingService } from './bindings.ts';
 
 // The invitation clock without the transport: the seven-day limit and its equal boundary
@@ -12,7 +13,10 @@ let bindings: BindingService;
 beforeAll(() => {
   if (!testDatabaseUrl) return;
   opened = openTestRelationStore();
-  bindings = createBindingService(opened.relations);
+  bindings = createBindingService(
+    opened.relations,
+    createSharingService(opened.relations, opened.store),
+  );
 });
 afterAll(async () => {
   await opened?.close();
