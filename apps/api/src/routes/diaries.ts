@@ -4,6 +4,7 @@ import type { CommitService } from '../commit/commit.ts';
 import type { DiaryService, DiaryView } from '../diaries/diaries.ts';
 import { sendError } from '../errors.ts';
 import type { HistoryService } from '../history/history.ts';
+import type { Reader, SharedView } from '../reader/reader.ts';
 import type { ContractRequest } from './contract.ts';
 
 const base64 = (bytes: Uint8Array) => Buffer.from(bytes).toString('base64');
@@ -13,6 +14,20 @@ function diaryState(view: DiaryView): ResponseOf<'diary'>['diary'] {
     diaryId: view.diaryId,
     diaryDate: view.diaryDate,
     ownerId: view.ownerId,
+    generationId: view.generationId,
+    seq: view.seq,
+    state: base64(view.state),
+    bindings: [...view.bindings].map(([clientId, userId]) => ({ clientId, userId })),
+  };
+}
+
+function sharedState(view: SharedView): ResponseOf<'sharedDiary'>['diary'] {
+  return {
+    diaryId: view.diaryId,
+    diaryDate: view.diaryDate,
+    ownerId: view.ownerId,
+    epochId: view.epochId,
+    share: view.share,
     generationId: view.generationId,
     seq: view.seq,
     state: base64(view.state),
@@ -31,12 +46,15 @@ const receiptBody = (receipt: {
 
 const notFound = (reply: FastifyReply) => sendError(reply, 'NOT_FOUND', 'No such diary');
 
-// Personal diary routes (kernel D10). Run after requireUser, so request.user is set; the
-// owner comes from the session, never from the request.
+// Diary routes (kernel D10): the owner's personal entry, and the partner's shared entry
+// through the authorized-state reader (D17). Run after requireUser, so request.user is
+// set; the viewer comes from the session, never from the request. A diary or epoch the
+// viewer may not read answers like one that does not exist.
 export function diaryHandlers(services: {
   diaries: DiaryService;
   commit: CommitService;
   history: HistoryService;
+  reader: Reader;
 }) {
   return {
     async diaries(request: ContractRequest<'diaries'>) {
@@ -84,6 +102,39 @@ export function diaryHandlers(services: {
         nextCursor: page.nextCursor,
         nextPointInMs: page.nextPointInMs,
       };
+    },
+
+    async sharedDiaries(request: ContractRequest<'sharedDiaries'>, reply: FastifyReply) {
+      reply.header('cache-control', 'no-store');
+      const page = await services.reader.sharedDiaries(
+        request.user!.id,
+        request.params.spaceId,
+        request.query.before,
+      );
+      if (!page) return sendError(reply, 'NOT_FOUND', 'No such space');
+      return {
+        diaries: page.diaries.map((d) => ({ ...d, updatedAt: d.updatedAt.toISOString() })),
+        nextBefore: page.nextBefore,
+      };
+    },
+
+    async sharedDiary(request: ContractRequest<'sharedDiary'>, reply: FastifyReply) {
+      const { diaryId, epochId } = request.params;
+      const view = await services.reader.open(request.user!.id, diaryId, epochId);
+      return view ? { diary: sharedState(view) } : notFound(reply);
+    },
+
+    async character(request: ContractRequest<'character'>, reply: FastifyReply) {
+      const { diaryId, clientId, clock } = request.params;
+      const info = await services.reader.character(
+        request.user!.id,
+        diaryId,
+        request.query.epochId,
+        clientId,
+        clock,
+      );
+      if (!info) return sendError(reply, 'NOT_FOUND', 'No such character');
+      return { ...info, writtenAt: info.writtenAt.toISOString() };
     },
 
     async historyVersion(request: ContractRequest<'historyVersion'>, reply: FastifyReply) {

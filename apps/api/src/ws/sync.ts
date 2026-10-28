@@ -12,8 +12,9 @@ import {
 import { requireOrigin, requireUser, type CurrentUser } from '../auth/guards.ts';
 import type { CommitService } from '../commit/commit.ts';
 import type { DiaryService } from '../diaries/diaries.ts';
-import type { CommittedEvent, Events } from '../events/events.ts';
+import type { CommittedEvent, DiaryEvent, Events } from '../events/events.ts';
 import { VersionUnreadable } from '../errors.ts';
+import type { Reader } from '../reader/reader.ts';
 
 /** Fallback session check per connection (kernel D10); sign-out events arrive in phase 4. */
 export const SESSION_RECHECK_MS = 60_000;
@@ -29,6 +30,7 @@ type Deps = {
   publicOrigin: string;
   currentUser: CurrentUser;
   diaries: DiaryService;
+  reader: Reader;
   commit: CommitService;
   events: Events;
 };
@@ -66,8 +68,29 @@ function serve(socket: WebSocket, request: FastifyRequest, deps: Deps) {
   const send = (message: ServerMessage) => socket.send(JSON.stringify(message));
   const fail = (code: ErrorCode, message: string, fields: Fields = {}) =>
     send({ v: PROTOCOL_VERSION, type: 'error', code, message, ...fields });
+  // Fields are listed, not spread, so the event's epoch never reaches the wire.
   const sendCommit = (event: CommittedEvent) =>
-    send({ v: PROTOCOL_VERSION, type: 'commit', ...event, delta: base64(event.delta) });
+    send({
+      v: PROTOCOL_VERSION,
+      type: 'commit',
+      diaryId: event.diaryId,
+      generationId: event.generationId,
+      seq: event.seq,
+      publicId: event.publicId,
+      delta: base64(event.delta),
+      bindings: event.bindings,
+    });
+  const sendEvent = (event: DiaryEvent) =>
+    event.type === 'commit'
+      ? sendCommit(event)
+      : send({
+          v: PROTOCOL_VERSION,
+          type: 'context',
+          diaryId: event.diaryId,
+          change: event.change,
+          generationId: event.generationId,
+          epochId: event.epochId,
+        });
 
   // The handshake's cookie must still name the same user; otherwise the connection ends
   // with a close code the client reads as "sign in again", keeping its pending edits.
@@ -128,28 +151,34 @@ function serve(socket: WebSocket, request: FastifyRequest, deps: Deps) {
   }
 
   async function subscribe(message: Extract<ClientMessage, { type: 'subscribe' }>) {
-    const { diaryId, generationId, knownSeq } = message;
+    const { diaryId, generationId, epochId, knownSeq } = message;
+    const sub = { viewer: user.id, generationId, epochId: epochId ?? null };
     // Listen before reading, so a commit landing during the catch-up read is held back
-    // and sent after it instead of lost. Receivers get only their generation (D10).
+    // and sent after it instead of lost. Who receives what is decided from the event
+    // alone (D10): the owner their generation, the partner their epoch.
     let live = false;
-    const held: CommittedEvent[] = [];
+    let owner = false;
+    const held: DiaryEvent[] = [];
     subscriptions.get(diaryId)?.();
     subscriptions.set(
       diaryId,
       deps.events.subscribe(diaryId, (event) => {
-        if (event.generationId !== generationId) return;
-        if (live) sendCommit(event);
-        else held.push(event);
+        if (!live) return void held.push(event);
+        if (deps.reader.deliverable(event, sub, owner)) sendEvent(event);
       }),
     );
-    const result = await deps.diaries.catchUp(user.id, diaryId, generationId, knownSeq);
+    const result =
+      epochId === undefined
+        ? await deps.diaries.catchUp(user.id, diaryId, generationId, knownSeq)
+        : await deps.reader.catchUp(user.id, diaryId, generationId, epochId, knownSeq);
     if (result === 'NOT_FOUND' || result === 'STALE_CONTEXT') {
       subscriptions.get(diaryId)?.();
       subscriptions.delete(diaryId);
-      return fail(result, result === 'NOT_FOUND' ? 'No such diary' : 'Generation has changed', {
+      return fail(result, result === 'NOT_FOUND' ? 'No such diary' : 'Context has changed', {
         diaryId,
       });
     }
+    owner = epochId === undefined;
     send({
       v: PROTOCOL_VERSION,
       type: 'synced',
@@ -160,11 +189,16 @@ function serve(socket: WebSocket, request: FastifyRequest, deps: Deps) {
       bindings: bindingList(result.bindings),
     });
     live = true;
-    for (const event of held) if (event.seq > result.seq) sendCommit(event);
+    for (const event of held)
+      if (
+        deps.reader.deliverable(event, sub, owner) &&
+        (event.type === 'context' || event.seq > result.seq)
+      )
+        sendEvent(event);
   }
 
   async function submit(message: Extract<ClientMessage, { type: 'submit' }>) {
-    const { diaryId, batchId, generationId } = message;
+    const { diaryId, batchId, generationId, epochId } = message;
     if (!(await sessionValid()))
       return fail('UNAUTHENTICATED', 'Sign in required', { diaryId, batchId });
     let outcome;
@@ -173,6 +207,7 @@ function serve(socket: WebSocket, request: FastifyRequest, deps: Deps) {
         diaryId,
         batchId,
         generationId,
+        epochId,
         operations: message.operations.map((op) => ({
           operationId: op.operationId,
           update: new Uint8Array(Buffer.from(op.update, 'base64')),

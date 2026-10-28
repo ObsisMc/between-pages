@@ -23,6 +23,7 @@ const emptyCommit = (locked: LockedDiary) =>
     batchId: randomUUID(),
     authorId: locked.diary.ownerId,
     generationId: locked.diary.generationId,
+    epochId: null,
     batchDigest: new Uint8Array(32),
     digestAlgorithm: 1,
     delta: EMPTY,
@@ -51,7 +52,7 @@ describe.runIf(testDatabaseUrl)('backup outbox', () => {
 
     await store.withDiaryLock(diaryId, async (locked) => {
       const { version } = await emptyCommit(locked);
-      await registerBackups(locked, version);
+      await registerBackups(locked, version, null);
     });
 
     expect(
@@ -66,7 +67,7 @@ describe.runIf(testDatabaseUrl)('backup outbox', () => {
 
     const failing = store.withDiaryLock(diaryId, async (locked) => {
       const { version } = await emptyCommit(locked);
-      await registerBackups(locked, version);
+      await registerBackups(locked, version, null);
       throw new Error('a later write failed');
     });
 
@@ -79,8 +80,8 @@ describe.runIf(testDatabaseUrl)('backup outbox', () => {
 
     const twice = store.withDiaryLock(diaryId, async (locked) => {
       const { version } = await emptyCommit(locked);
-      await registerBackups(locked, version);
-      await registerBackups(locked, version);
+      await registerBackups(locked, version, null);
+      await registerBackups(locked, version, null);
     });
 
     await expect(twice).rejects.toThrow();

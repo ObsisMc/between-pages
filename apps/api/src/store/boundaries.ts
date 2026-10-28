@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import type { DateSelection } from '@between-pages/contracts';
 import {
   activeBindings,
@@ -28,6 +28,13 @@ export type LiveEpoch = {
   generationId: string;
 };
 
+/** One share of a diary, live (`closedAt` null) or frozen at `frozenVersion`. */
+export type EpochRow = LiveEpoch & {
+  openedAt: Date;
+  closedAt: Date | null;
+  frozenVersion: number | null;
+};
+
 /** Where an owner's diaries are shared now: their open binding and the policy confirmed for it. */
 export type SharingContext = {
   spaceId: string;
@@ -54,6 +61,12 @@ const liveColumns = {
   recipientId: shareEpochs.recipientId,
   generationId: shareEpochs.generationId,
 };
+const epochColumns = {
+  ...liveColumns,
+  openedAt: shareEpochs.openedAt,
+  closedAt: shareEpochs.closedAt,
+  frozenVersion: shareEpochs.frozenVersion,
+};
 
 /** Reads; a snapshot under `read`, the lock holder's view inside a locked flow. */
 export class EpochQueries {
@@ -79,6 +92,56 @@ export class EpochQueries {
       .from(shareEpochs)
       .where(and(inArray(shareEpochs.diaryId, [...diaryIds]), isNull(shareEpochs.closedAt)));
     return new Map(rows.map((row) => [row.diaryId, row]));
+  }
+
+  async epoch(epochId: string): Promise<EpochRow | null> {
+    const [row] = await this.tx
+      .select(epochColumns)
+      .from(shareEpochs)
+      .where(eq(shareEpochs.id, epochId));
+    return row ?? null;
+  }
+
+  /** Every share of the diary with this recipient, oldest first. */
+  recipientEpochs(diaryId: string, recipientId: string): Promise<EpochRow[]> {
+    return this.tx
+      .select(epochColumns)
+      .from(shareEpochs)
+      .where(and(eq(shareEpochs.diaryId, diaryId), eq(shareEpochs.recipientId, recipientId)))
+      .orderBy(asc(shareEpochs.openedAt), asc(shareEpochs.id));
+  }
+
+  /** Whether `userId` is one of the space's pair. */
+  async isParticipant(spaceId: string, userId: string): Promise<boolean> {
+    const [row] = await this.tx
+      .select({ id: spaces.id })
+      .from(spaces)
+      .where(
+        and(eq(spaces.id, spaceId), or(eq(spaces.userLow, userId), eq(spaces.userHigh, userId))),
+      );
+    return row !== undefined;
+  }
+
+  /**
+   * Each diary shared with `recipientId` in the space, by its live epoch or else its last
+   * frozen one (spaces-and-invitations D4), with the diary's date and owner.
+   */
+  async sharedWith(
+    recipientId: string,
+    spaceId: string,
+  ): Promise<(EpochRow & { diaryDate: string; ownerId: string })[]> {
+    const rows = await this.tx
+      .select({ ...epochColumns, diaryDate: diaries.diaryDate, ownerId: diaries.ownerId })
+      .from(shareEpochs)
+      .innerJoin(diaries, eq(diaries.id, shareEpochs.diaryId))
+      .where(and(eq(shareEpochs.recipientId, recipientId), eq(shareEpochs.spaceId, spaceId)))
+      .orderBy(asc(shareEpochs.openedAt), asc(shareEpochs.id));
+    const current = new Map<string, (typeof rows)[number]>();
+    for (const row of rows) {
+      const kept = current.get(row.diaryId);
+      if (!kept || kept.closedAt !== null) current.set(row.diaryId, row);
+    }
+    return [...current.values()];
   }
 
   liveEpochsInSpace(spaceId: string): Promise<LiveEpoch[]> {
@@ -144,7 +207,7 @@ export class LockedBoundaries extends EpochQueries {
   async open(
     entries: readonly { diary: DiaryRow; baseline: Uint8Array }[],
     input: Omit<SharingContext, 'selection'> & { newGeneration: boolean; at: Date },
-  ): Promise<Map<string, string>> {
+  ): Promise<Map<string, { epochId: string; generationId: string }>> {
     const opened = entries.map(({ diary, baseline }) => ({
       diary,
       baseline,
@@ -208,7 +271,9 @@ export class LockedBoundaries extends EpochQueries {
         ]),
       );
     }
-    return new Map(opened.map((o) => [o.diary.id, o.epochId]));
+    return new Map(
+      opened.map((o) => [o.diary.id, { epochId: o.epochId, generationId: o.generationId }]),
+    );
   }
 
   /**

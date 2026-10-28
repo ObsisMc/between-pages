@@ -5,11 +5,17 @@ import { historyPoints, nextPointIn } from './history.ts';
 const T0 = Date.parse('2026-10-26T08:00:00Z');
 const at = (seconds: number) => new Date(T0 + seconds * 1000);
 
-function commits(seconds: number[], generationId = 'g1', authorId = 'a'): CommitPoint[] {
+function commits(
+  seconds: number[],
+  generationId = 'g1',
+  authorId = 'a',
+  epochId: string | null = null,
+): CommitPoint[] {
   return seconds.map((s, i) => ({
     version: i + 1,
     publicId: `${generationId}-${s}`,
     generationId,
+    epochId,
     authorId,
     committedAt: at(s),
   }));
@@ -44,6 +50,15 @@ describe('historyPoints', () => {
     const timeline = [...commits([0, 30], 'g1'), ...commits([60, 90], 'g2')];
 
     expect(historyPoints(timeline, at(1000)).map((p) => p.publicId)).toEqual(['g1-30', 'g2-90']);
+  });
+
+  it('[adr:diary-collaboration-kernel#15] never merges a shared commit with a private one of the same generation', () => {
+    const timeline = [
+      ...commits([0, 30], 'g1', 'a', 'e1'),
+      ...commits([60], 'g1', 'a', null).map((c) => ({ ...c, publicId: 'private' })),
+    ];
+
+    expect(historyPoints(timeline, at(600)).map((p) => p.publicId)).toEqual(['g1-30', 'private']);
   });
 
   it('lists everyone who changed the text in a group', () => {

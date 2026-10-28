@@ -8,6 +8,7 @@ import type {
   SpaceRow,
 } from '../store/relations.ts';
 import { normalizeSelection, sameSelection } from '../sharing/selection.ts';
+import type { ContextEvent } from '../events/events.ts';
 import type { Prepared } from '../sharing/open.ts';
 import { refusingFailedOpen, type OpenRefusal, type SharingService } from '../sharing/sharing.ts';
 
@@ -245,7 +246,8 @@ export function createBindingService(relations: RelationStore, sharing: SharingS
         if (built.failed.length) return { code: 'SHARE_OPEN_FAILED', dates: built.failed };
         prepared.set(ownerId, built.prepared);
       }
-      return refusingFailedOpen(() =>
+      const changes: ContextEvent[] = [];
+      const result = await refusingFailedOpen(() =>
         relations.withUsersLocked([found.createdBy, caller], async (locked) => {
           const row = await locked.invitation(found.id);
           const refusal =
@@ -278,8 +280,8 @@ export function createBindingService(relations: RelationStore, sharing: SharingS
           }
           // Diary rows lock last, after both policies (kernel D9).
           for (const [ownerId, chosen] of choices)
-            if (chosen)
-              await sharing.apply(locked, {
+            if (chosen) {
+              const applied = await sharing.apply(locked, {
                 ownerId,
                 space,
                 periodId,
@@ -287,12 +289,17 @@ export function createBindingService(relations: RelationStore, sharing: SharingS
                 prepared: prepared.get(ownerId)!,
                 at: now,
               });
+              changes.push(...applied.changes);
+            }
           return {
             binding: { space: await spaceSummary(locked, space), periodId },
             restored: existing !== null,
           };
         }),
       );
+      // Only now has PG committed; a refusal or rollback announces nothing.
+      if (typeof result === 'object' && 'binding' in result) sharing.announce(changes);
+      return result;
     },
 
     /**
@@ -308,17 +315,23 @@ export function createBindingService(relations: RelationStore, sharing: SharingS
     ): Promise<{ spaceId: string; closedPeriodId: string } | 'NOT_FOUND'> {
       const space = await relations.read((queries) => queries.space(spaceId));
       if (!space || !isParticipant(space, caller)) return 'NOT_FOUND';
-      return relations.withUsersLocked([space.userLow, space.userHigh], async (locked) => {
-        await locked.lockSpace(space.id);
-        const period = await locked.period(space.id, expectedPeriodId);
-        if (!period) return 'NOT_FOUND';
-        if (!period.endedAt) {
-          await locked.endPeriod(period.id, caller, now);
-          await locked.closeOpenInvitations([space.userLow, space.userHigh], now);
-          await sharing.freezeSpace(locked, space.id, now);
-        }
-        return { spaceId: space.id, closedPeriodId: period.id };
-      });
+      let changes: ContextEvent[] = [];
+      const ended = await relations.withUsersLocked(
+        [space.userLow, space.userHigh],
+        async (locked) => {
+          await locked.lockSpace(space.id);
+          const period = await locked.period(space.id, expectedPeriodId);
+          if (!period) return 'NOT_FOUND';
+          if (!period.endedAt) {
+            await locked.endPeriod(period.id, caller, now);
+            await locked.closeOpenInvitations([space.userLow, space.userHigh], now);
+            changes = await sharing.freezeSpace(locked, space.id, now);
+          }
+          return { spaceId: space.id, closedPeriodId: period.id };
+        },
+      );
+      sharing.announce(changes);
+      return ended;
     },
   };
 }

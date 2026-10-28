@@ -2,17 +2,12 @@ import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import * as Y from 'yjs';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import {
-  MAX_MESSAGE_BYTES,
-  ServerMessage,
-  closeCode,
-  routes,
-  syncSocket,
-} from '@between-pages/contracts';
+import { MAX_MESSAGE_BYTES, closeCode, routes } from '@between-pages/contracts';
 import { buildApp } from './app.ts';
 import { createDb, type Database } from './db/client.ts';
 import { query, testDatabaseUrl } from '../test/db.ts';
 import { client, countRows, edit, testSessions } from '../test/diary.ts';
+import { connectSocket } from '../test/socket.ts';
 
 // The collaboration socket through the real router and real PostgreSQL (kernel D9, D10).
 
@@ -37,43 +32,8 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+const connect = (cookie: string, origin = ORIGIN) => connectSocket(app, cookie, origin);
 type Socket = Awaited<ReturnType<typeof connect>>;
-
-/** A socket client that queues every server message, parsed with the contract. */
-async function connect(cookie: string, origin = ORIGIN) {
-  const inbox: ServerMessage[] = [];
-  const waiting: ((message: ServerMessage) => void)[] = [];
-  let resolveClosed: (code: number) => void;
-  const closed = new Promise<number>((resolve) => (resolveClosed = resolve));
-  const ws = await app.injectWS(
-    syncSocket.path,
-    { headers: { origin, cookie } },
-    {
-      onInit(socket) {
-        socket.on('message', (data: Buffer) => {
-          const message = ServerMessage.parse(JSON.parse(String(data)));
-          const waiter = waiting.shift();
-          if (waiter) waiter(message);
-          else inbox.push(message);
-        });
-        socket.on('close', (code: number) => resolveClosed(code));
-      },
-    },
-  );
-  return {
-    send: (message: unknown) =>
-      ws.send(typeof message === 'string' ? message : JSON.stringify(message)),
-    next: () =>
-      new Promise<ServerMessage>((resolve, reject) => {
-        const queued = inbox.shift();
-        if (queued) return resolve(queued);
-        waiting.push(resolve);
-        setTimeout(() => reject(new Error('no message within 3 s')), 3000).unref();
-      }),
-    closed,
-    close: () => ws.terminate(),
-  };
-}
 
 async function openDiary(cookie: string) {
   const res = await app.inject({

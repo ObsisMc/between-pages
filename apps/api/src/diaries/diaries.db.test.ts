@@ -26,6 +26,7 @@ async function commitText(diaryId: string, clientID: number, text: string) {
       batchId: randomUUID(),
       authorId: locked.diary.ownerId,
       generationId: locked.diary.generationId,
+      epochId: null,
       batchDigest: new Uint8Array(32),
       digestAlgorithm: 1,
       delta: update,

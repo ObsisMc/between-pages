@@ -28,6 +28,11 @@ export const SubscribeMessage = z.strictObject({
   type: z.literal('subscribe'),
   diaryId: Uuid,
   generationId: Uuid,
+  /**
+   * The partner's shared entry: the live epoch the client opened. Omitted for the owner's
+   * personal entry. Never widens access: the server checks it against the caller.
+   */
+  epochId: Uuid.optional(),
   /** Highest seq the client holds in this generation; the server sends what follows. */
   knownSeq: z.int().nonnegative(),
 });
@@ -47,6 +52,8 @@ export const SubmitMessage = z.strictObject({
   diaryId: Uuid,
   batchId: Uuid,
   generationId: Uuid,
+  /** The live epoch a partner writes in; omitted for the owner's personal entry (kernel D7). */
+  epochId: Uuid.optional(),
   operations: z
     .array(SubmitOperation)
     .min(1)
@@ -113,10 +120,26 @@ export const ErrorMessage = z.object({
   index: z.int().nonnegative().optional(),
 });
 
+/**
+ * The diary's sharing changed (kernel D10). `opened`: it now runs in `generationId`,
+ * shared as `epochId`; owners reconcile pending input and reload, the partner may open the
+ * new epoch. `stopped`: `epochId` froze; its partner keeps that version read-only. Sent
+ * after PG COMMIT; a client that missed it learns the same from STALE_CONTEXT.
+ */
+export const ContextMessage = z.object({
+  v: Version,
+  type: z.literal('context'),
+  diaryId: Uuid,
+  change: z.enum(['opened', 'stopped']),
+  generationId: Uuid,
+  epochId: Uuid,
+});
+
 export const ServerMessage = z.discriminatedUnion('type', [
   SyncedMessage,
   CommitMessage,
   AckMessage,
   ErrorMessage,
+  ContextMessage,
 ]);
 export type ServerMessage = z.infer<typeof ServerMessage>;

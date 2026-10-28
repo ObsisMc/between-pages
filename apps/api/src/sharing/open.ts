@@ -2,6 +2,7 @@ import * as Y from 'yjs';
 import { buildBaseline } from '@between-pages/collab';
 import type { DateSelection } from '@between-pages/contracts';
 import { VersionUnreadable } from '../errors.ts';
+import type { ContextEvent } from '../events/events.ts';
 import type { LiveEpoch } from '../store/boundaries.ts';
 import type { LockedRelations } from '../store/relations.ts';
 import type { DiaryQueries, DiaryRow, Store } from '../store/store.ts';
@@ -27,7 +28,17 @@ type Built = { version: number; generationId: string; baseline: Uint8Array };
 /** Phase 1's baselines by diary ID, each for the version and generation it read. */
 export type Prepared = Map<string, Built>;
 
-export type Applied = { opened: number; frozen: number; rebuilt: number };
+/** What phase 2 did; `changes` are published once its transaction has committed. */
+export type Applied = { opened: number; frozen: number; rebuilt: number; changes: ContextEvent[] };
+
+const stopped = (epoch: LiveEpoch): ContextEvent => ({
+  type: 'context',
+  diaryId: epoch.diaryId,
+  change: 'stopped',
+  generationId: epoch.generationId,
+  epochId: epoch.id,
+  recipientId: epoch.recipientId,
+});
 
 /**
  * Builds the baseline of `diary` at its committed version (D4). A stored part failing its
@@ -138,13 +149,31 @@ export async function applyOpen(
     recipientId: input.recipientId,
   };
   const opening = rows.filter((row) => baselines.has(row.id));
-  await boundaries.open(
+  const opened = await boundaries.open(
     opening.map((diary) => ({ diary, baseline: baselines.get(diary.id)! })),
     { ...context, newGeneration: true, at: input.at },
   );
-  const freezing = rows.filter((row) => !baselines.has(row.id)).map((row) => live.get(row.id)!.id);
-  await boundaries.freeze(freezing, input.at);
-  return { opened: opening.length, frozen: freezing.length, rebuilt };
+  const freezing = rows.filter((row) => !baselines.has(row.id)).map((row) => live.get(row.id)!);
+  await boundaries.freeze(
+    freezing.map((epoch) => epoch.id),
+    input.at,
+  );
+  return {
+    opened: opening.length,
+    frozen: freezing.length,
+    rebuilt,
+    changes: [
+      ...[...opened].map(([diaryId, { epochId, generationId }]): ContextEvent => ({
+        type: 'context',
+        diaryId,
+        change: 'opened',
+        generationId,
+        epochId,
+        recipientId: input.recipientId,
+      })),
+      ...freezing.map(stopped),
+    ],
+  };
 }
 
 /** Freezes every live epoch of the space at its diary's last commit (D5: unbinding). */
@@ -152,12 +181,12 @@ export async function freezeSpace(
   locked: LockedRelations,
   spaceId: string,
   at: Date,
-): Promise<number> {
+): Promise<ContextEvent[]> {
   const live = await locked.epochs.liveEpochsInSpace(spaceId);
   const { boundaries } = await locked.lockDiaries(live.map((epoch) => epoch.diaryId));
   await boundaries.freeze(
     live.map((epoch) => epoch.id),
     at,
   );
-  return live.length;
+  return live.map(stopped);
 }

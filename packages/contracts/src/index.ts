@@ -10,6 +10,9 @@ export type {
   RouteName,
 } from './routes.ts';
 export {
+  CharacterInfo,
+  CharacterParams,
+  CharacterQuery,
   ClientBinding,
   CommitReceipt,
   DiaryListPage,
@@ -27,12 +30,19 @@ export {
   OpenDiaryResponse,
   ReceiptQuery,
   ReceiptResponse,
+  ShareParams,
+  ShareState,
+  SharedDiaryListPage,
+  SharedDiaryResponse,
+  SharedDiaryState,
+  SharedDiarySummary,
   TimeZone,
 } from './diaries.ts';
 export {
   AckMessage,
   ClientMessage,
   CommitMessage,
+  ContextMessage,
   ErrorMessage,
   MAX_MESSAGE_BYTES,
   PROTOCOL_VERSION,

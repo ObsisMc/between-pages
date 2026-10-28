@@ -1,5 +1,8 @@
 import { z } from 'zod';
 import {
+  CharacterInfo,
+  CharacterParams,
+  CharacterQuery,
   DiaryListPage,
   DiaryListQuery,
   DiaryParams,
@@ -12,6 +15,9 @@ import {
   OpenDiaryResponse,
   ReceiptQuery,
   ReceiptResponse,
+  ShareParams,
+  SharedDiaryListPage,
+  SharedDiaryResponse,
 } from './diaries.ts';
 import {
   AcceptInvitationRequest,
@@ -126,6 +132,24 @@ export const routes = {
     params: HistoryVersionParams,
     response: HistoryVersion,
   },
+  sharedDiary: {
+    method: 'GET',
+    path: '/api/diaries/:diaryId/shares/:epochId',
+    summary:
+      "Open the partner's diary shared with the caller as one epoch: live, or frozen at the version sharing stopped.",
+    access: 'user',
+    params: ShareParams,
+    response: SharedDiaryResponse,
+  },
+  character: {
+    method: 'GET',
+    path: '/api/diaries/:diaryId/characters/:clientId/:clock',
+    summary: 'Who wrote one visible character and when, in the text the caller may read.',
+    access: 'user',
+    params: CharacterParams,
+    query: CharacterQuery,
+    response: CharacterInfo,
+  },
   binding: {
     method: 'GET',
     path: '/api/binding',
@@ -200,6 +224,16 @@ export const routes = {
     access: 'user',
     params: SpaceParams,
     response: MySharingResponse,
+  },
+  sharedDiaries: {
+    method: 'GET',
+    path: '/api/spaces/:spaceId/shared-diaries',
+    summary:
+      "The partner's diaries shared with the caller in a space, live or frozen, newest date first.",
+    access: 'user',
+    params: SpaceParams,
+    query: DiaryListQuery,
+    response: SharedDiaryListPage,
   },
   saveMySharing: {
     method: 'PUT',
