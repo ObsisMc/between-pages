@@ -99,7 +99,9 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       sender: ['journal'],
       'sync-client': ['api'],
       history: ['api'],
-      'diary-list': ['api'],
+      'diary-list': ['api', 'avatar'],
+      // unread-and-day-page: the initial avatar knows no other module.
+      avatar: [],
       'sharing-range': [],
       relationship: ['api', 'sharing-range'],
       join: ['api', 'auth', 'relationship', 'sharing-range'],

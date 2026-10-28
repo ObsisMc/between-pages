@@ -81,10 +81,7 @@ test('K17 local input, remote text and caret latency at ~500 ms RTT per side', a
   await a.goto(diaryUrl);
   await expect(a.locator('.save-status')).toHaveText('已同步 · 对方可以看到', { timeout: 60_000 });
   await b.goto('/');
-  await b
-    .getByRole('region', { name: `${name('la')} 共享的日记` })
-    .getByRole('link')
-    .click();
+  await b.getByRole('region', { name: '日记', exact: true }).getByRole('link').click();
   const editorB = b.getByRole('textbox');
   await expect(editorB).toContainText('今天的风很轻', { timeout: 60_000 });
   await expect(b.locator('.save-status')).toHaveText('已同步 · 对方可以看到', { timeout: 60_000 });

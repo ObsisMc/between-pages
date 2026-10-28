@@ -179,7 +179,7 @@ test('EDIT-13 EDIT-14 TIME-03 K11 the partner reads and writes a shared diary in
 
   // B finds it on the home page and opens it as a live share.
   await b.goto('/');
-  const shared = b.getByRole('region', { name: `${name('pa')} 共享的日记` });
+  const shared = b.getByRole('region', { name: '日记', exact: true });
   await shared.getByRole('link', { name: /A的字/ }).click();
   await expect(b).toHaveURL(/\/diaries\/[0-9a-f-]{36}\/shares\/[0-9a-f-]{36}$/);
   await expect(editor(b)).toHaveText('A的字');

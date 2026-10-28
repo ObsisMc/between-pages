@@ -127,7 +127,7 @@ test('DATE-07 lists the own diaries as cards, newest first, and opens one', asyn
   const past = page.url().split('/').at(-1)!;
   await page.getByRole('link', { name: '← 返回' }).click();
 
-  const cards = page.getByRole('region', { name: '我的日记' }).getByRole('link');
+  const cards = page.getByRole('region', { name: '日记', exact: true }).getByRole('link');
   await expect(cards).toHaveCount(2);
   await expect(cards.first()).toContainText('今天的第一行 第二行');
   await expect(cards.first()).toHaveAttribute('href', `/diaries/${today}`);
