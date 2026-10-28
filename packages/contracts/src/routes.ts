@@ -21,6 +21,7 @@ import {
   SharedDiaryListPage,
   SharedDiaryResponse,
 } from './diaries.ts';
+import { DayParams, DayResponse, DaysPage, DaysQuery } from './days.ts';
 import {
   AcceptInvitationRequest,
   AcceptInvitationResponse,
@@ -254,6 +255,23 @@ export const routes = {
     params: SpaceParams,
     query: DiaryListQuery,
     response: SharedDiaryListPage,
+  },
+  days: {
+    method: 'GET',
+    path: '/api/days',
+    summary:
+      "List the dates with the caller's own or the partner's shared diary, newest first, with list unread marks.",
+    access: 'user',
+    query: DaysQuery,
+    response: DaysPage,
+  },
+  day: {
+    method: 'GET',
+    path: '/api/days/:date',
+    summary: "One date's own and shared diaries, as on the day list.",
+    access: 'user',
+    params: DayParams,
+    response: DayResponse,
   },
   saveMySharing: {
     method: 'PUT',

@@ -1,6 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.ts';
 import { diaryReadRanges } from '../db/schema.ts';
+import type { Tx } from './store.ts';
 
 // Each reader's own read coverage (kernel D15): per (reader, diary, clientID) one
 // int8multirange of clocks. A report only ever adds to the reporter's own rows, in one
@@ -22,18 +23,25 @@ function parse(clientId: number, clocks: string): ClockRange[] {
 const literal = (ranges: readonly ClockRange[]) =>
   `{${ranges.map((r) => `[${r.from},${r.to})`).join(',')}}`;
 
+/** The reader's coverage of the diary, by clientID; in `tx`'s snapshot when given one. */
+export async function coverage(
+  tx: Db | Tx,
+  userId: string,
+  diaryId: string,
+): Promise<ClockRange[]> {
+  const rows = await tx
+    .select({
+      clientId: diaryReadRanges.clientId,
+      clocks: sql<string>`${diaryReadRanges.clocks}::text`,
+    })
+    .from(diaryReadRanges)
+    .where(and(eq(diaryReadRanges.userId, userId), eq(diaryReadRanges.diaryId, diaryId)))
+    .orderBy(diaryReadRanges.clientId);
+  return rows.flatMap((row) => parse(row.clientId, row.clocks));
+}
+
 export function createReadingStore(db: Db) {
-  async function ranges(userId: string, diaryId: string): Promise<ClockRange[]> {
-    const rows = await db
-      .select({
-        clientId: diaryReadRanges.clientId,
-        clocks: sql<string>`${diaryReadRanges.clocks}::text`,
-      })
-      .from(diaryReadRanges)
-      .where(and(eq(diaryReadRanges.userId, userId), eq(diaryReadRanges.diaryId, diaryId)))
-      .orderBy(diaryReadRanges.clientId);
-    return rows.flatMap((row) => parse(row.clientId, row.clocks));
-  }
+  const ranges = (userId: string, diaryId: string) => coverage(db, userId, diaryId);
 
   return {
     ranges,

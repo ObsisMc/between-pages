@@ -123,18 +123,24 @@ export class EpochQueries {
   }
 
   /**
-   * Each diary shared with `recipientId` in the space, by its live epoch or else its last
-   * frozen one (spaces-and-invitations D4), with the diary's date and owner.
+   * Each diary shared with `recipientId` in the space, or in any space when `spaceId` is
+   * null, by its live epoch or else its last frozen one (spaces-and-invitations D4), with
+   * the diary's date and owner.
    */
   async sharedWith(
     recipientId: string,
-    spaceId: string,
+    spaceId: string | null,
   ): Promise<(EpochRow & { diaryDate: string; ownerId: string })[]> {
     const rows = await this.tx
       .select({ ...epochColumns, diaryDate: diaries.diaryDate, ownerId: diaries.ownerId })
       .from(shareEpochs)
       .innerJoin(diaries, eq(diaries.id, shareEpochs.diaryId))
-      .where(and(eq(shareEpochs.recipientId, recipientId), eq(shareEpochs.spaceId, spaceId)))
+      .where(
+        and(
+          eq(shareEpochs.recipientId, recipientId),
+          spaceId === null ? undefined : eq(shareEpochs.spaceId, spaceId),
+        ),
+      )
       .orderBy(asc(shareEpochs.openedAt), asc(shareEpochs.id));
     const current = new Map<string, (typeof rows)[number]>();
     for (const row of rows) {
