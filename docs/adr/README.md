@@ -20,6 +20,7 @@
 | [authentication-and-sessions](./2026-10-24-authentication-and-sessions.md) | 用 Better Auth 只做登录和会话，领域用户与认证层分离 | 已采纳 | 认证 | 13/13 已完成 |
 | [spaces-and-invitations](./2026-10-25-spaces-and-invitations.md) | 个人日记独立存在，双人空间按日期和授权版本共享 | 已实现 | 领域 | 11/12 部分 |
 | [diary-collaboration-kernel](./2026-10-26-diary-collaboration-kernel.md) | 个人日记以增量协作保存，共享从获准的正文状态开始 | 已采纳 | 协同 | 28/31 部分 |
+| [unread-and-day-page](./2026-10-28-unread-and-day-page.md) | 未读按字判定、列表只计已成历史的文字，同一天的两篇日记上下排在一个页面里 | 提议 | 领域 | 0/14 未开始 |
 <!-- adr-index:end -->
 
 ## 原则
