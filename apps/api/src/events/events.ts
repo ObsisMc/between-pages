@@ -30,29 +30,43 @@ export type ContextEvent = {
 
 export type DiaryEvent = CommittedEvent | ContextEvent;
 
-type Listener = (event: DiaryEvent) => void;
+/** A session was signed out or revoked and its deletion committed (kernel D10 "会话"). */
+export type SessionEndedEvent = { type: 'session-ended'; sessionId: string };
+
+export type Event = DiaryEvent | SessionEndedEvent;
+
+/** What a listener hears: one diary's events, or the end of one session. */
+export type Topic = { diaryId: string } | { sessionId: string };
+type EventOf<T extends Topic> = T extends { diaryId: string } ? DiaryEvent : SessionEndedEvent;
+
+const keyOf = (topic: Topic) =>
+  'diaryId' in topic ? `diary:${topic.diaryId}` : `session:${topic.sessionId}`;
 
 /**
- * In-process diary events (kernel D11): publish after PG COMMIT, subscribe per diary.
- * Delivery is best effort and this process only; correctness never depends on it,
- * because a connection that missed an event catches up from PG by seq, or learns of a
- * context change from STALE_CONTEXT. Running more than one API instance replaces only
- * this module's inside (e.g. LISTEN/NOTIFY).
+ * In-process events (kernel D11): publish after PG COMMIT, subscribe per diary or per
+ * session. Delivery is best effort and this process only; correctness never depends on
+ * it, because a connection that missed an event catches up from PG by seq, learns of a
+ * context change from STALE_CONTEXT, and of an ended session from its next write or the
+ * 60 s recheck. Running more than one API instance replaces only this module's inside
+ * (e.g. LISTEN/NOTIFY).
  */
 export function createEvents() {
-  const listeners = new Map<string, Set<Listener>>();
+  const listeners = new Map<string, Set<(event: Event) => void>>();
   return {
-    publish(event: DiaryEvent): void {
-      for (const listener of listeners.get(event.diaryId) ?? []) listener(event);
+    publish(event: Event): void {
+      const key = keyOf(event.type === 'session-ended' ? event : { diaryId: event.diaryId });
+      for (const listener of listeners.get(key) ?? []) listener(event);
     },
     /** Returns the unsubscribe function. */
-    subscribe(diaryId: string, listener: Listener): () => void {
-      const set = listeners.get(diaryId) ?? new Set();
-      set.add(listener);
-      listeners.set(diaryId, set);
+    subscribe<T extends Topic>(topic: T, listener: (event: EventOf<T>) => void): () => void {
+      const key = keyOf(topic);
+      const set = listeners.get(key) ?? new Set();
+      const heard = listener as (event: Event) => void;
+      set.add(heard);
+      listeners.set(key, set);
       return () => {
-        set.delete(listener);
-        if (!set.size) listeners.delete(diaryId);
+        set.delete(heard);
+        if (!set.size) listeners.delete(key);
       };
     },
   };

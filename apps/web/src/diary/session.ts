@@ -15,6 +15,7 @@ import {
   type Draft,
   type Journal,
 } from '../journal/index.ts';
+import { createReadTracker, type ReadTracker, type VisibleRun } from '../read-tracker/index.ts';
 import { createSender, type SaveStatus, type Sender } from '../sender/index.ts';
 import { createSyncClient, type SyncClient, type SyncStatus } from '../sync-client/index.ts';
 
@@ -76,6 +77,7 @@ export function createDiarySession({
   let editor: EditorBinding | undefined;
   let sender: Sender | undefined;
   let sync: SyncClient | undefined;
+  let reads: ReadTracker | undefined;
   let generationId = '';
   const authors = new Map<number, string>();
   /** Operations waiting to be stored, in order; a failed one blocks the rest (D7 order). */
@@ -239,7 +241,26 @@ export function createDiarySession({
     sender.wake();
   }
 
-  open().catch(() => set({ phase: 'failed', failure: 'INTERNAL' }));
+  /** The other person's characters in the part of the editor inside the window (kernel D15). */
+  function onScreen(): VisibleRun[] {
+    if (!editor || place.hidden) return [];
+    const rect = place.getBoundingClientRect();
+    const top = Math.max(rect.top, 0);
+    const bottom = Math.min(rect.bottom, window.innerHeight);
+    if (bottom <= top) return [];
+    const { view } = editor;
+    // Text index i sits at document position i + 1.
+    const from = view.posAtCoords({ left: rect.left + 1, top: top + 1 })?.pos ?? 1;
+    const to = view.posAtCoords({ left: rect.right - 1, top: bottom - 1 })?.pos;
+    return editor.othersCharacters(from - 1, (to ?? view.state.doc.content.size) - 1);
+  }
+
+  open()
+    .then(() => {
+      if (!destroyed && state.phase === 'open')
+        reads = createReadTracker({ diaryId, visible: onScreen });
+    })
+    .catch(() => set({ phase: 'failed', failure: 'INTERNAL' }));
 
   return {
     text: () => editor?.view.state.doc.textContent ?? '',
@@ -252,6 +273,7 @@ export function createDiarySession({
       clearTimeout(storeTimer);
       window.removeEventListener('beforeunload', guardUnload);
       sender?.stop();
+      reads?.stop();
       sync?.close();
       editor?.destroy();
       journal?.close();

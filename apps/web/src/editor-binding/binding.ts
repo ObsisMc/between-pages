@@ -1,4 +1,4 @@
-import { BODY, createDiaryDoc, type ClientBindings } from '@between-pages/collab';
+import { BODY, authorRuns, createDiaryDoc, type ClientBindings } from '@between-pages/collab';
 import { keymap } from 'prosemirror-keymap';
 import type { Node } from 'prosemirror-model';
 import { EditorState, TextSelection, type Transaction } from 'prosemirror-state';
@@ -51,8 +51,17 @@ export type EditorBinding = {
   applyUpdate(update: Uint8Array, bindings: ClientBindings): void;
   /** Read-only stops every edit path, undo included; applied updates are still shown. */
   setEditable(editable: boolean): void;
+  /**
+   * The characters between text indexes `from` and `to` that someone other than the user
+   * wrote, as runs of one clientID with consecutive clocks: what a reader saw there, by
+   * character identity (kernel D15).
+   */
+  othersCharacters(from: number, to: number): CharacterRun[];
   destroy(): void;
 };
+
+/** `length` characters of one clientID from `clock` on, in UTF-16 units as Yjs counts. */
+export type CharacterRun = { client: number; clock: number; length: number };
 
 // Transaction origins: edits translated from editor steps, and updates applied from outside.
 // Undo and redo run with the UndoManager as origin.
@@ -426,6 +435,19 @@ export function createEditorBinding(
             throw new Error(`clientID ${client} has no bound author`);
       }
       Y.applyUpdate(doc, update, APPLIED);
+    },
+    othersCharacters(from, to) {
+      const runs: CharacterRun[] = [];
+      let offset = 0;
+      for (const run of authorRuns(doc, authors())) {
+        const start = offset;
+        offset += run.text.length;
+        if (run.author === userId || offset <= from || start >= to) continue;
+        const skip = Math.max(0, from - start);
+        const length = Math.min(offset, to) - start - skip;
+        runs.push({ client: run.client, clock: run.clock + skip, length });
+      }
+      return runs;
     },
     setEditable(value) {
       editable = value;

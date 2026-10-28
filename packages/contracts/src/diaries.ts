@@ -206,3 +206,28 @@ export const CharacterInfo = z
     clockAdjusted: z.boolean(),
   })
   .meta({ id: 'CharacterInfo' });
+
+/**
+ * Characters `[from, to)` of one Yjs clientID, by clock (UTF-16 units, as Yjs counts):
+ * read coverage follows character identity, not versions, so it survives reopening
+ * (kernel D15).
+ */
+export const ReadRange = z
+  .strictObject({
+    clientId: z.int().min(0).max(0xffffffff),
+    from: z.int().nonnegative(),
+    to: z.int().positive(),
+  })
+  .refine((range) => range.from < range.to, '`from` must be before `to`')
+  .meta({ id: 'ReadRange' });
+export type ReadRange = z.infer<typeof ReadRange>;
+
+/** What the caller has seen of a diary on a visible screen, from one device. */
+export const ReportReadRequest = z
+  .strictObject({ ranges: z.array(ReadRange).min(1).max(1000) })
+  .meta({ id: 'ReportReadRequest' });
+
+/** The caller's own read coverage of a diary, the union of every device's reports; never anyone else's. */
+export const ReadRangesResponse = z
+  .object({ ranges: z.array(ReadRange) })
+  .meta({ id: 'ReadRangesResponse' });
