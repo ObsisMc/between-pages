@@ -28,7 +28,20 @@ export type ContextEvent = {
   recipientId: string;
 };
 
-export type DiaryEvent = CommittedEvent | ContextEvent;
+/**
+ * Someone's caret in a generation (kernel D8): passed through in memory only, never
+ * stored, never a text commit, unread mark or backup. Positions stay encoded; null removes it.
+ */
+export type CursorEvent = {
+  type: 'cursor';
+  diaryId: string;
+  generationId: string;
+  user: string;
+  anchor: string | null;
+  head: string | null;
+};
+
+export type DiaryEvent = CommittedEvent | ContextEvent | CursorEvent;
 
 /** A session was signed out or revoked and its deletion committed (kernel D10 "会话"). */
 export type SessionEndedEvent = { type: 'session-ended'; sessionId: string };

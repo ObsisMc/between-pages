@@ -34,6 +34,8 @@ export type CatchUp = {
   seq: number;
   commits: { seq: number; publicId: string; delta: Uint8Array }[];
   bindings: Map<number, string>;
+  /** The diary has a live epoch in the same snapshot: its new commits reach the partner. */
+  shared: boolean;
 };
 
 // en-CA formats as YYYY-MM-DD, the diary date's own format.
@@ -154,6 +156,7 @@ export function createDiaryService(store: Store) {
           seq,
           commits: await queries.deltasAfter(diaryId, generationId, knownSeq),
           bindings: await queries.bindings(diaryId),
+          shared: (await queries.epochs.liveEpochs([diaryId])).has(diaryId),
         };
       });
     },

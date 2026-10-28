@@ -60,6 +60,7 @@ export function DiaryPage() {
         const slot = peopleRef.current.get(author)?.slot;
         return slot ? `author-slot-${slot}` : null;
       },
+      nameOf: (user) => peopleRef.current.get(user)?.name ?? '',
       onChange: setState,
     });
     session.current = opened;

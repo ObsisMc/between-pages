@@ -63,7 +63,28 @@ export const SubmitMessage = z.strictObject({
     ),
 });
 
-export const ClientMessage = z.discriminatedUnion('type', [SubscribeMessage, SubmitMessage]);
+/** An encoded `Y.RelativePosition`: where a caret sits, stable while text around it changes (D8). */
+const RelativePosition = z.base64().max(256);
+
+/**
+ * The sender's caret and selection in the diary it subscribed to (kernel D8), relayed at
+ * once to the connections that may read it now, never stored. Both null: the caret left.
+ * No user field: the server names the sender from the session.
+ */
+export const CursorMessage = z.strictObject({
+  v: Version,
+  type: z.literal('cursor'),
+  diaryId: Uuid,
+  generationId: Uuid,
+  anchor: RelativePosition.nullable(),
+  head: RelativePosition.nullable(),
+});
+
+export const ClientMessage = z.discriminatedUnion('type', [
+  SubscribeMessage,
+  SubmitMessage,
+  CursorMessage,
+]);
 export type ClientMessage = z.infer<typeof ClientMessage>;
 
 const CommittedDelta = {
@@ -82,6 +103,12 @@ export const SyncedMessage = z.object({
   seq: z.int().nonnegative(),
   commits: z.array(z.object(CommittedDelta)),
   bindings: z.array(ClientBinding),
+  /**
+   * The owner's subscription only: whether the diary is in a live share as of this reply,
+   * so what commits from now on the partner can read. Later changes arrive as `context`
+   * messages after it, none missed in between.
+   */
+  shared: z.boolean().optional(),
 });
 
 /**
@@ -135,11 +162,23 @@ export const ContextMessage = z.object({
   epochId: Uuid,
 });
 
+/** Another person's caret, by their session's user; null positions remove it. */
+export const RemoteCursorMessage = z.object({
+  v: Version,
+  type: z.literal('cursor'),
+  diaryId: Uuid,
+  generationId: Uuid,
+  user: Uuid,
+  anchor: RelativePosition.nullable(),
+  head: RelativePosition.nullable(),
+});
+
 export const ServerMessage = z.discriminatedUnion('type', [
   SyncedMessage,
   CommitMessage,
   AckMessage,
   ErrorMessage,
   ContextMessage,
+  RemoteCursorMessage,
 ]);
 export type ServerMessage = z.infer<typeof ServerMessage>;

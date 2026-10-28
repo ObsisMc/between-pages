@@ -39,6 +39,8 @@ export type EditorBindingOptions = {
    * so a person has one color on every device. Null leaves the text uncolored.
    */
   authorClass?: (author: string) => string | null;
+  /** The user's caret moved in this editor (kernel D8); null when it left. Not for remote changes. */
+  onCaret?: (caret: Caret | null) => void;
   /** Called synchronously for every operation, in order; nothing else records it. */
   onOperation: (operation: EditorOperation) => void;
   onRefuse: (refusal: Refusal) => void;
@@ -61,6 +63,15 @@ export type EditorBinding = {
    * on; nothing in the document changes. Off restores the editability it had.
    */
   setOwnTextOnly(on: boolean): void;
+  /**
+   * Shows another person's caret, or removes it with null (kernel D8). A position on text
+   * this editor has not received yet waits, and appears once that text arrives (K14).
+   */
+  showCaret(
+    user: string,
+    caret: Caret | null,
+    label: { name: string; className: string | null },
+  ): void;
   /** The character at a text index, by identity, with its author; null past the end. */
   characterAt(index: number): { client: number; clock: number; author: string } | null;
   /**
@@ -71,6 +82,9 @@ export type EditorBinding = {
   othersCharacters(from: number, to: number): CharacterRun[];
   destroy(): void;
 };
+
+/** A caret and selection as encoded `Y.RelativePosition`s, stable while text around them changes. */
+export type Caret = { anchor: Uint8Array; head: Uint8Array };
 
 /** `length` characters of one clientID from `clock` on, in UTF-16 units as Yjs counts. */
 export type CharacterRun = { client: number; clock: number; length: number };
@@ -94,7 +108,7 @@ type Composition = { start: Node; steps: Step[]; deferred: Transform };
  */
 export function createEditorBinding(
   place: HTMLElement,
-  { userId, authorClass, onOperation, onRefuse }: EditorBindingOptions,
+  { userId, authorClass, onCaret, onOperation, onRefuse }: EditorBindingOptions,
 ): EditorBinding {
   const doc = createDiaryDoc();
   const text = doc.getText(BODY);
@@ -131,9 +145,41 @@ export function createEditorBinding(
   const writable = () => editable && !ownOnly;
 
   /** Author colors and the own-text-only filter, from `Y.Text` while it matches the view. */
+  const remote = new Map<string, { caret: Caret; name: string; className: string | null }>();
+
+  /** Where a remote caret is now, or null while its text has not arrived. */
+  function placeOf({ anchor, head }: Caret): { from: number; to: number; head: number } | null {
+    const at = (bytes: Uint8Array) =>
+      Y.createAbsolutePositionFromRelativePosition(Y.decodeRelativePosition(bytes), doc)?.index;
+    const a = at(anchor);
+    const h = at(head);
+    if (a === undefined || h === undefined) return null;
+    return { from: Math.min(a, h) + 1, to: Math.max(a, h) + 1, head: h + 1 };
+  }
+
   function decorationsOf(pmDoc: Node): DecorationSet {
-    if (composition || (!authorClass && !ownOnly)) return DecorationSet.empty;
+    if (composition || (!authorClass && !ownOnly && !remote.size)) return DecorationSet.empty;
     const marks: Decoration[] = [];
+    for (const [user, { caret, name, className }] of remote) {
+      const place = placeOf(caret);
+      if (!place || (ownOnly && user !== userId)) continue;
+      const tint = ['remote-selection', className].filter(Boolean).join(' ');
+      if (place.to > place.from)
+        marks.push(Decoration.inline(place.from, place.to, { class: tint }));
+      marks.push(
+        Decoration.widget(
+          place.head,
+          () => {
+            const mark = document.createElement('span');
+            mark.className = ['remote-caret', className].filter(Boolean).join(' ');
+            mark.dataset.name = name;
+            mark.setAttribute('aria-label', name);
+            return mark;
+          },
+          { key: `caret:${user}:${place.head}`, side: -1 },
+        ),
+      );
+    }
     let offset = 0;
     for (const run of authorRuns(doc, authors())) {
       const from = offset + 1;
@@ -152,6 +198,7 @@ export function createEditorBinding(
     key: authorKey,
     state: {
       init: (_config, state) => decorationsOf(state.doc),
+      // During a composition the view is ahead of `Y.Text`; the old set is mapped along.
       // During a composition the view is ahead of `Y.Text`; the old set is mapped along.
       apply: (tr, old, _before, state) =>
         composition ? old.map(tr.mapping, tr.doc) : decorationsOf(state.doc),
@@ -188,6 +235,11 @@ export function createEditorBinding(
       return true;
     },
     handleDOMEvents: {
+      // The caret left this editor: the other person stops seeing it.
+      blur: () => {
+        onCaret?.(null);
+        return false;
+      },
       keyup: (_view, event) => {
         if (event.key === 'Backspace' || event.key === 'Delete') heldAfterJump = false;
         return false;
@@ -225,14 +277,41 @@ export function createEditorBinding(
         // composition is complete once that microtask has run.
         clearTimeout(compositionTimer);
         compositionTimer = setTimeout(() => {
-          if (composition && !view.composing) finishComposition();
+          if (view.composing) return;
+          // With nothing composed, a caret move made while composing still goes out.
+          if (composition) finishComposition();
+          else sendCaret();
         });
         return false;
       },
     },
   });
 
+  /** Tells `onCaret` where the user's own caret is, after the user moved it. */
+  function reportCaret(tr: Transaction) {
+    // A composing view shows candidate text `Y.Text` lacks, so its positions would land
+    // past where the other person's copy has text; the composition's end reports instead.
+    if (composition || view.composing) return;
+    if (!tr.getMeta(MIRROR) && (tr.selectionSet || tr.docChanged)) sendCaret();
+  }
+
+  /** Sends the own caret while this editor has focus; the view must match `Y.Text`. */
+  function sendCaret() {
+    if (!onCaret || !view.hasFocus()) return;
+    const { anchor, head } = view.state.selection;
+    const at = (pos: number) =>
+      Y.encodeRelativePosition(
+        Y.createRelativePositionFromTypeIndex(text, indexOf(view.state.doc, pos)),
+      );
+    onCaret({ anchor: at(anchor), head: at(head) });
+  }
+
   function dispatch(tr: Transaction) {
+    applyTransaction(tr);
+    reportCaret(tr);
+  }
+
+  function applyTransaction(tr: Transaction) {
     if (tr.getMeta(MIRROR) || !tr.docChanged) return view.updateState(view.state.apply(tr));
     if (!writable()) return view.updateState(view.state);
     if (composition || view.composing || tr.getMeta('composition') !== undefined)
@@ -328,6 +407,7 @@ export function createEditorBinding(
     settleComposition();
     // Decorations were only mapped while composing; drawn again from `Y.Text` now.
     if (authorClass || ownOnly) view.dispatch(view.state.tr.setMeta(MIRROR, true));
+    sendCaret();
   }
 
   function settleComposition() {
@@ -508,6 +588,11 @@ export function createEditorBinding(
       ownOnly = on;
       view.setProps({ editable: writable });
       // Redraws the decorations without changing the document.
+      view.dispatch(view.state.tr.setMeta(MIRROR, true));
+    },
+    showCaret(user, caret, label) {
+      if (caret) remote.set(user, { caret, ...label });
+      else remote.delete(user);
       view.dispatch(view.state.tr.setMeta(MIRROR, true));
     },
     characterAt(index) {

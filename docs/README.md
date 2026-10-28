@@ -14,7 +14,7 @@
    - [Web 基本性能检查](./validation/yjs-web-smoke-2026-10-24.md)：日常规模和多次续写的性能、保存与刷新恢复。
    - [内核设计验证](./validation/diary-kernel-design-2026-10-26.md)：保留原 ID 的干净基线、本地日志与严格依赖补验，归档原始输出；不代表产品已实现。
    - [内核批次验证](./validation/diary-kernel-batch-2026-10-26.md)：固定批次与整批原子提交在真实 PG 和浏览器日志上的临时验证，归档原始输出；不代表产品已实现。
-   - [内核共享集成实测](./validation/diary-kernel-sharing-2026-10-27.md)：阶段 4 的正式代码实测，1000 篇日记一次开放的两阶段耗时、锁持有时间与锁内重建篇数。
+   - [内核共享集成实测](./validation/diary-kernel-sharing-2026-10-27.md)：阶段 4 的正式代码实测：1000 篇日记一次开放的两阶段耗时、锁持有时间与锁内重建篇数；约 500 ms 往返时三种浏览器的本机输入、远端正文与光标延迟。
 5. [正式技术栈 ADR-0006](./adr/0006-formal-stack.md)：已采纳的栈与协同内核；[正式实现准备方案](./implementation-preparation.md)：开发规范建议。
    - [技术栈深度调研](./research/tech-stack-2026-10-24.md)：采用度、持续维护、Web/移动端路线与正式选型门槛。
 6. [第一轮历史记录](./validation/collaboration-core-2026-10-24.md)：早期协议层验证。

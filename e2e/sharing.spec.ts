@@ -2,7 +2,8 @@ import { expect, test, type Browser, type Page, type WebSocketRoute } from '@pla
 import * as Y from 'yjs';
 
 // Kernel phase 4 through the real stack: opening a range while another device of the
-// same account is offline (K8) and the undo that starts again in the new generation (K7).
+// same account is offline (K8), the undo that starts again in the new generation (K7),
+// and the partner's side of a shared diary (EDIT-13, EDIT-14, TIME-03, K11, K14).
 // A1 and A2 are two browser contexts of one account, so two devices with their own
 // IndexedDB; B is the partner. Failures are made at A1's socket; everything behind is real.
 const run = Date.now().toString(36);
@@ -20,6 +21,9 @@ const editor = (page: Page) => page.getByRole('textbox');
 const status = (page: Page) => page.locator('.save-status');
 const saved = (page: Page) =>
   expect(status(page)).toHaveText('已保存到服务器', { timeout: 15_000 });
+/** Saved where the other person can read it: the own diary while shared, or a live share. */
+const synced = (page: Page) =>
+  expect(status(page)).toHaveText('已同步 · 对方可以看到', { timeout: 15_000 });
 
 async function typeAtEnd(page: Page, text: string) {
   await editor(page).click();
@@ -135,15 +139,15 @@ test('K8 K7 opening while another device is offline: committed input stays text,
     timeout: 60_000,
   });
   await expect(editor(a1)).toHaveText('公开的字甲');
-  await saved(a1);
+  await synced(a1);
 
   // K7: undo reaches only what was typed in the new generation.
   await typeAtEnd(a1, '丙');
-  await saved(a1);
+  await synced(a1);
   await editor(a1).press('ControlOrMeta+z');
   await editor(a1).press('ControlOrMeta+z');
   await expect(editor(a1)).toHaveText('公开的字甲');
-  await saved(a1);
+  await synced(a1);
   expect(await serverText(a1, diaryId)).toBe('公开的字甲');
   expect(await partnerText(b, spaceId)).toBe('公开的字甲');
 });
@@ -171,7 +175,7 @@ test('EDIT-13 EDIT-14 TIME-03 K11 the partner reads and writes a shared diary in
   await expect(a).toHaveURL(/\/diaries\/[0-9a-f-]{36}$/);
   const ownDiary = a.url();
   await typeAtEnd(a, 'A的字');
-  await saved(a);
+  await synced(a);
 
   // B finds it on the home page and opens it as a live share.
   await b.goto('/');
@@ -185,12 +189,17 @@ test('EDIT-13 EDIT-14 TIME-03 K11 the partner reads and writes a shared diary in
 
   // B writes; A sees it live, each author in their own color.
   await typeAtEnd(b, 'B的字');
-  await saved(b);
+  await synced(b);
   await expect(editor(a)).toHaveText('A的字B的字');
   const colorOf = (page: Page, text: string) =>
     page.locator('.diary-editor [class*="author-slot"]', { hasText: text }).getAttribute('class');
   expect(await colorOf(a, 'A的字')).toBe(await colorOf(b, 'A的字'));
   expect(await colorOf(b, 'A的字')).not.toBe(await colorOf(b, 'B的字'));
+
+  // K14: A's caret shows on B's page with A's name, in A's color.
+  await editor(a).click();
+  await a.keyboard.press('ControlOrMeta+Home');
+  await expect(b.locator(`.diary-editor .remote-caret[data-name="${name('pa')}"]`)).toBeVisible();
 
   // TIME-03: a click names the author and the time written.
   await b.locator('.diary-editor [class*="author-slot"]', { hasText: 'A的字' }).click();

@@ -16,6 +16,8 @@ export class FakeSocket {
   static all: FakeSocket[] = [];
   static answer: (submit: Submit) => ErrorCode | 'ack' | 'hold' = () => 'ack';
   static seq = 0;
+  /** What the owner's subscription is told about sharing; the partner's is told nothing. */
+  static shared: boolean | undefined = undefined;
   private static held: (() => void) | null = null;
   private static releaseEarly = false;
   /**
@@ -48,7 +50,12 @@ export class FakeSocket {
         seq: FakeSocket.seq,
         commits: [],
         bindings: [],
+        ...(FakeSocket.shared !== undefined && !message.epochId
+          ? { shared: FakeSocket.shared }
+          : {}),
       });
+    // Carets are relayed to others only; the sender hears nothing back.
+    if (message.type === 'cursor') return;
     const answer = FakeSocket.answer(message);
     if (answer === 'hold') {
       FakeSocket.held = () => this.ack(message, reply);
@@ -105,6 +112,7 @@ export class FakeSocket {
     FakeSocket.all = [];
     FakeSocket.answer = () => 'ack';
     FakeSocket.seq = 0;
+    FakeSocket.shared = undefined;
     FakeSocket.held = null;
     FakeSocket.releaseEarly = false;
   }

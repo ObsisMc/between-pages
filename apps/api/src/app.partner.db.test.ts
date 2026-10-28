@@ -518,3 +518,125 @@ describe.runIf(testDatabaseUrl)('across generations and restarts', () => {
     }
   });
 });
+
+describe.runIf(testDatabaseUrl)("the owner's subscription", () => {
+  it('says whether the diary is shared as of the reply, and only to its owner', async () => {
+    const { a, b, spaceId, saveRange } = await pair();
+    const diary = await ownDiary(a);
+    const ownerSide = await subscribe(a, diary);
+    expect(ownerSide.first).toMatchObject({ type: 'synced', shared: true });
+    const [listed] = await sharedList(b, spaceId);
+    const partner = await subscribe(b, diary, listed!.epochId);
+    expect(partner.first).toMatchObject({ type: 'synced' });
+    expect(partner.first).not.toHaveProperty('shared');
+
+    // A stop keeps the generation: the owner is told, and a new subscription says so.
+    await saveRange(NOTHING);
+    expect(await ownerSide.socket.next()).toMatchObject({ type: 'context', change: 'stopped' });
+    const again = await subscribe(a, diary);
+    expect(again.first).toMatchObject({ type: 'synced', shared: false });
+
+    // Created while nothing is shared: private from the start.
+    const later = await subscribe(a, await ownDiary(a, '2026-10-21'));
+    expect(later.first).toMatchObject({ type: 'synced', shared: false });
+    for (const side of [ownerSide, partner, again, later]) side.socket.close();
+  });
+});
+
+describe.runIf(testDatabaseUrl)('carets', () => {
+  const caret = (diary: { diaryId: string; generationId: string }, head: string | null) => ({
+    v: 1,
+    type: 'cursor',
+    diaryId: diary.diaryId,
+    generationId: diary.generationId,
+    anchor: head,
+    head,
+  });
+
+  it('[adr:diary-collaboration-kernel#25] relays a caret to the partner while shared, never back to its sender, and stores nothing', async () => {
+    const { a, b, spaceId, saveRange } = await pair();
+    const diary = await ownDiary(a);
+    const epochId = (await sharedList(b, spaceId))[0]!.epochId;
+    const ownerSide = await subscribe(a, diary);
+    const partner = await subscribe(b, diary, epochId, 0);
+    const before = await query('select count(*)::int as n from diary_commits where diary_id = $1', [
+      diary.diaryId,
+    ]);
+
+    ownerSide.socket.send(caret(diary, 'AAECAw=='));
+    expect(await partner.socket.next()).toMatchObject({
+      type: 'cursor',
+      user: a.id,
+      head: 'AAECAw==',
+    });
+    partner.socket.send(caret(diary, 'BAUG'));
+    expect(await ownerSide.socket.next()).toMatchObject({ type: 'cursor', user: b.id });
+    expect(await ownerSide.socket.quiet(50)).toEqual([]);
+    expect(
+      await query('select count(*)::int as n from diary_commits where diary_id = $1', [
+        diary.diaryId,
+      ]),
+    ).toEqual(before);
+
+    // Stopped: no caret reaches the partner, and theirs no longer counts.
+    await saveRange(NOTHING);
+    expect(await partner.socket.next()).toMatchObject({ type: 'context', change: 'stopped' });
+    expect(await ownerSide.socket.next()).toMatchObject({ type: 'context', change: 'stopped' });
+    ownerSide.socket.send(caret(diary, 'AAECAw=='));
+    partner.socket.send(caret(diary, 'BAUG'));
+    expect(await partner.socket.quiet(100)).toEqual([]);
+    expect(await ownerSide.socket.quiet(100)).toEqual([]);
+    ownerSide.socket.close();
+    partner.socket.close();
+  });
+
+  it('[adr:diary-collaboration-kernel#25] takes a caret away when its connection closes', async () => {
+    const { a, b, spaceId } = await pair();
+    const diary = await ownDiary(a);
+    const epochId = (await sharedList(b, spaceId))[0]!.epochId;
+    const ownerSide = await subscribe(a, diary);
+    const partner = await subscribe(b, diary, epochId, 0);
+    ownerSide.socket.send(caret(diary, 'AAECAw=='));
+    await partner.socket.next();
+
+    ownerSide.socket.close();
+
+    expect(await partner.socket.next()).toMatchObject({
+      type: 'cursor',
+      user: a.id,
+      anchor: null,
+      head: null,
+    });
+    partner.socket.close();
+  });
+});
+
+describe.runIf(testDatabaseUrl)('backup tasks', () => {
+  it('[adr:diary-collaboration-kernel#28] registers the space target only for commits inside a live epoch, bound to it', async () => {
+    const { a, b, spaceId, saveRange } = await pair();
+    const diary = await ownDiary(a);
+    const e1 = (await sharedList(b, spaceId))[0]!.epochId;
+    const ownerSide = await subscribe(a, diary);
+    const tab = writerFrom(diary.state, 9201);
+    await submitted(ownerSide.socket, submitMessage(diary, [edit(tab, (t) => t.insert(0, 'V2'))]));
+    await saveRange(NOTHING);
+    await submitted(ownerSide.socket, submitMessage(diary, [edit(tab, (t) => t.insert(2, 'V3'))]));
+    await saveRange(ALL);
+    const e2 = (await sharedList(b, spaceId))[0]!.epochId;
+
+    const tasks = await query<{ version: string; target: string; epoch_id: string | null }>(
+      'select version, target, epoch_id from backup_outbox where diary_id = $1 order by version, target',
+      [diary.diaryId],
+    );
+    expect(tasks.map((t) => [Number(t.version), t.target, t.epoch_id])).toEqual([
+      [1, 'personal', null],
+      [1, 'space', e1],
+      [2, 'personal', null],
+      [2, 'space', e1],
+      [3, 'personal', null], // private: no space target
+      [4, 'personal', null],
+      [4, 'space', e2], // the reopened baseline
+    ]);
+    ownerSide.socket.close();
+  });
+});

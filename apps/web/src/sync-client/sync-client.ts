@@ -56,10 +56,22 @@ export type SyncClientOptions = {
   onStatus: (status: SyncStatus, code?: ErrorCode) => void;
   /** Told after the server committed it; the screen reconciles before switching (D7). */
   onContext?: (change: ContextChange) => void;
+  /**
+   * The owner's diary is in a live share as of each catch-up, before it reports `live`;
+   * changes after it come through `onContext`. Never told on the partner's epoch.
+   */
+  onShared?: (shared: boolean) => void;
+  /** Another person's caret in this generation, or null when it left (kernel D8). */
+  onCaret?: (user: string, caret: { anchor: Uint8Array; head: Uint8Array } | null) => void;
 };
 
 export type SyncClient = {
   submit(batch: OutgoingBatch): Promise<SubmitResult>;
+  /**
+   * Sends the own caret, or null when it left. Only while live, and never queued: a caret
+   * that cannot go now is out of date by the time it could (kernel D8).
+   */
+  caret(caret: { anchor: Uint8Array; head: Uint8Array } | null): void;
   receipt(diaryId: string, batchId: string): Promise<CommitReceipt | null>;
   close(): void;
 };
@@ -81,6 +93,8 @@ export function createSyncClient({
   onCommits,
   onStatus,
   onContext,
+  onShared,
+  onCaret,
 }: SyncClientOptions): SyncClient {
   let seq = knownSeq;
   let socket: WebSocket | null = null;
@@ -154,6 +168,7 @@ export function createSyncClient({
       case 'synced':
         if (message.diaryId !== diaryId || message.generationId !== generationId) return;
         if (!deliver(message.commits, message.bindings)) return subscribe(ws);
+        if (message.shared !== undefined) onShared?.(message.shared);
         live = true;
         retryMs = RECONNECT_FIRST_MS;
         return onStatus('live');
@@ -164,6 +179,14 @@ export function createSyncClient({
         return;
       case 'ack':
         return answer(message.receipt.batchId, { type: 'ack', receipt: message.receipt });
+      case 'cursor':
+        if (message.diaryId !== diaryId || message.generationId !== generationId) return;
+        return onCaret?.(
+          message.user,
+          message.anchor && message.head
+            ? { anchor: fromBase64(message.anchor), head: fromBase64(message.head) }
+            : null,
+        );
       case 'context':
         if (message.diaryId !== diaryId) return;
         return onContext?.({
@@ -226,6 +249,17 @@ export function createSyncClient({
             writtenAt: op.writtenAt.toISOString(),
           })),
         });
+      });
+    },
+    caret(caret) {
+      if (!socket || !live || ended) return;
+      send(socket, {
+        v: PROTOCOL_VERSION,
+        type: 'cursor',
+        diaryId,
+        generationId,
+        anchor: caret && toBase64(caret.anchor),
+        head: caret && toBase64(caret.head),
       });
     },
     async receipt(diaryId, batchId) {

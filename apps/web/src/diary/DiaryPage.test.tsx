@@ -52,6 +52,21 @@ describe('DiaryPage', () => {
     await waitFor(async () => expect((await status()).textContent).toBe('已保存到服务器'));
   });
 
+  it('says the partner can read what is saved while the own diary is shared, until it stops', async () => {
+    FakeSocket.shared = true;
+    openDiary();
+    await waitFor(async () => expect((await status()).textContent).toBe('已同步 · 对方可以看到'));
+    FakeSocket.all[0]!.push({
+      v: PROTOCOL_VERSION,
+      type: 'context',
+      diaryId: DIARY,
+      change: 'stopped',
+      generationId: GENERATION,
+      epochId: 'e1e1e1e1-0000-4000-8000-000000000001',
+    });
+    await waitFor(async () => expect((await status()).textContent).toBe('已保存到服务器'));
+  });
+
   it('lists refused input as a draft to copy and, after confirming, delete', async () => {
     openDiary();
     await waitFor(async () => expect((await status()).textContent).toBe('已保存到服务器'));
@@ -196,6 +211,11 @@ describe('a shared diary', () => {
     await waitFor(() => expect(editor.textContent).toBe('鲍勃的字'));
     expect(editor.getAttribute('contenteditable')).toBe('false');
     expect(FakeSocket.all).toHaveLength(0);
+  });
+
+  it('says the owner can read what the partner saved in a live share', async () => {
+    openShared('live');
+    await waitFor(async () => expect((await status()).textContent).toBe('已同步 · 对方可以看到'));
   });
 
   it('colors the text by its author’s slot, names both in a legend, and filters to the own text', async () => {
