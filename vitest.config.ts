@@ -17,6 +17,8 @@ export default defineConfig({
       { test: { name: 'web', root: 'apps/web', environment: 'jsdom' } },
       // Tests of the checks themselves; outside the coverage include on purpose.
       { test: { name: 'checks', root: 'checks', environment: 'node' } },
+      // The server backup scripts; their Docker cycle runs only under `npm run test:backup`.
+      { test: { name: 'ops', root: 'ops/backup', environment: 'node' } },
     ],
     coverage: {
       provider: 'v8',

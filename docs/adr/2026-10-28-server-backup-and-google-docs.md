@@ -61,9 +61,11 @@ ADR-0004 的原方案让应用把"可读 Doc"和"恢复用数据快照"都写进
 **保留**：
 - 最近 30 天：保留每天的完整备份与全部修改日志，可恢复到其中任意一分钟。
 - 更早：每月第一份完整备份用 `wal-g backup-mark` 标为永久，连同使它一致所需的日志永久保留，可恢复到那一刻的状态。
-- 清理：每天完整备份后运行 WAL-G 自带的 `delete retain`，只删 30 天以外、未标永久的备份与日志。不写自制的删除逻辑。
+- 清理：每天备份后运行 WAL-G 自带的 `delete before FIND_FULL <31 天前>`，只删 31 天以外、未标永久的备份与日志（多留一天，保证第 30 天的最早一分钟之前仍有一份备份）。不写自制的删除逻辑。
 
-**运行位置**：备份配置属于"存放真实数据的那个 PostgreSQL"。阶段 2 起真实日记在开发服务器的 compose 数据库里，所以先在那里启用；部署 ADR 确定生产数据库位置后，配置随之迁移。为不影响开发和测试，`compose.yaml` 不变，改用一个叠加文件 `ops/backup/compose.backup.yaml`：把镜像换成"Debian 版 `postgres:18` + 固定版本的 WAL-G"，加上归档参数与环境文件。
+**运行位置**：备份配置属于"存放真实数据的那个 PostgreSQL"。阶段 2 起真实日记在开发服务器的 compose 数据库里，所以先在那里启用；部署 ADR 确定生产数据库位置后，配置随之迁移。为不影响开发和测试，`compose.yaml` 不变，改用一个叠加文件 `ops/backup/compose.backup.yaml`：把镜像换成"`postgres:18.6-alpine3.24` + 固定版本的 WAL-G"，加上归档参数与环境文件。
+
+落地时确认：镜像沿用现有数据库的 Alpine，而不是原计划的 Debian。现有数据目录的排序规则是 musl 下的 `en_US.utf8`，换成 glibc 会改变文本排序，让文本索引失序。WAL-G 只发布 glibc 版本，所以在 `golang:1.25.11-alpine3.24` 里从固定的 v3.0.9 源码（提交 `3e49318…`，构建时校验）静态链接 libsodium 构建。脚本用 TypeScript（`node ops/backup/*.ts`），与仓库其他脚本同一语言，选备份、判断每月与校验都有单元测试。
 
 日志文件名义上固定 16 MB，强制切换的文件也是这个长度（PostgreSQL 文档："a minute or so" 是合理设置）。实现时实测一天写作的上传量与 R2 占用，若明显偏大，把 `archive_timeout` 调到几分钟，并在本文与路线图里记下实测值。
 
@@ -73,7 +75,7 @@ ADR-0004 的原方案让应用把"可读 Doc"和"恢复用数据快照"都写进
 - 每篇日记的当前代次都能从快照与提交重建，存储的校验值全部一致；
 - 每个可见字都有作者与写入时间；
 - 用户、空间、日记、提交的数量不少于上一次演练记录的数量；
-- 恢复到的最新提交时间离演练开始不超过约一天（说明日志在持续上传）。
+- 恢复到的最新提交不早于线上数据库五分钟前的最后一次提交（说明日志在持续上传）。落地时确认：原计划"离演练开始不超过约一天"在两人几天没写时会误报，改为与仍在运行的线上数据库比较；真正恢复时线上库已不在，不做这项。
 
 检查完删除临时容器与数据目录，结果与耗时写入服务器上的演练日志。
 
@@ -84,8 +86,8 @@ ADR-0004 的原方案让应用把"可读 Doc"和"恢复用数据快照"都写进
 ### D4：恢复是一条命令，由 Ray 判断并执行
 
 ```sh
-ops/backup/restore.sh --to latest                     # 硬盘坏了：恢复到最新
-ops/backup/restore.sh --to "2026-10-28 21:04 UTC"     # bug 在 21:05 写坏数据：恢复到之前
+node ops/backup/restore.ts --to latest                     # 硬盘坏了：恢复到最新
+node ops/backup/restore.ts --to "2026-10-28 21:04 UTC"     # bug 在 21:05 写坏数据：恢复到之前
 ```
 
 命令完成：从 R2 取所需的完整备份、按时间点重放日志、启动数据库、运行 D3 的检查、输出恢复到的时间与耗时。每周演练调用的就是它，所以它每周都被实际运行一次。
@@ -207,7 +209,7 @@ Between Pages / 2026 / 10 / 2026-10-28 周三
 
 **模块**（`apps/api/src`）：`google`（调用 Google OAuth、Drive、Docs 的 REST 接口与令牌加解密，不访问数据库）；`backup`（连接、待写队列、渲染、状态，属于服务层，经 `reader` 取正文、经 `history` 判断是否已成历史）；`worker`（组装入口，与 `server` 同级）。登记进 `checks/verify-dependency-direction.ts`。调用 Google 用 `fetch`，不装 `googleapis`。
 
-**运维目录** `ops/backup/`：`compose.backup.yaml`、`Dockerfile`（`postgres:18` + 固定版本 WAL-G）、`backup.sh`（每日完整备份、标永久、清理、归档状态检查、打卡）、`restore.sh`、`verify.ts`（D3 的检查）、`drill.sh`（每周演练、打卡）、systemd 定时器示例、`README.md`（恢复手册与首次配置）、`backup.env.example`（只有变量名）。
+**运维目录** `ops/backup/`：`compose.backup.yaml`、`Dockerfile`（`postgres:18.6-alpine3.24` + 从源码构建的 WAL-G v3.0.9）、`backup.ts`（每日备份、标永久、清理、归档状态检查、打卡）、`restore.ts`、`verify.ts`（D3 的检查）、`drill.ts`（每周演练、打卡）、`systemd/` 定时器示例、`README.md`（恢复手册与首次配置）、`backup.env.example`（只有变量名）；测试用的 `compose.test.yaml` 让 WAL-G 写本地目录，`npm run test:backup` 跑完整循环。
 
 **新配置**：`GOOGLE_TOKEN_KEY`（API 与后台进程）、`GOOGLE_DRIVE_TESTING`（D9）；服务器环境文件中的 `WALG_LIBSODIUM_KEY`、R2 的 `WALG_S3_PREFIX`、`AWS_ENDPOINT`、`AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY`、`AWS_REGION=auto`、`AWS_S3_FORCE_PATH_STYLE=true`，以及两个 Healthchecks 打卡地址。Google OAuth 客户端沿用登录用的同一个（`GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET`），在 Google Cloud 里加上 Drive 回调地址。
 
@@ -291,11 +293,11 @@ Between Pages / 2026 / 10 / 2026-10-28 周三
 4. **外部修改与每日检查**：`requiredRevisionId` 冲突时另存、被删重建、每日元数据检查。完成条件：不变量 8、9 有测试；在真实 Google 里改一份、删一份各验证一次。
 5. **收尾**：Ray 照手册在空环境做一次人工恢复并记录耗时，结果写入 `docs/validation/`；勾选验收清单的 GOOGLE 各条；本文转为已实现，更新路线图与 README 状态。
 
-**自主实现约定**：本文采纳后，以下改动无需再问——固定版本的 WAL-G 与 Debian 版 `postgres:18` 镜像（仅用于 `ops/backup/`）；新目录 `ops/backup/` 及其 README；上面的一次迁移；`google`、`backup`、`worker` 三个单元及其在依赖方向检查中的登记；上面列出的接口及其 contracts；新的配置项。必须停下来问的情况：需要任何 npm 新依赖；需要改 `compose.yaml` 或测试用的数据库容器；所选 WAL-G 版本不支持 PostgreSQL 18（改用 pgBackRest 前）；需要往用户 Drive 写 Doc 以外的东西；删除现有公开接口；改 CI 或 hooks。凡是需要 Ray 的账号或密钥的步骤（R2、Healthchecks、密钥生成、Google Cloud 回调地址），写进手册，由 Ray 执行。每一阶段一个 PR，按顺序合并。
+**自主实现约定**：本文采纳后，以下改动无需再问——固定版本的 WAL-G 与 `postgres:18` 镜像（仅用于 `ops/backup/`；落地为 Alpine，见 D2）；新目录 `ops/backup/` 及其 README；上面的一次迁移；`google`、`backup`、`worker` 三个单元及其在依赖方向检查中的登记；上面列出的接口及其 contracts；新的配置项。必须停下来问的情况：需要任何 npm 新依赖；需要改 `compose.yaml` 或测试用的数据库容器；所选 WAL-G 版本不支持 PostgreSQL 18（改用 pgBackRest 前）；需要往用户 Drive 写 Doc 以外的东西；删除现有公开接口；改 CI 或 hooks。凡是需要 Ray 的账号或密钥的步骤（R2、Healthchecks、密钥生成、Google Cloud 回调地址），写进手册，由 Ray 执行。每一阶段一个 PR，按顺序合并。
 
 ## 验收标准
 
-- 服务器备份：在开发服务器上，写一段日记后约一分钟内 R2 出现新的加密日志对象；`restore.sh --to latest` 与指定时间点的恢复都通过检查；停掉打卡后 Healthchecks 发出邮件。
+- 服务器备份：在开发服务器上，写一段日记后约一分钟内 R2 出现新的加密日志对象；`restore.ts --to latest` 与指定时间点的恢复都通过检查；停掉打卡后 Healthchecks 发出邮件。
 - [验收清单](../acceptance.md) 的 GOOGLE-01～12 与[功能规格](../diary-spec.md)第 9 节已按本文改写（与本文同一 PR）：服务器备份对应 GOOGLE-07、09、10、11，Google 可读副本对应 GOOGLE-01～06、08、12。阶段 1 完成时 GOOGLE-07、11 有证据，阶段 3、4 完成时 GOOGLE-01～06、08、12 有证据，阶段 5 的人工恢复演练给出 GOOGLE-09、10 的证据。
 - 不变量 1～4 由 `ops/backup/` 的脚本测试与每周演练验证；5～15 由 API 的真实 PG 测试（Google 接口用本地假服务）与 web 测试验证，测试标题带 `[adr:server-backup-and-google-docs#N]`。
 
