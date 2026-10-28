@@ -284,3 +284,46 @@ describe('sync client', () => {
     });
   });
 });
+
+describe('shared diaries', () => {
+  const EPOCH = 'e1e1e1e1-0000-4000-8000-000000000001';
+
+  it('subscribes and submits in the partner epoch, and hands over context changes', async () => {
+    vi.stubGlobal('WebSocket', FakeSocket);
+    const changes: unknown[] = [];
+    const client = createSyncClient({
+      diaryId: DIARY,
+      generationId: GENERATION,
+      epochId: EPOCH,
+      knownSeq: 2,
+      onCommits: () => undefined,
+      onStatus: () => undefined,
+      onContext: (change) => changes.push(change),
+    });
+    clients.push(client);
+    const socket = FakeSocket.all.at(-1)!;
+    socket.open();
+    expect(socket.sent[0]).toMatchObject({ type: 'subscribe', epochId: EPOCH, knownSeq: 2 });
+    socket.receive(synced(2, []));
+
+    void client.submit({ ...batch(), epochId: EPOCH });
+    expect(socket.sent[1]).toMatchObject({ type: 'submit', epochId: EPOCH });
+
+    const next = '2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e';
+    socket.receive({
+      v: PROTOCOL_VERSION,
+      type: 'context',
+      diaryId: DIARY,
+      change: 'opened',
+      generationId: next,
+      epochId: EPOCH,
+    });
+    expect(changes).toEqual([{ change: 'opened', generationId: next, epochId: EPOCH }]);
+  });
+
+  it('sends no epoch on the owner’s own diary', () => {
+    const { socket } = setup();
+    socket().open();
+    expect(socket().sent[0]).not.toHaveProperty('epochId');
+  });
+});

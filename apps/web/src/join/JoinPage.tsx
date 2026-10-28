@@ -135,7 +135,7 @@ export function JoinPage() {
           </p>
           <p className="range-help">
             邀请 {timeText.format(new Date(preview.expiresAt))} 前有效。选择你以后愿意共享的日期，
-            对方看不到这个设置；范围已设置，日记共享尚未开放。
+            对方看不到这个设置；接受后，你选择的日期里的日记会共享给对方并持续更新。
           </p>
           <RangeEditor initial={ALL_DAYS} allowUnset onChange={setChoice} />
           <button

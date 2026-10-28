@@ -43,6 +43,9 @@ const REFUSAL_TEXT: Partial<Record<ErrorCode, string>> = {
 /** The screen's text for a failed relationship call; codes decide it, never server messages. */
 export function refusalText(error: unknown): string {
   if (!(error instanceof ApiError)) return '网络中断，无法确认结果，请联网后重试';
+  // Kernel D5: nothing opened, and nothing was stored with it.
+  if (error.code === 'SHARE_OPEN_FAILED')
+    return `这些日期的日记暂时无法共享，这次设置没有保存：${error.dates.join('、')}`;
   return REFUSAL_TEXT[error.code] ?? '操作失败，请稍后再试';
 }
 

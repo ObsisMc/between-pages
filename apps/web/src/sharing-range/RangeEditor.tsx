@@ -99,8 +99,8 @@ function RowEditor({
 /**
  * Chooses the dates this person keeps sharing in a space (spaces-and-invitations D3, D12):
  * everything, or day ranges (a single day has equal ends) with open ends and exclusions,
- * or, where `allowUnset`, not setting a range now. Only its owner ever sees it. Saving it
- * configures a range; it publishes no diary.
+ * or, where `allowUnset`, not setting a range now. Only its owner ever sees it. Confirming
+ * it is what shares the diaries of those dates (kernel D5); the caller asks for that.
  */
 export function RangeEditor({
   initial,

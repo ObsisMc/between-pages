@@ -85,6 +85,10 @@ export function createDiarySession({
   let storing = false;
   let storeTimer: ReturnType<typeof setTimeout> | undefined;
   let remountWanted = false;
+  /** A generation switch waits for text on screen to be stored first. */
+  let switchWanted = false;
+  let switching = false;
+  let switchTimer: ReturnType<typeof setTimeout> | undefined;
   /** Deltas that arrive while the editor is rebuilt, applied to the new one. */
   let arriving: Uint8Array[] | null = null;
 
@@ -161,6 +165,10 @@ export function createDiarySession({
         if (result === 'draft') await refreshDrafts();
       }
       if (remountWanted) await remountWhenStored();
+      if (switchWanted && unstored.length === 0) {
+        switchWanted = false;
+        void switchGeneration();
+      }
     } catch (error) {
       if (error instanceof JournalUnavailable) {
         editor?.setEditable(false);
@@ -192,22 +200,15 @@ export function createDiarySession({
     }
   }
 
-  async function open() {
-    journal = await openJournal<EditIntent[]>(userId);
-    if (destroyed) return journal.close();
-    const server = await serverBaseline();
-    if (destroyed) return;
-    let baseline = (await journal.load(diaryId)).baseline;
-    if (typeof server === 'object') baseline = await journal.install(server);
-    else if (server !== 'offline' || !baseline) return set({ phase: 'failed', failure: server });
-    generationId = baseline.generationId;
-    await mount();
-    if (destroyed) return;
+  const receiptOf = async (batchId: string) =>
+    (await callApi('receipt', { params: { diaryId }, query: { batchId } })).receipt;
 
+  /** The sync client and sender of the current generation. */
+  function connect(seq: number) {
     sync = createSyncClient({
       diaryId,
       generationId,
-      knownSeq: baseline.seq,
+      knownSeq: seq,
       onCommits: (commits, bindings) => {
         bind(bindings);
         if (commits.length > 0) set({ remoteChanges: state.remoteChanges + commits.length });
@@ -217,13 +218,18 @@ export function createDiarySession({
         // A delta the journal fails to store is fetched again by the next catch-up.
         journal?.advance(diaryId, generationId, commits, bindings).catch(() => undefined);
       },
-      onStatus: (status) => {
+      onStatus: (status, code) => {
         set({ sync: status });
         if (status === 'live') sender?.wake();
+        // The generation changed while this device was away (kernel D7, D14).
+        if (status === 'refused' && code === 'STALE_CONTEXT') void switchGeneration();
+      },
+      onContext: ({ change, generationId: next }) => {
+        if (change === 'opened' && next !== generationId) void switchGeneration();
       },
     });
     sender = createSender({
-      journal,
+      journal: journal!,
       userId,
       diaryId,
       transport: sync,
@@ -236,9 +242,65 @@ export function createDiarySession({
         void remountWhenStored();
       },
     });
+  }
+
+  /**
+   * Moves this screen to the diary's new generation (kernel D4, D7, D8): no new input
+   * meanwhile, everything shown is stored first, the journal reconciles pending input by
+   * receipt and installs the clean baseline, and a new editor (new clientID, empty undo)
+   * loads it. If the server cannot be reached, nothing changes and it is tried again.
+   */
+  async function switchGeneration() {
+    if (switching || destroyed || !journal) return;
+    // Text on screen but not stored would be lost by the new editor (invariant 23).
+    if (unstored.length > 0) {
+      switchWanted = true;
+      return;
+    }
+    switching = true;
+    editor?.setEditable(false);
+    sender?.stop();
+    sync?.close();
+    try {
+      const server = await serverBaseline();
+      if (destroyed) return;
+      if (typeof server !== 'object') {
+        if (server !== 'offline') return set({ phase: 'failed', failure: server });
+        switchTimer = setTimeout(() => void switchGeneration(), STORE_RETRY_MS);
+        return;
+      }
+      await journal.switchTo(server, receiptOf);
+      const { baseline } = await journal.load(diaryId);
+      if (destroyed || !baseline) return;
+      generationId = baseline.generationId;
+      await mount();
+      connect(baseline.seq);
+      await refreshDrafts();
+      sender?.wake();
+    } catch {
+      // A receipt that could not be fetched: the journal is unchanged; try again later.
+      if (!destroyed) switchTimer = setTimeout(() => void switchGeneration(), STORE_RETRY_MS);
+    } finally {
+      switching = false;
+    }
+  }
+
+  async function open() {
+    journal = await openJournal<EditIntent[]>(userId);
+    if (destroyed) return journal.close();
+    const server = await serverBaseline();
+    if (destroyed) return;
+    if (typeof server === 'object') await journal.switchTo(server, receiptOf);
+    else if (server !== 'offline') return set({ phase: 'failed', failure: server });
+    const { baseline } = await journal.load(diaryId);
+    if (!baseline) return set({ phase: 'failed', failure: 'offline' });
+    generationId = baseline.generationId;
+    await mount();
+    if (destroyed) return;
+    connect(baseline.seq);
     set({ phase: 'open' });
     await refreshDrafts();
-    sender.wake();
+    sender?.wake();
   }
 
   /** The other person's characters in the part of the editor inside the window (kernel D15). */
@@ -271,6 +333,7 @@ export function createDiarySession({
     destroy() {
       destroyed = true;
       clearTimeout(storeTimer);
+      clearTimeout(switchTimer);
       window.removeEventListener('beforeunload', guardUnload);
       sender?.stop();
       reads?.stop();

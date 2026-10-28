@@ -21,6 +21,8 @@ export const BATCH_SOFT_BYTES = 64 * 1024;
 export type Baseline = {
   diaryId: string;
   generationId: string;
+  /** The partner's live epoch this copy belongs to; absent on the owner's own diary. */
+  epochId?: string;
   seq: number;
   /** A Yjs update holding the whole state. */
   state: Uint8Array;
@@ -47,6 +49,8 @@ export type SendBatch = {
   diaryId: string;
   batchId: string;
   generationId: string;
+  /** The context it was written in, kept with the batch: the partner's epoch (kernel D7). */
+  epochId?: string;
   operations: { localSequence: number; operationId: string; update: Uint8Array; writtenAt: Date }[];
 };
 
@@ -83,9 +87,22 @@ export type Journal<Intent = unknown> = {
   load(diaryId: string): Promise<JournalState<Intent>>;
   /**
    * Takes the server's state of the diary when it is newer and returns the baseline now
-   * stored. A different generation throws: switching one is kernel phase 4.
+   * stored. A different generation or epoch throws: that is `switchTo`.
    */
   install(server: Baseline): Promise<Baseline>;
+  /**
+   * Moves the diary to the server's state in another generation or epoch (kernel D7
+   * "切换起点"): asks `receiptOf` whether the unconfirmed batch was committed; committed
+   * input is saved and dropped, every other pending operation becomes a draft, and the new
+   * baseline is installed, all in one transaction. If the queue changed while the receipt
+   * was fetched, that transaction is abandoned and the switch starts over. Returns the
+   * drafts made; in the same generation and epoch it is `install`, returning none. A
+   * receipt that cannot be fetched throws and changes nothing.
+   */
+  switchTo(
+    server: Baseline,
+    receiptOf: (batchId: string) => Promise<CommitReceipt | null>,
+  ): Promise<Draft<Intent>[]>;
   /**
    * Stores one operation behind the last one. Written against a generation that is no
    * longer current, it becomes a draft instead and is never sent (D7, old tabs).
@@ -183,6 +200,41 @@ export async function openJournal<Intent = unknown>(userId: string): Promise<Jou
     return drafts;
   };
 
+  const install = (server: Baseline) =>
+    run([BASELINES, RECEIPTS], 'readwrite', async (tx) => {
+      const store = tx.objectStore(BASELINES);
+      const current = await request<BaselineRecord | undefined>(store.get(server.diaryId));
+      if (!current) {
+        store.put({ ...server, nextSequence: 1 } satisfies BaselineRecord);
+        return server;
+      }
+      if (!sameContext(current, server))
+        throw new Error('The diary moved to a new generation or epoch');
+      const next: BaselineRecord = {
+        ...current,
+        bindings: unionBindings(current.bindings, server.bindings),
+      };
+      if (server.seq > current.seq) {
+        next.state = Y.mergeUpdates([current.state, server.state]);
+        next.seq = await skipOwn(tx, server.diaryId, server.seq);
+      }
+      store.put(next);
+      return baselineFrom(next);
+    });
+
+  /** What a switch decides on: the context and the exact queue it saw. */
+  const queueOf = async (tx: IDBTransaction, diaryId: string) => {
+    const record = await request<BaselineRecord | undefined>(
+      tx.objectStore(BASELINES).get(diaryId),
+    );
+    const pending = await request<PendingOperation<Intent>[]>(
+      tx.objectStore(PENDING).getAll(ofDiary(diaryId)),
+    );
+    const batch = await request<SendBatch | undefined>(tx.objectStore(BATCHES).get(diaryId));
+    const key = `${batch?.batchId ?? ''}:${pending.map((op) => op.localSequence).join()}`;
+    return { record, pending, batch, key };
+  };
+
   return {
     load: (diaryId) =>
       run([BASELINES, PENDING, BATCHES], 'readonly', async (tx) => {
@@ -196,27 +248,46 @@ export async function openJournal<Intent = unknown>(userId: string): Promise<Jou
         return { baseline: record ? baselineFrom(record) : null, pending, batch: batch ?? null };
       }),
 
-    install: (server) =>
-      run([BASELINES, RECEIPTS], 'readwrite', async (tx) => {
-        const store = tx.objectStore(BASELINES);
-        const current = await request<BaselineRecord | undefined>(store.get(server.diaryId));
-        if (!current) {
-          store.put({ ...server, nextSequence: 1 } satisfies BaselineRecord);
-          return server;
+    install,
+
+    async switchTo(server, receiptOf) {
+      for (;;) {
+        const seen = await run([BASELINES, PENDING, BATCHES], 'readonly', (tx) =>
+          queueOf(tx, server.diaryId),
+        );
+        if (!seen.record || sameContext(seen.record, server)) {
+          await install(server);
+          return [];
         }
-        if (current.generationId !== server.generationId)
-          throw new Error('The diary moved to a new generation');
-        const next: BaselineRecord = {
-          ...current,
-          bindings: unionBindings(current.bindings, server.bindings),
-        };
-        if (server.seq > current.seq) {
-          next.state = Y.mergeUpdates([current.state, server.state]);
-          next.seq = await skipOwn(tx, server.diaryId, server.seq);
-        }
-        store.put(next);
-        return baselineFrom(next);
-      }),
+        // Outside any transaction: IndexedDB commits a transaction left idle over a fetch.
+        const receipt = seen.batch ? await receiptOf(seen.batch.batchId) : null;
+        const drafts = await run(
+          [BASELINES, PENDING, BATCHES, RECEIPTS, DRAFTS],
+          'readwrite',
+          async (tx) => {
+            const now = await queueOf(tx, server.diaryId);
+            if (now.key !== seen.key || !now.record || sameContext(now.record, server)) return null;
+            const saved = new Set(
+              receipt ? now.batch!.operations.map((op) => op.localSequence) : [],
+            );
+            for (const op of now.pending)
+              tx.objectStore(PENDING).delete([server.diaryId, op.localSequence]);
+            tx.objectStore(BATCHES).delete(server.diaryId);
+            tx.objectStore(RECEIPTS).delete(receiptsOf(server.diaryId));
+            tx.objectStore(BASELINES).put({
+              ...server,
+              nextSequence: now.record.nextSequence,
+            } satisfies BaselineRecord);
+            return toDrafts(
+              tx,
+              now.pending.filter((op) => !saved.has(op.localSequence)),
+              'stale-generation',
+            );
+          },
+        );
+        if (drafts) return drafts;
+      }
+    },
 
     append: (diaryId, generationId, operation) =>
       run([BASELINES, PENDING, DRAFTS], 'readwrite', async (tx) => {
@@ -251,7 +322,7 @@ export async function openJournal<Intent = unknown>(userId: string): Promise<Jou
       }),
 
     nextBatch: (diaryId) =>
-      run([PENDING, BATCHES], 'readwrite', async (tx) => {
+      run([BASELINES, PENDING, BATCHES], 'readwrite', async (tx) => {
         const existing = await request<SendBatch | undefined>(tx.objectStore(BATCHES).get(diaryId));
         if (existing) return existing;
         const candidates = await request<PendingOperation<Intent>[]>(
@@ -268,10 +339,14 @@ export async function openJournal<Intent = unknown>(userId: string): Promise<Jou
           const { localSequence, operationId, update, writtenAt } = op;
           members.push({ localSequence, operationId, update, writtenAt });
         }
+        const baseline = await request<BaselineRecord | undefined>(
+          tx.objectStore(BASELINES).get(diaryId),
+        );
         const batch: SendBatch = {
           diaryId,
           batchId: crypto.randomUUID(),
           generationId: first.generationId,
+          ...(baseline?.epochId ? { epochId: baseline.epochId } : {}),
           operations: members,
         };
         tx.objectStore(BATCHES).put(batch);
@@ -437,9 +512,14 @@ function draftOf<Intent>(
   };
 }
 
-function baselineFrom({ diaryId, generationId, seq, state, bindings }: BaselineRecord): Baseline {
-  return { diaryId, generationId, seq, state, bindings };
+function baselineFrom(record: BaselineRecord): Baseline {
+  const { diaryId, generationId, epochId, seq, state, bindings } = record;
+  return { diaryId, generationId, ...(epochId ? { epochId } : {}), seq, state, bindings };
 }
+
+/** One generation and the same epoch (or none): the same context, where input merges (D7). */
+const sameContext = (a: Baseline, b: Baseline) =>
+  a.generationId === b.generationId && a.epochId === b.epochId;
 
 function unionBindings(a: ClientBinding[], b: ClientBinding[]): ClientBinding[] {
   const byClient = new Map(a.map((binding) => [binding.clientId, binding]));

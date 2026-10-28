@@ -13,7 +13,7 @@ const mine = (revision: number, confirmedPeriodId: string | null) => () =>
   Response.json({ selection: OCTOBER, revision, confirmedPeriodId });
 
 describe('SpacePage', () => {
-  it('[adr:spaces-and-invitations#12] shows the partner, the binding history and the own range, never a diary', async () => {
+  it('shows the partner, the binding history and the own range with whether it is shared now', async () => {
     stubApi({
       'GET /api/me': signedIn('alice'),
       [`GET /api/spaces/${SPACE}`]: () => Response.json({ space: space(), periods: periods(true) }),
@@ -22,10 +22,11 @@ describe('SpacePage', () => {
     renderAt(`/spaces/${SPACE}`);
 
     expect(await screen.findByText('与 bob 的空间')).toBeDefined();
-    expect(screen.getByText('范围已设置，日记共享尚未开放')).toBeDefined();
+    expect(screen.getByText('每人只共享自己确认过的日期')).toBeDefined();
     expect(screen.getAllByRole('listitem')).toHaveLength(2);
-    expect(screen.getByText(/共享：2026-10-01 至 2026-10-31（已为本次绑定确认）/)).toBeDefined();
-    expect(screen.queryByText(/已共享|已冻结/)).toBeNull();
+    expect(
+      screen.getByText(/共享：2026-10-01 至 2026-10-31（已为本次绑定确认，正在共享）/),
+    ).toBeDefined();
   });
 
   it('[adr:spaces-and-invitations#8] shows the change before saving and sends the revision it was based on', async () => {
@@ -55,6 +56,63 @@ describe('SpacePage', () => {
       expectedRevision: 1,
       selection: { include: [{ from: null, to: null }], exclude: [] },
     });
+  });
+
+  it('[adr:diary-collaboration-kernel#17] says which dates open and which stop before confirming', async () => {
+    stubApi({
+      'GET /api/me': signedIn('alice'),
+      [`GET /api/spaces/${SPACE}`]: () => Response.json({ space: space(), periods: periods(true) }),
+      [`GET /api/spaces/${SPACE}/my-sharing`]: mine(1, PERIOD),
+    });
+    renderAt(`/spaces/${SPACE}`);
+
+    fireEvent.click(await screen.findByLabelText('全部历史与以后的日期'));
+    fireEvent.click(screen.getByText('保存范围'));
+
+    expect(screen.getByText(/^将开放：2026-09-30 及以前；2026-11-01 起持续。/)).toBeDefined();
+    expect(screen.getByText(/撤销记录从开放时重新开始/)).toBeDefined();
+    expect(screen.queryByText(/将停止更新/)).toBeNull();
+  });
+
+  it('[adr:diary-collaboration-kernel#17] confirming for this binding for the first time opens every chosen date', async () => {
+    stubApi({
+      'GET /api/me': signedIn('alice'),
+      [`GET /api/spaces/${SPACE}`]: () => Response.json({ space: space(), periods: periods(true) }),
+      // Confirmed for an earlier binding only: nothing is shared now.
+      [`GET /api/spaces/${SPACE}/my-sharing`]: mine(1, null),
+    });
+    renderAt(`/spaces/${SPACE}`);
+
+    expect(await screen.findByText(/尚未为本次绑定确认，日记没有共享/)).toBeDefined();
+    fireEvent.click(screen.getByText('保存范围'));
+    expect(screen.getByText(/^将开放：2026-10-01 至 2026-10-31。/)).toBeDefined();
+  });
+
+  it('[adr:diary-collaboration-kernel#17] names the dates that could not open and saves nothing', async () => {
+    stubApi({
+      'GET /api/me': signedIn('alice'),
+      [`GET /api/spaces/${SPACE}`]: () => Response.json({ space: space(), periods: periods(true) }),
+      [`GET /api/spaces/${SPACE}/my-sharing`]: mine(1, PERIOD),
+      [`PUT /api/spaces/${SPACE}/my-sharing`]: () =>
+        Response.json(
+          {
+            error: {
+              code: 'SHARE_OPEN_FAILED',
+              message: 'x',
+              dates: ['2026-09-15', '2026-09-16'],
+            },
+          },
+          { status: 409 },
+        ),
+    });
+    renderAt(`/spaces/${SPACE}`);
+    fireEvent.click(await screen.findByLabelText('全部历史与以后的日期'));
+    fireEvent.click(screen.getByText('保存范围'));
+    fireEvent.click(screen.getByText('确认保存'));
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      '这些日期的日记暂时无法共享，这次设置没有保存：2026-09-15、2026-09-16',
+    );
   });
 
   it('asks to reload when the range changed elsewhere', async () => {
