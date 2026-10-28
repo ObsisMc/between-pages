@@ -5,6 +5,7 @@ import { BODY, createDiaryDoc } from '@between-pages/collab';
 import { PROTOCOL_VERSION } from '@between-pages/contracts';
 import * as Y from 'yjs';
 import { DIARY, FakeSocket, GENERATION, USER, diaryResponse, stubLocks } from '../../test/diary.ts';
+import { DWELL_MS } from '../read-tracker/index.ts';
 import { renderAt, signedIn, stubApi } from '../../test/render.tsx';
 
 const clipboard = { writeText: vi.fn<(text: string) => Promise<void>>(async () => undefined) };
@@ -178,7 +179,7 @@ describe('a shared diary', () => {
       });
   }
 
-  function openShared(share: 'live' | 'frozen') {
+  function openShared(share: 'live' | 'frozen', more: Parameters<typeof stubApi>[0] = {}) {
     vi.stubGlobal('WebSocket', FakeSocket);
     vi.stubGlobal('navigator', { locks: stubLocks(), clipboard });
     stubApi({
@@ -199,6 +200,7 @@ describe('a shared diary', () => {
         }),
       [`GET /api/diaries/${DIARY}/shares/${EPOCH}`]: sharedResponse(share),
       [`GET /api/diaries/${DIARY}/read`]: () => Response.json({ ranges: [] }),
+      ...more,
     });
     renderAt(`/diaries/${DIARY}/shares/${EPOCH}`);
   }
@@ -234,5 +236,42 @@ describe('a shared diary', () => {
       expect(editor.querySelector('.author-hidden')?.textContent).toBe('鲍勃的字'),
     );
     expect(editor.getAttribute('contenteditable')).toBe('false');
+  });
+
+  it('[adr:diary-collaboration-kernel#26] counts nothing hidden by the own-text-only filter as read (EDIT-14)', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    // jsdom has no layout: the editor fills the window and no point maps to a position,
+    // so the whole text counts as on screen.
+    Object.defineProperty(document, 'elementFromPoint', { value: () => null, configurable: true });
+    const reports: unknown[] = [];
+    openShared('live', {
+      [`POST /api/diaries/${DIARY}/read`]: (init) => {
+        const body = JSON.parse(String(init!.body));
+        reports.push(body.ranges);
+        return Response.json(body);
+      },
+    });
+    try {
+      const editor = await screen.findByRole('textbox');
+      await waitFor(() => expect(editor.textContent).toBe('鲍勃的字'));
+      vi.spyOn(editor.parentElement!, 'getBoundingClientRect').mockReturnValue({
+        top: 0,
+        bottom: 400,
+        left: 0,
+        right: 600,
+      } as DOMRect);
+
+      fireEvent.click(screen.getByLabelText('只看我的文字'));
+      await waitFor(() => expect(editor.querySelector('.author-hidden')).not.toBeNull());
+      await vi.advanceTimersByTimeAsync(3 * DWELL_MS);
+      expect(reports).toEqual([]);
+
+      fireEvent.click(screen.getByLabelText('只看我的文字'));
+      await vi.advanceTimersByTimeAsync(2 * DWELL_MS);
+      expect(reports).toEqual([[{ clientId: BOB_CLIENT, from: 0, to: 4 }]]);
+    } finally {
+      vi.useRealTimers();
+      delete (document as { elementFromPoint?: unknown }).elementFromPoint;
+    }
   });
 });
