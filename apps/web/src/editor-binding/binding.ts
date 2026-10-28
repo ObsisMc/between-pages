@@ -80,14 +80,31 @@ export type EditorBinding = {
    * character identity (kernel D15).
    */
   othersCharacters(from: number, to: number): CharacterRun[];
+  /**
+   * The character at a text index as a position that follows it through everyone's edits,
+   * an encoded `Y.RelativePosition` like a caret's (unread-and-day-page D5).
+   */
+  anchorAt(index: number): Uint8Array;
+  /** Where an anchor's character is now, as a text index; next to where it was once deleted. */
+  indexOfAnchor(anchor: Uint8Array): number | null;
+  /** The first text index at or after `index` holding a character the user wrote; null if none. */
+  ownCharacterFrom(index: number): number | null;
+  /** Highlights text indexes `[from, to)` briefly (unread-and-day-page D4); changes no text. */
+  flash(from: number, to: number): void;
   destroy(): void;
 };
 
 /** A caret and selection as encoded `Y.RelativePosition`s, stable while text around them changes. */
 export type Caret = { anchor: Uint8Array; head: Uint8Array };
 
-/** `length` characters of one clientID from `clock` on, in UTF-16 units as Yjs counts. */
-export type CharacterRun = { client: number; clock: number; length: number };
+/**
+ * `length` characters of one clientID from `clock` on, in UTF-16 units as Yjs counts,
+ * starting at text index `index`.
+ */
+export type CharacterRun = { client: number; clock: number; length: number; index: number };
+
+/** How long a jumped-to passage stays highlighted; the style fades it out meanwhile. */
+export const FLASH_MS = 2_000;
 
 // Transaction origins: edits translated from editor steps, and updates applied from outside.
 // Undo and redo run with the UndoManager as origin.
@@ -124,6 +141,9 @@ export function createEditorBinding(
   let lastKind: EditIntent['kind'] | undefined;
   let heldAfterJump = false;
   let compositionTimer: ReturnType<typeof setTimeout> | undefined;
+  /** A passage highlighted after a jump, as relative positions so it follows edits. */
+  let flashed: { from: Y.RelativePosition; to: Y.RelativePosition } | null = null;
+  let flashTimer: ReturnType<typeof setTimeout> | undefined;
 
   text.observe((event, transaction) => {
     const origin = transaction.origin;
@@ -158,8 +178,17 @@ export function createEditorBinding(
   }
 
   function decorationsOf(pmDoc: Node): DecorationSet {
-    if (composition || (!authorClass && !ownOnly && !remote.size)) return DecorationSet.empty;
+    if (composition || (!authorClass && !ownOnly && !remote.size && !flashed))
+      return DecorationSet.empty;
     const marks: Decoration[] = [];
+    if (flashed) {
+      const at = (position: Y.RelativePosition) =>
+        Y.createAbsolutePositionFromRelativePosition(position, doc)?.index;
+      const from = at(flashed.from);
+      const to = at(flashed.to);
+      if (from !== undefined && to !== undefined && to > from)
+        marks.push(Decoration.inline(from + 1, to + 1, { class: 'unread-flash' }));
+    }
     for (const [user, { caret, name, className }] of remote) {
       const place = placeOf(caret);
       if (!place || (ownOnly && user !== userId)) continue;
@@ -576,7 +605,7 @@ export function createEditorBinding(
         if (run.author === userId || offset <= from || start >= to) continue;
         const skip = Math.max(0, from - start);
         const length = Math.min(offset, to) - start - skip;
-        runs.push({ client: run.client, clock: run.clock + skip, length });
+        runs.push({ client: run.client, clock: run.clock + skip, length, index: start + skip });
       }
       return runs;
     },
@@ -604,8 +633,39 @@ export function createEditorBinding(
       }
       return null;
     },
+    anchorAt(index) {
+      return Y.encodeRelativePosition(Y.createRelativePositionFromTypeIndex(text, index));
+    },
+    indexOfAnchor(anchor) {
+      return (
+        Y.createAbsolutePositionFromRelativePosition(Y.decodeRelativePosition(anchor), doc)
+          ?.index ?? null
+      );
+    },
+    ownCharacterFrom(index) {
+      let offset = 0;
+      for (const run of authorRuns(doc, authors())) {
+        const end = offset + run.text.length;
+        if (run.author === userId && end > index) return Math.max(offset, index);
+        offset = end;
+      }
+      return null;
+    },
+    flash(from, to) {
+      clearTimeout(flashTimer);
+      flashed = {
+        from: Y.createRelativePositionFromTypeIndex(text, from),
+        to: Y.createRelativePositionFromTypeIndex(text, to),
+      };
+      view.dispatch(view.state.tr.setMeta(MIRROR, true));
+      flashTimer = setTimeout(() => {
+        flashed = null;
+        view.dispatch(view.state.tr.setMeta(MIRROR, true));
+      }, FLASH_MS);
+    },
     destroy() {
       clearTimeout(compositionTimer);
+      clearTimeout(flashTimer);
       undoManager.destroy();
       view.destroy();
       doc.destroy();

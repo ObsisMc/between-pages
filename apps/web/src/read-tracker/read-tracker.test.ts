@@ -2,7 +2,7 @@ import { BODY, authorRuns, buildBaseline, createDiaryDoc } from '@between-pages/
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { stubApi } from '../../test/render.tsx';
-import { DWELL_MS, createReadTracker, unread, type VisibleRun } from './index.ts';
+import { DWELL_MS, createReadTracker, unread, unreadSpans, type VisibleRun } from './index.ts';
 
 const DIARY = '7c1d2b8e-3f4a-4b5c-8d6e-9f0a1b2c3d4e';
 const READ = `/api/diaries/${DIARY}/read`;
@@ -105,5 +105,43 @@ describe('unread', () => {
     expect(unread(othersIn(view, bindings, 'B'), [])).not.toContainEqual(
       expect.objectContaining({ from: 2, to: 3 }),
     );
+  });
+});
+
+describe('unreadSpans', () => {
+  it('[adr:unread-and-day-page#2] gives the unread passages by text index, joined where they touch', () => {
+    const runs = [
+      { client: 7, clock: 0, length: 4, index: 0 },
+      { client: 9, clock: 10, length: 2, index: 4 },
+      { client: 7, clock: 4, length: 3, index: 10 },
+    ];
+    // Read: clocks 1–2 of client 7. Unread: index 0, then 3–6 (7's clock 3 touches 9's run), 10–13.
+    expect(unreadSpans(runs, [{ clientId: 7, from: 1, to: 3 }])).toEqual([
+      { from: 0, to: 1 },
+      { from: 3, to: 6 },
+      { from: 10, to: 13 },
+    ]);
+    expect(
+      unreadSpans(runs, [
+        { clientId: 7, from: 0, to: 7 },
+        { clientId: 9, from: 0, to: 100 },
+      ]),
+    ).toEqual([]);
+  });
+
+  it('hears the reader’s whole coverage once it arrives and after each report', async () => {
+    stubApi({
+      [`GET ${READ}`]: () => Response.json({ ranges: [{ clientId: 7, from: 0, to: 2 }] }),
+      [`POST ${READ}`]: () => Response.json({ ranges: [{ clientId: 7, from: 0, to: 4 }] }),
+    });
+    const heard: unknown[] = [];
+    const tracker = createReadTracker({
+      diaryId: DIARY,
+      visible: () => [{ client: 7, clock: 0, length: 4 }],
+      onRead: (ranges) => heard.push(ranges),
+    });
+    await vi.advanceTimersByTimeAsync(2 * DWELL_MS);
+    expect(heard).toEqual([[{ clientId: 7, from: 0, to: 2 }], [{ clientId: 7, from: 0, to: 4 }]]);
+    tracker.stop();
   });
 });

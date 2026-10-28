@@ -11,7 +11,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { MAX_PASTE_BYTES } from './input.ts';
 import { WRITE_SESSION_GAP_MS } from './write-session.ts';
-import { createEditorBinding, type Caret, type EditorOperation, type Refusal } from './index.ts';
+import {
+  FLASH_MS,
+  createEditorBinding,
+  type Caret,
+  type EditorOperation,
+  type Refusal,
+} from './index.ts';
 
 const ALICE = 'alice';
 const BOB = 'bob';
@@ -227,9 +233,45 @@ describe('characters by identity', () => {
     const editor = alongsideBob(); // 今天很累，抱抱！ — Bob's from index 5
     const bob = [...editor.bindings].find(([, user]) => user === BOB)![0];
 
-    expect(editor.binding.othersCharacters(0, 20)).toEqual([{ client: bob, clock: 0, length: 3 }]);
-    expect(editor.binding.othersCharacters(6, 7)).toEqual([{ client: bob, clock: 1, length: 1 }]);
+    expect(editor.binding.othersCharacters(0, 20)).toEqual([
+      { client: bob, clock: 0, length: 3, index: 5 },
+    ]);
+    expect(editor.binding.othersCharacters(6, 7)).toEqual([
+      { client: bob, clock: 1, length: 1, index: 6 },
+    ]);
     expect(editor.binding.othersCharacters(0, 5)).toEqual([]);
+  });
+});
+
+describe('reading position', () => {
+  it('[adr:unread-and-day-page#8] keeps an anchor on its character while the other person writes before it', () => {
+    const editor = alongsideBob(); // 今天很累，抱抱！ — Bob's from index 5
+    const anchor = editor.binding.anchorAt(6); // the second 抱
+
+    editor.bob((text) => text.insert(0, '早上好。'));
+    expect(editor.binding.indexOfAnchor(anchor)).toBe(10);
+    editor.bob((text) => text.delete(9, 2)); // 抱抱 → the anchor's character is gone
+    expect(editor.binding.indexOfAnchor(anchor)).toBe(9);
+    expect(editor.text()).toBe('早上好。今天很累，！');
+  });
+
+  it('finds the next character the user wrote, past the other person’s', () => {
+    const editor = alongsideBob();
+    editor.bob((text) => text.insert(0, '早'));
+    expect(editor.binding.ownCharacterFrom(0)).toBe(1);
+    expect(editor.binding.ownCharacterFrom(3)).toBe(3);
+    expect(editor.binding.ownCharacterFrom(6)).toBeNull();
+  });
+
+  it('highlights a passage briefly without changing the text', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    const editor = alongsideBob();
+    const operations = editor.operations.length;
+    editor.binding.flash(5, 8);
+    expect(editor.binding.view.dom.querySelector('.unread-flash')?.textContent).toBe('抱抱！');
+    vi.advanceTimersByTime(FLASH_MS);
+    expect(editor.binding.view.dom.querySelector('.unread-flash')).toBeNull();
+    expect(editor.operations.length).toBe(operations);
   });
 });
 

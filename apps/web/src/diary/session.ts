@@ -1,4 +1,4 @@
-import type { ClientBinding, ErrorCode } from '@between-pages/contracts';
+import type { ClientBinding, ErrorCode, ReadRange } from '@between-pages/contracts';
 import * as Y from 'yjs';
 import { ApiError, callApi } from '../api/client.ts';
 import {
@@ -16,7 +16,13 @@ import {
   type Draft,
   type Journal,
 } from '../journal/index.ts';
-import { createReadTracker, type ReadTracker, type VisibleRun } from '../read-tracker/index.ts';
+import {
+  createReadTracker,
+  unreadSpans,
+  type ReadTracker,
+  type Span,
+  type VisibleRun,
+} from '../read-tracker/index.ts';
 import { createSender, type SaveStatus, type Sender } from '../sender/index.ts';
 import { createSyncClient, type SyncClient, type SyncStatus } from '../sync-client/index.ts';
 
@@ -52,7 +58,16 @@ export type DiaryState = {
   reopened?: string;
   /** "只看我的文字" is on: the other person's text is hidden and nothing can be edited. */
   ownOnly: boolean;
+  /**
+   * The reader's unread here (unread-and-day-page D4), once their read coverage is known:
+   * `atOpen` passages when it first became known, which never changes after; `left`
+   * passages now; whether one lies above or below the window. Undefined while unknown or
+   * while "只看我的文字" hides the other person's text.
+   */
+  unread?: Unread | undefined;
 };
+
+export type Unread = { atOpen: number; left: number; above: boolean; below: boolean };
 
 export type DiarySession = {
   /** The text on screen, for copying or downloading when it cannot be stored. */
@@ -63,6 +78,12 @@ export type DiarySession = {
   setOwnTextOnly(on: boolean): void;
   /** The character under a point of the window, by identity and author; null off the text. */
   characterAt(left: number, top: number): { client: number; clock: number; author: string } | null;
+  /**
+   * Brings an unread passage to about a third from the top of the window and highlights it
+   * briefly (D4): the first one, or the next one after the window, else (with `wrap`) the
+   * first. False when there is none to go to. Changes no text and sends nothing.
+   */
+  jumpToUnread(which: 'first' | 'next', wrap?: boolean): boolean;
   destroy(): void;
 };
 
@@ -105,6 +126,9 @@ export function createDiarySession({
   let sender: Sender | undefined;
   let sync: SyncClient | undefined;
   let reads: ReadTracker | undefined;
+  /** The reader's coverage once known (D4); unread is computed from it and the text. */
+  let read: ReadRange[] | null = null;
+  let unreadAtOpen: number | undefined;
   let generationId = '';
   const authors = new Map<number, string>();
   /** Operations waiting to be stored, in order; a failed one blocks the rest (D7 order). */
@@ -300,9 +324,13 @@ export function createDiarySession({
       onCommits: (commits, bindings) => {
         bind(bindings);
         if (commits.length > 0) set({ remoteChanges: state.remoteChanges + commits.length });
+        // What the reader is looking at stays where it is however the text above changes (D5).
+        const held = arriving || !commits.length ? null : holdPosition();
         for (const commit of commits)
           if (arriving) arriving.push(commit.delta);
           else editor?.applyUpdate(commit.delta, authors);
+        restorePosition(held);
+        updateUnread();
         // A delta the journal fails to store is fetched again by the next catch-up.
         journal?.advance(diaryId, generationId, commits, bindings).catch(() => undefined);
       },
@@ -419,35 +447,162 @@ export function createDiarySession({
     sender?.wake();
   }
 
+  /** Whether the editor is laid out on the page; without layout nothing can be measured. */
+  const laidOut = () => {
+    if (!editor || place.hidden) return false;
+    const rect = place.getBoundingClientRect();
+    return rect.bottom > rect.top;
+  };
+
+  /**
+   * The text indexes `[from, to)` inside the window: empty at the end when the editor is
+   * wholly above the window, at the start when wholly below; null without layout.
+   */
+  function inWindow(): Span | null {
+    if (!editor || !laidOut()) return null;
+    const { view } = editor;
+    const length = view.state.doc.content.size - 2;
+    const rect = place.getBoundingClientRect();
+    const top = Math.max(rect.top, 0);
+    const bottom = Math.min(rect.bottom, window.innerHeight);
+    if (rect.bottom <= 0) return { from: length, to: length };
+    if (bottom <= top) return { from: 0, to: 0 };
+    // Text index i sits at document position i + 1.
+    const from = view.posAtCoords({ left: rect.left + 1, top: top + 1 })?.pos ?? 1;
+    const to = view.posAtCoords({ left: rect.right - 1, top: bottom - 1 })?.pos;
+    return { from: from - 1, to: (to ?? length + 1) - 1 };
+  }
+
   /**
    * The other person's characters in the part of the editor inside the window (kernel D15);
    * none while the own-text-only filter hides them, since filtering changes no unread (EDIT-14).
    */
   function onScreen(): VisibleRun[] {
-    if (!editor || place.hidden || state.ownOnly) return [];
-    const rect = place.getBoundingClientRect();
-    const top = Math.max(rect.top, 0);
-    const bottom = Math.min(rect.bottom, window.innerHeight);
-    if (bottom <= top) return [];
+    const shown = inWindow();
+    if (!editor || state.ownOnly || !shown || shown.from >= shown.to) return [];
+    return editor.othersCharacters(shown.from, shown.to);
+  }
+
+  /** The unread passages in text order; none until the reader's coverage is known. */
+  const unreadNow = (): Span[] =>
+    editor && read ? unreadSpans(editor.othersCharacters(0, Infinity), read) : [];
+
+  /** Recomputes `state.unread` from the text, the coverage and the window (D4). */
+  function updateUnread() {
+    if (!read || !editor) return;
+    const spans = unreadNow();
+    unreadAtOpen ??= spans.length;
+    if (state.ownOnly) return state.unread && set({ unread: undefined });
+    const shown = inWindow();
+    const next: Unread = {
+      atOpen: unreadAtOpen,
+      left: spans.length,
+      above: !!shown && spans.some((span) => span.to <= shown.from),
+      below: !!shown && spans.some((span) => span.from >= shown.to),
+    };
+    const was = state.unread;
+    if (
+      !was ||
+      was.left !== next.left ||
+      was.above !== next.above ||
+      was.below !== next.below ||
+      was.atOpen !== next.atOpen
+    )
+      set({ unread: next });
+  }
+
+  // Scrolling changes what is above and below the window; measured once per frame.
+  let measureFrame: number | undefined;
+  const onScroll = () => {
+    if (measureFrame !== undefined) return;
+    measureFrame = requestAnimationFrame(() => {
+      measureFrame = undefined;
+      updateUnread();
+    });
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+
+  /** A character the reader is looking at and how far from the window's top it is (D5). */
+  type Held = { anchor: Uint8Array; top: number };
+
+  /**
+   * Picks the anchor character before the text or filter changes (D5): the caret's
+   * character when the editor has focus and the caret is in the window, else the first
+   * character at the window's top, moved by `keep` to one that stays visible.
+   */
+  function holdPosition(keep?: (index: number) => number | null): Held | null {
+    if (!editor || !laidOut()) return null;
     const { view } = editor;
-    // Text index i sits at document position i + 1.
-    const from = view.posAtCoords({ left: rect.left + 1, top: top + 1 })?.pos ?? 1;
-    const to = view.posAtCoords({ left: rect.right - 1, top: bottom - 1 })?.pos;
-    return editor.othersCharacters(from - 1, (to ?? view.state.doc.content.size) - 1);
+    let index: number | null = null;
+    if (view.hasFocus()) {
+      const caret = view.coordsAtPos(view.state.selection.head);
+      if (caret.top >= 0 && caret.bottom <= window.innerHeight)
+        index = view.state.selection.head - 1;
+    }
+    if (index === null) {
+      const rect = place.getBoundingClientRect();
+      if (rect.bottom <= 0 || rect.top >= window.innerHeight) return null;
+      const top = Math.max(rect.top, 0);
+      // Above the first line, the position is before the text: its first character.
+      index = Math.max((view.posAtCoords({ left: rect.left + 1, top: top + 1 })?.pos ?? 1) - 1, 0);
+    }
+    if (keep) index = keep(index);
+    if (index === null) return null;
+    return { anchor: editor.anchorAt(index), top: view.coordsAtPos(index + 1).top };
+  }
+
+  /** Scrolls so the anchor character is as far from the window's top as it was. */
+  function restorePosition(held: Held | null) {
+    if (!held || !editor || !laidOut()) return;
+    const index = editor.indexOfAnchor(held.anchor);
+    if (index === null) return;
+    const moved = editor.view.coordsAtPos(index + 1).top - held.top;
+    if (moved) window.scrollBy(0, moved);
   }
 
   open()
     .then(() => {
       if (!destroyed && state.phase === 'open')
-        reads = createReadTracker({ diaryId, visible: onScreen });
+        reads = createReadTracker({
+          diaryId,
+          visible: onScreen,
+          onRead: (ranges) => {
+            read = ranges;
+            updateUnread();
+          },
+        });
     })
     .catch(() => set({ phase: 'failed', failure: 'INTERNAL' }));
 
   return {
     text: () => editor?.view.state.doc.textContent ?? '',
     setOwnTextOnly(on) {
+      // Anchored on a character that stays visible after the switch (D5).
+      const held = holdPosition(
+        on ? (index) => editor?.ownCharacterFrom(index) ?? null : undefined,
+      );
       set({ ownOnly: on });
       editor?.setOwnTextOnly(on);
+      restorePosition(held);
+      updateUnread();
+    },
+    jumpToUnread(which, wrap = true) {
+      if (!editor || state.ownOnly) return false;
+      const spans = unreadNow();
+      const after = inWindow()?.to ?? 0;
+      const target =
+        which === 'first'
+          ? spans[0]
+          : (spans.find((span) => span.from >= after) ?? (wrap ? spans[0] : undefined));
+      if (!target) return false;
+      if (laidOut()) {
+        const top = editor.view.coordsAtPos(target.from + 1).top;
+        window.scrollTo({ top: window.scrollY + top - window.innerHeight / 3 });
+      }
+      editor.flash(target.from, target.to);
+      updateUnread();
+      return true;
     },
     characterAt(left, top) {
       if (!editor) return null;
@@ -468,6 +623,9 @@ export function createDiarySession({
       clearTimeout(storeTimer);
       clearTimeout(switchTimer);
       clearTimeout(caretTimer);
+      if (measureFrame !== undefined) cancelAnimationFrame(measureFrame);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
       window.removeEventListener('beforeunload', guardUnload);
       sender?.stop();
       reads?.stop();

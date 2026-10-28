@@ -19,7 +19,15 @@ export type ReadTrackerOptions = {
   diaryId: string;
   /** The other person's characters on screen now; empty when none or nothing is shown. */
   visible: () => VisibleRun[];
+  /**
+   * Everything the reader has read on any device, as far as this tracker knows: once the
+   * server's coverage arrives, then after each report. Not called while it is unknown.
+   */
+  onRead?: (read: ReadRange[]) => void;
 };
+
+/** A passage of text by index, `[from, to)`. */
+export type Span = { from: number; to: number };
 
 export type ReadTracker = { stop(): void };
 
@@ -35,15 +43,40 @@ export function unread(visible: readonly VisibleRun[], read: readonly ReadRange[
   return rangesOf(difference(coverageOfRuns(visible), coverageOf(read)));
 }
 
+/**
+ * The unread passages of a text in text order (unread-and-day-page D4): the other person's
+ * characters, as runs with their text index, minus what was read, joined where they touch.
+ */
+export function unreadSpans(
+  runs: readonly (VisibleRun & { index: number })[],
+  read: readonly ReadRange[],
+): Span[] {
+  const covered = coverageOf(read);
+  const spans: Span[] = [];
+  for (const run of runs) {
+    const rest = difference(coverageOfRuns([run]), covered).get(run.client) ?? [];
+    for (const [from, to] of rest) {
+      const span = { from: run.index + from - run.clock, to: run.index + to - run.clock };
+      const last = spans.at(-1);
+      if (last && last.to === span.from) last.to = span.to;
+      else spans.push(span);
+    }
+  }
+  return spans;
+}
+
 /** Checks every DWELL_MS; text seen on two checks in a row on a visible page is reported. */
-export function createReadTracker({ diaryId, visible }: ReadTrackerOptions): ReadTracker {
+export function createReadTracker({ diaryId, visible, onRead }: ReadTrackerOptions): ReadTracker {
   let reported: Coverage = new Map();
   let previous: Coverage = new Map();
   let sending = false;
 
   // Seeds what is already read, so it is not reported again; a failure only costs repeats.
   callApi('readRanges', { params: { diaryId } })
-    .then(({ ranges }) => (reported = union(reported, coverageOf(ranges))))
+    .then(({ ranges }) => {
+      reported = union(reported, coverageOf(ranges));
+      onRead?.(rangesOf(reported));
+    })
     .catch(() => undefined);
 
   async function tick() {
@@ -60,6 +93,8 @@ export function createReadTracker({ diaryId, visible }: ReadTrackerOptions): Rea
     try {
       const answer = await callApi('reportRead', { params: { diaryId }, body: { ranges } });
       reported = union(reported, coverageOf(answer.ranges));
+      // The answer is the server's whole coverage, so it is known from here on.
+      onRead?.(rangesOf(reported));
     } catch {
       // Not reported this time; the next check finds the same text unreported.
     } finally {
