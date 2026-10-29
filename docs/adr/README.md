@@ -22,6 +22,11 @@
 | [diary-collaboration-kernel](./2026-10-26-diary-collaboration-kernel.md) | 个人日记以增量协作保存，共享从获准的正文状态开始 | 已采纳 | 协同 | 28/31 部分 |
 | [server-backup-and-google-docs](./2026-10-28-server-backup-and-google-docs.md) | 服务器把数据库持续加密备份到 Cloudflare R2，每人的 Google Drive 只放每天一份可读的 Doc | 已采纳 | 备份 | 14/15 部分 |
 | [unread-and-day-page](./2026-10-28-unread-and-day-page.md) | 未读按字判定、列表只计已成历史的文字，同一天的两篇日记上下排在一个页面里 | 已实现 | 领域 | 14/14 已完成 |
+| [anniversaries](./2026-10-29-anniversaries.md) | 纪念日按公历每年重复，各自设提前多久提醒，可数在一起的天数，并与礼物和日记相连 | 已采纳 | 领域 | 0/7 未开始 |
+| [meeting-plans](./2026-10-29-meeting-plans.md) | 见面计划记下每次见面的日期、地点与两张清单，首页倒数与见面日历都取自它，长期想做的事可以放进某次见面 | 已采纳 | 领域 | 0/8 未开始 |
+| [space-records](./2026-10-29-space-records.md) | 双人空间里的记录归空间、文字归作者，绑定期间才能操作，解绑后两人只读 | 已采纳 | 领域 | 0/11 未开始 |
+| [two-clocks](./2026-10-29-two-clocks.md) | 两地时间按浏览器时区自动显示对方当地时间，各自设一组作息算出今天都醒着的时段 | 已采纳 | 领域 | 0/6 未开始 |
+| [wishes-and-gifts](./2026-10-29-wishes-and-gifts.md) | 心愿单让对方不用问就知道想要什么，送礼在揭晓前只有送的人看得到，揭晓后连同卡片进礼物墙 | 已采纳 | 领域 | 0/9 未开始 |
 <!-- adr-index:end -->
 
 ## 原则
