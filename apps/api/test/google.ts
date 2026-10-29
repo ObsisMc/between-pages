@@ -50,6 +50,8 @@ export async function startFakeGoogle() {
     calls: [] as string[],
     down: false,
     storageFull: false,
+    /** Runs just before a batchUpdate's revision check, e.g. to edit the Doc in between. */
+    beforeBatch: null as ((file: FakeFile) => void) | null,
   };
 
   const apiError = (status: number, reason: string) => ({
@@ -149,6 +151,14 @@ export async function startFakeGoogle() {
       });
       return json(200, { id });
     }
+    if (url.pathname === '/drive/files' && req.method === 'GET') {
+      if (url.searchParams.get('q') !== 'trashed = false')
+        return json(400, apiError(400, 'badRequest'));
+      const files = [...state.files.values()]
+        .filter((f) => f.owner === account && !f.trashed)
+        .map((f) => ({ id: f.id, modifiedTime: f.modifiedTime }));
+      return json(200, { files });
+    }
     const driveFile = url.pathname.match(/^\/drive\/files\/([^/]+)$/);
     if (driveFile) {
       const file = own(driveFile[1]!);
@@ -172,6 +182,8 @@ export async function startFakeGoogle() {
         requests: DocRequest[];
         writeControl: { requiredRevisionId: string };
       };
+      state.beforeBatch?.(file);
+      state.beforeBatch = null;
       if (body.writeControl.requiredRevisionId !== `rev-${file.revision}`)
         return json(400, apiError(400, 'badRequest'));
       applyBatch(file, body.requests);
@@ -214,6 +226,14 @@ export async function startFakeGoogle() {
       return [...state.files.values()].filter(
         (f) => f.owner === permissionId && f.mimeType === 'application/vnd.google-apps.document',
       );
+    },
+    /** Someone moves the file to the bin. */
+    trash(fileId: string) {
+      state.files.get(fileId)!.trashed = true;
+    },
+    /** Someone empties the bin: the file is gone. */
+    remove(fileId: string) {
+      state.files.delete(fileId);
     },
     /** Someone edits the Doc in Google: a new revision the app did not write. */
     editInGoogle(fileId: string, text: string) {

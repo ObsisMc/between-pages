@@ -1,4 +1,4 @@
-import { and, count, eq, gt, lte, max, or, sql } from 'drizzle-orm';
+import { and, count, eq, gt, lte, max, ne, or, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.ts';
 import {
   backupEvents,
@@ -235,6 +235,61 @@ export function createCopyStore(db: Db) {
         .set({ ...write, writtenAt: sql`now()` })
         .where(eq(googleDayDocs.docId, docId));
     },
+
+    /** The Doc was changed in Google: it keeps its row and content, a new Doc carries on (D8). */
+    async replaceDoc(docId: string): Promise<void> {
+      await db.transaction(async (tx) => {
+        const [doc] = await tx
+          .update(googleDayDocs)
+          .set({ state: 'replaced' })
+          .where(eq(googleDayDocs.docId, docId))
+          .returning();
+        if (doc)
+          await tx
+            .insert(backupEvents)
+            .values({ userId: doc.userId, kind: 'doc_replaced', diaryDate: doc.diaryDate });
+      });
+    },
+
+    /** The Doc is gone or in the bin: forgotten, so the next write makes a new one (D8). */
+    async dropDoc(docId: string): Promise<void> {
+      await db.transaction(async (tx) => {
+        const [doc] = await tx
+          .delete(googleDayDocs)
+          .where(eq(googleDayDocs.docId, docId))
+          .returning();
+        if (doc)
+          await tx
+            .insert(backupEvents)
+            .values({ userId: doc.userId, kind: 'doc_recreated', diaryDate: doc.diaryDate });
+      });
+    },
+
+    /** Queues one day of one person, e.g. after the daily check set its Doc aside. */
+    async queueDay(userId: string, diaryDate: string): Promise<void> {
+      await db.insert(googleDayWork).values({ userId, diaryDate }).onConflictDoNothing();
+    },
+
+    /** Every working connection whose token this key opens, for the daily check. */
+    activeConnections: (keyId: string) =>
+      db
+        .select()
+        .from(googleConnections)
+        .where(and(eq(googleConnections.status, 'active'), eq(googleConnections.keyId, keyId))),
+
+    /** The day Docs the app keeps writing in this Drive, already written at least once. */
+    currentDocs: (userId: string, googleUserId: string) =>
+      db
+        .select()
+        .from(googleDayDocs)
+        .where(
+          and(
+            eq(googleDayDocs.userId, userId),
+            eq(googleDayDocs.googleUserId, googleUserId),
+            eq(googleDayDocs.state, 'current'),
+            ne(googleDayDocs.revisionId, ''),
+          ),
+        ),
 
     /** The content is already in the Doc; only what it covers moved on (D7). */
     async recordCovers(docId: string, covers: Covers, coveredAt: Date) {

@@ -94,6 +94,49 @@ export async function fileState(
   }
 }
 
+/** Renames a file; its content and revision history stay as they are. */
+export async function rename(
+  endpoints: GoogleEndpoints,
+  token: string,
+  fileId: string,
+  name: string,
+): Promise<void> {
+  await call(`${endpoints.drive}/files/${fileId}?fields=id`, token, {
+    method: 'PATCH',
+    body: { name },
+  });
+}
+
+const FileList = z.object({
+  nextPageToken: z.string().optional(),
+  files: z.array(z.object({ id: z.string(), modifiedTime: z.iso.datetime({ offset: true }) })),
+});
+
+/**
+ * Every file of this app in the Drive that is not in the bin, with its last change: only
+ * metadata, no content (D8 daily check). drive.file lists only files the app created.
+ */
+export async function listFiles(
+  endpoints: GoogleEndpoints,
+  token: string,
+): Promise<Map<string, Date>> {
+  const files = new Map<string, Date>();
+  let pageToken: string | undefined;
+  do {
+    const url = new URL(`${endpoints.drive}/files`);
+    url.search = new URLSearchParams({
+      q: 'trashed = false',
+      fields: 'nextPageToken,files(id,modifiedTime)',
+      pageSize: '1000',
+      ...(pageToken ? { pageToken } : {}),
+    }).toString();
+    const page = FileList.parse(await call(url.toString(), token));
+    for (const file of page.files) files.set(file.id, new Date(file.modifiedTime));
+    pageToken = page.nextPageToken;
+  } while (pageToken);
+  return files;
+}
+
 const DocState = z.object({
   revisionId: z.string().min(1),
   body: z.object({ content: z.array(z.object({ endIndex: z.number().int() }).loose()) }),

@@ -37,9 +37,17 @@ const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 // eslint-disable-next-line no-control-regex
 const clean = (text: string) => text.replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, '');
 
+const weekdayOf = (date: string) => WEEKDAYS[new Date(`${date}T00:00:00Z`).getUTCDay()]!;
+
+/** The Doc's name: `YYYY-MM-DD 周X`, so names sort by date. */
+export const dayTitle = (date: string) => `${date} 周${weekdayOf(date)}`;
+
+/** The name a Doc changed in Google keeps once a new one carries on (D8). */
+export const replacedTitle = (date: string) => `${dayTitle(date)}（在 Google 改过，已停止更新）`;
+
 export function renderDay(input: DayCopyInput): DayDoc {
   const [year, month, day] = input.date.split('-') as [string, string, string];
-  const weekday = WEEKDAYS[new Date(`${input.date}T00:00:00Z`).getUTCDay()]!;
+  const weekday = weekdayOf(input.date);
   const pair = input.partner
     ? [input.viewer, input.partner].sort((a, b) => (a.id < b.id ? -1 : 1))
     : [];
@@ -82,7 +90,7 @@ export function renderDay(input: DayCopyInput): DayDoc {
     if (input.partnerDiary.frozen) line('（已停止共享）');
   }
 
-  const title = `${input.date} 周${weekday}`;
+  const title = dayTitle(input.date);
   const folders = [ROOT_FOLDER, year, month] as const;
   const sha256 = new Uint8Array(
     createHash('sha256')
