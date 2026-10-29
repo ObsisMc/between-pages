@@ -40,8 +40,13 @@ export function renderAt(path: string, routes: RouteObject[] = appRoutes) {
   return { router, client };
 }
 
-/** The home page's relationship section with no space and no invitation. */
+/** The home page's relationship section with no space and no invitation, so no partner clock. */
 export const noRelationship = {
   'GET /api/binding': () => Response.json({ binding: null, invitation: null }),
   'GET /api/spaces': () => Response.json({ spaces: [] }),
+  'GET /api/clocks': () =>
+    Response.json({
+      me: { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, sleep: null },
+      partner: null,
+    }),
 };

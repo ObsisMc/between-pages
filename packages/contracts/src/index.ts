@@ -13,6 +13,14 @@ export {
   StartGoogleResponse,
 } from './backup.ts';
 export { HealthResponse, MeResponse, routes } from './routes.ts';
+export {
+  ClockSettings,
+  ClocksResponse,
+  PartnerClock,
+  ReportTimezoneRequest,
+  SaveSleepRequest,
+  SleepSchedule,
+} from './clocks.ts';
 export { UserSummary } from './users.ts';
 export type {
   BodyOf,

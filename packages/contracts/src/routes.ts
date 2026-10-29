@@ -22,6 +22,12 @@ import {
   SharedDiaryResponse,
 } from './diaries.ts';
 import { BackupResponse, FinishGoogleRequest, StartGoogleResponse } from './backup.ts';
+import {
+  ClocksResponse,
+  ClockSettings,
+  ReportTimezoneRequest,
+  SaveSleepRequest,
+} from './clocks.ts';
 import { DayParams, DayResponse, DaysPage, DaysQuery } from './days.ts';
 import {
   AcceptInvitationRequest,
@@ -323,6 +329,30 @@ export const routes = {
     params: SpaceParams,
     body: SaveMySharingRequest,
     response: SaveMySharingResponse,
+  },
+  clocks: {
+    method: 'GET',
+    path: '/api/clocks',
+    summary:
+      "The caller's time zone and sleep schedule, and the partner's while the two are bound.",
+    access: 'user',
+    response: ClocksResponse,
+  },
+  reportTimezone: {
+    method: 'PUT',
+    path: '/api/me/timezone',
+    summary: "Record the IANA time zone the caller's browser reports.",
+    access: 'user',
+    body: ReportTimezoneRequest,
+    response: ClockSettings,
+  },
+  saveSleep: {
+    method: 'PUT',
+    path: '/api/me/sleep',
+    summary: "Set or clear the caller's usual sleep schedule.",
+    access: 'user',
+    body: SaveSleepRequest,
+    response: ClockSettings,
   },
 } as const satisfies Record<string, RouteDefinition>;
 

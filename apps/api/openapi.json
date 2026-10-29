@@ -950,6 +950,161 @@
           "ranges"
         ]
       },
+      "UserSummaryInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "displayName"
+        ]
+      },
+      "SleepScheduleInput": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1425
+          },
+          "end": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1425
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "additionalProperties": false
+      },
+      "ClockSettingsInput": {
+        "type": "object",
+        "properties": {
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sleep": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SleepScheduleInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "timezone",
+          "sleep"
+        ]
+      },
+      "PartnerClockInput": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/UserSummaryInput"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sleep": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SleepScheduleInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "user",
+          "timezone",
+          "sleep"
+        ]
+      },
+      "ClocksResponseInput": {
+        "type": "object",
+        "properties": {
+          "me": {
+            "$ref": "#/components/schemas/ClockSettingsInput"
+          },
+          "partner": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartnerClockInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "me",
+          "partner"
+        ]
+      },
+      "ReportTimezoneRequestInput": {
+        "type": "object",
+        "properties": {
+          "timezone": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "timezone"
+        ],
+        "additionalProperties": false
+      },
+      "SaveSleepRequestInput": {
+        "type": "object",
+        "properties": {
+          "sleep": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SleepScheduleInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "sleep"
+        ],
+        "additionalProperties": false
+      },
       "OwnDayInput": {
         "type": "object",
         "properties": {
@@ -1111,23 +1266,6 @@
         "required": [
           "day",
           "google"
-        ]
-      },
-      "UserSummaryInput": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          },
-          "displayName": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "displayName"
         ]
       },
       "DateRangeInput": {
@@ -2630,6 +2768,165 @@
         ],
         "additionalProperties": false
       },
+      "UserSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "displayName"
+        ],
+        "additionalProperties": false
+      },
+      "SleepSchedule": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1425
+          },
+          "end": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1425
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "additionalProperties": false
+      },
+      "ClockSettings": {
+        "type": "object",
+        "properties": {
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sleep": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SleepSchedule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "timezone",
+          "sleep"
+        ],
+        "additionalProperties": false
+      },
+      "PartnerClock": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/UserSummary"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sleep": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SleepSchedule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "user",
+          "timezone",
+          "sleep"
+        ],
+        "additionalProperties": false
+      },
+      "ClocksResponse": {
+        "type": "object",
+        "properties": {
+          "me": {
+            "$ref": "#/components/schemas/ClockSettings"
+          },
+          "partner": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartnerClock"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "me",
+          "partner"
+        ],
+        "additionalProperties": false
+      },
+      "ReportTimezoneRequest": {
+        "type": "object",
+        "properties": {
+          "timezone": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "timezone"
+        ],
+        "additionalProperties": false
+      },
+      "SaveSleepRequest": {
+        "type": "object",
+        "properties": {
+          "sleep": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SleepSchedule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "sleep"
+        ],
+        "additionalProperties": false
+      },
       "OwnDay": {
         "type": "object",
         "properties": {
@@ -2795,24 +3092,6 @@
         "required": [
           "day",
           "google"
-        ],
-        "additionalProperties": false
-      },
-      "UserSummary": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          },
-          "displayName": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "displayName"
         ],
         "additionalProperties": false
       },
@@ -4380,6 +4659,107 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SaveMySharingResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/clocks": {
+      "get": {
+        "summary": "The caller's time zone and sleep schedule, and the partner's while the two are bound.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClocksResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/timezone": {
+      "put": {
+        "summary": "Record the IANA time zone the caller's browser reports.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportTimezoneRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClockSettings"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/sleep": {
+      "put": {
+        "summary": "Set or clear the caller's usual sleep schedule.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveSleepRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClockSettings"
                 }
               }
             }

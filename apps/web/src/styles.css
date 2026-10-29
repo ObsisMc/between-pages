@@ -699,3 +699,40 @@ button.link {
 .day .diary-editor .ProseMirror {
   min-height: 8rem;
 }
+
+/* Two clocks (two-clocks D4): a quiet strip whose edge follows the hour on the partner's
+   side; the bands are placeholders until the stage 4 visual pass. */
+.clock-strip,
+.clock {
+  border-left: 0.25rem solid var(--line);
+  padding: 0.5rem 0.75rem;
+}
+
+.period-dawn {
+  border-left-color: #e2b07a;
+}
+
+.period-day {
+  border-left-color: var(--accent);
+}
+
+.period-dusk {
+  border-left-color: #a46a8a;
+}
+
+.period-night {
+  border-left-color: var(--author-2);
+}
+
+.sleep-editor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: end;
+}
+
+.sleep-editor label {
+  display: grid;
+  color: var(--ink-soft);
+  font-size: 0.875rem;
+}

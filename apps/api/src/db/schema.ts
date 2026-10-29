@@ -24,12 +24,36 @@ import type { DateSelection } from '@between-pages/contracts';
 // Domain users (authentication-and-sessions ADR): written only by our code, keyed by the
 // same UUID the auth layer issues. No email, no login method, and no foreign key into
 // the auth_* tables, so the auth layer can change without touching diaries or authorship.
-export const users = pgTable('users', {
-  id: uuid('id').primaryKey(),
-  displayName: text('display_name').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
-});
+//
+// The time zone and sleep schedule are the person's own two-clocks settings (two-clocks D1,
+// D2): the zone is the last one their browser reported, the schedule two local minutes of
+// the day on a 15-minute grid, both set or both empty.
+export const users = pgTable(
+  'users',
+  {
+    id: uuid('id').primaryKey(),
+    displayName: text('display_name').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
+    timezone: text('timezone'),
+    timezoneUpdatedAt: timestamp('timezone_updated_at', { withTimezone: true }),
+    sleepStartMinute: smallint('sleep_start_minute'),
+    sleepEndMinute: smallint('sleep_end_minute'),
+  },
+  (t) => [
+    check('users_timezone_fields', sql`num_nulls(${t.timezone}, ${t.timezoneUpdatedAt}) in (0, 2)`),
+    check(
+      'users_sleep_fields',
+      sql`num_nulls(${t.sleepStartMinute}, ${t.sleepEndMinute}) in (0, 2)`,
+    ),
+    check(
+      'users_sleep_grid',
+      sql`${t.sleepStartMinute} between 0 and 1425 and ${t.sleepStartMinute} % 15 = 0
+        and ${t.sleepEndMinute} between 0 and 1425 and ${t.sleepEndMinute} % 15 = 0
+        and ${t.sleepStartMinute} <> ${t.sleepEndMinute}`,
+    ),
+  ],
+);
 
 const bytea = customType<{ data: Uint8Array; driverData: Buffer }>({
   dataType: () => 'bytea',

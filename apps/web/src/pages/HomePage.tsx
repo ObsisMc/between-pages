@@ -8,6 +8,7 @@ import { BackupBanner } from '../backup/index.ts';
 import { DayList } from '../diary-list/index.ts';
 import { clearPendingInvite, pendingInvite } from '../join/index.ts';
 import { RelationshipPanel, partnerOf, useSpaces } from '../relationship/index.ts';
+import { ClockStrip } from '../two-clocks/index.ts';
 
 /** The device's IANA zone decides which date "today" is (spec §4); the server checks it. */
 const timezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -88,6 +89,7 @@ export function HomePage() {
         </button>
       </header>
       <BackupBanner />
+      <ClockStrip />
       <p className="greeting">已登录为 {me.data?.user.displayName}</p>
       <button type="button" className="primary" disabled={opening} onClick={() => void openDiary()}>
         写今天
