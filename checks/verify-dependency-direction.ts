@@ -64,6 +64,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'bindings',
         'sharing',
         'backup',
+        'clocks',
       ],
       ws: ['auth', 'errors', 'commit', 'diaries', 'reader', 'events'],
       // server-backup-and-google-docs: `google` calls Google and seals or opens tokens, knowing
@@ -82,6 +83,8 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       events: [],
       bindings: ['store', 'sharing', 'events', 'errors'],
       sharing: ['store', 'events', 'errors'],
+      // two-clocks: the caller's own zone and sleep schedule, and the partner's while bound.
+      clocks: ['store'],
       store: ['db', 'errors'],
     },
   },
@@ -98,10 +101,19 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
     dir: 'apps/web/src',
     units: {
       main: ['*'],
-      routes: ['auth', 'pages', 'diary', 'join', 'space', 'backup'],
+      routes: ['auth', 'pages', 'diary', 'join', 'space', 'backup', 'two-clocks'],
       api: [],
       auth: ['api'],
-      pages: ['api', 'auth', 'backup', 'diary-list', 'join', 'relationship', 'shared-diaries'],
+      pages: [
+        'api',
+        'auth',
+        'backup',
+        'diary-list',
+        'join',
+        'relationship',
+        'shared-diaries',
+        'two-clocks',
+      ],
       'editor-binding': [],
       journal: [],
       sender: ['journal'],
@@ -117,6 +129,8 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       'shared-diaries': ['api'],
       // server-backup-and-google-docs D9: the backup page, the Google callback and the home banner.
       backup: ['api'],
+      // two-clocks: the home strip, the clocks page and the browser's zone report.
+      'two-clocks': ['api'],
       diary: [
         'api',
         'auth',

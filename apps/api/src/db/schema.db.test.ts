@@ -96,6 +96,11 @@ describe.runIf(testDatabaseUrl)('database schema', () => {
       'display_name',
       'created_at',
       'last_seen_at',
+      // two-clocks D1, D2: the person's own zone and sleep schedule, not login data.
+      'timezone',
+      'timezone_updated_at',
+      'sleep_start_minute',
+      'sleep_end_minute',
     ]);
     const userForeignKeys = await query(
       `select conname from pg_constraint where conrelid = 'public.users'::regclass and contype = 'f'`,

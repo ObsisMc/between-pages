@@ -18,6 +18,7 @@ import { registerErrorHandling } from './errors.ts';
 import { registerOriginGuard, requireUser, type CurrentUser } from './auth/guards.ts';
 import { createBackupService, type DriveConfig } from './backup/backup.ts';
 import { createBindingService } from './bindings/bindings.ts';
+import { createClockService } from './clocks/clocks.ts';
 import { createCommitService } from './commit/commit.ts';
 import type { Db } from './db/client.ts';
 import { createDiaryService } from './diaries/diaries.ts';
@@ -29,11 +30,13 @@ import { createReadingStore } from './store/reading.ts';
 import { backupHandlers } from './routes/backup.ts';
 import type { ContractRequest } from './routes/contract.ts';
 import { diaryHandlers } from './routes/diaries.ts';
+import { clockHandlers } from './routes/clocks.ts';
 import { meHandler } from './routes/me.ts';
 import { spaceHandlers } from './routes/spaces.ts';
 import { createSharingService } from './sharing/sharing.ts';
 import { createBackupStore } from './store/backup.ts';
 import { createCopyStore } from './store/copy.ts';
+import { createClockStore } from './store/clocks.ts';
 import { createRelationStore } from './store/relations.ts';
 import { createStore } from './store/store.ts';
 import { TRANSPORT_MAX_BYTES, registerSyncSocket } from './ws/sync.ts';
@@ -162,6 +165,11 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   contractRoute('unbind', spaces.unbind);
   contractRoute('mySharing', spaces.mySharing);
   contractRoute('saveMySharing', spaces.saveMySharing);
+
+  const clocks = clockHandlers(createClockService(createClockStore(deps.db)));
+  contractRoute('clocks', clocks.clocks);
+  contractRoute('reportTimezone', clocks.reportTimezone);
+  contractRoute('saveSleep', clocks.saveSleep);
 
   const backup = backupHandlers(backupService);
   contractRoute('backup', backup.backup);
