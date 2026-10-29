@@ -22,6 +22,7 @@
 | [diary-collaboration-kernel](./2026-10-26-diary-collaboration-kernel.md) | 个人日记以增量协作保存，共享从获准的正文状态开始 | 已采纳 | 协同 | 28/31 部分 |
 | [server-backup-and-google-docs](./2026-10-28-server-backup-and-google-docs.md) | 服务器把数据库持续加密备份到 Cloudflare R2，每人的 Google Drive 只放每天一份可读的 Doc | 已采纳 | 备份 | 14/15 部分 |
 | [unread-and-day-page](./2026-10-28-unread-and-day-page.md) | 未读按字判定、列表只计已成历史的文字，同一天的两篇日记上下排在一个页面里 | 已实现 | 领域 | 14/14 已完成 |
+| [space-records](./2026-10-29-space-records.md) | 双人空间里的记录归空间、文字归作者，绑定期间才能操作，解绑后两人只读 | 提议 | 领域 | 0/10 未开始 |
 <!-- adr-index:end -->
 
 ## 原则
