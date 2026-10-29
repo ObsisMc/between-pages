@@ -39,6 +39,7 @@ The first-time setup and the restore runbook are below, in Chinese, for Ray.
 - WAL segments are nominally 16 MB even when closed early after 60 s. Compressed size and R2 use still have to be measured on real writing, and `archive_timeout` raised if they are large.
 - While archiving fails, unarchived WAL stays in `pg_wal` and the disk fills slowly. The daily ping turns `fail` the same day.
 - The drill needs room for a second copy of the database for a few minutes.
+- Schema changes need nothing here: the backup is of the whole cluster, so a backup from before a migration restores the schema of that time, and `npm run db:migrate` brings it up to the code. Two changes do need a fresh start: re-creating the database from scratch (a new cluster: point `WALG_S3_PREFIX` at a new path, or delete the old backups first) and a PostgreSQL major upgrade (make a new full backup right after).
 - Restoring into the compose volume (`--volume between-pages_pgdata`) creates it outside compose. Compose may warn that it was not created by compose, and that is harmless.
 
 ---
