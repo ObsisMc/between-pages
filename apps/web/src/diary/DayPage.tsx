@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
 import { Link, useParams } from 'react-router';
-import type { Day } from '@between-pages/contracts';
+import type { Day, ResponseOf } from '@between-pages/contracts';
 import { ApiError, callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
 import { Avatar } from '../avatar/index.ts';
-import { DiaryBlock, type BlockReport } from './DiaryBlock.tsx';
+import { DiaryBlock, copyOf, type BlockReport } from './DiaryBlock.tsx';
 import { AuthorLegend, UnreadNotices, usePeople } from './DiaryPage.tsx';
 import type { DiarySession, ReadingPosition, Unread } from './session.ts';
 
@@ -85,6 +85,7 @@ function DayView({ date }: { date: string }) {
   const user = useMe().data?.user;
   const { people, known } = usePeople();
   const [day, setDay] = useState<Day | null>(null);
+  const [google, setGoogle] = useState<ResponseOf<'day'>['google'] | null>(null);
   const [failed, setFailed] = useState<'offline' | 'failed' | null>(null);
   const [mineId, setMineId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -101,8 +102,9 @@ function DayView({ date }: { date: string }) {
   const load = useCallback(
     () =>
       callApi('day', { params: { date } }).then(
-        ({ day: loaded }) => {
+        ({ day: loaded, google: copy }) => {
           setDay(loaded);
+          setGoogle(copy);
           setFailed(null);
           if (loaded.mine) setMineId(loaded.mine.diaryId);
         },
@@ -305,6 +307,7 @@ function DayView({ date }: { date: string }) {
                   epochId={theirs.epochId}
                   people={people}
                   title={titleOf('theirs')}
+                  googleCopy={google ? copyOf(google, 'partner') : undefined}
                   keepPosition={keepPosition}
                   onSession={onSession('theirs')}
                   onReport={onReport('theirs')}
@@ -315,6 +318,7 @@ function DayView({ date }: { date: string }) {
                   diaryId={mineId}
                   people={people}
                   title={titleOf('mine')}
+                  googleCopy={google ? copyOf(google, 'mine') : undefined}
                   keepPosition={keepPosition}
                   onSession={onSession('mine')}
                   onReport={onReport('mine')}

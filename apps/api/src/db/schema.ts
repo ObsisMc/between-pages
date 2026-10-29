@@ -540,8 +540,8 @@ export const googleDayDocs = pgTable(
     /** The versions the Doc shows: the owner's diary and the partner's share, when present. */
     covers: jsonb('covers')
       .$type<{
-        mine?: { diaryId: string; version: number };
-        partner?: { diaryId: string; epochId: string; version: number };
+        mine?: { diaryId: string; version: number; at: string };
+        partner?: { diaryId: string; epochId: string; version: number; at: string };
       }>()
       .notNull(),
     /** The history point the Doc reaches, as "backed up to Google 9:22" shows it. */

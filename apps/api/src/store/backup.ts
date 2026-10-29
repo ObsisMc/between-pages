@@ -63,6 +63,15 @@ export function createBackupStore(db: Db) {
             target: googleConnections.userId,
             set: { ...row, attempts: 0, nextAttemptAt: sql`now()`, lastError: null },
           });
+        // Every date the user can see is queued (D7 "第一次连接"); a day whose Doc already
+        // holds the same content in this account is not written again.
+        await tx.execute(sql`
+          insert into google_day_work (user_id, diary_date)
+          select ${row.userId}::uuid, diary_date from diaries where owner_id = ${row.userId}
+          union
+          select ${row.userId}::uuid, d.diary_date from share_epochs e
+            join diaries d on d.id = e.diary_id where e.recipient_id = ${row.userId}
+          on conflict do nothing`);
         return 'connected';
       });
     },

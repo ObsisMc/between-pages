@@ -297,10 +297,19 @@ export const routes = {
     body: EmptyRequest,
     response: BackupResponse,
   },
+  runBackup: {
+    method: 'POST',
+    path: '/api/backup/run',
+    summary: 'Back up every waiting day now, without waiting for its history point ("现在备份").',
+    access: 'user',
+    body: EmptyRequest,
+    response: BackupResponse,
+  },
   day: {
     method: 'GET',
     path: '/api/days/:date',
-    summary: "One date's own and shared diaries, as on the day list.",
+    summary:
+      "One date's own and shared diaries, as on the day list, with the caller's own Google copy of it.",
     access: 'user',
     params: DayParams,
     response: DayResponse,

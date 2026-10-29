@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router';
+import type { ResponseOf } from '@between-pages/contracts';
 import { callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
-import { DiaryBlock, type BlockReport, type Person } from './DiaryBlock.tsx';
+import { DiaryBlock, copyOf, type BlockReport, type Person } from './DiaryBlock.tsx';
 import type { DiarySession, Unread } from './session.ts';
 
 /** The people of the caller's spaces by user ID, for author colors and names. */
@@ -49,18 +50,19 @@ export function AuthorLegend({
 export const DAY_CHECK_MS = 45_000;
 
 /**
- * Whether the partner has a diary they share with the caller on `date`, checked on entry,
- * when the window comes back and every DAY_CHECK_MS; a failed check keeps the last answer
- * (unread-and-day-page D6). The page never changes its layout by itself (invariant 13).
+ * The date as the day page sees it, checked on entry, when the window comes back and every
+ * DAY_CHECK_MS; a failed check keeps the last answer: whether the partner has a diary they
+ * share with the caller (unread-and-day-page D6), and the caller's Google copy of the day
+ * (server-backup-and-google-docs D9). The page never changes its layout by itself (invariant 13).
  */
-function usePartnerWroteDay(date: string | undefined): boolean {
-  const [wrote, setWrote] = useState(false);
+function useDayCheck(date: string | undefined): ResponseOf<'day'> | null {
+  const [checked, setChecked] = useState<ResponseOf<'day'> | null>(null);
   useEffect(() => {
     if (!date) return;
     let live = true;
     const check = () =>
       callApi('day', { params: { date } }).then(
-        ({ day }) => live && setWrote(day.partner !== null),
+        (answer) => live && setChecked(answer),
         () => undefined,
       );
     void check();
@@ -77,7 +79,7 @@ function usePartnerWroteDay(date: string | undefined): boolean {
       document.removeEventListener('visibilitychange', onForeground);
     };
   }, [date]);
-  return wrote;
+  return checked;
 }
 
 /**
@@ -98,7 +100,8 @@ export function DiaryPage() {
   const [ownOnly, setOwnOnly] = useState(false);
   const state = report?.state;
   const open = state?.phase === 'open';
-  const partnerWrote = usePartnerWroteDay(epochId ? undefined : state?.diaryDate);
+  const dayCheck = useDayCheck(state?.diaryDate);
+  const partnerWrote = !epochId && !!dayCheck?.day.partner;
   const unread = open && !report?.previewing ? state.unread : undefined;
   return (
     <main className="page diary">
@@ -137,6 +140,7 @@ export function DiaryPage() {
           diaryId={diaryId}
           epochId={epochId}
           people={people}
+          googleCopy={dayCheck ? copyOf(dayCheck.google, epochId ? 'partner' : 'mine') : undefined}
           onSession={(opened) => {
             session.current = opened;
             if (opened && ownOnly) opened.setOwnTextOnly(true);

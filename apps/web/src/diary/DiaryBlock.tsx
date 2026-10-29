@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { Link } from 'react-router';
+import type { ResponseOf } from '@between-pages/contracts';
 import { callApi } from '../api/client.ts';
 import { HistoryPanel, HistoryPreview, type HistoryPointView } from '../history/index.ts';
 import { DraftList } from './DraftList.tsx';
@@ -29,12 +30,40 @@ const writtenText = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', ti
  * (unread-and-day-page D6, invariant 9). `title` heads it; `onSession` hands the session to
  * the page for the filter, unread jumps and the reading position.
  */
+/** This diary in the caller's own Google Drive (server-backup-and-google-docs D9). */
+export type GoogleCopy = { connected: boolean; backedUpAt: string | null; docUrl: string | null };
+
+/** One side of the day's Doc in the caller's Drive. */
+export const copyOf = (
+  google: ResponseOf<'day'>['google'],
+  side: 'mine' | 'partner',
+): GoogleCopy => ({ connected: google.connected, backedUpAt: google[side], docUrl: google.docUrl });
+
+function GoogleCopyLine({ copy }: { copy: GoogleCopy }) {
+  if (!copy.connected) return <p className="google-copy">未开启 Google 备份</p>;
+  if (!copy.backedUpAt) return <p className="google-copy">等待备份到 Google</p>;
+  return (
+    <p className="google-copy">
+      已备份到 Google {writtenText.format(new Date(copy.backedUpAt))}
+      {copy.docUrl && (
+        <>
+          {' · '}
+          <a href={copy.docUrl} target="_blank" rel="noreferrer">
+            在 Google Docs 打开
+          </a>
+        </>
+      )}
+    </p>
+  );
+}
+
 export function DiaryBlock({
   userId,
   diaryId,
   epochId,
   people,
   title,
+  googleCopy,
   keepPosition,
   onSession,
   onReport,
@@ -42,6 +71,8 @@ export function DiaryBlock({
   userId: string;
   diaryId: string;
   epochId?: string | undefined;
+  /** Shown beside the save status once known; "已备份到 Google" never means more than the Doc holds. */
+  googleCopy?: GoogleCopy | undefined;
   /** By user ID; author colors follow the space's slots, so one person has one color. */
   people: Map<string, Person>;
   title?: ReactNode;
@@ -168,6 +199,7 @@ export function DiaryBlock({
             {status.text}
           </p>
         )}
+        {open && googleCopy && <GoogleCopyLine copy={googleCopy} />}
         {open && (
           <button
             type="button"

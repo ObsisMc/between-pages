@@ -33,6 +33,7 @@ import { meHandler } from './routes/me.ts';
 import { spaceHandlers } from './routes/spaces.ts';
 import { createSharingService } from './sharing/sharing.ts';
 import { createBackupStore } from './store/backup.ts';
+import { createCopyStore } from './store/copy.ts';
 import { createRelationStore } from './store/relations.ts';
 import { createStore } from './store/store.ts';
 import { TRANSPORT_MAX_BYTES, registerSyncSocket } from './ws/sync.ts';
@@ -115,7 +116,13 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const diaries = createDiaryService(store);
   const reader = createReader(store);
   const commit = createCommitService(store);
+  const backupService = createBackupService(
+    createBackupStore(deps.db),
+    createCopyStore(deps.db),
+    deps.drive ?? null,
+  );
   const handlers = diaryHandlers({
+    backup: backupService,
     diaries,
     commit,
     reader,
@@ -156,13 +163,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   contractRoute('mySharing', spaces.mySharing);
   contractRoute('saveMySharing', spaces.saveMySharing);
 
-  const backup = backupHandlers(
-    createBackupService(createBackupStore(deps.db), deps.drive ?? null),
-  );
+  const backup = backupHandlers(backupService);
   contractRoute('backup', backup.backup);
   contractRoute('startGoogleConnection', backup.startGoogleConnection);
   contractRoute('finishGoogleConnection', backup.finishGoogleConnection);
   contractRoute('disconnectGoogle', backup.disconnectGoogle);
+  contractRoute('runBackup', backup.runBackup);
 
   await app.register(websocket, { options: { maxPayload: TRANSPORT_MAX_BYTES } });
   registerSyncSocket(app, {

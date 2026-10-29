@@ -67,10 +67,11 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       ],
       ws: ['auth', 'errors', 'commit', 'diaries', 'reader', 'events'],
       // server-backup-and-google-docs: `google` calls Google and seals or opens tokens, knowing
-      // no database; `backup` is the API's view of the Drive connection; `worker` is the
+      // no database; `backup` is the Drive connection and what each day's Doc holds, reading
+      // text only through `reader` and history points through `history`; `worker` is the
       // worker process, the only one that opens tokens (invariant 11).
       google: [],
-      backup: ['store', 'google', 'errors', 'config'],
+      backup: ['store', 'google', 'reader', 'history', 'errors', 'config'],
       worker: ['*'],
       commit: ['store', 'outbox', 'events', 'errors'],
       diaries: ['store', 'sharing', 'errors'],
@@ -100,7 +101,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       routes: ['auth', 'pages', 'diary', 'join', 'space', 'backup'],
       api: [],
       auth: ['api'],
-      pages: ['api', 'auth', 'diary-list', 'join', 'relationship', 'shared-diaries'],
+      pages: ['api', 'auth', 'backup', 'diary-list', 'join', 'relationship', 'shared-diaries'],
       'editor-binding': [],
       journal: [],
       sender: ['journal'],
@@ -114,7 +115,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       join: ['api', 'auth', 'relationship', 'sharing-range'],
       space: ['api', 'auth', 'relationship', 'sharing-range', 'shared-diaries'],
       'shared-diaries': ['api'],
-      // server-backup-and-google-docs D9: the backup page and the Google callback.
+      // server-backup-and-google-docs D9: the backup page, the Google callback and the home banner.
       backup: ['api'],
       diary: [
         'api',

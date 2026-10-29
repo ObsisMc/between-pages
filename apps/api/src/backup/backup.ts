@@ -7,12 +7,15 @@ import {
   stateSha256,
   type GoogleClient,
 } from '../google/oauth.ts';
+import { docUrl, folderUrl } from '../google/docs.ts';
 import { keyIdOf, sealToken } from '../google/tokens.ts';
 import type { BackupStore } from '../store/backup.ts';
+import type { CopyStore } from '../store/copy.ts';
 
-// The Drive connection as the API serves it (server-backup-and-google-docs D9, D10). The API
-// seals the refresh token it receives and never opens one: revoking and using tokens is the
-// worker's (invariant 11). Everything here concerns the caller's own connection only.
+// The Drive connection and the readable copy's progress as the API serves them
+// (server-backup-and-google-docs D9, D10). The API seals the refresh token it receives and
+// never opens one: revoking and using tokens is the worker's (invariant 11). Everything here
+// concerns the caller's own connection and Drive only (invariant 14).
 
 export type DriveConfig = {
   client: GoogleClient;
@@ -22,7 +25,10 @@ export type DriveConfig = {
 };
 
 const AUTHORIZATION_MS = 10 * 60_000;
-const TESTING_GRANT_MS = 7 * 24 * 60 * 60_000;
+const DAY_MS = 24 * 60 * 60_000;
+const TESTING_GRANT_MS = 7 * DAY_MS;
+/** From the sixth day of a Testing-mode grant, the home page asks to reconnect (D9). */
+const EXPIRY_WARNING_MS = 2 * DAY_MS;
 
 export type BackupStatus = {
   google: {
@@ -31,49 +37,96 @@ export type BackupStatus = {
     connectedAt: Date | null;
     expiresAt: Date | null;
   };
+  progress: {
+    waitingDays: number;
+    retrying: boolean;
+    backedUpTo: Date | null;
+    folderUrl: string | null;
+  } | null;
+  attention: 'reconnect' | 'storage_full' | 'expiring' | null;
   events: { at: Date; kind: string; diaryDate: string | null }[];
+};
+
+export type DayCopyStatus = {
+  connected: boolean;
+  docUrl: string | null;
+  mine: string | null;
+  partner: string | null;
 };
 
 export type ConnectRefusal =
   'GOOGLE_UNAVAILABLE' | 'GOOGLE_STATE_INVALID' | 'GOOGLE_EXCHANGE_FAILED' | 'GOOGLE_DISCONNECTING';
 
-export function createBackupService(store: BackupStore, drive: DriveConfig | null) {
+export function createBackupService(
+  store: BackupStore,
+  copy: CopyStore,
+  drive: DriveConfig | null,
+) {
   async function status(userId: string, now = new Date()): Promise<BackupStatus> {
     const events = await store.events(userId);
-    if (!drive)
-      return {
-        google: { state: 'unavailable', email: null, connectedAt: null, expiresAt: null },
-        events,
-      };
+    const without = (state: BackupStatus['google']['state']): BackupStatus => ({
+      google: { state, email: null, connectedAt: null, expiresAt: null },
+      progress: null,
+      attention: null,
+      events,
+    });
+    if (!drive) return without('unavailable');
     const row = await store.connection(userId);
-    if (!row)
-      return {
-        google: { state: 'disconnected', email: null, connectedAt: null, expiresAt: null },
-        events,
-      };
-    if (row.status === 'revoking') {
-      return {
-        google: { state: 'disconnecting', email: null, connectedAt: null, expiresAt: null },
-        events,
-      };
-    }
+    if (!row) return without('disconnected');
+    if (row.status === 'revoking') return without('disconnecting');
     // A token sealed under a key this server no longer has can never be used (D10.7).
     const usable = row.status === 'active' && row.keyId === keyIdOf(drive.tokenKey);
     const expiresAt = drive.testing ? new Date(row.connectedAt.getTime() + TESTING_GRANT_MS) : null;
     const expired = expiresAt !== null && expiresAt <= now;
+    const state = usable && !expired ? 'connected' : 'reconnect';
+    const progress = await copy.progress(userId, row.googleUserId);
+    const expiring = expiresAt !== null && expiresAt.getTime() - now.getTime() <= EXPIRY_WARNING_MS;
     return {
-      google: {
-        state: usable && !expired ? 'connected' : 'reconnect',
-        email: row.email,
-        connectedAt: row.connectedAt,
-        expiresAt,
+      google: { state, email: row.email, connectedAt: row.connectedAt, expiresAt },
+      progress: {
+        waitingDays: progress.waitingDays,
+        retrying: progress.retrying,
+        backedUpTo: progress.backedUpTo,
+        folderUrl: progress.rootFolderId && folderUrl(progress.rootFolderId),
       },
+      attention:
+        state === 'reconnect'
+          ? 'reconnect'
+          : progress.storageFull
+            ? 'storage_full'
+            : expiring
+              ? 'expiring'
+              : null,
       events,
     };
   }
 
   return {
     status,
+
+    /** "现在备份": queues what commits registered and makes every waiting day due now (D9). */
+    async runNow(userId: string, now = new Date()): Promise<BackupStatus> {
+      if (drive) {
+        await copy.intake([userId]);
+        await copy.runNow(userId, now);
+      }
+      return status(userId, now);
+    },
+
+    /** One date in the caller's own Drive, for the day page (D9). */
+    async day(userId: string, diaryDate: string): Promise<DayCopyStatus> {
+      const row = drive && (await store.connection(userId));
+      if (!row || row.status === 'revoking')
+        return { connected: false, docUrl: null, mine: null, partner: null };
+      const doc = await copy.currentDoc(userId, row.googleUserId, diaryDate);
+      const written = doc && doc.revisionId !== '' ? doc : null;
+      return {
+        connected: true,
+        docUrl: written && docUrl(written.docId),
+        mine: written?.covers.mine?.at ?? null,
+        partner: written?.covers.partner?.at ?? null,
+      };
+    },
 
     /** The consent URL for a new authorization of the caller. */
     async start(userId: string, now = new Date()): Promise<{ url: string } | ConnectRefusal> {

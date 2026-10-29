@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DayGoogleCopy } from './backup.ts';
 import { ShareState } from './diaries.ts';
 
 // The merged home list and the day page (unread-and-day-page D2, D3): one entry per date
@@ -56,4 +57,6 @@ export const DaysPage = z
   .meta({ id: 'DaysPage' });
 
 /** One date; both sides null when the caller can see no diary on it. */
-export const DayResponse = z.object({ day: Day }).meta({ id: 'DayResponse' });
+export const DayResponse = z
+  .object({ day: Day, google: DayGoogleCopy })
+  .meta({ id: 'DayResponse' });

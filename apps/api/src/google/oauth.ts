@@ -30,14 +30,20 @@ export type GoogleClient = {
   endpoints: GoogleEndpoints;
 };
 
-/** A Google refusal; `code` is Google's `error` field (e.g. invalid_grant) or the HTTP status. */
+/**
+ * A Google refusal; `code` is Google's `error` field (e.g. invalid_grant), the API error's
+ * first reason (e.g. storageQuotaExceeded) or the HTTP status. `retryAfterMs` is Google's
+ * `Retry-After` when it sent one.
+ */
 export class GoogleError extends Error {
   readonly status: number;
   readonly code: string;
-  constructor(status: number, code: string) {
+  readonly retryAfterMs: number | null;
+  constructor(status: number, code: string, retryAfterMs: number | null = null) {
     super(`Google answered ${status} ${code}`);
     this.status = status;
     this.code = code;
+    this.retryAfterMs = retryAfterMs;
   }
 }
 

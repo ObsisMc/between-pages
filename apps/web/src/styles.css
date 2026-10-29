@@ -194,6 +194,13 @@ button.primary {
   font-weight: 500;
 }
 
+/* "已备份到 Google" beside the save status (server-backup-and-google-docs D9). */
+.google-copy {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+}
+
 /* A mark for the eye only: the status text alone is what is announced. */
 .save-status.calm::before {
   content: '✓ ';

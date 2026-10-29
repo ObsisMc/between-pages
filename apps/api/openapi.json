@@ -153,11 +153,78 @@
           "diaryDate"
         ]
       },
+      "BackupProgressInput": {
+        "type": "object",
+        "properties": {
+          "waitingDays": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "retrying": {
+            "type": "boolean"
+          },
+          "backedUpTo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "folderUrl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "waitingDays",
+          "retrying",
+          "backedUpTo",
+          "folderUrl"
+        ]
+      },
       "BackupStatusInput": {
         "type": "object",
         "properties": {
           "google": {
             "$ref": "#/components/schemas/GoogleConnectionInput"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BackupProgressInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "attention": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "reconnect",
+                  "storage_full",
+                  "expiring"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "events": {
             "type": "array",
@@ -168,7 +235,58 @@
         },
         "required": [
           "google",
+          "progress",
+          "attention",
           "events"
+        ]
+      },
+      "DayGoogleCopyInput": {
+        "type": "object",
+        "properties": {
+          "connected": {
+            "type": "boolean"
+          },
+          "docUrl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mine": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "partner": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "connected",
+          "docUrl",
+          "mine",
+          "partner"
         ]
       },
       "BackupResponseInput": {
@@ -940,10 +1058,14 @@
         "properties": {
           "day": {
             "$ref": "#/components/schemas/DayInput"
+          },
+          "google": {
+            "$ref": "#/components/schemas/DayGoogleCopyInput"
           }
         },
         "required": [
-          "day"
+          "day",
+          "google"
         ]
       },
       "UserSummaryInput": {
@@ -1641,11 +1763,79 @@
         ],
         "additionalProperties": false
       },
+      "BackupProgress": {
+        "type": "object",
+        "properties": {
+          "waitingDays": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "retrying": {
+            "type": "boolean"
+          },
+          "backedUpTo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "folderUrl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "waitingDays",
+          "retrying",
+          "backedUpTo",
+          "folderUrl"
+        ],
+        "additionalProperties": false
+      },
       "BackupStatus": {
         "type": "object",
         "properties": {
           "google": {
             "$ref": "#/components/schemas/GoogleConnection"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BackupProgress"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "attention": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "reconnect",
+                  "storage_full",
+                  "expiring"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "events": {
             "type": "array",
@@ -1656,7 +1846,59 @@
         },
         "required": [
           "google",
+          "progress",
+          "attention",
           "events"
+        ],
+        "additionalProperties": false
+      },
+      "DayGoogleCopy": {
+        "type": "object",
+        "properties": {
+          "connected": {
+            "type": "boolean"
+          },
+          "docUrl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mine": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "partner": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "connected",
+          "docUrl",
+          "mine",
+          "partner"
         ],
         "additionalProperties": false
       },
@@ -2454,10 +2696,14 @@
         "properties": {
           "day": {
             "$ref": "#/components/schemas/Day"
+          },
+          "google": {
+            "$ref": "#/components/schemas/DayGoogleCopy"
           }
         },
         "required": [
-          "day"
+          "day",
+          "google"
         ],
         "additionalProperties": false
       },
@@ -3633,7 +3879,7 @@
     },
     "/api/days/{date}": {
       "get": {
-        "summary": "One date's own and shared diaries, as on the day list.",
+        "summary": "One date's own and shared diaries, as on the day list, with the caller's own Google copy of it.",
         "parameters": [
           {
             "schema": {
@@ -4166,6 +4412,45 @@
     "/api/backup/google/disconnect": {
       "post": {
         "summary": "Disconnect Google Drive: the grant is revoked at Google; Drive files stay.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backup/run": {
+      "post": {
+        "summary": "Back up every waiting day now, without waiting for its history point (\"现在备份\").",
         "requestBody": {
           "required": true,
           "content": {
