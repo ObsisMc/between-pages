@@ -121,10 +121,13 @@ test('[adr:unread-and-day-page#7] [adr:unread-and-day-page#9] D7 the two editors
     await b.mouse.up();
   };
   // From inside A's text, so a drag up or down selects some of it whichever diary is first.
+  // The start is scrolled into view first: which diary is first follows the random user IDs,
+  // and a press below the window selects nothing.
   const fromTheirs = () =>
     b.evaluate(() => {
       const box = document.querySelector('section[aria-label="TA 的日记"] [role="textbox"]')!;
       const text = document.createTreeWalker(box, NodeFilter.SHOW_TEXT).nextNode()!;
+      text.parentElement!.scrollIntoView({ block: 'center' });
       const range = document.createRange();
       range.setStart(text, 2);
       range.setEnd(text, 2);
@@ -132,6 +135,7 @@ test('[adr:unread-and-day-page#7] [adr:unread-and-day-page#9] D7 the two editors
       return { x: rect.left, y: rect.top + rect.height / 2 };
     });
   const fromHeading = async () => {
+    await b.locator('.day-date').scrollIntoViewIfNeeded();
     const box = (await b.locator('.day-date').boundingBox())!;
     return { x: box.x + 2, y: box.y + box.height / 2 };
   };
