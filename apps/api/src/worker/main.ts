@@ -6,6 +6,7 @@ import { createReader } from '../reader/reader.ts';
 import { createBackupStore } from '../store/backup.ts';
 import { createCopyStore } from '../store/copy.ts';
 import { createStore } from '../store/store.ts';
+import { checkDrives } from './check.ts';
 import { copyNext } from './copy.ts';
 import { revokeNext } from './revoke.ts';
 
@@ -14,6 +15,8 @@ import { revokeNext } from './revoke.ts';
 // tokens. It logs what it did, never a token, code or diary text.
 
 const POLL_MS = 5_000;
+/** The daily check runs at start and then once a day (D8). */
+const CHECK_MS = 24 * 60 * 60_000;
 
 const config = parseConfig(process.env);
 const drive = driveConfig(config);
@@ -27,6 +30,7 @@ const copy = createCopyService(
   config.HISTORY_IDLE_MS,
 );
 let stopping = false;
+let checkedAt = 0;
 
 async function tick() {
   if (!drive) return;
@@ -34,6 +38,10 @@ async function tick() {
     console.log('worker: revoked a Drive grant');
   while (!stopping && (await copy.intake()) > 0);
   while (!stopping && (await copyNext({ copy, store: copyStore, drive })));
+  if (!stopping && Date.now() - checkedAt >= CHECK_MS) {
+    checkedAt = Date.now();
+    await checkDrives({ store: copyStore, drive });
+  }
 }
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {

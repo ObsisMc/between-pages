@@ -1,12 +1,13 @@
 import type { DriveConfig } from '../backup/backup.ts';
 import type { CopyService } from '../backup/copy.ts';
-import type { DayDoc } from '../backup/render.ts';
+import { replacedTitle, type DayDoc } from '../backup/render.ts';
 import {
   DOC_TYPE,
   FOLDER_TYPE,
   createFile,
   docRevision,
   fileState,
+  rename,
   replaceBody,
 } from '../google/docs.ts';
 import { GoogleError, accessToken } from '../google/oauth.ts';
@@ -17,7 +18,9 @@ import type { CopyStore, WorkRow } from '../store/copy.ts';
 // Writing one day's Doc into one person's Drive (server-backup-and-google-docs D6–D8,
 // technical design steps 3–4). The worker opens the refresh token only here, for one day,
 // and keeps it and the access token in memory. A Doc is written only while it is still at
-// the revision this app last wrote (invariant 8); anything else leaves it untouched.
+// the revision this app last wrote (invariant 8). One changed in Google keeps its content
+// under a new name and a new Doc carries on; one deleted is made again (invariant 9).
+// Nothing in Drive is ever deleted.
 
 const RETRY_MAX_MS = 60 * 60_000;
 /** Storage full waits for the user; a daily look resumes once they made room (D9). */
@@ -25,38 +28,101 @@ const STORAGE_FULL_MS = 24 * 60 * 60_000;
 
 const backoffMs = (attempts: number) => Math.min(60_000 * 2 ** attempts, RETRY_MAX_MS);
 
-/** The Doc changed in Google or disappeared; never overwritten. */
-class DocUnavailable extends Error {}
+/** The Doc changed in Google, or is gone or in the bin; never written into. */
+class DocUnavailable extends Error {
+  readonly reason: 'changed' | 'missing';
+  constructor(reason: 'changed' | 'missing') {
+    super(`doc_${reason}`);
+    this.reason = reason;
+  }
+}
 
 export type CopyDeps = { copy: CopyService; store: CopyStore; drive: DriveConfig };
 
-/** Creates the missing folders of `Between Pages / YYYY / MM` and returns the month's. */
+/**
+ * The month's folder of `Between Pages / YYYY / MM`, checking the known ones are still
+ * there: a folder deleted or in the bin is made again, and so is everything below it.
+ */
 async function monthFolder(
   deps: CopyDeps,
   connection: ConnectionRow,
   token: string,
   doc: DayDoc,
 ): Promise<string> {
+  const endpoints = deps.drive.client.endpoints;
   const known = await deps.store.folders(connection.userId, connection.googleUserId);
   let parentId: string | null = null;
   let path = '';
+  let rebuilt = false;
   for (const name of doc.folders) {
     path = path ? `${path}/${name}` : name;
-    let folderId = known.get(path);
+    let folderId = rebuilt ? undefined : known.get(path);
+    if (folderId && (await fileState(endpoints, token, folderId)) !== 'present')
+      folderId = undefined;
     if (!folderId) {
-      folderId = await createFile(deps.drive.client.endpoints, token, {
-        name,
-        type: FOLDER_TYPE,
-        parentId,
-      });
+      folderId = await createFile(endpoints, token, { name, type: FOLDER_TYPE, parentId });
       await deps.store.saveFolder(connection.userId, connection.googleUserId, path, folderId);
+      rebuilt = true;
     }
     parentId = folderId;
   }
   return parentId!;
 }
 
-/** Writes the Doc and returns its new revision; creates it first when the day has none. */
+/** The day's current Doc, created (and recorded before any write) when there is none. */
+async function currentOrNew(
+  deps: CopyDeps,
+  connection: ConnectionRow,
+  work: WorkRow,
+  token: string,
+  doc: DayDoc,
+) {
+  const find = () =>
+    deps.store.currentDoc(connection.userId, connection.googleUserId, work.diaryDate);
+  const found = await find();
+  if (found) return found;
+  const docId = await createFile(deps.drive.client.endpoints, token, {
+    name: doc.title,
+    type: DOC_TYPE,
+    parentId: await monthFolder(deps, connection, token, doc),
+  });
+  await deps.store.createdDoc({
+    docId,
+    userId: connection.userId,
+    googleUserId: connection.googleUserId,
+    diaryDate: work.diaryDate,
+  });
+  return (await find())!;
+}
+
+/** Replaces the body of `docId` if it is still the revision this app wrote last. */
+async function writeInto(
+  deps: CopyDeps,
+  token: string,
+  current: { docId: string; revisionId: string },
+  doc: DayDoc,
+): Promise<string> {
+  const endpoints = deps.drive.client.endpoints;
+  if ((await fileState(endpoints, token, current.docId)) !== 'present')
+    throw new DocUnavailable('missing');
+  const state = await docRevision(endpoints, token, current.docId);
+  if (!state) throw new DocUnavailable('missing');
+  if (current.revisionId && state.revisionId !== current.revisionId)
+    throw new DocUnavailable('changed');
+  try {
+    return await replaceBody(endpoints, token, current.docId, state, doc);
+  } catch (error) {
+    // Google refuses a write whose required revision is no longer current: changed between
+    // the check above and the write (D8).
+    if (error instanceof GoogleError && error.status === 400) {
+      const now = await docRevision(endpoints, token, current.docId);
+      if (now?.revisionId !== state.revisionId) throw new DocUnavailable('changed');
+    }
+    throw error;
+  }
+}
+
+/** Writes the day and returns where; a changed or missing Doc is set aside once first. */
 async function writeDoc(
   deps: CopyDeps,
   connection: ConnectionRow,
@@ -64,49 +130,32 @@ async function writeDoc(
   token: string,
   doc: DayDoc,
 ): Promise<{ docId: string; revisionId: string }> {
-  const endpoints = deps.drive.client.endpoints;
-  let current = await deps.store.currentDoc(
-    connection.userId,
-    connection.googleUserId,
-    work.diaryDate,
-  );
-  if (!current) {
-    const docId = await createFile(endpoints, token, {
-      name: doc.title,
-      type: DOC_TYPE,
-      parentId: await monthFolder(deps, connection, token, doc),
-    });
-    await deps.store.createdDoc({
-      docId,
-      userId: connection.userId,
-      googleUserId: connection.googleUserId,
-      diaryDate: work.diaryDate,
-    });
-    current = (await deps.store.currentDoc(
-      connection.userId,
-      connection.googleUserId,
-      work.diaryDate,
-    ))!;
-  }
-  if ((await fileState(endpoints, token, current.docId)) !== 'present')
-    throw new DocUnavailable('doc_missing');
-  const state = await docRevision(endpoints, token, current.docId);
-  if (!state) throw new DocUnavailable('doc_missing');
-  if (current.revisionId && state.revisionId !== current.revisionId)
-    throw new DocUnavailable('doc_changed');
-  try {
-    return {
-      docId: current.docId,
-      revisionId: await replaceBody(endpoints, token, current.docId, state, doc),
-    };
-  } catch (error) {
-    // Google refuses a write whose required revision is no longer current (D8).
-    if (error instanceof GoogleError && error.status === 400) {
-      const now = await docRevision(endpoints, token, current.docId);
-      if (now?.revisionId !== state.revisionId) throw new DocUnavailable('doc_changed');
+  for (let attempt = 0; ; attempt++) {
+    const current = await currentOrNew(deps, connection, work, token, doc);
+    try {
+      return { docId: current.docId, revisionId: await writeInto(deps, token, current, doc) };
+    } catch (error) {
+      if (!(error instanceof DocUnavailable) || attempt > 0) throw error;
+      await setAside(deps, token, current.docId, work.diaryDate, error.reason);
     }
-    throw error;
   }
+}
+
+/**
+ * A changed Doc keeps its content under the "changed in Google" name and stops being the
+ * day's current one; a missing one is forgotten. Either is a problem on the backup page.
+ */
+export async function setAside(
+  deps: Pick<CopyDeps, 'store' | 'drive'>,
+  token: string,
+  docId: string,
+  diaryDate: string,
+  reason: 'changed' | 'missing',
+): Promise<void> {
+  if (reason === 'changed') {
+    await rename(deps.drive.client.endpoints, token, docId, replacedTitle(diaryDate));
+    await deps.store.replaceDoc(docId);
+  } else await deps.store.dropDoc(docId);
 }
 
 /** Handles one due day; false when none is due. */

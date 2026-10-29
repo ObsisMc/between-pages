@@ -10,6 +10,7 @@ import { createDb, type Database } from './db/client.ts';
 import { createReader } from './reader/reader.ts';
 import { createCopyStore } from './store/copy.ts';
 import { createStore } from './store/store.ts';
+import { checkDrives } from './worker/check.ts';
 import { copyNext } from './worker/copy.ts';
 import { query, testDatabaseUrl } from '../test/db.ts';
 import { client, edit, testSessions } from '../test/diary.ts';
@@ -32,6 +33,7 @@ let app: FastifyInstance;
 let google: FakeGoogle;
 let drive: DriveConfig;
 let drain: (...people: Person[]) => Promise<void>;
+let dailyCheck: () => Promise<void>;
 
 beforeAll(async () => {
   if (!testDatabaseUrl) return;
@@ -60,6 +62,7 @@ beforeAll(async () => {
     await copy.intake(people.map((p) => p.id));
     while (await copyNext({ copy, store, drive }));
   };
+  dailyCheck = () => checkDrives({ store, drive });
 });
 afterAll(async () => {
   await app?.close();
@@ -384,22 +387,128 @@ describe.runIf(testDatabaseUrl)('the Google copy', () => {
     expect(google.docs(a.permissionId)).toHaveLength(1);
     expect((await backup(a)).attention).toBeNull();
   });
+});
 
-  it('[adr:server-backup-and-google-docs#8] never writes over a Doc someone changed in Google', async () => {
-    const a = await person('Ann');
+describe.runIf(testDatabaseUrl)('Docs changed or deleted in Google', () => {
+  /** A with one written day; returns the Doc as it stands in Drive. */
+  async function writtenDay(a: Person) {
     await connect(a);
     const diaryId = await ownDiary(a);
     await write(a, diaryId, (t) => t.insert(0, 'Original.'));
     await settle(diaryId);
     await drain(a);
-    const [doc] = google.docs(a.permissionId);
-    google.editInGoogle(doc!.id, ' Edited in Google.');
+    return { diaryId, doc: google.docs(a.permissionId)[0]! };
+  }
+  const events = async (who: Person) => (await backup(who)).events.map((e) => e.kind);
+  const neverDeleted = () =>
+    expect(google.state.calls.filter((c) => c.startsWith('DELETE '))).toEqual([]);
+
+  it('[adr:server-backup-and-google-docs#8] keeps a Doc changed in Google under a new name and carries on in a new one', async () => {
+    const a = await person('Ann');
+    const { diaryId, doc } = await writtenDay(a);
+    google.editInGoogle(doc.id, ' Edited in Google.');
 
     await write(a, diaryId, (t) => t.insert(t.length, ' Newer.'));
     await settle(diaryId);
     await drain(a);
-    expect(google.state.files.get(doc!.id)!.text.endsWith('Original. Edited in Google.')).toBe(
-      true,
+    const old = google.state.files.get(doc.id)!;
+    expect(old.text.endsWith('Original. Edited in Google.')).toBe(true);
+    expect(old.name).toBe('2026-10-20 周二（在 Google 改过，已停止更新）');
+    const fresh = google.docs(a.permissionId).find((d) => d.id !== doc.id)!;
+    expect(fresh).toMatchObject({ name: '2026-10-20 周二', parents: old.parents });
+    expect(fresh.text.endsWith('Original. Newer.')).toBe(true);
+    expect(await events(a)).toContain('doc_replaced');
+    expect((await dayCopy(a)).docUrl).toBe(`https://docs.google.com/document/d/${fresh.id}/edit`);
+
+    // The new Doc is the one written from now on; the renamed one is left alone.
+    await write(a, diaryId, (t) => t.insert(t.length, ' Again.'));
+    await settle(diaryId);
+    await drain(a);
+    expect(google.docs(a.permissionId)).toHaveLength(2);
+    expect(google.state.files.get(fresh.id)!.text.endsWith('Newer. Again.')).toBe(true);
+    neverDeleted();
+  });
+
+  it('[adr:server-backup-and-google-docs#8] treats a change between its check and its write the same way', async () => {
+    const a = await person('Ann');
+    const { diaryId, doc } = await writtenDay(a);
+    google.state.beforeBatch = (file) => google.editInGoogle(file.id, ' Just now.');
+
+    await write(a, diaryId, (t) => t.insert(t.length, ' Newer.'));
+    await settle(diaryId);
+    await drain(a);
+    expect(google.state.files.get(doc.id)!.text.endsWith('Original. Just now.')).toBe(true);
+    expect(
+      google
+        .docs(a.permissionId)
+        .map((d) => d.text.split('\n').at(-1))
+        .sort(),
+    ).toEqual(['Original. Just now.', 'Original. Newer.']);
+  });
+
+  it('[adr:server-backup-and-google-docs#9] makes a deleted Doc again on the next write, once', async () => {
+    const a = await person('Ann');
+    const { diaryId, doc } = await writtenDay(a);
+    google.trash(doc.id);
+
+    await write(a, diaryId, (t) => t.insert(t.length, ' Newer.'));
+    await settle(diaryId);
+    await drain(a);
+    await drain(a);
+    const live = google.docs(a.permissionId).filter((d) => !d.trashed);
+    expect(live.map((d) => d.text.endsWith('Original. Newer.'))).toEqual([true]);
+    expect(google.state.files.get(doc.id)!.trashed).toBe(true);
+    expect((await events(a)).filter((k) => k === 'doc_recreated')).toHaveLength(1);
+    neverDeleted();
+  });
+
+  it('[adr:server-backup-and-google-docs#9] makes a deleted month folder again with its Doc', async () => {
+    const a = await person('Ann');
+    const { diaryId, doc } = await writtenDay(a);
+    const month = google.state.files.get(doc.parents[0]!)!;
+    google.trash(month.id);
+    google.trash(doc.id);
+
+    await write(a, diaryId, (t) => t.insert(t.length, ' Newer.'));
+    await settle(diaryId);
+    await drain(a);
+    const fresh = google.docs(a.permissionId).find((d) => !d.trashed)!;
+    const newMonth = google.state.files.get(fresh.parents[0]!)!;
+    expect(newMonth).toMatchObject({ name: '10', trashed: false, parents: month.parents });
+    expect(newMonth.id).not.toBe(month.id);
+  });
+
+  it('[adr:server-backup-and-google-docs#9] finds deleted and changed Docs in the daily check, without a new commit', async () => {
+    const a = await person('Ann');
+    const { doc } = await writtenDay(a);
+    const other = await ownDiary(a, '2026-10-19');
+    await write(a, other, (t) => t.insert(0, 'Earlier day.'));
+    await settle(other);
+    await drain(a);
+    const earlier = google.docs(a.permissionId).find((d) => d.name.startsWith('2026-10-19'))!;
+    const untouched = google.state.calls.length;
+
+    // Nothing changed: the check lists files and reads no Doc.
+    await dailyCheck();
+    expect(google.state.calls.slice(untouched).filter((c) => c.includes('/documents/'))).toEqual(
+      [],
     );
+
+    google.remove(doc.id);
+    google.editInGoogle(earlier.id, ' Edited.');
+    await dailyCheck();
+    await drain(a);
+    const names = google
+      .docs(a.permissionId)
+      .map((d) => d.name)
+      .sort();
+    expect(names).toEqual([
+      '2026-10-19 周一',
+      '2026-10-19 周一（在 Google 改过，已停止更新）',
+      '2026-10-20 周二',
+    ]);
+    expect(google.state.files.get(earlier.id)!.text.endsWith('Earlier day. Edited.')).toBe(true);
+    expect(await events(a)).toEqual(expect.arrayContaining(['doc_recreated', 'doc_replaced']));
+    neverDeleted();
   });
 });
