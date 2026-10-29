@@ -294,6 +294,8 @@ describe.runIf(testDatabaseUrl)('Google Drive connection', () => {
     await post(ray, routes.disconnectGoogle.path);
     fake.failRevoke = true;
     const store = createBackupStore(database.db);
+    await revokeNext(store, drive);
+    expect((await status(ray)).google).toMatchObject({ state: 'disconnecting', retrying: true });
     for (let attempt = 0; attempt < 30; attempt++) {
       await query(
         "update google_connections set next_attempt_at = now() - interval '1 second' where user_id = $1",
@@ -316,6 +318,7 @@ describe.runIf(testDatabaseUrl)('Google Drive connection', () => {
       email: null,
       connectedAt: null,
       expiresAt: null,
+      retrying: false,
     });
   });
 

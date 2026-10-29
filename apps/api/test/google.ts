@@ -49,6 +49,12 @@ export async function startFakeGoogle() {
     /** Every call, as "METHOD path", for counting what reached Google. */
     calls: [] as string[],
     down: false,
+    /** Closes every Drive or Docs connection without an answer, as a network failure does. */
+    drop: false,
+    /** Refuses creating files with a plain 400, a failure that is not about reaching Google. */
+    refuseCreate: false,
+    /** The file list (the daily check) answers 500. */
+    failList: false,
     storageFull: false,
     /** Runs just before a batchUpdate's revision check, e.g. to edit the Doc in between. */
     beforeBatch: null as ((file: FakeFile) => void) | null,
@@ -121,6 +127,7 @@ export async function startFakeGoogle() {
       const email = [...state.grants.values()].find((g) => g.permissionId === account)?.email;
       return json(200, { user: { permissionId: account, emailAddress: email ?? 'x@example.com' } });
     }
+    if (state.drop) return req.socket.destroy();
     if (state.down) return json(503, apiError(503, 'backendError'));
     const own = (id: string) => {
       const file = state.files.get(id);
@@ -129,6 +136,7 @@ export async function startFakeGoogle() {
 
     if (url.pathname === '/drive/files' && req.method === 'POST') {
       if (state.storageFull) return json(403, apiError(403, 'storageQuotaExceeded'));
+      if (state.refuseCreate) return json(400, apiError(400, 'badRequest'));
       const body = JSON.parse(await read(req)) as {
         name: string;
         mimeType: string;
@@ -152,6 +160,7 @@ export async function startFakeGoogle() {
       return json(200, { id });
     }
     if (url.pathname === '/drive/files' && req.method === 'GET') {
+      if (state.failList) return json(500, apiError(500, 'backendError'));
       if (url.searchParams.get('q') !== 'trashed = false')
         return json(400, apiError(400, 'badRequest'));
       const files = [...state.files.values()]

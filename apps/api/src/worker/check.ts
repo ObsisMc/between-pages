@@ -48,7 +48,10 @@ export async function checkDrive(deps: CheckDeps, connection: ConnectionRow): Pr
   }
 }
 
-/** Checks every working Drive this key opens; one failing Drive does not stop the others. */
+/**
+ * Checks every working Drive this key opens; one failing Drive does not stop the others and
+ * leaves an entry on its owner's backup page.
+ */
 export async function checkDrives(deps: CheckDeps): Promise<void> {
   for (const connection of await deps.store.activeConnections(keyIdOf(deps.drive.tokenKey))) {
     try {
@@ -56,6 +59,7 @@ export async function checkDrives(deps: CheckDeps): Promise<void> {
     } catch (error) {
       const reason = error instanceof GoogleError ? error.code : (error as Error).message;
       console.error(`worker: checking a Drive failed: ${reason}`);
+      await deps.store.checkFailed(connection.userId);
     }
   }
 }

@@ -583,7 +583,15 @@ export const backupEvents = pgTable(
       .references(() => users.id),
     at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
     kind: text('kind', {
-      enum: ['doc_replaced', 'doc_recreated', 'storage_full', 'revoke_failed', 'reconnect_needed'],
+      enum: [
+        'doc_replaced',
+        'doc_recreated',
+        'storage_full',
+        'revoke_failed',
+        'reconnect_needed',
+        'copy_failing',
+        'check_failed',
+      ],
     }).notNull(),
     diaryDate: date('diary_date'),
   },

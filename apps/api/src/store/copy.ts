@@ -1,4 +1,4 @@
-import { and, count, eq, gt, lte, max, ne, or, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gt, inArray, lte, max, ne, or, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.ts';
 import {
   backupEvents,
@@ -10,6 +10,7 @@ import {
   users,
 } from '../db/schema.ts';
 import type { ConnectionRow } from './backup.ts';
+import type { Tx } from './store.ts';
 
 // The day-Doc side of the Google copy (server-backup-and-google-docs D5–D9): the queue of
 // days to write per person, the Docs and folders written into each Drive, and what the
@@ -17,6 +18,8 @@ import type { ConnectionRow } from './backup.ts';
 // different account starts new folders and Docs. Nothing here reads or decrypts a token.
 
 export type WorkRow = typeof googleDayWork.$inferSelect;
+/** Why a day is still waiting after an attempt; shown on the backup and day pages (D9). */
+export type WorkFailure = 'unreachable' | 'failed' | 'storage_full';
 export type DocRow = typeof googleDayDocs.$inferSelect;
 export type Covers = DocRow['covers'];
 
@@ -24,11 +27,27 @@ export type Covers = DocRow['covers'];
 export type WorkOutcome = {
   /** Written, or nothing to write: the day leaves the queue. */
   done(): Promise<void>;
-  /** Look again at `at`; a failure counts toward the backoff and is shown as retrying. */
-  later(at: Date, failure: string | null): Promise<void>;
+  /** Look again at `at`; a failure counts toward the backoff and is shown on the pages. */
+  later(at: Date, failure: WorkFailure | null): Promise<void>;
 };
 
 const BATCH = 200;
+
+/** The user's days whose last attempt failed for a reason other than a full Drive. */
+const failingDays = (tx: Db | Tx, userId: string) =>
+  tx
+    .select({ diaryDate: googleDayWork.diaryDate, failure: googleDayWork.lastError })
+    .from(googleDayWork)
+    .where(
+      and(
+        eq(googleDayWork.userId, userId),
+        gt(googleDayWork.attempts, 0),
+        inArray(googleDayWork.lastError, ['unreachable', 'failed']),
+      ),
+    )
+    .orderBy(desc(googleDayWork.diaryDate)) as Promise<
+    { diaryDate: string; failure: 'unreachable' | 'failed' }[]
+  >;
 
 export function createCopyStore(db: Db) {
   /** The app's folders in this Drive by path (`Between Pages`, `Between Pages/2026`, ...). */
@@ -125,6 +144,16 @@ export function createCopyStore(db: Db) {
             await tx.delete(googleDayWork).where(key);
           },
           later: async (at, failure) => {
+            // The first failing day of a run of failures marks when the run began: after a
+            // day of it the home page shows a banner (D9, Ray 2026-10-29).
+            if (
+              failure &&
+              failure !== 'storage_full' &&
+              !(await failingDays(tx, work.userId)).length
+            )
+              await tx
+                .insert(backupEvents)
+                .values({ userId: work.userId, kind: 'copy_failing', diaryDate: work.diaryDate });
             await tx
               .update(googleDayWork)
               .set({
@@ -150,6 +179,20 @@ export function createCopyStore(db: Db) {
         if (changed.length)
           await tx.insert(backupEvents).values({ userId, kind: 'reconnect_needed' });
       });
+    },
+
+    /** Why this day is still waiting after an attempt, if it failed (D9). */
+    dayFailure: async (userId: string, diaryDate: string): Promise<WorkFailure | null> => {
+      const [row] = await db
+        .select({ attempts: googleDayWork.attempts, failure: googleDayWork.lastError })
+        .from(googleDayWork)
+        .where(and(eq(googleDayWork.userId, userId), eq(googleDayWork.diaryDate, diaryDate)));
+      return row && row.attempts > 0 ? (row.failure as WorkFailure | null) : null;
+    },
+
+    /** The daily check could not read this Drive; it tries again the next day (D8). */
+    async checkFailed(userId: string): Promise<void> {
+      await db.insert(backupEvents).values({ userId, kind: 'check_failed' });
     },
 
     /** Drive is full: one problem entry per episode; the home banner shows while it lasts (D9). */
@@ -304,10 +347,6 @@ export function createCopyStore(db: Db) {
       const [work] = await db
         .select({
           waiting: count(),
-          retrying:
-            sql<number>`count(*) filter (where ${googleDayWork.attempts} > 0 and ${googleDayWork.lastError} <> 'storage_full')`.mapWith(
-              Number,
-            ),
           storageFull:
             sql<number>`count(*) filter (where ${googleDayWork.lastError} = 'storage_full')`.mapWith(
               Number,
@@ -327,9 +366,20 @@ export function createCopyStore(db: Db) {
           ),
         );
       const root = (await folders(userId, googleUserId)).get(ROOT_FOLDER) ?? null;
+      const failing = await failingDays(db, userId);
+      const [run] = failing.length
+        ? await db
+            .select({ at: backupEvents.at })
+            .from(backupEvents)
+            .where(and(eq(backupEvents.userId, userId), eq(backupEvents.kind, 'copy_failing')))
+            .orderBy(desc(backupEvents.at))
+            .limit(1)
+        : [];
       return {
         waitingDays: work!.waiting,
-        retrying: work!.retrying > 0,
+        failing,
+        /** When the current run of failures began; null while nothing fails. */
+        failingSince: run?.at ?? null,
         storageFull: work!.storageFull > 0,
         backedUpTo: docs?.backedUpTo ?? null,
         rootFolderId: root,

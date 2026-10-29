@@ -201,6 +201,10 @@ button.primary {
   color: var(--ink-soft);
 }
 
+.google-copy.warn {
+  color: var(--accent);
+}
+
 /* A mark for the eye only: the status text alone is what is announced. */
 .save-status.calm::before {
   content: '✓ ';

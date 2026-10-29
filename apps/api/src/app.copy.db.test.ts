@@ -200,7 +200,13 @@ describe.runIf(testDatabaseUrl)('the Google copy', () => {
     await drain(a);
     expect(google.docs(a.permissionId)).toEqual([]);
     expect((await backup(a)).progress).toMatchObject({ waitingDays: 1, backedUpTo: null });
-    expect(await dayCopy(a)).toEqual({ connected: true, docUrl: null, mine: null, partner: null });
+    expect(await dayCopy(a)).toEqual({
+      connected: true,
+      docUrl: null,
+      mine: null,
+      partner: null,
+      problem: null,
+    });
 
     await settle(diaryId);
     await drain(a);
@@ -223,7 +229,7 @@ describe.runIf(testDatabaseUrl)('the Google copy', () => {
     ]).toEqual([1, 'Between Pages', '2026', '10']);
 
     const status = await backup(a);
-    expect(status.progress).toMatchObject({ waitingDays: 0, retrying: false });
+    expect(status.progress).toMatchObject({ waitingDays: 0, failing: [] });
     expect(status.progress!.backedUpTo).not.toBeNull();
     expect(status.progress!.folderUrl).toMatch(/^https:\/\/drive\.google\.com\/drive\/folders\//);
     expect(await dayCopy(a)).toMatchObject({
@@ -306,11 +312,17 @@ describe.runIf(testDatabaseUrl)('the Google copy', () => {
     await settle(diaryId);
     await drain(a, b);
     expect((await dayCopy(a)).docUrl).not.toBeNull();
-    expect(await dayCopy(b)).toEqual({ connected: false, docUrl: null, mine: null, partner: null });
+    expect(await dayCopy(b)).toEqual({
+      connected: false,
+      docUrl: null,
+      mine: null,
+      partner: null,
+      problem: null,
+    });
     expect((await backup(b)).progress).toBeNull();
   });
 
-  it('[adr:server-backup-and-google-docs#10] commits while Google is down, retries, and writes once it is back', async () => {
+  it('[adr:server-backup-and-google-docs#10] commits while Google is down, says so on every page, and writes once it is back', async () => {
     const a = await person('Ann');
     await connect(a);
     const diaryId = await ownDiary(a);
@@ -318,16 +330,63 @@ describe.runIf(testDatabaseUrl)('the Google copy', () => {
     await write(a, diaryId, (t) => t.insert(0, 'Offline Google.'));
     await settle(diaryId);
     await drain(a);
+    await settle(diaryId);
+    await drain(a);
     expect(google.docs(a.permissionId)).toEqual([]);
-    const status = await backup(a);
-    expect(status.progress).toMatchObject({ waitingDays: 1, retrying: true });
+    let status = await backup(a);
+    expect(status.progress).toMatchObject({
+      waitingDays: 1,
+      failing: [{ diaryDate: DATE, failure: 'unreachable' }],
+    });
+    expect(status.events.filter((e) => e.kind === 'copy_failing')).toEqual([
+      expect.objectContaining({ diaryDate: DATE }),
+    ]);
     expect(status.attention).toBeNull();
+    expect((await dayCopy(a)).problem).toBe('unreachable');
+
+    // A day of failing puts a banner on the home page.
+    await query(
+      `update backup_events set at = at - interval '25 hours' where user_id = $1 and kind = 'copy_failing'`,
+      [a.id],
+    );
+    expect((await backup(a)).attention).toBe('failing');
 
     google.state.down = false;
     await settle(diaryId);
     await drain(a);
     expect(google.docs(a.permissionId)).toHaveLength(1);
-    expect((await backup(a)).progress).toMatchObject({ waitingDays: 0, retrying: false });
+    status = await backup(a);
+    expect(status.progress).toMatchObject({ waitingDays: 0, failing: [] });
+    expect(status.attention).toBeNull();
+    expect((await dayCopy(a)).problem).toBeNull();
+  });
+
+  it('tells a lost connection apart from a refusal, and shows both', async () => {
+    const a = await person('Ann');
+    await connect(a);
+    const lost = await ownDiary(a, '2026-10-18');
+    google.state.drop = true;
+    await write(a, lost, (t) => t.insert(0, 'Network gone.'));
+    await settle(lost);
+    await drain(a);
+    google.state.drop = false;
+    google.state.refuseCreate = true;
+    const refused = await ownDiary(a, '2026-10-17');
+    await write(a, refused, (t) => t.insert(0, 'Refused.'));
+    await settle(refused);
+    // Only the refused day is due now; the other keeps its lost-connection result.
+    await query(
+      `update google_day_work set ready_at = now() + interval '1 hour' where user_id = $1 and diary_date = '2026-10-18'`,
+      [a.id],
+    );
+    await drain(a);
+    google.state.refuseCreate = false;
+    expect((await backup(a)).progress!.failing).toEqual([
+      { diaryDate: '2026-10-18', failure: 'unreachable' },
+      { diaryDate: '2026-10-17', failure: 'failed' },
+    ]);
+    expect((await dayCopy(a, '2026-10-17')).problem).toBe('failed');
+    expect((await dayCopy(a, '2026-10-18')).problem).toBe('unreachable');
   });
 
   it('writes at once on "现在备份", without waiting for the history point', async () => {
@@ -360,6 +419,7 @@ describe.runIf(testDatabaseUrl)('the Google copy', () => {
     expect(status.attention).toBe('reconnect');
     expect(status.progress!.waitingDays).toBe(1);
     expect(status.events.map((e) => e.kind)).toContain('reconnect_needed');
+    expect((await dayCopy(a)).problem).toBe('reconnect');
 
     await connect(a);
     await drain(a);
@@ -380,6 +440,7 @@ describe.runIf(testDatabaseUrl)('the Google copy', () => {
     const status = await backup(a);
     expect(status.attention).toBe('storage_full');
     expect(status.events.filter((e) => e.kind === 'storage_full')).toHaveLength(1);
+    expect((await dayCopy(a)).problem).toBe('storage_full');
 
     google.state.storageFull = false;
     await send(a, 'POST', routes.runBackup.path);
@@ -476,6 +537,15 @@ describe.runIf(testDatabaseUrl)('Docs changed or deleted in Google', () => {
     const newMonth = google.state.files.get(fresh.parents[0]!)!;
     expect(newMonth).toMatchObject({ name: '10', trashed: false, parents: month.parents });
     expect(newMonth.id).not.toBe(month.id);
+  });
+
+  it('records a daily check that could not read the Drive on the backup page', async () => {
+    const a = await person('Ann');
+    await writtenDay(a);
+    google.state.failList = true;
+    await dailyCheck();
+    google.state.failList = false;
+    expect(await events(a)).toContain('check_failed');
   });
 
   it('[adr:server-backup-and-google-docs#9] finds deleted and changed Docs in the daily check, without a new commit', async () => {

@@ -107,13 +107,17 @@
                 "type": "null"
               }
             ]
+          },
+          "retrying": {
+            "type": "boolean"
           }
         },
         "required": [
           "state",
           "email",
           "connectedAt",
-          "expiresAt"
+          "expiresAt",
+          "retrying"
         ]
       },
       "BackupEventInput": {
@@ -131,7 +135,9 @@
               "doc_recreated",
               "storage_full",
               "revoke_failed",
-              "reconnect_needed"
+              "reconnect_needed",
+              "copy_failing",
+              "check_failed"
             ]
           },
           "diaryDate": {
@@ -161,8 +167,29 @@
             "minimum": 0,
             "maximum": 9007199254740991
           },
-          "retrying": {
-            "type": "boolean"
+          "failing": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "diaryDate": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                },
+                "failure": {
+                  "type": "string",
+                  "enum": [
+                    "unreachable",
+                    "failed"
+                  ]
+                }
+              },
+              "required": [
+                "diaryDate",
+                "failure"
+              ]
+            }
           },
           "backedUpTo": {
             "anyOf": [
@@ -190,7 +217,7 @@
         },
         "required": [
           "waitingDays",
-          "retrying",
+          "failing",
           "backedUpTo",
           "folderUrl"
         ]
@@ -218,6 +245,7 @@
                 "enum": [
                   "reconnect",
                   "storage_full",
+                  "failing",
                   "expiring"
                 ]
               },
@@ -280,13 +308,30 @@
                 "type": "null"
               }
             ]
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "reconnect",
+                  "storage_full",
+                  "unreachable",
+                  "failed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "connected",
           "docUrl",
           "mine",
-          "partner"
+          "partner",
+          "problem"
         ]
       },
       "BackupResponseInput": {
@@ -1715,13 +1760,17 @@
                 "type": "null"
               }
             ]
+          },
+          "retrying": {
+            "type": "boolean"
           }
         },
         "required": [
           "state",
           "email",
           "connectedAt",
-          "expiresAt"
+          "expiresAt",
+          "retrying"
         ],
         "additionalProperties": false
       },
@@ -1740,7 +1789,9 @@
               "doc_recreated",
               "storage_full",
               "revoke_failed",
-              "reconnect_needed"
+              "reconnect_needed",
+              "copy_failing",
+              "check_failed"
             ]
           },
           "diaryDate": {
@@ -1771,8 +1822,30 @@
             "minimum": 0,
             "maximum": 9007199254740991
           },
-          "retrying": {
-            "type": "boolean"
+          "failing": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "diaryDate": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                },
+                "failure": {
+                  "type": "string",
+                  "enum": [
+                    "unreachable",
+                    "failed"
+                  ]
+                }
+              },
+              "required": [
+                "diaryDate",
+                "failure"
+              ],
+              "additionalProperties": false
+            }
           },
           "backedUpTo": {
             "anyOf": [
@@ -1800,7 +1873,7 @@
         },
         "required": [
           "waitingDays",
-          "retrying",
+          "failing",
           "backedUpTo",
           "folderUrl"
         ],
@@ -1829,6 +1902,7 @@
                 "enum": [
                   "reconnect",
                   "storage_full",
+                  "failing",
                   "expiring"
                 ]
               },
@@ -1892,13 +1966,30 @@
                 "type": "null"
               }
             ]
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "reconnect",
+                  "storage_full",
+                  "unreachable",
+                  "failed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "connected",
           "docUrl",
           "mine",
-          "partner"
+          "partner",
+          "problem"
         ],
         "additionalProperties": false
       },
