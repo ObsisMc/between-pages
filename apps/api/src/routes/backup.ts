@@ -18,6 +18,11 @@ const statusBody = (status: BackupStatus): ResponseOf<'backup'> => ({
       connectedAt: status.google.connectedAt?.toISOString() ?? null,
       expiresAt: status.google.expiresAt?.toISOString() ?? null,
     },
+    progress: status.progress && {
+      ...status.progress,
+      backedUpTo: status.progress.backedUpTo?.toISOString() ?? null,
+    },
+    attention: status.attention,
     events: status.events.map((e) => ({
       at: e.at.toISOString(),
       kind: e.kind as ResponseOf<'backup'>['backup']['events'][number]['kind'],
@@ -61,6 +66,11 @@ export function backupHandlers(backup: BackupService) {
     async disconnectGoogle(request: ContractRequest<'disconnectGoogle'>, reply: FastifyReply) {
       reply.header('cache-control', 'no-store');
       return statusBody(await backup.disconnect(request.user!.id));
+    },
+
+    async runBackup(request: ContractRequest<'runBackup'>, reply: FastifyReply) {
+      reply.header('cache-control', 'no-store');
+      return statusBody(await backup.runNow(request.user!.id));
     },
   };
 }

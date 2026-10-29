@@ -1,9 +1,12 @@
 export { ApiErrorBody, ErrorCategory, ErrorCode, errorCategory, errorStatus } from './errors.ts';
 export {
+  BackupAttention,
   BackupEvent,
   BackupEventKind,
+  BackupProgress,
   BackupResponse,
   BackupStatus,
+  DayGoogleCopy,
   FinishGoogleRequest,
   GoogleConnection,
   GoogleConnectionState,

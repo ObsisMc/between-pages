@@ -83,6 +83,18 @@ export type DayCard = {
   partner: PartnerDayCard | null;
 };
 
+/** What `dayCopy` finds: the timelines are authorized for the viewer, as history uses them. */
+export type DayCopySource = {
+  mine: { diaryId: string; timeline: CommitPoint[] } | null;
+  partner: {
+    diaryId: string;
+    ownerId: string;
+    epochId: string;
+    share: 'live' | 'frozen';
+    timeline: CommitPoint[];
+  } | null;
+};
+
 /**
  * The commit of the newest history point of a timeline (kernel D6), or null before any;
  * the history service owns the grouping rule and its idle time.
@@ -474,6 +486,35 @@ export function createReader(store: Store) {
         return {
           days: await dayCards(queries, viewer, page, own, shared, settled),
           nextBefore: dates.length > DAYS_PAGE_SIZE ? page.at(-1)! : null,
+        };
+      });
+    },
+
+    /**
+     * The diaries of one date that the viewer's Google copy holds (server-backup-and-google-docs
+     * D5), each with the timeline the viewer may see: the own diary, and the partner's by its
+     * live share or else its last frozen one. Versions are then read through `version`.
+     */
+    dayCopy(viewer: string, diaryDate: string): Promise<DayCopySource> {
+      return store.read(async (queries) => {
+        const [own] = (await queries.ownedDiaries(viewer, dayAfter(diaryDate), 1)).filter(
+          (row) => row.diaryDate === diaryDate,
+        );
+        const [epoch] = (await queries.epochs.sharedWith(viewer, null)).filter(
+          (e) => e.diaryDate === diaryDate,
+        );
+        const partnerDiary = epoch && (await queries.findDiary(epoch.diaryId))!;
+        return {
+          mine: own ? { diaryId: own.id, timeline: await queries.timeline(own.id) } : null,
+          partner: partnerDiary
+            ? {
+                diaryId: partnerDiary.id,
+                ownerId: partnerDiary.ownerId,
+                epochId: epoch.id,
+                share: epoch.closedAt ? 'frozen' : 'live',
+                timeline: (await authorizedTimeline(queries, viewer, partnerDiary))!,
+              }
+            : null,
         };
       });
     },

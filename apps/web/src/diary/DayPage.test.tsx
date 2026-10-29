@@ -88,13 +88,15 @@ const spaces = () =>
     ],
   });
 
+const NO_COPY = { connected: false, docUrl: null, mine: null, partner: null };
+
 function openDay(day: Day, more: Parameters<typeof stubApi>[0] = {}) {
   vi.stubGlobal('WebSocket', FakeSocket);
   vi.stubGlobal('navigator', { locks: stubLocks() });
   const api = stubApi({
     'GET /api/me': signedIn('alice'),
     'GET /api/spaces': spaces,
-    [`GET /api/days/${DATE}`]: () => Response.json({ day }),
+    [`GET /api/days/${DATE}`]: () => Response.json({ day, google: NO_COPY }),
     [`GET /api/diaries/${DIARY}`]: ownDiary(day.mine?.excerpt ?? ''),
     [`GET /api/diaries/${THEIRS}/shares/${EPOCH}`]: theirDiary(day.partner?.excerpt ?? ''),
     [`GET /api/diaries/${DIARY}/read`]: () => Response.json({ ranges: [] }),
@@ -141,6 +143,33 @@ describe('DayPage', () => {
       socket.sent.flatMap((m) => (m.type === 'subscribe' ? [m.diaryId] : [])),
     );
     expect(subscribed.sort()).toEqual([DIARY, THEIRS].sort());
+  });
+
+  it('[adr:server-backup-and-google-docs#7] shows how far the own Drive holds each diary, beside its save status', async () => {
+    const day = dayOf('我的', '他的');
+    openDay(day, {
+      [`GET /api/days/${DATE}`]: () =>
+        Response.json({
+          day,
+          google: {
+            connected: true,
+            docUrl: 'https://docs.google.com/document/d/doc-1/edit',
+            mine: '2026-10-20T01:22:00.000Z',
+            partner: null,
+          },
+        }),
+    });
+    const mine = await section('我的日记');
+    expect(await within(mine).findByText(/^已备份到 Google/)).toBeDefined();
+    expect(
+      within(mine).getByRole('link', { name: '在 Google Docs 打开' }).getAttribute('href'),
+    ).toBe('https://docs.google.com/document/d/doc-1/edit');
+    expect(await within(await section('TA 的日记')).findByText('等待备份到 Google')).toBeDefined();
+  });
+
+  it('says when the Google copy is off', async () => {
+    openDay(dayOf('我的', null));
+    expect(await within(await section('我的日记')).findByText('未开启 Google 备份')).toBeDefined();
   });
 
   it('swaps the order on this device only, and falls back to the slot order without storage', async () => {
@@ -243,7 +272,7 @@ describe('the own diary page', () => {
       [`GET /api/diaries/${DIARY}`]: ownDiary('我的'),
       [`GET /api/diaries/${DIARY}/read`]: () => Response.json({ ranges: [] }),
       [`GET /api/days/${DATE}`]: () =>
-        Response.json({ day: dayOf('我的', shared ? '他的' : null) }),
+        Response.json({ day: dayOf('我的', shared ? '他的' : null), google: NO_COPY }),
     });
     const { router } = renderAt(`/diaries/${DIARY}`);
     const editor = await screen.findByRole('textbox');

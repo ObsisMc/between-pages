@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router';
 import { signOut } from '../api/auth.ts';
 import { ApiError, callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
+import { BackupBanner } from '../backup/index.ts';
 import { DayList } from '../diary-list/index.ts';
 import { clearPendingInvite, pendingInvite } from '../join/index.ts';
 import { RelationshipPanel, partnerOf, useSpaces } from '../relationship/index.ts';
@@ -86,6 +87,7 @@ export function HomePage() {
           退出
         </button>
       </header>
+      <BackupBanner />
       <p className="greeting">已登录为 {me.data?.user.displayName}</p>
       <button type="button" className="primary" disabled={opening} onClick={() => void openDiary()}>
         写今天

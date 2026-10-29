@@ -288,11 +288,23 @@ export class LockedBoundaries extends EpochQueries {
    * is the last commit of the epoch.
    */
   async freeze(epochIds: readonly string[], at: Date): Promise<void> {
-    for (const part of chunks(epochIds))
+    for (const part of chunks(epochIds)) {
       await this.tx.execute(sql`update ${shareEpochs}
         set closed_at = ${at}, frozen_version = ${diaries.version}
         from ${diaries}
         where ${diaries.id} = ${shareEpochs.diaryId}
           and ${inArray(shareEpochs.id, part)} and ${isNull(shareEpochs.closedAt)}`);
+      // Stopping writes no commit, yet the recipient's Google copy must show the share as
+      // stopped (server-backup-and-google-docs D5, technical design step 2): the space task
+      // of the frozen version, the epoch's last commit, is pending again.
+      await this.tx.execute(sql`update ${backupOutbox}
+        set status = 'pending', processed_at = null
+        from ${shareEpochs}
+        where ${inArray(shareEpochs.id, part)}
+          and ${backupOutbox.epochId} = ${shareEpochs.id}
+          and ${backupOutbox.diaryId} = ${shareEpochs.diaryId}
+          and ${backupOutbox.version} = ${shareEpochs.frozenVersion}
+          and ${backupOutbox.target} = 'space'`);
+    }
   }
 }

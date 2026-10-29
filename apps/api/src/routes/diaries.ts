@@ -1,5 +1,6 @@
 import type { FastifyReply } from 'fastify';
 import type { ResponseOf } from '@between-pages/contracts';
+import type { BackupService } from '../backup/backup.ts';
 import type { CommitService } from '../commit/commit.ts';
 import type { DiaryService, DiaryView } from '../diaries/diaries.ts';
 import { sendError } from '../errors.ts';
@@ -60,6 +61,7 @@ const notFound = (reply: FastifyReply) => sendError(reply, 'NOT_FOUND', 'No such
 // set; the viewer comes from the session, never from the request. A diary or epoch the
 // viewer may not read answers like one that does not exist.
 export function diaryHandlers(services: {
+  backup: BackupService;
   diaries: DiaryService;
   commit: CommitService;
   history: HistoryService;
@@ -161,7 +163,10 @@ export function diaryHandlers(services: {
         request.params.date,
         services.history.settled(new Date()),
       );
-      return { day: dayBody(card) };
+      return {
+        day: dayBody(card),
+        google: await services.backup.day(request.user!.id, request.params.date),
+      };
     },
 
     async sharedDiary(request: ContractRequest<'sharedDiary'>, reply: FastifyReply) {

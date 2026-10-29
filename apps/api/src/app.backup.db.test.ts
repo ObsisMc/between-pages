@@ -12,6 +12,7 @@ import { createBackupService, type DriveConfig } from './backup/backup.ts';
 import { createDb, type Database } from './db/client.ts';
 import { DRIVE_FILE_SCOPE, GOOGLE_ENDPOINTS } from './google/oauth.ts';
 import { createBackupStore } from './store/backup.ts';
+import { createCopyStore } from './store/copy.ts';
 import { revokeNext } from './worker/revoke.ts';
 import { query, testDatabaseUrl } from '../test/db.ts';
 import { testSessions } from '../test/diary.ts';
@@ -321,10 +322,14 @@ describe.runIf(testDatabaseUrl)('Google Drive connection', () => {
   it('asks to reconnect when the token key changed or a Testing grant is past seven days', async () => {
     const ray = await sessions.signIn('Ray');
     await connect(ray);
-    const testing = createBackupService(createBackupStore(database.db), {
-      ...drive,
-      testing: true,
-    });
+    const testing = createBackupService(
+      createBackupStore(database.db),
+      createCopyStore(database.db),
+      {
+        ...drive,
+        testing: true,
+      },
+    );
     const day6 = await testing.status(ray.id, new Date(Date.now() + 6 * 24 * 3600_000));
     expect(day6.google.state).toBe('connected');
     expect(day6.google.expiresAt).not.toBeNull();

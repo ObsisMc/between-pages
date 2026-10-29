@@ -1,12 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { renderAt, signedIn, stubApi } from '../../test/render.tsx';
+import { BackupBanner } from './BackupBanner.tsx';
 import { BackupPage } from './BackupPage.tsx';
 import { GoogleCallbackPage } from './GoogleCallbackPage.tsx';
 
 const google = (state: string, extra: object = {}) => ({
   backup: {
     google: { state, email: null, connectedAt: null, expiresAt: null, ...extra },
+    progress: null,
+    attention: null,
     events: [],
   },
 });
@@ -78,6 +81,8 @@ describe('BackupPage', () => {
               connectedAt: null,
               expiresAt: null,
             },
+            progress: null,
+            attention: 'reconnect',
             events: [{ at: '2026-10-28T08:00:00.000Z', kind: 'revoke_failed', diaryDate: null }],
           },
         }),
@@ -87,6 +92,65 @@ describe('BackupPage', () => {
       '需要重新连接 Google（ray@example.com）',
     );
     expect(screen.getByText(/第三方访问/)).toBeDefined();
+  });
+});
+
+describe('backup progress', () => {
+  const connected = (progress: object, attention: string | null = null) => ({
+    backup: {
+      ...google('connected', { email: 'ray@example.com' }).backup,
+      progress: {
+        waitingDays: 0,
+        retrying: false,
+        backedUpTo: null,
+        folderUrl: 'https://drive.google.com/drive/folders/f-1',
+        ...progress,
+      },
+      attention,
+    },
+  });
+
+  it('[adr:server-backup-and-google-docs#7] says how many days wait, that Google is retried, and backs up now', async () => {
+    const run = vi.fn(() => Response.json(connected({ backedUpTo: '2026-10-28T01:22:00.000Z' })));
+    stubApi({
+      'GET /api/me': signedIn(),
+      'GET /api/backup': () => Response.json(connected({ waitingDays: 2, retrying: true })),
+      'POST /api/backup/run': run,
+    });
+    renderAt('/backup', routesWith(vi.fn()));
+    expect(await screen.findByText('还有 2 天等待备份')).toBeDefined();
+    expect(screen.getByText('暂时连不上 Google，正在自动重试')).toBeDefined();
+    expect(
+      screen.getByRole('link', { name: '在 Google Drive 打开文件夹' }).getAttribute('href'),
+    ).toBe('https://drive.google.com/drive/folders/f-1');
+    fireEvent.click(screen.getByText('现在备份'));
+    expect(await screen.findByText(/^全部日记已备份到 .* 的版本$/)).toBeDefined();
+    expect(run).toHaveBeenCalledTimes(1);
+  });
+
+  it('puts a banner on the home page only when the user has to act', async () => {
+    let answer = connected({}, 'reconnect');
+    stubApi({ 'GET /api/me': signedIn(), 'GET /api/backup': () => Response.json(answer) });
+    const home = [{ path: '/', element: <BackupBanner /> }];
+    renderAt('/', home);
+    expect((await screen.findByRole('alert')).textContent).toMatch(/需要重新连接/);
+    cleanup();
+
+    // Retrying on its own is for the backup page only.
+    answer = connected({ retrying: true, waitingDays: 3 });
+    renderAt('/', [
+      {
+        path: '/',
+        element: (
+          <>
+            <BackupBanner />
+            <BackupPage />
+          </>
+        ),
+      },
+    ]);
+    expect(await screen.findByText('还有 3 天等待备份')).toBeDefined();
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });
 
