@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { signOut } from '../api/auth.ts';
 import { ApiError, callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
@@ -81,6 +81,7 @@ export function HomePage() {
   return (
     <main className="page home">
       <header>
+        <Link to="/backup">备份</Link>
         <button type="button" onClick={() => void onSignOut()}>
           退出
         </button>

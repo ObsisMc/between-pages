@@ -21,6 +21,7 @@ import {
   SharedDiaryListPage,
   SharedDiaryResponse,
 } from './diaries.ts';
+import { BackupResponse, FinishGoogleRequest, StartGoogleResponse } from './backup.ts';
 import { DayParams, DayResponse, DaysPage, DaysQuery } from './days.ts';
 import {
   AcceptInvitationRequest,
@@ -264,6 +265,37 @@ export const routes = {
     access: 'user',
     query: DaysQuery,
     response: DaysPage,
+  },
+  backup: {
+    method: 'GET',
+    path: '/api/backup',
+    summary: "The caller's own Google Drive connection and backup problems.",
+    access: 'user',
+    response: BackupResponse,
+  },
+  startGoogleConnection: {
+    method: 'POST',
+    path: '/api/backup/google/start',
+    summary: 'Start connecting Google Drive (drive.file only): returns the consent URL.',
+    access: 'user',
+    body: EmptyRequest,
+    response: StartGoogleResponse,
+  },
+  finishGoogleConnection: {
+    method: 'POST',
+    path: '/api/backup/google/finish',
+    summary: 'Finish connecting Google Drive with the code and state the consent page returned.',
+    access: 'user',
+    body: FinishGoogleRequest,
+    response: BackupResponse,
+  },
+  disconnectGoogle: {
+    method: 'POST',
+    path: '/api/backup/google/disconnect',
+    summary: 'Disconnect Google Drive: the grant is revoked at Google; Drive files stay.',
+    access: 'user',
+    body: EmptyRequest,
+    response: BackupResponse,
   },
   day: {
     method: 'GET',

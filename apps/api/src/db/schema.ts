@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   type AnyPgColumn,
   bigint,
+  boolean,
   check,
   customType,
   date,
@@ -267,10 +268,12 @@ export const backupOutbox = pgTable(
     target: text('target', { enum: ['personal', 'space'] }).notNull(),
     spaceId: uuid('space_id'),
     epochId: uuid('epoch_id').references(() => shareEpochs.id),
-    status: text('status', { enum: ['pending'] })
+    status: text('status', { enum: ['pending', 'done'] })
       .notNull()
       .default('pending'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    /** When the worker turned the task into day work for the Google copy (server-backup-and-google-docs). */
+    processedAt: timestamp('processed_at', { withTimezone: true }),
   },
   (t) => [
     foreignKey({
@@ -278,6 +281,9 @@ export const backupOutbox = pgTable(
       foreignColumns: [diaryCommits.diaryId, diaryCommits.version],
     }),
     unique('backup_outbox_target').on(t.diaryId, t.version, t.target),
+    index('backup_outbox_pending')
+      .on(t.createdAt)
+      .where(sql`${t.status} = 'pending'`),
     check(
       'backup_outbox_space_fields',
       sql`case ${t.target} when 'space' then num_nulls(${t.spaceId}, ${t.epochId}) = 0
@@ -467,6 +473,121 @@ export const sharingPolicyChanges = pgTable(
     }),
     check('sharing_policy_changes_step', sql`${t.toRevision} = ${t.fromRevision} + 1`),
   ],
+);
+
+// The Google readable copy (server-backup-and-google-docs D5–D10). Only src/store reads or
+// writes these tables. Every row names the Google account it belongs to, so connecting a
+// different account starts new folders and Docs instead of writing into the old ones.
+
+// One Drive connection per person. The refresh token is AES-256-GCM ciphertext; the key is
+// only in the environment, named by `key_id`, and only the worker decrypts (D10).
+export const googleConnections = pgTable('google_connections', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id),
+  googleUserId: text('google_user_id').notNull(),
+  email: text('email').notNull(),
+  refreshToken: bytea('refresh_token').notNull(),
+  tokenNonce: bytea('token_nonce').notNull(),
+  keyId: text('key_id').notNull(),
+  status: text('status', { enum: ['active', 'reconnect', 'revoking'] }).notNull(),
+  connectedAt: timestamp('connected_at', { withTimezone: true }).notNull().defaultNow(),
+  attempts: integer('attempts').notNull().default(0),
+  nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).notNull().defaultNow(),
+  lastError: text('last_error'),
+});
+
+// A started authorization, until its callback or ten minutes: the PKCE verifier and who
+// started it, found by the sha256 of the state the browser carries (D10).
+export const googleOauthStates = pgTable('google_oauth_states', {
+  stateSha256: bytea('state_sha256').primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id),
+  codeVerifier: text('code_verifier').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+});
+
+// The app's folders in one Drive: `Between Pages`, `2026`, `2026/10` (D6).
+export const googleFolders = pgTable(
+  'google_folders',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    googleUserId: text('google_user_id').notNull(),
+    path: text('path').notNull(),
+    folderId: text('folder_id').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.googleUserId, t.path] })],
+);
+
+// The day's Doc in one Drive. At most one `current` per person, account and date; a Doc
+// edited in Google becomes `replaced` and keeps its row (D8).
+export const googleDayDocs = pgTable(
+  'google_day_docs',
+  {
+    docId: text('doc_id').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    googleUserId: text('google_user_id').notNull(),
+    diaryDate: date('diary_date').notNull(),
+    state: text('state', { enum: ['current', 'replaced'] }).notNull(),
+    /** The revision the app's last write produced; a write requires it (Docs `requiredRevisionId`). */
+    revisionId: text('revision_id').notNull(),
+    contentSha256: bytea('content_sha256').notNull(),
+    /** The versions the Doc shows: the owner's diary and the partner's share, when present. */
+    covers: jsonb('covers')
+      .$type<{
+        mine?: { diaryId: string; version: number };
+        partner?: { diaryId: string; epochId: string; version: number };
+      }>()
+      .notNull(),
+    /** The history point the Doc reaches, as "backed up to Google 9:22" shows it. */
+    coveredAt: timestamp('covered_at', { withTimezone: true }).notNull(),
+    writtenAt: timestamp('written_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('google_day_docs_current')
+      .on(t.userId, t.googleUserId, t.diaryDate)
+      .where(sql`${t.state} = 'current'`),
+  ],
+);
+
+// Days waiting to be written into one person's Drive, merged per person and date (D7).
+// `ready_at` is the earliest time to look; the worker still waits for the history point.
+export const googleDayWork = pgTable(
+  'google_day_work',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    diaryDate: date('diary_date').notNull(),
+    readyAt: timestamp('ready_at', { withTimezone: true }).notNull().defaultNow(),
+    /** "现在备份": write without waiting for the history point. */
+    now: boolean('now').notNull().default(false),
+    attempts: integer('attempts').notNull().default(0),
+    lastError: text('last_error'),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.diaryDate] })],
+);
+
+// What the backup page lists under problems (D9), newest first, for its owner only.
+export const backupEvents = pgTable(
+  'backup_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+    kind: text('kind', {
+      enum: ['doc_replaced', 'doc_recreated', 'storage_full', 'revoke_failed', 'reconnect_needed'],
+    }).notNull(),
+    diaryDate: date('diary_date'),
+  },
+  (t) => [index('backup_events_user').on(t.userId, t.at)],
 );
 
 // Auth layer tables, owned by Better Auth; exported so drizzle-kit migrates them with ours.

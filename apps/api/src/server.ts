@@ -1,6 +1,7 @@
 import { buildApp } from './app.ts';
 import { createAuth } from './auth/auth.ts';
 import { createCurrentUser } from './auth/current-user.ts';
+import { driveConfig } from './backup/drive-config.ts';
 import { parseConfig } from './config.ts';
 import { createDb } from './db/client.ts';
 
@@ -18,5 +19,6 @@ const app = await buildApp({
   logger: true,
   onClose: () => database.close(),
   ...(config.HISTORY_IDLE_MS ? { historyIdleMs: config.HISTORY_IDLE_MS } : {}),
+  ...(driveConfig(config) ? { drive: driveConfig(config)! } : {}),
 });
 await app.listen({ port: config.PORT, host: config.HOST });

@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "node --env-file-if-exists=../../.env --watch src/server.ts",
     "start": "node --env-file-if-exists=../../.env src/server.ts",
+    "dev:worker": "node --env-file-if-exists=../../.env --watch src/worker/main.ts",
+    "start:worker": "node --env-file-if-exists=../../.env src/worker/main.ts",
     "openapi": "node scripts/generate-openapi.ts",
     "typecheck": "tsc -p tsconfig.json",
     "db:generate": "drizzle-kit generate",

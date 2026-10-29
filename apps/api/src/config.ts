@@ -14,6 +14,10 @@ const Env = z
     GOOGLE_CLIENT_ID: z.string().min(1).optional(),
     GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
     DEV_OIDC_ISSUER: z.url().default('http://127.0.0.1:4010'),
+    /** 32 bytes, base64; seals Drive refresh tokens (server-backup-and-google-docs D10). */
+    GOOGLE_TOKEN_KEY: z.base64().optional(),
+    /** The Google app is in Testing, so Drive grants expire after seven days (D9). */
+    GOOGLE_DRIVE_TESTING: z.enum(['true', 'false']).default('false'),
     /** End-to-end tests only: closes history points sooner than the two-minute rule. */
     HISTORY_IDLE_MS: z.coerce.number().int().positive().optional(),
   })
@@ -32,6 +36,8 @@ const Env = z
       if (!LOCAL_HOSTS.has(new URL(env.PUBLIC_ORIGIN).hostname))
         issue('AUTH_PROVIDER', 'dev requires PUBLIC_ORIGIN on localhost or 127.0.0.1');
     }
+    if (env.GOOGLE_TOKEN_KEY && Buffer.from(env.GOOGLE_TOKEN_KEY, 'base64').length !== 32)
+      issue('GOOGLE_TOKEN_KEY', 'must be 32 bytes, base64 (openssl rand -base64 32)');
     // A shorter history rule is a test setting; tying it to the mock login keeps it out of
     // anything real, whose history must follow kernel D6.
     if (env.HISTORY_IDLE_MS !== undefined && env.AUTH_PROVIDER !== 'dev')
@@ -39,6 +45,13 @@ const Env = z
   });
 
 export type Config = z.infer<typeof Env> & { publicOrigin: string };
+
+/**
+ * Drive is available when the Google client and the token key are all set; the client is
+ * the same one login uses, whatever AUTH_PROVIDER is.
+ */
+export const driveEnabled = (config: Config) =>
+  Boolean(config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET && config.GOOGLE_TOKEN_KEY);
 
 export class ConfigError extends Error {}
 

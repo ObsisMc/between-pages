@@ -1,5 +1,6 @@
 import { Navigate, type RouteObject } from 'react-router';
 import { RequireAuth } from './auth/RequireAuth.tsx';
+import { BackupPage, GoogleCallbackPage } from './backup/index.ts';
 import { DayPage, DiaryPage } from './diary/index.ts';
 import { JoinPage } from './join/index.ts';
 import { HomePage } from './pages/HomePage.tsx';
@@ -42,6 +43,23 @@ export const appRoutes: RouteObject[] = [
     element: (
       <RequireAuth>
         <DayPage />
+      </RequireAuth>
+    ),
+  },
+  // The caller's own backup status and Google Drive connection (server-backup-and-google-docs D9).
+  {
+    path: '/backup',
+    element: (
+      <RequireAuth>
+        <BackupPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/backup/google/callback',
+    element: (
+      <RequireAuth>
+        <GoogleCallbackPage />
       </RequireAuth>
     ),
   },

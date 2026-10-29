@@ -25,7 +25,12 @@ export default defineConfig({
       include: ['apps/*/src/**', 'packages/*/src/**'],
       // Process entry points only wire modules together; their behavior is covered
       // through buildApp() and <App /> instead.
-      exclude: ['**/*.test.{ts,tsx}', 'apps/api/src/server.ts', 'apps/web/src/main.tsx'],
+      exclude: [
+        '**/*.test.{ts,tsx}',
+        'apps/api/src/server.ts',
+        'apps/api/src/worker/main.ts',
+        'apps/web/src/main.tsx',
+      ],
       thresholds: { lines: 80 },
     },
   },

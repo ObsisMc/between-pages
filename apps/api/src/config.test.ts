@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ConfigError, parseConfig } from './config.ts';
+import { ConfigError, driveEnabled, parseConfig } from './config.ts';
 
 const local = {
   DATABASE_URL: 'postgresql://u:p@127.0.0.1:54320/db',
@@ -71,5 +71,16 @@ describe('parseConfig', () => {
       GOOGLE_CLIENT_SECRET: 'secret',
     });
     expect(config.AUTH_PROVIDER).toBe('google');
+  });
+
+  it('enables Google Drive only with the client and a 32-byte token key, whatever the login provider', () => {
+    const key = Buffer.alloc(32, 7).toString('base64');
+    const drive = { GOOGLE_CLIENT_ID: 'id', GOOGLE_CLIENT_SECRET: 'secret' };
+    expect(driveEnabled(parseConfig({ ...local, ...drive, GOOGLE_TOKEN_KEY: key }))).toBe(true);
+    expect(driveEnabled(parseConfig({ ...local, ...drive }))).toBe(false);
+    expect(driveEnabled(parseConfig({ ...local, GOOGLE_TOKEN_KEY: key }))).toBe(false);
+    expect(() =>
+      parseConfig({ ...local, ...drive, GOOGLE_TOKEN_KEY: Buffer.alloc(16).toString('base64') }),
+    ).toThrow(/GOOGLE_TOKEN_KEY: must be 32 bytes/);
   });
 });

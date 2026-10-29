@@ -100,7 +100,7 @@ describe('verify-dependency-direction', () => {
       'apps/api/src/events/events.ts',
       "import type { CommitService } from '../commit/commit.ts';",
     ],
-    ['an unlisted api sub-module', 'apps/api/src/worker/worker.ts', 'export const x = 1;'],
+    ['an unlisted api sub-module', 'apps/api/src/mailer/mailer.ts', 'export const x = 1;'],
     [
       'the editor binding reaching the network',
       'apps/web/src/editor-binding/binding.ts',
