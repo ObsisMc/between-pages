@@ -88,7 +88,7 @@ const spaces = () =>
     ],
   });
 
-const NO_COPY = { connected: false, docUrl: null, mine: null, partner: null };
+const NO_COPY = { connected: false, docUrl: null, mine: null, partner: null, problem: null };
 
 function openDay(day: Day, more: Parameters<typeof stubApi>[0] = {}) {
   vi.stubGlobal('WebSocket', FakeSocket);
@@ -156,6 +156,7 @@ describe('DayPage', () => {
             docUrl: 'https://docs.google.com/document/d/doc-1/edit',
             mine: '2026-10-20T01:22:00.000Z',
             partner: null,
+            problem: null,
           },
         }),
     });
@@ -165,6 +166,31 @@ describe('DayPage', () => {
       within(mine).getByRole('link', { name: '在 Google Docs 打开' }).getAttribute('href'),
     ).toBe('https://docs.google.com/document/d/doc-1/edit');
     expect(await within(await section('TA 的日记')).findByText('等待备份到 Google')).toBeDefined();
+  });
+
+  it('says on both diaries why newer text is not in Google yet, keeping how far it is', async () => {
+    const day = dayOf('我的', '他的');
+    openDay(day, {
+      [`GET /api/days/${DATE}`]: () =>
+        Response.json({
+          day,
+          google: {
+            connected: true,
+            docUrl: 'https://docs.google.com/document/d/doc-1/edit',
+            mine: '2026-10-20T01:22:00.000Z',
+            partner: null,
+            problem: 'unreachable',
+          },
+        }),
+    });
+    expect(
+      await within(await section('我的日记')).findByText(
+        /^暂时连不上 Google，正在自动重试 · 已备份到 Google/,
+      ),
+    ).toBeDefined();
+    expect(
+      await within(await section('TA 的日记')).findByText('暂时连不上 Google，正在自动重试'),
+    ).toBeDefined();
   });
 
   it('says when the Google copy is off', async () => {

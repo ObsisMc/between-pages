@@ -10,7 +10,8 @@ import {
 import { docUrl, folderUrl } from '../google/docs.ts';
 import { keyIdOf, sealToken } from '../google/tokens.ts';
 import type { BackupStore } from '../store/backup.ts';
-import type { CopyStore } from '../store/copy.ts';
+import type { ConnectionRow } from '../store/backup.ts';
+import type { CopyStore, WorkFailure } from '../store/copy.ts';
 
 // The Drive connection and the readable copy's progress as the API serves them
 // (server-backup-and-google-docs D9, D10). The API seals the refresh token it receives and
@@ -29,6 +30,8 @@ const DAY_MS = 24 * 60 * 60_000;
 const TESTING_GRANT_MS = 7 * DAY_MS;
 /** From the sixth day of a Testing-mode grant, the home page asks to reconnect (D9). */
 const EXPIRY_WARNING_MS = 2 * DAY_MS;
+/** A run of failed writes this long puts a banner on the home page (D9, Ray 2026-10-29). */
+const FAILING_BANNER_MS = DAY_MS;
 
 export type BackupStatus = {
   google: {
@@ -36,14 +39,16 @@ export type BackupStatus = {
     email: string | null;
     connectedAt: Date | null;
     expiresAt: Date | null;
+    /** While disconnecting: telling Google failed so far and is being retried. */
+    retrying: boolean;
   };
   progress: {
     waitingDays: number;
-    retrying: boolean;
+    failing: { diaryDate: string; failure: 'unreachable' | 'failed' }[];
     backedUpTo: Date | null;
     folderUrl: string | null;
   } | null;
-  attention: 'reconnect' | 'storage_full' | 'expiring' | null;
+  attention: 'reconnect' | 'storage_full' | 'failing' | 'expiring' | null;
   events: { at: Date; kind: string; diaryDate: string | null }[];
 };
 
@@ -52,6 +57,7 @@ export type DayCopyStatus = {
   docUrl: string | null;
   mine: string | null;
   partner: string | null;
+  problem: 'reconnect' | WorkFailure | null;
 };
 
 export type ConnectRefusal =
@@ -62,10 +68,24 @@ export function createBackupService(
   copy: CopyStore,
   drive: DriveConfig | null,
 ) {
+  /** Whether the grant still works, and when a Testing-mode grant ends. */
+  function grant(row: ConnectionRow, driveConfig: DriveConfig, now: Date) {
+    // A token sealed under a key this server no longer has can never be used (D10.7).
+    const usable = row.status === 'active' && row.keyId === keyIdOf(driveConfig.tokenKey);
+    const expiresAt = driveConfig.testing
+      ? new Date(row.connectedAt.getTime() + TESTING_GRANT_MS)
+      : null;
+    const expired = expiresAt !== null && expiresAt <= now;
+    return {
+      state: usable && !expired ? ('connected' as const) : ('reconnect' as const),
+      expiresAt,
+    };
+  }
+
   async function status(userId: string, now = new Date()): Promise<BackupStatus> {
     const events = await store.events(userId);
-    const without = (state: BackupStatus['google']['state']): BackupStatus => ({
-      google: { state, email: null, connectedAt: null, expiresAt: null },
+    const without = (state: BackupStatus['google']['state'], retrying = false): BackupStatus => ({
+      google: { state, email: null, connectedAt: null, expiresAt: null, retrying },
       progress: null,
       attention: null,
       events,
@@ -73,19 +93,24 @@ export function createBackupService(
     if (!drive) return without('unavailable');
     const row = await store.connection(userId);
     if (!row) return without('disconnected');
-    if (row.status === 'revoking') return without('disconnecting');
-    // A token sealed under a key this server no longer has can never be used (D10.7).
-    const usable = row.status === 'active' && row.keyId === keyIdOf(drive.tokenKey);
-    const expiresAt = drive.testing ? new Date(row.connectedAt.getTime() + TESTING_GRANT_MS) : null;
-    const expired = expiresAt !== null && expiresAt <= now;
-    const state = usable && !expired ? 'connected' : 'reconnect';
+    if (row.status === 'revoking') return without('disconnecting', row.attempts > 0);
+    const { state, expiresAt } = grant(row, drive, now);
     const progress = await copy.progress(userId, row.googleUserId);
     const expiring = expiresAt !== null && expiresAt.getTime() - now.getTime() <= EXPIRY_WARNING_MS;
+    const longFailing =
+      progress.failingSince !== null &&
+      now.getTime() - progress.failingSince.getTime() >= FAILING_BANNER_MS;
     return {
-      google: { state, email: row.email, connectedAt: row.connectedAt, expiresAt },
+      google: {
+        state,
+        email: row.email,
+        connectedAt: row.connectedAt,
+        expiresAt,
+        retrying: false,
+      },
       progress: {
         waitingDays: progress.waitingDays,
-        retrying: progress.retrying,
+        failing: progress.failing,
         backedUpTo: progress.backedUpTo,
         folderUrl: progress.rootFolderId && folderUrl(progress.rootFolderId),
       },
@@ -94,9 +119,11 @@ export function createBackupService(
           ? 'reconnect'
           : progress.storageFull
             ? 'storage_full'
-            : expiring
-              ? 'expiring'
-              : null,
+            : longFailing
+              ? 'failing'
+              : expiring
+                ? 'expiring'
+                : null,
       events,
     };
   }
@@ -114,10 +141,10 @@ export function createBackupService(
     },
 
     /** One date in the caller's own Drive, for the day page (D9). */
-    async day(userId: string, diaryDate: string): Promise<DayCopyStatus> {
+    async day(userId: string, diaryDate: string, now = new Date()): Promise<DayCopyStatus> {
       const row = drive && (await store.connection(userId));
-      if (!row || row.status === 'revoking')
-        return { connected: false, docUrl: null, mine: null, partner: null };
+      if (!drive || !row || row.status === 'revoking')
+        return { connected: false, docUrl: null, mine: null, partner: null, problem: null };
       const doc = await copy.currentDoc(userId, row.googleUserId, diaryDate);
       const written = doc && doc.revisionId !== '' ? doc : null;
       return {
@@ -125,6 +152,10 @@ export function createBackupService(
         docUrl: written && docUrl(written.docId),
         mine: written?.covers.mine?.at ?? null,
         partner: written?.covers.partner?.at ?? null,
+        problem:
+          grant(row, drive, now).state === 'reconnect'
+            ? 'reconnect'
+            : await copy.dayFailure(userId, diaryDate),
       };
     },
 

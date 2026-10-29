@@ -24,6 +24,8 @@ export const GoogleConnection = z
     connectedAt: z.iso.datetime().nullable(),
     /** Only while the Google app is in Testing: when the grant stops working (D9). */
     expiresAt: z.iso.datetime().nullable(),
+    /** While `disconnecting`: Google could not be told yet; the server keeps trying. */
+    retrying: z.boolean(),
   })
   .meta({ id: 'GoogleConnection' });
 
@@ -33,6 +35,10 @@ export const BackupEventKind = z.enum([
   'storage_full',
   'revoke_failed',
   'reconnect_needed',
+  /** A run of failed writes began on this date; retried on its own. */
+  'copy_failing',
+  /** The daily check could not read the Drive; tried again the next day. */
+  'check_failed',
 ]);
 
 export const BackupEvent = z
@@ -48,8 +54,13 @@ export const BackupProgress = z
   .object({
     /** Days whose Doc is not yet written up to their newest history point. */
     waitingDays: z.number().int().nonnegative(),
-    /** Google could not be reached or refused for a while; retrying on its own. */
-    retrying: z.boolean(),
+    /**
+     * Days whose last attempt failed, newest first, each retried on its own: `unreachable`
+     * while Google cannot be reached, `failed` for any other reason. A full Drive is `attention`.
+     */
+    failing: z.array(
+      z.object({ diaryDate: z.iso.date(), failure: z.enum(['unreachable', 'failed']) }),
+    ),
     /** The newest version any Doc holds: "全部日记已备份到 9:22 的版本". */
     backedUpTo: z.iso.datetime().nullable(),
     /** The app's `Between Pages` folder in Drive, once created. */
@@ -58,10 +69,11 @@ export const BackupProgress = z
   .meta({ id: 'BackupProgress' });
 
 /**
- * Why the home page shows a banner: only when the user has to act (D9). `expiring`: the
- * Testing-mode grant ends within a day.
+ * Why the home page shows a banner (D9): the user has to act (`reconnect`, `storage_full`,
+ * `expiring`: the Testing-mode grant ends within two days), or writes have been failing for
+ * a day (`failing`, Ray 2026-10-29).
  */
-export const BackupAttention = z.enum(['reconnect', 'storage_full', 'expiring']);
+export const BackupAttention = z.enum(['reconnect', 'storage_full', 'failing', 'expiring']);
 
 export const BackupStatus = z
   .object({
@@ -84,6 +96,12 @@ export const DayGoogleCopy = z
     docUrl: z.url().nullable(),
     mine: z.iso.datetime().nullable(),
     partner: z.iso.datetime().nullable(),
+    /**
+     * Why newer versions of this day are not in the Doc yet: the grant needs reconnecting,
+     * the Drive is full, Google cannot be reached, or the write failed otherwise; null when
+     * nothing failed.
+     */
+    problem: z.enum(['reconnect', 'storage_full', 'unreachable', 'failed']).nullable(),
   })
   .meta({ id: 'DayGoogleCopy' });
 

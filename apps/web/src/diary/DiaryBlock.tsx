@@ -31,19 +31,36 @@ const writtenText = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', ti
  * the page for the filter, unread jumps and the reading position.
  */
 /** This diary in the caller's own Google Drive (server-backup-and-google-docs D9). */
-export type GoogleCopy = { connected: boolean; backedUpAt: string | null; docUrl: string | null };
+export type GoogleCopy = {
+  connected: boolean;
+  backedUpAt: string | null;
+  docUrl: string | null;
+  problem: ResponseOf<'day'>['google']['problem'];
+};
 
 /** One side of the day's Doc in the caller's Drive. */
 export const copyOf = (
   google: ResponseOf<'day'>['google'],
   side: 'mine' | 'partner',
-): GoogleCopy => ({ connected: google.connected, backedUpAt: google[side], docUrl: google.docUrl });
+): GoogleCopy => ({
+  connected: google.connected,
+  backedUpAt: google[side],
+  docUrl: google.docUrl,
+  problem: google.problem,
+});
+
+/** Why newer text is not in the Doc yet; every failure says so here (D9, Ray 2026-10-29). */
+const PROBLEM_TEXT: Record<NonNullable<GoogleCopy['problem']>, string> = {
+  reconnect: 'Google 备份已暂停：需要到备份页重新连接',
+  storage_full: 'Google 空间已满，备份暂停',
+  unreachable: '暂时连不上 Google，正在自动重试',
+  failed: '备份到 Google 失败，正在自动重试',
+};
 
 function GoogleCopyLine({ copy }: { copy: GoogleCopy }) {
   if (!copy.connected) return <p className="google-copy">未开启 Google 备份</p>;
-  if (!copy.backedUpAt) return <p className="google-copy">等待备份到 Google</p>;
-  return (
-    <p className="google-copy">
+  const backedUp = copy.backedUpAt && (
+    <>
       已备份到 Google {writtenText.format(new Date(copy.backedUpAt))}
       {copy.docUrl && (
         <>
@@ -53,8 +70,16 @@ function GoogleCopyLine({ copy }: { copy: GoogleCopy }) {
           </a>
         </>
       )}
-    </p>
+    </>
   );
+  if (copy.problem)
+    return (
+      <p className="google-copy warn" role="status">
+        {PROBLEM_TEXT[copy.problem]}
+        {backedUp && <> · {backedUp}</>}
+      </p>
+    );
+  return <p className="google-copy">{backedUp || '等待备份到 Google'}</p>;
 }
 
 export function DiaryBlock({

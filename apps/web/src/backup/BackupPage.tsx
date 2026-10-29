@@ -21,12 +21,34 @@ const EVENT_TEXT: Record<Backup['events'][number]['kind'], (date: string | null)
   revoke_failed: () =>
     '没能通知 Google 收回授权，请到 Google 账号的"第三方访问"里移除 Between Pages',
   reconnect_needed: () => 'Google 授权失效，需要重新连接',
+  copy_failing: (d) => `${d} 的备份开始失败，会自动重试`,
+  check_failed: () => '检查 Google 里的文件失败，明天再试',
 };
 
 const ERROR_TEXT: Record<string, string> = {
   GOOGLE_UNAVAILABLE: '这台服务器还没有配置 Google 备份',
   GOOGLE_DISCONNECTING: '上一次连接还在断开中，请稍等片刻再连接',
 };
+
+// A diary date is a calendar day, shown as written, in no time zone.
+const dayText = (date: string) => {
+  const [, month, day] = date.split('-').map(Number);
+  return `${month} 月 ${day} 日`;
+};
+
+/** The days that failed for one reason, each retried on its own (D9, Ray 2026-10-29). */
+function failingOf(progress: NonNullable<Backup['progress']>, failure: 'unreachable' | 'failed') {
+  const days = progress.failing.filter((f) => f.failure === failure).map((f) => f.diaryDate);
+  if (!days.length) return null;
+  const which = days.map(dayText).join('、');
+  return (
+    <p role="alert">
+      {failure === 'unreachable'
+        ? `暂时连不上 Google，${days.length} 天正在自动重试：${which}`
+        : `有 ${days.length} 天备份失败，正在自动重试：${which}`}
+    </p>
+  );
+}
 
 export const backupQuery = () => ({
   queryKey: ['backup'],
@@ -112,7 +134,13 @@ export function BackupPage({ goTo = (url) => window.location.assign(url) }: Back
               </button>
             </>
           )}
-          {google.state === 'disconnecting' && <p>正在断开 Google Drive…</p>}
+          {google.state === 'disconnecting' && (
+            <p role={google.retrying ? 'alert' : undefined}>
+              {google.retrying
+                ? '正在断开：暂时没能通知 Google 收回授权，正在重试'
+                : '正在断开 Google Drive…'}
+            </p>
+          )}
           {google.state === 'reconnect' && (
             <>
               <p role="alert">需要重新连接 Google（{google.email}）</p>
@@ -152,7 +180,8 @@ export function BackupPage({ goTo = (url) => window.location.assign(url) }: Back
           ) : (
             <p>还没有需要备份的日记</p>
           )}
-          {progress.retrying && <p>暂时连不上 Google，正在自动重试</p>}
+          {failingOf(progress, 'unreachable')}
+          {failingOf(progress, 'failed')}
           {backup.data?.attention === 'storage_full' && (
             <p role="alert">Google 空间已满，备份暂停。腾出空间后点"现在备份"继续</p>
           )}

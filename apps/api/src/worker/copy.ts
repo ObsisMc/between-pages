@@ -13,7 +13,7 @@ import {
 import { GoogleError, accessToken } from '../google/oauth.ts';
 import { keyIdOf, openToken } from '../google/tokens.ts';
 import type { ConnectionRow } from '../store/backup.ts';
-import type { CopyStore, WorkRow } from '../store/copy.ts';
+import type { CopyStore, WorkOutcome, WorkRow } from '../store/copy.ts';
 
 // Writing one day's Doc into one person's Drive (server-backup-and-google-docs D6–D8,
 // technical design steps 3–4). The worker opens the refresh token only here, for one day,
@@ -207,32 +207,46 @@ export async function copyNext(deps: CopyDeps, now = new Date()): Promise<boolea
   return handled !== null;
 }
 
+/** Google did not answer, answered with a server error, or asked to slow down. */
+const unreachable = (error: unknown) =>
+  error instanceof GoogleError
+    ? error.status === 429 || error.status === 408 || error.status >= 500
+    : error instanceof TypeError || (error instanceof Error && error.name === 'TimeoutError');
+
+/**
+ * Every failure leaves a reason the pages show (D9): `unreachable` while Google cannot be
+ * reached, `failed` for anything else, `storage_full`; a revoked grant asks to reconnect.
+ * The detail goes to the log only, never a token or diary text.
+ */
 async function failed(
   deps: CopyDeps,
   work: WorkRow,
-  outcome: { later(at: Date, failure: string | null): Promise<void> },
+  outcome: WorkOutcome,
   error: unknown,
   now: Date,
 ): Promise<void> {
   const at = (ms: number) => new Date(now.getTime() + ms);
-  if (error instanceof DocUnavailable)
-    return outcome.later(at(backoffMs(work.attempts)), error.message);
-  if (!(error instanceof GoogleError)) {
-    console.error(`worker: copying a day failed: ${(error as Error).message}`);
-    return outcome.later(at(backoffMs(work.attempts)), 'internal');
+  const detail =
+    error instanceof GoogleError ? `${error.status} ${error.code}` : (error as Error).message;
+  console.error(`worker: backing up ${work.diaryDate} failed: ${detail}`);
+  if (error instanceof GoogleError) {
+    // The grant was revoked or expired (Testing mode: seven days), or lacks drive.file.
+    if (
+      error.code === 'invalid_grant' ||
+      error.status === 401 ||
+      error.code === 'insufficientPermissions'
+    )
+      return deps.store.needsReconnect(work.userId);
+    if (error.code === 'storageQuotaExceeded') {
+      if (work.lastError !== 'storage_full')
+        await deps.store.storageFull(work.userId, work.diaryDate);
+      return outcome.later(at(STORAGE_FULL_MS), 'storage_full');
+    }
   }
-  // The grant was revoked or expired (Testing mode: seven days), or lacks drive.file.
-  if (
-    error.code === 'invalid_grant' ||
-    error.status === 401 ||
-    error.code === 'insufficientPermissions'
-  )
-    return deps.store.needsReconnect(work.userId);
-  if (error.code === 'storageQuotaExceeded') {
-    if (work.lastError !== 'storage_full')
-      await deps.store.storageFull(work.userId, work.diaryDate);
-    return outcome.later(at(STORAGE_FULL_MS), 'storage_full');
-  }
-  const wait = error.retryAfterMs ?? backoffMs(work.attempts);
-  return outcome.later(at(Math.min(wait, RETRY_MAX_MS)), error.code);
+  const wait =
+    (error instanceof GoogleError ? error.retryAfterMs : null) ?? backoffMs(work.attempts);
+  return outcome.later(
+    at(Math.min(wait, RETRY_MAX_MS)),
+    unreachable(error) ? 'unreachable' : 'failed',
+  );
 }

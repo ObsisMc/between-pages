@@ -7,7 +7,7 @@ import { GoogleCallbackPage } from './GoogleCallbackPage.tsx';
 
 const google = (state: string, extra: object = {}) => ({
   backup: {
-    google: { state, email: null, connectedAt: null, expiresAt: null, ...extra },
+    google: { state, email: null, connectedAt: null, expiresAt: null, retrying: false, ...extra },
     progress: null,
     attention: null,
     events: [],
@@ -69,6 +69,17 @@ describe('BackupPage', () => {
     expect(await screen.findByText('正在断开 Google Drive…')).toBeDefined();
   });
 
+  it('says when telling Google to revoke the grant keeps failing', async () => {
+    stubApi({
+      'GET /api/me': signedIn(),
+      'GET /api/backup': () => Response.json(google('disconnecting', { retrying: true })),
+    });
+    renderAt('/backup', routesWith(vi.fn()));
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      '正在断开：暂时没能通知 Google 收回授权，正在重试',
+    );
+  });
+
   it('asks to reconnect and lists the problems', async () => {
     stubApi({
       'GET /api/me': signedIn(),
@@ -80,6 +91,7 @@ describe('BackupPage', () => {
               email: 'ray@example.com',
               connectedAt: null,
               expiresAt: null,
+              retrying: false,
             },
             progress: null,
             attention: 'reconnect',
@@ -101,7 +113,7 @@ describe('backup progress', () => {
       ...google('connected', { email: 'ray@example.com' }).backup,
       progress: {
         waitingDays: 0,
-        retrying: false,
+        failing: [],
         backedUpTo: null,
         folderUrl: 'https://drive.google.com/drive/folders/f-1',
         ...progress,
@@ -110,16 +122,29 @@ describe('backup progress', () => {
     },
   });
 
-  it('[adr:server-backup-and-google-docs#7] says how many days wait, that Google is retried, and backs up now', async () => {
+  it('[adr:server-backup-and-google-docs#7] says how many days wait, which failed and why, and backs up now', async () => {
     const run = vi.fn(() => Response.json(connected({ backedUpTo: '2026-10-28T01:22:00.000Z' })));
     stubApi({
       'GET /api/me': signedIn(),
-      'GET /api/backup': () => Response.json(connected({ waitingDays: 2, retrying: true })),
+      'GET /api/backup': () =>
+        Response.json(
+          connected({
+            waitingDays: 3,
+            failing: [
+              { diaryDate: '2026-10-28', failure: 'unreachable' },
+              { diaryDate: '2026-10-27', failure: 'unreachable' },
+              { diaryDate: '2026-10-20', failure: 'failed' },
+            ],
+          }),
+        ),
       'POST /api/backup/run': run,
     });
     renderAt('/backup', routesWith(vi.fn()));
-    expect(await screen.findByText('还有 2 天等待备份')).toBeDefined();
-    expect(screen.getByText('暂时连不上 Google，正在自动重试')).toBeDefined();
+    expect(await screen.findByText('还有 3 天等待备份')).toBeDefined();
+    expect(
+      screen.getByText('暂时连不上 Google，2 天正在自动重试：10 月 28 日、10 月 27 日'),
+    ).toBeDefined();
+    expect(screen.getByText('有 1 天备份失败，正在自动重试：10 月 20 日')).toBeDefined();
     expect(
       screen.getByRole('link', { name: '在 Google Drive 打开文件夹' }).getAttribute('href'),
     ).toBe('https://drive.google.com/drive/folders/f-1');
@@ -136,8 +161,13 @@ describe('backup progress', () => {
     expect((await screen.findByRole('alert')).textContent).toMatch(/需要重新连接/);
     cleanup();
 
-    // Retrying on its own is for the backup page only.
-    answer = connected({ retrying: true, waitingDays: 3 });
+    answer = connected({}, 'failing');
+    renderAt('/', home);
+    expect((await screen.findByRole('alert')).textContent).toMatch(/一天多没有成功/);
+    cleanup();
+
+    // A failure younger than a day is for the backup page and the day page only.
+    answer = connected({ waitingDays: 3 });
     renderAt('/', [
       {
         path: '/',
