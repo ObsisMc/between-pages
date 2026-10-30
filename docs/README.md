@@ -23,6 +23,10 @@
 
 [未来功能清单](./future-features.md)记录暂缓场景和重新评估问题，目前包含误绑纠正、更换搭档与历史版本回滚；不表示已排期，实施进度仍只见开发路线。
 
+## 市场与产品研究
+
+- [情侣软件市场、用户需求、产品审查与上线推广报告（2026-10-30）](./research/market-product-launch-2026-10-30.md)：竞品、用户反馈、仓库现状与产品验证建议的日期快照。报告中的建议和仓库评价不是已确认的产品规格或当前进度；实施范围与状态分别以[功能规格](./diary-spec.md)和[开发路线](./roadmap.md)为准。
+
 ## Engineering (English)
 
 - [Architecture](./architecture.md): modules, dependency direction, runtime flow.
