@@ -18,7 +18,8 @@ import type { Tx } from '../store/store.ts';
 // read, here and in the feature stores.
 
 export type { RecordRef };
-export type Refusal = 'NOT_FOUND' | 'SPACE_READ_ONLY' | 'RECORD_STALE' | 'VALIDATION_FAILED';
+export type Refusal =
+  'NOT_FOUND' | 'SPACE_READ_ONLY' | 'RECORD_STALE' | 'RECORD_EXISTS' | 'VALIDATION_FAILED';
 
 /** Thrown inside `write` to refuse and roll back whatever the transaction did. */
 export class Refused extends Error {

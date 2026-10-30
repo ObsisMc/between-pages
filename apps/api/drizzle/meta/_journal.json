@@ -64,6 +64,13 @@
       "when": 1793325298244,
       "tag": "0008_wishes_and_gifts",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793340621575,
+      "tag": "0009_anniversaries",
+      "breakpoints": true
     }
   ]
 }

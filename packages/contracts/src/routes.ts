@@ -31,6 +31,18 @@ import {
 import { DayParams, DayResponse, DaysPage, DaysQuery } from './days.ts';
 import { ReportSeenRequest, ReportSeenResponse, SpaceUnreadResponse } from './space-records.ts';
 import {
+  AnniversariesQuery,
+  AnniversariesResponse,
+  AnniversaryDetailResponse,
+  AnniversaryParams,
+  AnniversaryResponse,
+  CreateAnniversaryRequest,
+  EditAnniversaryRequest,
+  SaveReminderRequest,
+  SetAnniversaryCountRequest,
+  SetAnniversaryDateRequest,
+} from './anniversaries.ts';
+import {
   ActionRequest,
   CreateWishRequest,
   DeletedResponse,
@@ -491,11 +503,90 @@ export const routes = {
   setGiftOccasion: {
     method: 'PUT',
     path: '/api/gifts/:giftId/occasion',
-    summary: "Set or clear a revealed gift's occasion; either of the two may.",
+    summary:
+      "Set or clear a revealed gift's occasion, a generic one or an anniversary; either of the two may.",
     access: 'user',
     params: GiftParams,
     body: SetGiftOccasionRequest,
     response: GiftResponse,
+  },
+  anniversaries: {
+    method: 'GET',
+    path: '/api/anniversaries',
+    summary:
+      "Every anniversary of the space with its next day, counted in the partner's local date except the caller's own birthday, and the one for the home strip.",
+    access: 'user',
+    query: AnniversariesQuery,
+    response: AnniversariesResponse,
+  },
+  anniversary: {
+    method: 'GET',
+    path: '/api/anniversaries/:anniversaryId',
+    summary: 'One anniversary with its date in every year so far and the gifts given for it.',
+    access: 'user',
+    params: AnniversaryParams,
+    query: AnniversariesQuery,
+    response: AnniversaryDetailResponse,
+  },
+  createAnniversary: {
+    method: 'POST',
+    path: '/api/anniversaries',
+    summary: 'Add an anniversary of the space; at most one together day per space.',
+    access: 'user',
+    query: AnniversariesQuery,
+    body: CreateAnniversaryRequest,
+    response: AnniversaryResponse,
+  },
+  editAnniversary: {
+    method: 'PUT',
+    path: '/api/anniversaries/:anniversaryId',
+    summary:
+      'Change the kind, whose birthday, name or note of an anniversary the caller added, from the revision it was loaded at.',
+    access: 'user',
+    params: AnniversaryParams,
+    query: AnniversariesQuery,
+    body: EditAnniversaryRequest,
+    response: AnniversaryResponse,
+  },
+  deleteAnniversary: {
+    method: 'POST',
+    path: '/api/anniversaries/:anniversaryId/delete',
+    summary: 'Delete an anniversary the caller added; gifts given for it keep its name.',
+    access: 'user',
+    params: AnniversaryParams,
+    body: ActionRequest,
+    response: DeletedResponse,
+  },
+  setAnniversaryDate: {
+    method: 'PUT',
+    path: '/api/anniversaries/:anniversaryId/date',
+    summary: "Correct an anniversary's date; either of the two may.",
+    access: 'user',
+    params: AnniversaryParams,
+    query: AnniversariesQuery,
+    body: SetAnniversaryDateRequest,
+    response: AnniversaryResponse,
+  },
+  setAnniversaryCount: {
+    method: 'PUT',
+    path: '/api/anniversaries/:anniversaryId/count',
+    summary: 'Turn the day count of an anniversary with a year on or off; either of the two may.',
+    access: 'user',
+    params: AnniversaryParams,
+    query: AnniversariesQuery,
+    body: SetAnniversaryCountRequest,
+    response: AnniversaryResponse,
+  },
+  saveAnniversaryReminder: {
+    method: 'PUT',
+    path: '/api/anniversaries/:anniversaryId/reminder',
+    summary:
+      "Set how many days ahead the caller is reminded of an anniversary; only the caller's own setting, allowed while unbound.",
+    access: 'user',
+    params: AnniversaryParams,
+    query: AnniversariesQuery,
+    body: SaveReminderRequest,
+    response: AnniversaryResponse,
   },
 } as const satisfies Record<string, RouteDefinition>;
 

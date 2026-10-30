@@ -1,39 +1,16 @@
 import type { FastifyReply } from 'fastify';
-import { sendError } from '../errors.ts';
-import type { Refusal, SpaceRecords } from '../space-records/space-records.ts';
+import type { AnniversaryService } from '../anniversaries/anniversaries.ts';
 import type { WishService } from '../wishes/wishes.ts';
 import type { ContractRequest } from './contract.ts';
+import { answer, userOf } from './space-records.ts';
 
-const MESSAGES = {
-  NOT_FOUND: 'No such record of yours in this space',
-  SPACE_READ_ONLY: 'The space is unbound; its records are read-only',
-  RECORD_STALE: 'The record changed since it was loaded',
-  VALIDATION_FAILED: 'This request ID was already used with another request',
-} as const satisfies Record<Refusal, string>;
-
-// Space-record routes: the entry dots and seen reports (space-records D8), and wishes and
-// gifts (wishes-and-gifts ADR). Run after requireUser; the author and actor are always the
-// session's user. Answers are no-store: they hold the caller's private preparations.
-export function wishHandlers(services: { records: SpaceRecords; wishes: WishService }) {
-  const { records, wishes } = services;
-  const answer = <T extends object>(reply: FastifyReply, result: T | Refusal) => {
-    reply.header('cache-control', 'no-store');
-    return typeof result === 'string' ? sendError(reply, result, MESSAGES[result]) : result;
-  };
-  const userOf = (request: { user: { id: string } | null }) => request.user!.id;
+// Wishes and gifts (wishes-and-gifts ADR). Run after requireUser; the author and actor are
+// always the session's user. A gift's occasion may be an anniversary, which the
+// anniversaries service checks and names before the wish service stores it (D4).
+export function wishHandlers(services: { wishes: WishService; anniversaries: AnniversaryService }) {
+  const { wishes, anniversaries } = services;
 
   return {
-    async spaceUnread(request: ContractRequest<'spaceUnread'>, reply: FastifyReply) {
-      const wishesUnread = await wishes.unread(userOf(request));
-      return answer(
-        reply,
-        wishesUnread === 'NOT_FOUND' ? wishesUnread : { features: { wishes: wishesUnread } },
-      );
-    },
-    async reportSeen(request: ContractRequest<'reportSeen'>, reply: FastifyReply) {
-      const seen = await records.seen(userOf(request), request.body.records);
-      return answer(reply, seen === true ? { recorded: true as const } : seen);
-    },
     async wishes(request: ContractRequest<'wishes'>, reply: FastifyReply) {
       return answer(reply, await wishes.view(userOf(request)));
     },
@@ -104,11 +81,16 @@ export function wishHandlers(services: { records: SpaceRecords; wishes: WishServ
       return answer(reply, typeof gift === 'string' ? gift : { gift });
     },
     async setGiftOccasion(request: ContractRequest<'setGiftOccasion'>, reply: FastifyReply) {
+      const caller = userOf(request);
+      const { occasion, anniversaryId, requestId } = request.body;
+      const anniversary =
+        anniversaryId === null ? null : await anniversaries.occasion(caller, anniversaryId);
+      if (anniversary === 'NOT_FOUND') return answer(reply, anniversary);
       const gift = await wishes.setGift(
-        userOf(request),
+        caller,
         request.params.giftId,
-        { kind: 'set_occasion', occasion: request.body.occasion },
-        request.body.requestId,
+        { kind: 'set_occasion', occasion, anniversary },
+        requestId,
         new Date(),
       );
       return answer(reply, typeof gift === 'string' ? gift : { gift });

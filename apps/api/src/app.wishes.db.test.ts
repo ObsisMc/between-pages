@@ -298,6 +298,7 @@ describe.runIf(testDatabaseUrl)('space records and wishes', () => {
     const occasion = await send(a, 'PUT', path(routes.setGiftOccasion.path, giftId), {
       requestId: randomUUID(),
       occasion: 'holiday',
+      anniversaryId: null,
     });
     const gift = ok(occasion, (v) => routes.setGiftOccasion.response.parse(v)).gift;
     expect(gift).toMatchObject({ date: '2026-10-01', occasion: 'holiday' });

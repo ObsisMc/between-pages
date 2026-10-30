@@ -27,7 +27,7 @@ const Want = z.number().int().min(1).max(5).nullable();
 export const WishActionKind = z.enum(['prepare', 'unprepare', 'receive']);
 export const GiftActionKind = z.enum(['reveal', 'set_date', 'set_occasion']);
 
-/** Generic occasions of a gift (D5); a specific anniversary joins with the anniversaries ADR. */
+/** Generic occasions of a gift (D5); the other kind of occasion is one anniversary (anniversaries D4). */
 export const GiftOccasion = z
   .enum(['holiday', 'meeting', 'no_reason'])
   .meta({ id: 'GiftOccasion' });
@@ -90,6 +90,11 @@ export const Gift = z
     date: z.iso.date().nullable(),
     dateSet: Stamp.nullable(),
     occasion: GiftOccasion.nullable(),
+    /**
+     * The anniversary it was given for, with its name when that was set (anniversaries D4);
+     * the name stays after the anniversary is deleted. Never set together with `occasion`.
+     */
+    anniversary: z.object({ id: Uuid, name: z.string() }).nullable(),
     occasionSet: Stamp.nullable(),
     card: GiftCard.nullable(),
     revision: Revision,
@@ -180,8 +185,14 @@ export const SetGiftDateRequest = z
   .strictObject({ requestId: Uuid, date: z.iso.date() })
   .meta({ id: 'SetGiftDateRequest' });
 
+/** A generic occasion, an anniversary of the space, or neither to clear it (anniversaries D4). */
 export const SetGiftOccasionRequest = z
-  .strictObject({ requestId: Uuid, occasion: GiftOccasion.nullable() })
+  .strictObject({
+    requestId: Uuid,
+    occasion: GiftOccasion.nullable(),
+    anniversaryId: Uuid.nullable(),
+  })
+  .refine((r) => r.occasion === null || r.anniversaryId === null, 'one occasion at most')
   .meta({ id: 'SetGiftOccasionRequest' });
 
 export const WishResponse = z.object({ wish: Wish }).meta({ id: 'WishResponse' });

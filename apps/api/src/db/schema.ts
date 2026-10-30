@@ -21,6 +21,8 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import {
+  AnniversaryActionKind,
+  AnniversaryKind,
   GiftActionKind,
   GiftOccasion,
   SpaceRecordType,
@@ -646,6 +648,7 @@ const recordTypeCheck = (column: Column) =>
 const ACTION_KINDS: Record<string, readonly string[]> = {
   wish: WishActionKind.options,
   gift: GiftActionKind.options,
+  anniversary: AnniversaryActionKind.options,
 };
 const recordSeq = () =>
   int8('seq')
@@ -800,6 +803,9 @@ export const gifts = pgTable(
     dateSetBy: uuid('date_set_by'),
     dateSetAt: timestamp('date_set_at', { withTimezone: true }),
     occasion: text('occasion').$type<(typeof GiftOccasion.options)[number]>(),
+    /** An anniversary as the occasion, with its name then, kept after it is deleted (anniversaries D4). */
+    occasionAnniversaryId: uuid('occasion_anniversary_id').references(() => anniversaries.id),
+    occasionName: text('occasion_name'),
     occasionSetBy: uuid('occasion_set_by'),
     occasionSetAt: timestamp('occasion_set_at', { withTimezone: true }),
   },
@@ -822,6 +828,12 @@ export const gifts = pgTable(
     ),
     check('gifts_parties', sql`${t.giverId} <> ${t.receiverId}`),
     check('gifts_occasion', sql`${t.occasion} in (${sql.raw(quoted(GiftOccasion.options))})`),
+    check('gifts_occasion_one', sql`${t.occasion} is null or ${t.occasionAnniversaryId} is null`),
+    check(
+      'gifts_occasion_name',
+      sql`num_nulls(${t.occasionAnniversaryId}, ${t.occasionName}) in (0, 2)`,
+    ),
+    index('gifts_occasion_anniversary').on(t.occasionAnniversaryId),
     check('gifts_date_set', sql`num_nulls(${t.dateSetBy}, ${t.dateSetAt}) in (0, 2)`),
     check('gifts_occasion_set', sql`num_nulls(${t.occasionSetBy}, ${t.occasionSetAt}) in (0, 2)`),
     check('gifts_deleted', deletionCheck(t)),
@@ -840,6 +852,70 @@ export const giftCards = pgTable(
     body: text('body').notNull(),
   },
   (t) => [unique('gift_cards_gift').on(t.giftId), check('gift_cards_deleted', deletionCheck(t))],
+);
+
+// Anniversaries (anniversaries D1, D2, D7), repeating every year on the same month and day.
+// The author owns kind, whose birthday, name and note; either of the two sets the date and
+// the day count, whose current state lives here with who set it last.
+export const anniversaries = pgTable(
+  'anniversaries',
+  {
+    ...spaceRecordColumns(),
+    kind: text('kind').$type<(typeof AnniversaryKind.options)[number]>().notNull(),
+    birthdayOf: uuid('birthday_of'),
+    name: text('name'),
+    note: text('note'),
+    year: smallint('year'),
+    month: smallint('month').notNull(),
+    day: smallint('day').notNull(),
+    dateSetBy: uuid('date_set_by'),
+    dateSetAt: timestamp('date_set_at', { withTimezone: true }),
+    showCount: boolean('show_count').notNull(),
+    countSetBy: uuid('count_set_by'),
+    countSetAt: timestamp('count_set_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('anniversaries_space').on(t.spaceId),
+    // At most one together day per space (invariant 1).
+    uniqueIndex('anniversaries_together')
+      .on(t.spaceId)
+      .where(sql`${t.kind} = 'together' and ${t.deletedAt} is null`),
+    check('anniversaries_kind', sql`${t.kind} in (${sql.raw(quoted(AnniversaryKind.options))})`),
+    check(
+      'anniversaries_kind_fields',
+      sql`(${t.kind} = 'birthday') = (${t.birthdayOf} is not null)
+        and (${t.kind} = 'other') = (${t.name} is not null)
+        and (${t.kind} = 'birthday' or ${t.year} is not null)`,
+    ),
+    // A real calendar day; 2 月 29 日 without a year is a leap-day birthday.
+    check(
+      'anniversaries_date',
+      sql`${t.month} between 1 and 12 and ${t.day} between 1 and 31
+        and make_date(coalesce(${t.year}, 2000), ${t.month}, 1) + (${t.day} - 1)
+          < make_date(coalesce(${t.year}, 2000), ${t.month}, 1) + interval '1 month'`,
+    ),
+    check('anniversaries_count', sql`not ${t.showCount} or ${t.year} is not null`),
+    check('anniversaries_not_private', sql`${t.privateTo} is null`),
+    check('anniversaries_date_set', sql`num_nulls(${t.dateSetBy}, ${t.dateSetAt}) in (0, 2)`),
+    check('anniversaries_count_set', sql`num_nulls(${t.countSetBy}, ${t.countSetAt}) in (0, 2)`),
+    check('anniversaries_deleted', deletionCheck(t)),
+  ],
+);
+
+// Each person's own reminder per anniversary (D3, invariant 4): a personal setting, not a
+// space record, so it has no history and stays editable after unbinding. No row means the
+// default: 7 days, only the day itself for one's own birthday. `days` null is no reminder.
+export const anniversaryReminders = pgTable(
+  'anniversary_reminders',
+  {
+    userId: uuid('user_id').notNull(),
+    anniversaryId: uuid('anniversary_id').notNull(),
+    days: smallint('days'),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.anniversaryId] }),
+    check('anniversary_reminders_days', sql`${t.days} in (0, 1, 3, 7, 14, 30)`),
+  ],
 );
 
 // Auth layer tables, owned by Better Auth; exported so drizzle-kit migrates them with ours.

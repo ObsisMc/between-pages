@@ -56,6 +56,22 @@ export class WishQueries {
       .orderBy(desc(gifts.giftDate), desc(gifts.revealedAt));
   }
 
+  /** Revealed gifts given for one anniversary (anniversaries D5), newest date first. */
+  forAnniversary(spaceId: string, anniversaryId: string): Promise<GiftRow[]> {
+    return this.tx
+      .select()
+      .from(gifts)
+      .where(
+        and(
+          eq(gifts.spaceId, spaceId),
+          eq(gifts.status, 'revealed'),
+          eq(gifts.occasionAnniversaryId, anniversaryId),
+          alive(gifts),
+        ),
+      )
+      .orderBy(desc(gifts.giftDate));
+  }
+
   cards(viewer: string, giftIds: readonly string[]): Promise<CardRow[]> {
     if (!giftIds.length) return Promise.resolve([]);
     return this.tx
@@ -123,7 +139,7 @@ export class WishQueries {
       .where(inArray(users.id, [...ids]));
   }
 
-  /** The caller's local zone, for the wall date of a reveal (D5); null if never reported. */
+  /** A person's local zone, for the wall date of a reveal (D5); null if never reported. */
   async timezoneOf(userId: string): Promise<string | null> {
     const [row] = await this.tx
       .select({ timezone: users.timezone })

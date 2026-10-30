@@ -103,6 +103,9 @@ function giftBody(row: GiftRow, card: CardRow | undefined, unseen: Map<string, U
     date: row.giftDate,
     dateSet: stamp(row.dateSetBy, row.dateSetAt),
     occasion: row.occasion,
+    anniversary: row.occasionAnniversaryId
+      ? { id: row.occasionAnniversaryId, name: row.occasionName! }
+      : null,
     occasionSet: stamp(row.occasionSetBy, row.occasionSetAt),
     card: card
       ? {
@@ -137,10 +140,17 @@ async function wishOut(ctx: Present, row: WishRow): Promise<Wish> {
   return wishBody(row, unseen.get(keyOf(wishRef(row.id)))!, null);
 }
 
-/** The revealer's local date (D5), from the zone two clocks keeps; UTC if never reported. */
+/** The local date in the zone two clocks keeps; UTC if never reported. */
 function localDate(timezone: string | null, now: Date): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: timezone ?? 'UTC' }).format(now);
 }
+
+/**
+ * A revealed gift's wall date (partner-local-dates D4): the receiver's local date, else the
+ * revealer's, else UTC.
+ */
+const receiverDate = async (w: WishWrites, receiver: string, revealer: string, now: Date) =>
+  localDate((await w.timezoneOf(receiver)) ?? (await w.timezoneOf(revealer)), now);
 
 const editedLink = (before: string | null, after: string | null) =>
   before === after ? {} : { link: after, ...unreadPreview };
@@ -156,7 +166,7 @@ export function createWishService(records: SpaceRecords) {
       privateTo: null,
       revealedAt: now,
       revealedBy: ctx.caller,
-      giftDate: localDate(await w.timezoneOf(ctx.caller), now),
+      giftDate: await receiverDate(w, gift.receiverId, ctx.caller, now),
     });
     const card = await w.lockCard(gift.id);
     if (card) await w.updateCard(card.id, { privateTo: null });
@@ -218,6 +228,21 @@ export function createWishService(records: SpaceRecords) {
             })),
         };
       });
+    },
+
+    /** The wall's gifts given for one anniversary, for its page (anniversaries D5). */
+    async giftsFor(
+      caller: string,
+      anniversaryId: string,
+    ): Promise<{ id: string; name: string; giverId: string; date: string }[] | 'NOT_FOUND'> {
+      return records.read(caller, async (ctx) =>
+        (await new WishQueries(ctx.tx).forAnniversary(ctx.spaceId, anniversaryId)).map((g) => ({
+          id: g.id,
+          name: g.name,
+          giverId: g.giverId,
+          date: g.giftDate!,
+        })),
+      );
     },
 
     /** Records holding something the caller has not seen, for the entry dot (space-records D8). */
@@ -348,7 +373,7 @@ export function createWishService(records: SpaceRecords) {
             status: 'revealed',
             revealedAt: now,
             revealedBy: caller,
-            giftDate: localDate(await w.timezoneOf(caller), now),
+            giftDate: await receiverDate(w, caller, caller, now),
           });
           await ctx.changed(giftRef(gift.id), 'create', null);
           return { giftId: gift.id };
@@ -524,16 +549,29 @@ export function createWishService(records: SpaceRecords) {
       });
     },
 
-    /** Either of the two changes a revealed gift's date or occasion; each is an action (D5). */
+    /**
+     * Either of the two changes a revealed gift's date or occasion; each is an action (D5).
+     * An anniversary as the occasion comes checked and named by the caller (anniversaries D4).
+     */
     setGift(
       caller: string,
       giftId: string,
       set:
-        { kind: 'set_date'; date: string } | { kind: 'set_occasion'; occasion: Gift['occasion'] },
+        | { kind: 'set_date'; date: string }
+        | {
+            kind: 'set_occasion';
+            occasion: Gift['occasion'];
+            anniversary: { id: string; name: string } | null;
+          },
       requestId: string,
       now: Date,
     ): Promise<Gift | Refusal> {
-      const request = action(set.kind, { giftId, set }, requestId);
+      // The digest covers what was asked, not the name the anniversary has at the moment.
+      const asked =
+        set.kind === 'set_date'
+          ? set
+          : { kind: set.kind, occasion: set.occasion, anniversaryId: set.anniversary?.id ?? null };
+      const request = action(set.kind, { giftId, set: asked }, requestId);
       const answer = async (ctx: WriteContext) => {
         const gift = await writes(ctx).gift(caller, ctx.spaceId, giftId);
         if (!gift) throw new Refused('NOT_FOUND');
@@ -550,7 +588,13 @@ export function createWishService(records: SpaceRecords) {
             gift.id,
             set.kind === 'set_date'
               ? { giftDate: set.date, dateSetBy: caller, dateSetAt: now }
-              : { occasion: set.occasion, occasionSetBy: caller, occasionSetAt: now },
+              : {
+                  occasion: set.occasion,
+                  occasionAnniversaryId: set.anniversary?.id ?? null,
+                  occasionName: set.anniversary?.name ?? null,
+                  occasionSetBy: caller,
+                  occasionSetAt: now,
+                },
           );
           await ctx.acted(giftRef(gift.id), set.kind, null, request);
           return answer(ctx);
