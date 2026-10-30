@@ -26,6 +26,31 @@ export const useWishes = () =>
       query.state.data && pendingPreview(query.state.data) ? 3_000 : 45_000,
   });
 
+/** An anniversary as a gift's occasion (anniversaries D4), named as the caller sees it. */
+export type Occasion = { id: string; label: string };
+
+/** The space's anniversaries, for the occasion choice and the wall filter. */
+export const useOccasions = () =>
+  useQuery({
+    queryKey: ['wishes', 'occasions'],
+    queryFn: () =>
+      callApi('anniversaries', {
+        query: { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+      }),
+    select: (view): Occasion[] =>
+      view.anniversaries.map((a) => ({
+        id: a.id,
+        label:
+          a.kind === 'other'
+            ? a.name!
+            : a.kind === 'together'
+              ? '在一起的日子'
+              : a.birthdayOf === view.me.id
+                ? '我的生日'
+                : `${view.partner.displayName} 的生日`,
+      })),
+  });
+
 /** Runs one write, then refreshes the feature and the entry dots; keeps the refusal text. */
 export function useWrite() {
   const client = useQueryClient();

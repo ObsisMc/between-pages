@@ -9,6 +9,21 @@ export const clocksKey = ['clocks'] as const;
 
 export const useClocks = () => useQuery({ queryKey: clocksKey, queryFn: () => callApi('clocks') });
 
+/**
+ * The anniversary the strip's line shows (anniversaries D3), the one the answer names as
+ * `home`; the strip asks only while the two are bound.
+ */
+export const useHomeAnniversary = () =>
+  useQuery({
+    queryKey: ['clocks', 'anniversaries'],
+    queryFn: () => callApi('anniversaries', { query: { timezone: browserZone() } }),
+    refetchInterval: 300_000,
+    select: (view) => {
+      const home = view.anniversaries.find((a) => a.id === view.home);
+      return home ? { home, me: view.me.id } : null;
+    },
+  });
+
 /** The browser's IANA zone right now; it follows the system setting while travelling (D1). */
 export const browserZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 

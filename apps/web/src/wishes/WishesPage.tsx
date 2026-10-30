@@ -14,10 +14,12 @@ import {
   type SeenTarget,
 } from '../space-common/index.ts';
 import {
+  useOccasions,
   useWishes,
   useWrite,
   wishesKey,
   type Gift,
+  type Occasion,
   type Wish,
   type WishesView,
 } from './queries.ts';
@@ -34,6 +36,19 @@ const OCCASIONS: Record<GiftOccasion, string> = {
 };
 
 const elementId = (type: string, id: string) => `${type}-${id}`;
+
+// A gift's occasion as one select value: a generic occasion, or `a:` and an anniversary ID.
+const ANNIVERSARY = 'a:';
+const occasionValue = (gift: Gift) =>
+  gift.anniversary ? ANNIVERSARY + gift.anniversary.id : (gift.occasion ?? '');
+/**
+ * An anniversary still in the space shows its name now; a deleted one, the name the gift
+ * kept (anniversaries D4).
+ */
+const occasionText = (gift: Gift, occasions: Occasion[]) =>
+  gift.anniversary
+    ? (occasions.find((o) => o.id === gift.anniversary!.id)?.label ?? gift.anniversary.name)
+    : gift.occasion && OCCASIONS[gift.occasion];
 
 function Hearts({
   value,
@@ -499,9 +514,12 @@ function WallGift({
   const [dateId, renewDate] = useRequestId();
   const [occasionId, renewOccasion] = useRequestId();
   const [deleteId, renewDelete] = useRequestId();
+  const occasions = useOccasions().data ?? [];
   const nameOf = (id: string) => (id === view.me.id ? '我' : view.partner.displayName);
   const fromMe = gift.giverId === view.me.id;
   const fresh = gift.unread === 'acted';
+  const occasion = occasionText(gift, occasions);
+  const linked = gift.anniversary && occasions.some((o) => o.id === gift.anniversary!.id);
   return (
     <Record type="gift" record={gift} report={report} className="gift">
       <p className="gift-name">
@@ -510,7 +528,8 @@ function WallGift({
       <p className="gift-meta">
         {fromMe ? `我送给 ${view.partner.displayName}` : `${view.partner.displayName} 送给我`}
         {gift.date && ` · ${gift.date}`}
-        {gift.occasion && ` · ${OCCASIONS[gift.occasion]}`}
+        {occasion && ' · '}
+        {linked ? <Link to={`/anniversaries/${gift.anniversary!.id}`}>{occasion}</Link> : occasion}
       </p>
       <LinkPreview link={gift.link} preview={gift.preview} />
       {gift.card && <WallCard card={gift.card} report={report} />}
@@ -563,27 +582,26 @@ function WallGift({
           <label>
             场合
             <select
-              value={gift.occasion ?? ''}
-              onChange={(e) =>
+              value={occasionValue(gift)}
+              onChange={(e) => {
+                const value = e.target.value;
+                const anniversary = value.startsWith(ANNIVERSARY);
                 void write
                   .run(() =>
                     callApi('setGiftOccasion', {
                       params: { giftId: gift.id },
                       body: {
                         requestId: occasionId,
-                        occasion: (e.target.value || null) as GiftOccasion | null,
+                        occasion: anniversary ? null : ((value || null) as GiftOccasion | null),
+                        anniversaryId: anniversary ? value.slice(ANNIVERSARY.length) : null,
                       },
                     }),
                   )
-                  .then((ok) => ok && renewOccasion())
-              }
+                  .then((ok) => ok && renewOccasion());
+              }}
             >
               <option value="">未选</option>
-              {Object.entries(OCCASIONS).map(([value, text]) => (
-                <option key={value} value={value}>
-                  {text}
-                </option>
-              ))}
+              <OccasionOptions gifts={[gift]} occasions={occasions} />
             </select>
           </label>
           {fromMe && <CardEditor gift={gift} readOnly={false} showCard={false} />}
@@ -666,13 +684,41 @@ function NewWish() {
   );
 }
 
+/**
+ * Generic occasions, the space's anniversaries, and deleted ones these gifts still name, by
+ * the name they kept.
+ */
+function OccasionOptions({ gifts, occasions }: { gifts: Gift[]; occasions: Occasion[] }) {
+  const kept = new Map<string, string>();
+  for (const g of gifts)
+    if (g.anniversary && !occasions.some((o) => o.id === g.anniversary!.id))
+      kept.set(g.anniversary.id, g.anniversary.name);
+  return (
+    <>
+      {Object.entries(OCCASIONS).map(([value, text]) => (
+        <option key={value} value={value}>
+          {text}
+        </option>
+      ))}
+      {[...occasions, ...[...kept].map(([id, label]) => ({ id, label }))].map((o) => (
+        <option key={o.id} value={ANNIVERSARY + o.id}>
+          {o.label}
+        </option>
+      ))}
+    </>
+  );
+}
+
 function Wall({ view, report }: { view: WishesView; report: (t: SeenTarget) => void }) {
+  const occasions = useOccasions().data ?? [];
   const [occasion, setOccasion] = useState<string>('all');
   const [giver, setGiver] = useState<'all' | 'me' | 'partner'>('all');
   const shown = view.wall.filter(
     (g) =>
       (occasion === 'all' ||
-        (occasion === 'none' ? g.occasion === null : g.occasion === occasion)) &&
+        (occasion === 'none'
+          ? g.occasion === null && g.anniversary === null
+          : occasionValue(g) === occasion)) &&
       (giver === 'all' || (giver === 'me') === (g.giverId === view.me.id)),
   );
   return (
@@ -683,11 +729,7 @@ function Wall({ view, report }: { view: WishesView; report: (t: SeenTarget) => v
           场合
           <select value={occasion} onChange={(e) => setOccasion(e.target.value)}>
             <option value="all">全部</option>
-            {Object.entries(OCCASIONS).map(([value, text]) => (
-              <option key={value} value={value}>
-                {text}
-              </option>
-            ))}
+            <OccasionOptions gifts={view.wall} occasions={occasions} />
             <option value="none">未选</option>
           </select>
         </label>

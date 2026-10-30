@@ -8,6 +8,7 @@ import { LoginPage } from './pages/LoginPage.tsx';
 import { SpacePage } from './space/index.ts';
 import { ClocksPage } from './two-clocks/index.ts';
 import { WishesPage } from './wishes/index.ts';
+import { AnniversariesPage, AnniversaryPage } from './anniversaries/index.ts';
 
 // authentication-and-sessions D10: /login is public, / and diaries need a session,
 // everything else goes to /. /join is public so it can keep an invitation across the login
@@ -71,6 +72,23 @@ export const appRoutes: RouteObject[] = [
     element: (
       <RequireAuth>
         <ClocksPage />
+      </RequireAuth>
+    ),
+  },
+  // Anniversaries and one anniversary's years (anniversaries ADR).
+  {
+    path: '/anniversaries',
+    element: (
+      <RequireAuth>
+        <AnniversariesPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/anniversaries/:anniversaryId',
+    element: (
+      <RequireAuth>
+        <AnniversaryPage />
       </RequireAuth>
     ),
   },

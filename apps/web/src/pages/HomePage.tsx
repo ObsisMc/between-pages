@@ -29,6 +29,9 @@ function SpaceEntries() {
       <Link to="/wishes">
         心愿与礼物 <EntryDot count={unread?.wishes} />
       </Link>
+      <Link to="/anniversaries">
+        纪念日 <EntryDot count={unread?.anniversaries} />
+      </Link>
     </nav>
   );
 }

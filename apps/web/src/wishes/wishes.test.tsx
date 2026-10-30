@@ -38,6 +38,7 @@ const gift = (over: object = {}) => ({
   date: '2026-10-30',
   dateSet: null,
   occasion: null,
+  anniversary: null,
   occasionSet: null,
   card: null,
   revision: 1,
@@ -58,6 +59,20 @@ const view = (over: object = {}) => ({
   ...over,
 });
 const routes = [{ path: '/wishes', element: <WishesPage /> }];
+const ZONE = encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone);
+const anniversariesPath = `GET /api/anniversaries?timezone=${ZONE}`;
+/** The space's anniversaries, for the occasion choice. */
+const anniversaries = (list: object[] = []) => ({
+  [anniversariesPath]: () =>
+    Response.json({
+      me: ME,
+      partner: PARTNER,
+      readOnly: false,
+      anniversaries: list,
+      home: null,
+      notes: [],
+    }),
+});
 
 /** IntersectionObserver for jsdom: every observed element is in view. */
 class SeeEverything {
@@ -173,6 +188,7 @@ describe('WishesPage', () => {
     stubApi({
       'GET /api/wishes': () =>
         Response.json(view({ readOnly: true, mine: [wish({ authorId: ME.id })], wall: [gift()] })),
+      ...anniversaries(),
     });
     renderAt('/wishes', routes);
     expect(await screen.findByText('已解绑，记录只读')).toBeDefined();
@@ -203,7 +219,9 @@ describe('WishesPage', () => {
     expect(bodies[1]).toBe(bodies[0]);
   });
 
-  it('filters the gift wall by who gave it and by occasion', async () => {
+  it('[adr:anniversaries#6] filters the gift wall by who gave it and by occasion, a deleted anniversary by the name the gift kept', async () => {
+    const MET = '0d0d0d0d-0000-4000-8000-000000000001';
+    const GONE = '0d0d0d0d-0000-4000-8000-000000000002';
     stubApi({
       'GET /api/wishes': () =>
         Response.json(
@@ -217,20 +235,73 @@ describe('WishesPage', () => {
                 receiverId: PARTNER.id,
                 occasion: 'holiday',
               }),
+              gift({
+                id: '0c0c0c0c-0000-4000-8000-000000000003',
+                name: '书',
+                anniversary: { id: MET, name: '旧名字' },
+              }),
+              gift({
+                id: '0c0c0c0c-0000-4000-8000-000000000004',
+                name: '信',
+                anniversary: { id: GONE, name: '认识的日子' },
+              }),
             ],
           }),
         ),
+      ...anniversaries([
+        {
+          id: MET,
+          authorId: ME.id,
+          kind: 'other',
+          birthdayOf: null,
+          name: '第一次见面',
+          note: null,
+          year: 2024,
+          month: 6,
+          day: 1,
+          dateSet: null,
+          showCount: false,
+          countSet: null,
+          reminder: 7,
+          basis: 'partner',
+          dayCount: null,
+          next: {
+            date: '2027-06-01',
+            startsAt: '2027-05-31T16:00:00.000Z',
+            endsAt: '2027-06-01T16:00:00.000Z',
+            type: 'yearly',
+            years: 3,
+            count: null,
+            daysLeft: 214,
+          },
+          due: false,
+          revision: 1,
+          createdAt: AT,
+          updatedAt: AT,
+          unread: null,
+          mark: 0,
+        },
+      ]),
     });
     renderAt('/wishes', routes);
     expect(await screen.findByText('杯子')).toBeDefined();
+    // A linked anniversary shows its name now and links to it; a deleted one, the kept name.
+    const linked = await screen.findByRole('link', { name: '第一次见面' });
+    expect(linked.getAttribute('href')).toBe(`/anniversaries/${MET}`);
+    expect(screen.getByText(/认识的日子/, { selector: '.gift-meta' })).toBeDefined();
     fireEvent.change(screen.getByLabelText('谁送的'), { target: { value: 'partner' } });
     expect(screen.queryByText('杯子')).toBeNull();
     expect(screen.getByText('花')).toBeDefined();
     fireEvent.change(screen.getByLabelText('谁送的'), { target: { value: 'all' } });
-    fireEvent.change(screen.getByLabelText('场合', { selector: '.filters select' }), {
-      target: { value: 'holiday' },
-    });
+    const occasion = screen.getByLabelText('场合', { selector: '.filters select' });
+    fireEvent.change(occasion, { target: { value: 'holiday' } });
     expect(screen.queryByText('花')).toBeNull();
     expect(screen.getByText('杯子')).toBeDefined();
+    fireEvent.change(occasion, { target: { value: `a:${GONE}` } });
+    expect(screen.getByText('信')).toBeDefined();
+    expect(screen.queryByText('书')).toBeNull();
+    fireEvent.change(occasion, { target: { value: 'none' } });
+    expect(screen.getByText('花')).toBeDefined();
+    expect(screen.queryByText('信')).toBeNull();
   });
 });
