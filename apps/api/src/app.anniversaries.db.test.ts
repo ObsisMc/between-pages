@@ -243,7 +243,7 @@ describe.runIf(testDatabaseUrl)('anniversaries', () => {
     const together = await created(a, { kind: 'together', ...bToday, year: 2020 }, BEHIND);
     const birthday = await created(
       a,
-      { kind: 'birthday', birthdayOf: b.id, year: null, ...bToday },
+      { kind: 'birthday', birthdayOf: b.id, ...bToday, year: null },
       BEHIND,
     );
     expect(birthday).toMatchObject({ basis: 'partner', due: true });
@@ -260,7 +260,7 @@ describe.runIf(testDatabaseUrl)('anniversaries', () => {
     // A's own birthday on A's today counts in A's own browser zone.
     const mine = await created(
       a,
-      { kind: 'birthday', birthdayOf: a.id, year: null, ...aToday },
+      { kind: 'birthday', birthdayOf: a.id, ...aToday, year: null },
       BEHIND,
     );
     expect(mine).toMatchObject({ basis: 'own', next: { date: iso(aToday), daysLeft: 0 } });
