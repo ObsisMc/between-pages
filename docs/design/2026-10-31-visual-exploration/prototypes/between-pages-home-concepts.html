@@ -1,0 +1,138 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap');
+  #bp-home-concepts { --bp-bg: light-dark(#f4f0e9, #242320); --bp-shell: light-dark(#fbf8f3, #2e2b28); --bp-page: light-dark(#fffcf7, #39342f); --bp-ink: light-dark(#3a302b, #f0e8df); --bp-soft: light-dark(#867971, #c4b7ad); --bp-rule: light-dark(#e5dcd1, #60574f); --bp-coral: light-dark(#b96950, #d98c70); --bp-blue: light-dark(#688892, #8db3bc); --bp-sage: light-dark(#a6b8a3, #788d78); --bp-peach: light-dark(#f3dfd3, #503e36); --bp-scene-sky: light-dark(#d8e7e6, #4f6470); --bp-scene-ground: light-dark(#e9d2bb, #776454); color:var(--bp-ink); font-family:Inter,system-ui,'PingFang SC',sans-serif; }
+  #bp-home-concepts * { box-sizing:border-box; }
+  #bp-home-concepts .concept-stage { display:flex; align-items:flex-start; justify-content:center; gap:17px; min-height:710px; }
+  #bp-home-concepts .app-desktop { width:695px; height:650px; overflow:hidden; display:flex; background:var(--bp-shell); border:1px solid var(--bp-rule); border-radius:14px; box-shadow:0 20px 50px light-dark(#5944311c,#0004); }
+  #bp-home-concepts .app-phone { width:250px; height:680px; overflow:hidden; display:flex; flex-direction:column; background:var(--bp-shell); border:1px solid var(--bp-rule); border-radius:30px; box-shadow:0 20px 50px light-dark(#59443124,#0005); }
+  #bp-home-concepts .serif { font-family:'Fraunces','Songti SC','Noto Serif SC',Georgia,serif; font-weight:400; }
+  #bp-home-concepts button { font:inherit; }
+  #bp-home-concepts .wordmark { display:flex; align-items:center; gap:7px; font-family:'Fraunces',Georgia,serif; font-size:19px; letter-spacing:-.03em; white-space:nowrap; }
+  #bp-home-concepts .mark { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:8px 8px 3px 8px; background:var(--bp-coral); color:var(--bp-page); font-size:15px; transform:rotate(-7deg); }
+  #bp-home-concepts .sidebar { flex:0 0 135px; background:light-dark(#f3eee6,#2a2724); border-right:1px solid var(--bp-rule); padding:24px 14px; display:flex; flex-direction:column; }
+  #bp-home-concepts .sidebar .wordmark { font-size:15px; white-space:normal; line-height:1.1; }
+  #bp-home-concepts .side-nav { margin-top:43px; display:grid; gap:8px; }
+  #bp-home-concepts .side-item { display:flex; align-items:center; gap:8px; padding:9px 10px; border-radius:8px; color:var(--bp-soft); font-size:12px; }
+  #bp-home-concepts .side-item.on { background:var(--bp-page); color:var(--bp-ink); box-shadow:0 2px 9px light-dark(#55463810,#0002); }
+  #bp-home-concepts .side-item .tiny-dot { width:6px; height:6px; border-radius:50%; background:var(--bp-coral); }
+  #bp-home-concepts .sidebar-bottom { margin-top:auto; padding-top:13px; border-top:1px solid var(--bp-rule); display:flex; align-items:center; gap:7px; font-size:11px; color:var(--bp-soft); }
+  #bp-home-concepts .avatar { width:26px; height:26px; border-radius:50%; display:inline-grid; place-items:center; background:var(--bp-peach); color:var(--bp-coral); font-size:12px; flex:0 0 auto; }
+  #bp-home-concepts .app-main { flex:1; min-width:0; padding:23px 29px 18px; }
+  #bp-home-concepts .main-top { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; }
+  #bp-home-concepts .eyebrow { font-size:10px; letter-spacing:.14em; color:var(--bp-soft); text-transform:uppercase; }
+  #bp-home-concepts .main-top h1 { margin:3px 0 0; font-size:28px; line-height:1.2; }
+  #bp-home-concepts .world-time { display:flex; align-items:center; gap:8px; color:var(--bp-soft); font-size:11px; white-space:nowrap; padding-top:8px; }
+  #bp-home-concepts .world-time strong { color:var(--bp-ink); font-weight:500; }
+  #bp-home-concepts .world-time .sep { color:var(--bp-rule); }
+  #bp-home-concepts .page-controls { display:flex; justify-content:space-between; align-items:center; color:var(--bp-soft); margin:23px 2px 10px; font-size:11px; }
+  #bp-home-concepts .page-controls strong { color:var(--bp-ink); font-weight:500; }
+  #bp-home-concepts .spread { display:grid; grid-template-columns:1fr 1fr; background:var(--bp-page); border:1px solid var(--bp-rule); border-radius:13px; box-shadow:0 8px 22px light-dark(#6d543c10,#0002); overflow:hidden; height:388px; }
+  #bp-home-concepts .leaf { padding:25px 23px 15px; display:flex; flex-direction:column; min-width:0; }
+  #bp-home-concepts .leaf + .leaf { border-left:1px solid var(--bp-rule); }
+  #bp-home-concepts .leaf-label { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--bp-soft); }
+  #bp-home-concepts .author-mark { display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--bp-coral); }
+  #bp-home-concepts .author-mark.other { background:var(--bp-blue); }
+  #bp-home-concepts .leaf h2 { font-size:22px; line-height:1.2; margin:13px 0 14px; }
+  #bp-home-concepts .leaf p { font-size:12px; line-height:1.85; margin:0 0 10px; }
+  #bp-home-concepts .leaf .time-note { color:var(--bp-soft); font-size:10px; margin-top:auto; }
+  #bp-home-concepts .leaf .endline { margin-top:10px; border-top:1px solid var(--bp-rule); padding-top:8px; font-size:10px; color:var(--bp-soft); display:flex; justify-content:space-between; }
+  #bp-home-concepts .scene { position:relative; overflow:hidden; width:100%; height:145px; margin:4px 0 12px; background:linear-gradient(180deg,var(--bp-scene-sky) 0%,light-dark(#e9eeea,#5d6a6a) 57%,var(--bp-scene-ground) 58%,light-dark(#d9c3ae,#68584a) 100%); border-radius:7px; }
+  #bp-home-concepts .scene .sun { position:absolute; width:44px; height:44px; top:18px; right:38px; border-radius:50%; background:light-dark(#f8e8bd,#dbbe8b); opacity:.9; }
+  #bp-home-concepts .scene .hill { position:absolute; bottom:35px; left:-10%; width:120%; height:42px; border-radius:50% 50% 0 0; background:light-dark(#a9bdb2,#61766c); }
+  #bp-home-concepts .scene .house { position:absolute; bottom:0; width:62px; height:74px; background:light-dark(#d7a48a,#9a7266); box-shadow:inset 7px 0 light-dark(#e8bca4,#b68876); }
+  #bp-home-concepts .scene .house.one { left:31px; }
+  #bp-home-concepts .scene .house.two { left:105px; height:96px; width:56px; background:light-dark(#f2d8bb,#aa8e76); }
+  #bp-home-concepts .scene .roof { position:absolute; left:27px; bottom:74px; border-left:35px solid transparent; border-right:35px solid transparent; border-bottom:0; border-top:26px solid light-dark(#a96e5b,#74544b); transform:rotate(180deg); }
+  #bp-home-concepts .scene .window { position:absolute; width:10px; height:17px; left:52px; bottom:35px; background:light-dark(#607d86,#51666a); box-shadow:0 0 0 2px light-dark(#c68d73,#865d50),77px -12px 0 light-dark(#607d86,#51666a),77px -12px 0 2px light-dark(#c68d73,#865d50); }
+  #bp-home-concepts .scene .plant { position:absolute; right:14px; bottom:-2px; width:5px; height:48px; background:light-dark(#647f6b,#89a18a); transform:rotate(9deg); }
+  #bp-home-concepts .scene .plant:before,#bp-home-concepts .scene .plant:after { content:''; position:absolute; width:17px; height:8px; border-radius:100% 0 100% 0; background:light-dark(#6e9677,#8cac8a); left:-15px; top:13px; transform:rotate(22deg); }
+  #bp-home-concepts .scene .plant:after { left:3px; top:24px; transform:rotate(105deg); }
+  #bp-home-concepts .below-page { display:flex; align-items:center; justify-content:space-between; gap:12px; padding-top:16px; }
+  #bp-home-concepts .date-ribbon { display:flex; gap:6px; }
+  #bp-home-concepts .date-chip { min-width:43px; text-align:center; padding:6px 5px; border-radius:7px; color:var(--bp-soft); font-size:10px; }
+  #bp-home-concepts .date-chip.active { background:var(--bp-peach); color:var(--bp-ink); }
+  #bp-home-concepts .date-chip b { display:block; color:var(--bp-ink); font-size:14px; font-weight:500; }
+  #bp-home-concepts .primary-action { border:0; border-radius:999px; background:var(--bp-coral); color:light-dark(#fffaf4,#2e211d); padding:11px 17px; font-size:12px; font-weight:500; white-space:nowrap; }
+  #bp-home-concepts .subtle-link { border:0; background:transparent; color:var(--bp-coral); font-size:11px; padding:5px 0; }
+  #bp-home-concepts .phone-head { display:flex; justify-content:space-between; align-items:center; padding:20px 17px 13px; }
+  #bp-home-concepts .phone-head .wordmark { font-size:16px; }
+  #bp-home-concepts .phone-head .mark { width:19px; height:19px; font-size:12px; }
+  #bp-home-concepts .phone-time { font-size:10px; color:var(--bp-soft); padding:0 18px 13px; }
+  #bp-home-concepts .phone-time strong { color:var(--bp-ink); font-weight:500; }
+  #bp-home-concepts .phone-scroll { flex:1; padding:0 13px 9px; overflow:hidden; }
+  #bp-home-concepts .phone-paper { background:var(--bp-page); border:1px solid var(--bp-rule); border-radius:12px; padding:18px 14px 15px; box-shadow:0 5px 16px light-dark(#59443110,#0002); }
+  #bp-home-concepts .phone-paper h2 { font-size:23px; line-height:1.2; margin:6px 0 12px; }
+  #bp-home-concepts .phone-paper p { font-size:11px; line-height:1.7; margin:8px 0; }
+  #bp-home-concepts .phone-paper .scene { height:115px; margin:12px 0; }
+  #bp-home-concepts .phone-paper .scene .house.two { left:91px; }
+  #bp-home-concepts .phone-paper .scene .window { box-shadow:0 0 0 2px light-dark(#c68d73,#865d50),64px -12px 0 light-dark(#607d86,#51666a); }
+  #bp-home-concepts .phone-paper .leaf-label { font-size:10px; }
+  #bp-home-concepts .phone-paper .subtle-link { margin-top:2px; }
+  #bp-home-concepts .phone-actions { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:11px; }
+  #bp-home-concepts .phone-actions .primary-action { flex:1; padding:10px; }
+  #bp-home-concepts .bottom-nav { border-top:1px solid var(--bp-rule); display:flex; justify-content:space-around; padding:12px 5px 16px; color:var(--bp-soft); font-size:10px; }
+  #bp-home-concepts .bottom-nav b { color:var(--bp-coral); font-weight:500; }
+  #bp-home-concepts .editorial-body { padding:21px 29px 18px; display:flex; flex-direction:column; flex:1; min-width:0; }
+  #bp-home-concepts .editorial-top { display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--bp-rule); padding-bottom:17px; }
+  #bp-home-concepts .editorial-top .wordmark { font-size:18px; }
+  #bp-home-concepts .editorial-nav { display:flex; gap:17px; font-size:11px; color:var(--bp-soft); }
+  #bp-home-concepts .editorial-nav b { color:var(--bp-ink); font-weight:500; border-bottom:2px solid var(--bp-coral); padding-bottom:4px; }
+  #bp-home-concepts .editorial-title { display:flex; justify-content:space-between; align-items:end; padding:24px 0 14px; }
+  #bp-home-concepts .editorial-title h1 { margin:4px 0 0; font-size:36px; line-height:1.12; }
+  #bp-home-concepts .editorial-title .world-time { padding-bottom:6px; }
+  #bp-home-concepts .editorial-content { display:grid; grid-template-columns:1.08fr .92fr; gap:28px; flex:1; min-height:0; }
+  #bp-home-concepts .editorial-text { padding-top:12px; border-top:1px solid var(--bp-rule); }
+  #bp-home-concepts .editorial-text .date-big { font-size:47px; line-height:1.1; margin:10px 0; }
+  #bp-home-concepts .editorial-text p { font-size:12px; line-height:1.85; margin:10px 0; }
+  #bp-home-concepts .editorial-photo { position:relative; border-radius:100px 100px 12px 12px; overflow:hidden; height:264px; background:var(--bp-peach); margin-top:13px; }
+  #bp-home-concepts .editorial-photo .scene { height:100%; border-radius:0; margin:0; }
+  #bp-home-concepts .editorial-photo .scene .sun { width:75px; height:75px; top:41px; right:47px; }
+  #bp-home-concepts .editorial-photo .scene .house.one { width:90px; height:100px; left:42px; }
+  #bp-home-concepts .editorial-photo .scene .house.two { width:84px; height:135px; left:160px; }
+  #bp-home-concepts .editorial-photo .scene .roof { left:35px; bottom:100px; border-left-width:50px; border-right-width:50px; border-top-width:36px; }
+  #bp-home-concepts .editorial-photo .scene .window { left:72px; bottom:48px; width:13px; height:23px; box-shadow:0 0 0 2px light-dark(#c68d73,#865d50),127px -25px 0 light-dark(#607d86,#51666a); }
+  #bp-home-concepts .editorial-photo .scene .plant { right:23px; height:65px; }
+  #bp-home-concepts .editorial-photo .scene .hill { bottom:45px; height:60px; }
+  #bp-home-concepts .editorial-side { display:flex; flex-direction:column; }
+  #bp-home-concepts .editorial-side .photo-caption { font-size:10px; color:var(--bp-soft); margin:9px 0 14px; }
+  #bp-home-concepts .editorial-side .reply { border-top:1px solid var(--bp-rule); padding-top:12px; font-size:11px; line-height:1.5; }
+  #bp-home-concepts .editorial-bottom { border-top:1px solid var(--bp-rule); padding:13px 0 0; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  #bp-home-concepts .editorial-bottom .date-ribbon { gap:2px; }
+  #bp-home-concepts .mobile-editorial { padding:0 16px; flex:1; overflow:hidden; }
+  #bp-home-concepts .mobile-editorial h1 { font-size:27px; line-height:1.14; margin:9px 0 13px; }
+  #bp-home-concepts .mobile-editorial .editorial-photo { height:185px; margin:3px 0 12px; border-radius:80px 80px 9px 9px; }
+  #bp-home-concepts .mobile-editorial .scene .house.one { left:19px; width:65px; height:77px; }
+  #bp-home-concepts .mobile-editorial .scene .house.two { left:103px; width:63px; height:103px; }
+  #bp-home-concepts .mobile-editorial .scene .roof { left:15px; bottom:77px; border-left-width:37px; border-right-width:37px; border-top-width:27px; }
+  #bp-home-concepts .mobile-editorial .scene .window { left:43px; bottom:36px; box-shadow:0 0 0 2px light-dark(#c68d73,#865d50),83px -12px 0 light-dark(#607d86,#51666a); }
+  #bp-home-concepts .mobile-editorial p { font-size:11px; line-height:1.7; margin:6px 0; }
+  #bp-home-concepts .mobile-editorial .primary-action { margin-top:9px; }
+  @media (max-width:980px) { #bp-home-concepts .concept-stage { flex-direction:column; align-items:center; } }
+  @media (max-width:710px) { #bp-home-concepts .app-desktop { width:min(100%,695px); } #bp-home-concepts .sidebar { flex-basis:108px; padding:18px 8px; } #bp-home-concepts .app-main { padding:18px 12px; } #bp-home-concepts .leaf { padding:16px 12px; } #bp-home-concepts .world-time { white-space:normal; } #bp-home-concepts .editorial-body { padding:17px 13px; } #bp-home-concepts .editorial-content { gap:12px; } #bp-home-concepts .editorial-photo { height:230px; } }
+</style>
+<div id="bp-home-concepts">
+  <div class="viz-carousel" aria-label="Between Pages 首页设计方向" data-previous-label="上一版" data-next-label="下一版">
+    <section data-variant="数字书页" aria-label="数字书页方案，桌面与手机">
+      <div class="concept-stage">
+        <div class="app-desktop" aria-label="数字书页桌面首页">
+          <aside class="sidebar"><div class="wordmark"><span class="mark">✦</span><span>Between<br>Pages</span></div><div class="side-nav"><div class="side-item on"><span class="tiny-dot"></span>日记</div><div class="side-item">心愿</div><div class="side-item">下次见面</div><div class="side-item">我们的资料</div></div><div class="sidebar-bottom"><span class="avatar">我</span>我们的空间</div></aside>
+          <main class="app-main"><div class="main-top"><div><div class="eyebrow">OUR SHARED JOURNAL · 各自生活，在同一页相遇</div><h1 class="serif">我们的日子</h1></div><div class="world-time">我这边 <strong>20:30</strong><span class="sep">·</span>TA 那边 <strong>12:30</strong></div></div><div class="page-controls"><span>← 10月28日</span><strong>10月30日 · 今天</strong><span>翻到日期 →</span></div><div class="spread"><section class="leaf"><div class="leaf-label"><i class="author-mark"></i>我的日记</div><h2 class="serif">今天的一个片刻</h2><p>今天的风终于凉了下来。路过常去的面包店时，我想起你说过喜欢橙皮的味道。</p><p>不是什么特别的事，但很想把它留在这里，等你有空的时候读到。</p><span class="time-note">写于今天 18:42</span><div class="endline"><span>已保存到服务器</span><span>01 / 02</span></div></section><section class="leaf"><div class="leaf-label"><i class="author-mark other"></i>TA 的日记 · 有新内容</div><div class="scene" role="img" aria-label="暖色街道与屋顶的示意插画"><span class="sun"></span><span class="hill"></span><span class="house one"></span><span class="house two"></span><span class="roof"></span><span class="window"></span><span class="plant"></span></div><p>我这里刚下过雨。等你醒来，想给你讲讲路上遇见的那只猫。</p><span class="time-note">写于 TA 的当地时间 12:08</span><div class="endline"><span>下一处未读 →</span><span>02 / 02</span></div></section></div><div class="below-page"><div class="date-ribbon"><span class="date-chip"><b>27</b>周二</span><span class="date-chip"><b>28</b>周三</span><span class="date-chip"><b>29</b>周四</span><span class="date-chip active"><b>30</b>今天</span></div><button class="primary-action" type="button">继续写今天　↗</button></div></main>
+        </div>
+        <div class="app-phone" aria-label="数字书页手机首页"><div class="phone-head"><div class="wordmark"><span class="mark">✦</span>Between Pages</div><span class="avatar">我</span></div><div class="phone-time">我这边 <strong>20:30</strong>　·　TA 那边 <strong>12:30</strong></div><div class="phone-scroll"><div class="phone-paper"><div class="eyebrow">OUR SHARED JOURNAL</div><h2 class="serif">十月三十日<br>今天这一页</h2><div class="leaf-label"><i class="author-mark other"></i>TA 留下了新文字</div><div class="scene" role="img" aria-label="暖色街道与屋顶的示意插画"><span class="sun"></span><span class="hill"></span><span class="house one"></span><span class="house two"></span><span class="roof"></span><span class="window"></span><span class="plant"></span></div><p>我这里刚下过雨。等你醒来，想给你讲讲路上遇见的那只猫。</p><button class="subtle-link" type="button">读完这一页　→</button><div class="leaf-label" style="border-top:1px solid var(--bp-rule);padding-top:12px;margin-top:9px"><i class="author-mark"></i>我写下的</div><p>路过面包店时，想起你喜欢橙皮的味道。</p></div><div class="phone-actions"><span class="eyebrow">已保存到服务器</span><button class="primary-action" type="button">继续写　↗</button></div></div><div class="bottom-nav"><b>日记</b><span>心愿</span><span>见面</span><span>更多</span></div></div>
+      </div>
+    </section>
+    <section data-variant="现代编辑页" aria-label="现代编辑页方案，桌面与手机" hidden>
+      <div class="concept-stage">
+        <div class="app-desktop" aria-label="现代编辑页桌面首页"><main class="editorial-body"><div class="editorial-top"><div class="wordmark"><span class="mark">✦</span>Between Pages</div><nav class="editorial-nav"><b>日记</b><span>心愿</span><span>见面</span><span>我们的资料</span></nav></div><div class="editorial-title"><div><div class="eyebrow">FRIDAY, OCTOBER 30</div><h1 class="serif">今天也有一页，<br>留给我们。</h1></div><div class="world-time">我这边 <strong>20:30</strong><span class="sep">·</span>TA 那边 <strong>12:30</strong></div></div><div class="editorial-content"><div class="editorial-text"><div class="eyebrow">JOURNAL / 2026</div><div class="date-big serif">10.30</div><div class="leaf-label"><i class="author-mark other"></i>TA 的新文字</div><p>我这里刚下过雨。等你醒来，想给你讲讲路上遇见的那只猫。</p><div style="height:15px"></div><div class="leaf-label"><i class="author-mark"></i>我写下的</div><p>今天的风终于凉了下来。路过常去的面包店时，我想起你说过喜欢橙皮的味道。</p><button class="subtle-link" type="button">打开完整日期页　→</button></div><div class="editorial-side"><div class="editorial-photo" role="img" aria-label="暖色街道与屋顶的示意插画"><div class="scene"><span class="sun"></span><span class="hill"></span><span class="house one"></span><span class="house two"></span><span class="roof"></span><span class="window"></span><span class="plant"></span></div></div><div class="photo-caption">今天的一张图 · 可选的日记配图</div><div class="reply"><span class="eyebrow">留给彼此的时间</span><br>不必同步在线，也能在这里接着写。</div></div></div><div class="editorial-bottom"><div class="date-ribbon"><span class="date-chip"><b>27</b>周二</span><span class="date-chip"><b>28</b>周三</span><span class="date-chip"><b>29</b>周四</span><span class="date-chip active"><b>30</b>今天</span></div><button class="primary-action" type="button">写下今天　↗</button></div></main></div>
+        <div class="app-phone" aria-label="现代编辑页手机首页"><div class="phone-head"><div class="wordmark"><span class="mark">✦</span>Between Pages</div><span class="avatar">我</span></div><div class="phone-time">TA 那边 <strong>12:30</strong>　·　白天</div><div class="mobile-editorial"><div class="eyebrow">FRIDAY, OCTOBER 30</div><h1 class="serif">今天也有一页，<br>留给我们。</h1><div class="editorial-photo" role="img" aria-label="暖色街道与屋顶的示意插画"><div class="scene"><span class="sun"></span><span class="hill"></span><span class="house one"></span><span class="house two"></span><span class="roof"></span><span class="window"></span><span class="plant"></span></div></div><div class="leaf-label"><i class="author-mark other"></i>TA 的新文字</div><p>我这里刚下过雨。等你醒来，想给你讲讲路上遇见的那只猫。</p><div class="leaf-label" style="margin-top:13px"><i class="author-mark"></i>我写下的</div><p>路过面包店时，想起你喜欢橙皮的味道。</p><button class="primary-action" type="button">写下今天　↗</button></div><div class="bottom-nav"><b>日记</b><span>心愿</span><span>见面</span><span>更多</span></div></div>
+      </div>
+    </section>
+  </div>
+</div>
+<script>
+  const bpConceptRoot = document.getElementById('bp-home-concepts');
+  const bpConceptOptions = { showIllustration: true };
+  function bpRenderOptions() { bpConceptRoot.querySelectorAll('.scene, .editorial-photo').forEach(node => { node.hidden = !bpConceptOptions.showIllustration; }); }
+  bpRenderOptions();
+  if (globalThis.Tweak) { const tweak = new Tweak({ container: bpConceptRoot, onChange: bpRenderOptions }); tweak.addToggle(bpConceptOptions, 'showIllustration', { label: '展示日记配图' }); }
+</script>
