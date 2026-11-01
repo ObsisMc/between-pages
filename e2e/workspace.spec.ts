@@ -63,8 +63,8 @@ async function scrollFeedTo(page: Page, date: string) {
   await page.evaluate((day) => {
     const box = document.querySelector<HTMLElement>('.day-feed-scroll')!;
     const section = box.querySelector<HTMLElement>(`[data-date="${day}"]`)!;
-    // Two pixels below the top, so a fraction of the date above never counts as on top.
-    box.scrollTop += section.getBoundingClientRect().top - box.getBoundingClientRect().top - 2;
+    // Two pixels into the date, so a fraction of the one above never counts as on top.
+    box.scrollTop += section.getBoundingClientRect().top - box.getBoundingClientRect().top + 2;
   }, date);
   await expect.poll(async () => (await feedTop(page))?.date).toBe(date);
   // The position reaches the history entry once the list has rested (POSITION_MS, 0.4 s).
