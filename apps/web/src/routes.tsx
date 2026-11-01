@@ -1,7 +1,7 @@
 import { Navigate, Outlet, type RouteObject } from 'react-router';
 import { RequireAuth } from './auth/RequireAuth.tsx';
 import { BackupPage, GoogleCallbackPage } from './backup/index.ts';
-import { DayPage, DaysPage, DiaryPage } from './diary/index.ts';
+import { DaysWorkspace, DiaryPage } from './diary/index.ts';
 import { JoinPage } from './join/index.ts';
 import { HomePage } from './pages/HomePage.tsx';
 import { LoginPage } from './pages/LoginPage.tsx';
@@ -41,21 +41,14 @@ const pages: RouteObject[] = [
       </RequireAuth>
     ),
   },
-  // All diaries by date, newest first (book-frontend-workspace D3).
+  // The diary workspace: all diaries by date, and one date's two diaries beside them
+  // (book-frontend-workspace D3, unread-and-day-page D6). One route, so the feed stays
+  // mounted while the date changes.
   {
-    path: '/days',
+    path: '/days/:date?',
     element: (
       <RequireAuth>
-        <DaysPage />
-      </RequireAuth>
-    ),
-  },
-  // Both people's diaries of one date (unread-and-day-page D6).
-  {
-    path: '/days/:date',
-    element: (
-      <RequireAuth>
-        <DayPage />
+        <DaysWorkspace />
       </RequireAuth>
     ),
   },

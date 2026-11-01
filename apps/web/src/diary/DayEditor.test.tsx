@@ -90,6 +90,13 @@ const spaces = () =>
   });
 
 const NO_COPY = { connected: false, docUrl: null, mine: null, partner: null, problem: null };
+/** The workspace's feed beside the day, kept empty here: these tests are about the left page. */
+const EMPTY_FEED = {
+  'GET /api/days?before=2026-10-28': () =>
+    Response.json({ days: [], nextBefore: null, nextAfter: null }),
+  'GET /api/days?after=2026-10-27': () =>
+    Response.json({ days: [], nextBefore: null, nextAfter: null }),
+};
 
 function openDay(day: Day, more: Parameters<typeof stubApi>[0] = {}) {
   vi.stubGlobal('WebSocket', FakeSocket);
@@ -102,6 +109,7 @@ function openDay(day: Day, more: Parameters<typeof stubApi>[0] = {}) {
     [`GET /api/diaries/${THEIRS}/shares/${EPOCH}`]: theirDiary(day.partner?.excerpt ?? ''),
     [`GET /api/diaries/${DIARY}/read`]: () => Response.json({ ranges: [] }),
     [`GET /api/diaries/${THEIRS}/read`]: () => Response.json({ ranges: [] }),
+    ...EMPTY_FEED,
     ...more,
   });
   const rendered = renderAt(`/days/${DATE}`);
@@ -120,7 +128,7 @@ async function paste(editor: HTMLElement, content: string) {
   editor.dispatchEvent(event);
 }
 
-describe('DayPage', () => {
+describe('DayEditor', () => {
   it('[adr:unread-and-day-page#9] stacks both diaries as two sessions, so a paste reaches only the one it was made in', async () => {
     openDay(dayOf('我的早上', '他的晚上'));
     const mine = await editorOf('我的日记');

@@ -127,6 +127,11 @@ export type DiarySessionOptions = {
    * this diary holds its own; a page with several diaries holds the one at the window's top.
    */
   keepPosition?: (apply: () => void) => void;
+  /**
+   * The box the diary scrolls in when it is not the window (the workspace's left page):
+   * what counts as on screen is also inside it, and positions and jumps scroll it.
+   */
+  scroller?: HTMLElement | undefined;
 };
 
 export function createDiarySession({
@@ -138,6 +143,7 @@ export function createDiarySession({
   nameOf,
   onChange,
   keepPosition,
+  scroller,
 }: DiarySessionOptions): DiarySession {
   let state: DiaryState = {
     phase: 'opening',
@@ -479,6 +485,19 @@ export function createDiarySession({
     sender?.wake();
   }
 
+  /** The part of the window the diary can be seen in: the window, or inside `scroller`. */
+  const visibleArea = () => {
+    const box = scroller?.getBoundingClientRect();
+    return {
+      top: Math.max(box?.top ?? 0, 0),
+      bottom: Math.min(box?.bottom ?? window.innerHeight, window.innerHeight),
+    };
+  };
+  const scrollDown = (by: number) => {
+    if (scroller) scroller.scrollTop += by;
+    else window.scrollBy(0, by);
+  };
+
   /** Whether the editor is laid out on the page; without layout nothing can be measured. */
   const laidOut = () => {
     if (!editor || place.hidden) return false;
@@ -495,9 +514,10 @@ export function createDiarySession({
     const { view } = editor;
     const length = view.state.doc.content.size - 2;
     const rect = place.getBoundingClientRect();
-    const top = Math.max(rect.top, 0);
-    const bottom = Math.min(rect.bottom, window.innerHeight);
-    if (rect.bottom <= 0) return { from: length, to: length };
+    const seen = visibleArea();
+    const top = Math.max(rect.top, seen.top);
+    const bottom = Math.min(rect.bottom, seen.bottom);
+    if (rect.bottom <= seen.top) return { from: length, to: length };
     if (bottom <= top) return { from: 0, to: 0 };
     // Text index i sits at document position i + 1.
     const from = view.posAtCoords({ left: rect.left + 1, top: top + 1 })?.pos ?? 1;
@@ -554,6 +574,7 @@ export function createDiarySession({
   };
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', onScroll);
+  scroller?.addEventListener('scroll', onScroll, { passive: true });
 
   /**
    * Picks the anchor character before the text or filter changes (D5): the caret's
@@ -565,15 +586,16 @@ export function createDiarySession({
     const { view } = editor;
     let index: number | null = null;
     let caret = false;
+    const seen = visibleArea();
     if (view.hasFocus()) {
       const at = view.coordsAtPos(view.state.selection.head);
-      caret = at.top >= 0 && at.bottom <= window.innerHeight;
+      caret = at.top >= seen.top && at.bottom <= seen.bottom;
       if (caret) index = view.state.selection.head - 1;
     }
     if (index === null) {
       const rect = place.getBoundingClientRect();
-      if (rect.bottom <= 0 || rect.top >= window.innerHeight) return null;
-      const top = Math.max(rect.top, 0);
+      if (rect.bottom <= seen.top || rect.top >= seen.bottom) return null;
+      const top = Math.max(rect.top, seen.top);
       // Above the first line, the position is before the text: its first character.
       index = Math.max((view.posAtCoords({ left: rect.left + 1, top: top + 1 })?.pos ?? 1) - 1, 0);
     }
@@ -588,7 +610,7 @@ export function createDiarySession({
     const index = editor.indexOfAnchor(held.anchor);
     if (index === null) return;
     const moved = editor.view.coordsAtPos(index + 1).top - held.top;
-    if (moved) window.scrollBy(0, moved);
+    if (moved) scrollDown(moved);
   }
 
   const keepOwnPosition = (apply: () => void) => {
@@ -635,8 +657,10 @@ export function createDiarySession({
           : (spans.find((span) => span.from >= after) ?? (wrap ? spans[0] : undefined));
       if (!target) return false;
       if (laidOut()) {
-        const top = editor.view.coordsAtPos(target.from + 1).top;
-        window.scrollTo({ top: window.scrollY + top - window.innerHeight / 3 });
+        const seen = visibleArea();
+        scrollDown(
+          editor.view.coordsAtPos(target.from + 1).top - seen.top - (seen.bottom - seen.top) / 3,
+        );
       }
       editor.flash(target.from, target.to);
       updateUnread();
@@ -664,6 +688,7 @@ export function createDiarySession({
       if (measureFrame !== undefined) cancelAnimationFrame(measureFrame);
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
+      scroller?.removeEventListener('scroll', onScroll);
       window.removeEventListener('beforeunload', guardUnload);
       sender?.stop();
       reads?.stop();

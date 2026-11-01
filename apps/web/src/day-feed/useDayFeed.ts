@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, callApi } from '../api/client.ts';
+import type { Anchor } from './anchor.ts';
 import {
   addDays,
   fromNewest,
@@ -20,8 +21,8 @@ export type Failure = { kind: 'offline' | 'failed'; retry: () => void };
 const kindOf = (error: unknown) => (error instanceof ApiError ? 'failed' : 'offline');
 
 /**
- * The list's dates (book-frontend-workspace D4, D8): the first page from the newest on
- * entry, a page more at either end, a jump to any date, and the dates near the viewport
+ * The list's dates (book-frontend-workspace D4, D8): the first page from the newest
+ * (`start`), a page more at either end, a jump to any date, and the dates near the viewport
  * read again on window focus, on the page coming back and every REFRESH_MS while visible.
  * A start or a jump begins a new window; answers for an earlier one are dropped, and of the
  * refreshes only the latest applies. A failure keeps what is shown and offers its retry.
@@ -30,8 +31,11 @@ export function useDayFeed(nearDates: () => readonly string[]) {
   const [feedWindow, setWindow] = useState<FeedWindow | null>(null);
   const [loading, setLoading] = useState<Loading | null>('start');
   const [failure, setFailure] = useState<Failure | null>(null);
-  /** The date a jump brought into the window, to show at the top once rendered. */
-  const [target, setTarget] = useState<{ date: string } | null>(null);
+  /**
+   * The date a jump brought into the window, to show once rendered: at the top, or where
+   * `at` held it.
+   */
+  const [target, setTarget] = useState<{ date: string; at?: Anchor } | null>(null);
   const current = useRef<FeedWindow | null>(null);
   const loadingRef = useRef<Loading | null>('start');
   const epoch = useRef(0);
@@ -87,7 +91,7 @@ export function useDayFeed(nearDates: () => readonly string[]) {
   );
 
   const jump = useCallback(
-    (date: string) =>
+    (date: string, at?: Anchor) =>
       run(
         'jump',
         () =>
@@ -97,7 +101,7 @@ export function useDayFeed(nearDates: () => readonly string[]) {
           ]),
         ([older, newer]) => {
           setWindow(jumpedTo(date, older, newer));
-          setTarget({ date });
+          setTarget(at ? { date, at } : { date });
         },
         true,
       ),
@@ -151,7 +155,6 @@ export function useDayFeed(nearDates: () => readonly string[]) {
 
   useEffect(() => {
     const reads = epoch;
-    start();
     const onForeground = () => {
       if (document.visibilityState === 'visible') refresh();
     };
@@ -165,7 +168,7 @@ export function useDayFeed(nearDates: () => readonly string[]) {
       // Reads still in flight must not land on an unmounted feed.
       reads.current++;
     };
-  }, [start, refresh]);
+  }, [refresh]);
 
-  return { feedWindow, loading, failure, target, jump, older, newer };
+  return { feedWindow, loading, failure, target, start, jump, older, newer };
 }

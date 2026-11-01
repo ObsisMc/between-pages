@@ -127,8 +127,8 @@ describe('verify-dependency-direction', () => {
       "import { openJournal } from '../journal/index.ts';",
     ],
     [
-      'the diary list opening the editor session',
-      'apps/web/src/diary-list/DiaryList.tsx',
+      'the day feed opening the editor session',
+      'apps/web/src/day-feed/DayFeed.tsx',
       "import { createDiarySession } from '../diary/session.ts';",
     ],
     ['an unlisted web sub-module', 'apps/web/src/reader/reader.ts', 'export const x = 1;'],

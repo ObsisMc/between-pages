@@ -1,0 +1,86 @@
+/* The diary workspace (book-frontend-workspace D3, D6). Wide: the book is the window's
+   height and each page scrolls inside itself, the left one in `.workspace-left`, the right
+   one in the feed's own box. The session keeps the reading position itself, as on the
+   window (see `overflow-anchor` there). */
+.workspace.book {
+  height: calc(100dvh - 4rem);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.workspace .book-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 2rem 2.5rem;
+}
+
+/* The unread tools float over the left page, not the window. */
+.workspace .book-left {
+  position: relative;
+}
+
+.workspace-left {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-anchor: none;
+}
+
+.workspace-left .unread-tools,
+.workspace-left .unread-direction {
+  position: absolute;
+}
+
+/* A page is too narrow for the history beside the text; it goes below. */
+.workspace-left .diary-body.with-history {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workspace .day-feed {
+  flex: 1;
+}
+
+.workspace-nav {
+  margin-bottom: 1rem;
+}
+
+.workspace-nav a {
+  color: var(--ink-soft);
+}
+
+.workspace-title {
+  margin: 0 0 1rem;
+  font-family: var(--font-title);
+  font-size: 1.5rem;
+}
+
+.choose-day p {
+  color: var(--ink-soft);
+}
+
+/* Narrow: one page, everything in the left one. */
+.workspace.narrow-feed .book-right,
+.workspace.narrow-day .book-right {
+  display: none;
+}
+
+.workspace.narrow-day .book-left {
+  display: block;
+}
+
+/* The feed alone is the window's height so its list scrolls inside it, the date jump above
+   it always in reach; the rows above the list keep clear of the bookmark. */
+.workspace.narrow-feed .book-left {
+  height: 100dvh;
+  padding-bottom: 0;
+}
+
+.workspace.narrow-feed .book-left::before {
+  content: none;
+}
+
+.workspace.narrow-feed .workspace-nav,
+.workspace.narrow-feed .workspace-title,
+.workspace.narrow-feed .feed-jump {
+  padding-right: 3rem;
+}

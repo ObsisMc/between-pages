@@ -144,7 +144,6 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       sender: ['journal'],
       'sync-client': ['api'],
       history: ['api'],
-      'diary-list': ['api', 'avatar'],
       // unread-and-day-page: the initial avatar knows no other module.
       avatar: [],
       'sharing-range': [],
@@ -162,12 +161,14 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       wishes: ['api', 'space-common'],
       anniversaries: ['api', 'space-common'],
       // book-frontend-workspace: `day-text` renders one diary's text read-only and knows no
-      // other module; `day-feed` is the right page's list of them, which `diary` mounts.
+      // other module; `day-feed` is the right page's list of them, which `diary` mounts
+      // beside the day editor in a `book` spread (D3).
       'day-text': [],
       'day-feed': ['api', 'avatar', 'day-text', 'read-tracker'],
       diary: [
         'api',
         'auth',
+        'book',
         'day-feed',
         'editor-binding',
         'journal',
