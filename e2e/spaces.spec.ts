@@ -40,6 +40,8 @@ test('AUTH-02 AUTH-07 AUTH-08 AUTH-11 SHARE-03 binds, unbinds and restores one f
   browser,
   browserName,
 }) => {
+  // Two or three accounts through a dozen pages: 19–27 s normally (2026-11-01, Ray chose 60 s).
+  test.setTimeout(60_000);
   const name = (who: string) => `${who}${browserName}${run}`;
   const a = await signedIn(browser, name('a'));
 

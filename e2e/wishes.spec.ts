@@ -37,6 +37,8 @@ test('[adr:wishes-and-gifts#2] [adr:wishes-and-gifts#4] [adr:wishes-and-gifts#5]
   browser,
   browserName,
 }) => {
+  // Two or three accounts through a dozen pages: 19–27 s normally (2026-11-01, Ray chose 60 s).
+  test.setTimeout(60_000);
   const name = (who: string) => `${who}${browserName}${run}wish`;
   const a = await signedIn(browser, name('a'));
   // Never bound: no space features at all.
