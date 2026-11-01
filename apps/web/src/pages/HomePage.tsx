@@ -8,6 +8,7 @@ import { BackupBanner } from '../backup/index.ts';
 import { DayList } from '../diary-list/index.ts';
 import { clearPendingInvite, pendingInvite } from '../join/index.ts';
 import { RelationshipPanel, partnerOf, useSpaces } from '../relationship/index.ts';
+import { EntryDot, useSpaceUnread } from '../space-common/index.ts';
 import { ClockStrip } from '../two-clocks/index.ts';
 
 /** The device's IANA zone decides which date "today" is (spec §4); the server checks it. */
@@ -16,6 +17,24 @@ const timezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 /** Today in `zone` as YYYY-MM-DD; only bounds the date picker, the server decides. */
 const todayIn = (zone: string) =>
   new Intl.DateTimeFormat('en-CA', { timeZone: zone }).format(new Date());
+
+/**
+ * The space features' entries (space-records D2, D8): only for an account with a space, each
+ * with a dot while it holds something the caller has not seen.
+ */
+function SpaceEntries() {
+  const unread = useSpaceUnread(true).data?.features;
+  return (
+    <nav className="space-entries" aria-label="双人空间">
+      <Link to="/wishes">
+        心愿与礼物 <EntryDot count={unread?.wishes} />
+      </Link>
+      <Link to="/anniversaries">
+        纪念日 <EntryDot count={unread?.anniversaries} />
+      </Link>
+    </nav>
+  );
+}
 
 /** Home behind RequireAuth: write today, open or back-fill a past day, the day list, sign out. */
 export function HomePage() {
@@ -90,6 +109,7 @@ export function HomePage() {
       </header>
       <BackupBanner />
       <ClockStrip />
+      {space && <SpaceEntries />}
       <p className="greeting">已登录为 {me.data?.user.displayName}</p>
       <button type="button" className="primary" disabled={opening} onClick={() => void openDiary()}>
         写今天
