@@ -12,16 +12,14 @@ import './workspace.css';
 /** Below this width the book is one page (book.css), and so is the workspace (D6). */
 const NARROW = '(max-width: 56rem)';
 
-function useNarrow() {
-  return useSyncExternalStore(
-    (changed) => {
-      const query = globalThis.matchMedia?.(NARROW);
-      query?.addEventListener('change', changed);
-      return () => query?.removeEventListener('change', changed);
-    },
-    () => globalThis.matchMedia?.(NARROW).matches ?? false,
-  );
+function onWidthChange(changed: () => void) {
+  const query = globalThis.matchMedia?.(NARROW);
+  query?.addEventListener('change', changed);
+  return () => query?.removeEventListener('change', changed);
 }
+// Without matchMedia (jsdom) the window counts as wide.
+const isNarrow = () => globalThis.matchMedia?.(NARROW).matches ?? false;
+const useNarrow = () => useSyncExternalStore(onWidthChange, isNarrow);
 
 /**
  * What a workspace entry keeps in the browser's history, never in the address (D3): where
@@ -128,7 +126,7 @@ export function DaysWorkspace() {
   return (
     <main className="days-workspace">
       <BookSpread
-        className="workspace"
+        className="workspace wide"
         left={
           <div className="workspace-left" ref={leftBox}>
             <ScrollBox value={leftBox}>

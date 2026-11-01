@@ -520,9 +520,24 @@ export function createDiarySession({
     if (rect.bottom <= seen.top) return { from: length, to: length };
     if (bottom <= top) return { from: 0, to: 0 };
     // Text index i sits at document position i + 1.
-    const from = view.posAtCoords({ left: rect.left + 1, top: top + 1 })?.pos ?? 1;
-    const to = view.posAtCoords({ left: rect.right - 1, top: bottom - 1 })?.pos;
+    const from = posAt(top + 1, [rect.left + 1, rect.right - 1]) ?? 1;
+    const to = posAt(bottom - 1, [rect.right - 1, rect.left + 1]);
     return { from: from - 1, to: (to ?? length + 1) - 1 };
+  }
+
+  /**
+   * The document position at height `top`, taken at the first of `lefts` where the editor
+   * itself is under the point: a floating notice or button may cover one edge, and a point
+   * off the editor would read as the end of the text. Null when neither edge shows it.
+   */
+  function posAt(top: number, lefts: number[]): number | null {
+    if (!editor) return null;
+    const { view } = editor;
+    for (const left of lefts) {
+      const hit = document.elementFromPoint(left, top);
+      if (hit && view.dom.contains(hit)) return view.posAtCoords({ left, top })?.pos ?? null;
+    }
+    return null;
   }
 
   /**
