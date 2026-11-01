@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { noRelationship, renderAt, signedIn, signedOut, stubApi } from '../../test/render.tsx';
+import { SPACE, space } from '../../test/relationship.ts';
 
 const diary = {
   diaryId: '7c1d2b8e-3f4a-4b5c-8d6e-9f0a1b2c3d4e',
@@ -102,5 +103,34 @@ describe('HomePage', () => {
       '离线时无法确认要打开的日记，请联网后再试',
     );
     expect(router.state.location.pathname).toBe('/');
+  });
+
+  it('[adr:space-records#10] lists the space features only for an account with a space, with a dot for news', async () => {
+    stubApi({
+      ...noRelationship,
+      'GET /api/me': signedIn('alice'),
+      'GET /api/days': noDays,
+    });
+    renderAt('/');
+    expect(await screen.findByText('写今天')).toBeDefined();
+    expect(screen.queryByText('心愿与礼物')).toBeNull();
+    cleanup();
+
+    stubApi({
+      ...noRelationship,
+      'GET /api/me': signedIn('alice'),
+      'GET /api/days': noDays,
+      'GET /api/binding': () =>
+        Response.json({ binding: { space: space(), periodId: SPACE }, invitation: null }),
+      'GET /api/spaces': () => Response.json({ spaces: [space()] }),
+      'GET /api/space/unread': () => Response.json({ features: { wishes: 2, anniversaries: 0 } }),
+    });
+    renderAt('/');
+    const entry = await screen.findByRole('link', { name: /心愿与礼物/ });
+    expect(entry.getAttribute('href')).toBe('/wishes');
+    await waitFor(() => expect(entry.querySelector('.unread-dot')).not.toBeNull());
+    const anniversaries = screen.getByRole('link', { name: /纪念日/ });
+    expect(anniversaries.getAttribute('href')).toBe('/anniversaries');
+    expect(anniversaries.querySelector('.unread-dot')).toBeNull();
   });
 });
