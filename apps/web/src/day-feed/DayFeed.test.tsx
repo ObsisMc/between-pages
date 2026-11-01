@@ -146,6 +146,36 @@ describe('DayFeed', () => {
     expect(within(region).queryByText('加载更早的日记')).toBeNull();
   });
 
+  it('keeps a keyboard user’s focus on a load button while its page loads and after', async () => {
+    let answer!: () => void;
+    const answered = new Promise<void>((resolve) => (answer = resolve));
+    stubApi({
+      ...signedInWithSpace,
+      'GET /api/days': page([{ diaryDate: '2026-10-27', mine: own(1), partner: null }], {
+        nextBefore: '2026-10-27',
+      }),
+      'GET /api/days?before=2026-10-27': () =>
+        answered.then(
+          page([{ diaryDate: '2026-10-26', mine: own(3), partner: null }], {
+            nextBefore: '2026-10-26',
+          }),
+        ),
+      ...ownDiary(1, [mineSays('今天')]),
+      ...ownDiary(3, [mineSays('昨天')]),
+    });
+    renderAt('/days');
+    const region = await feed();
+    const button = await within(region).findByRole('button', { name: '加载更早的日记' });
+    button.focus();
+    fireEvent.click(button);
+    await within(region).findByRole('button', { name: '正在读取…' });
+    expect(document.activeElement).toBe(button);
+    answer();
+    await within(region).findByText('昨天');
+    expect(document.activeElement).toBe(button);
+    expect(button.textContent).toBe('加载更早的日记');
+  });
+
   it('[adr:book-frontend-workspace#4] jumps to a date not loaded and without a diary, then pages newer and older', async () => {
     const fetchMock = stubApi({
       ...signedInWithSpace,
