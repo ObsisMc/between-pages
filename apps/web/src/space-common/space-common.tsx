@@ -177,6 +177,8 @@ export function refusalText(error: unknown): string {
       return '这条已经改过了，刷新后再改';
     case 'NOT_FOUND':
       return '这条已经不在了';
+    case 'RECORD_EXISTS':
+      return '已经有一个了，打开那一个修改';
     default:
       return '没有保存成功，请稍后再试';
   }

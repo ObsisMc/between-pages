@@ -123,11 +123,14 @@ describe('HomePage', () => {
       'GET /api/binding': () =>
         Response.json({ binding: { space: space(), periodId: SPACE }, invitation: null }),
       'GET /api/spaces': () => Response.json({ spaces: [space()] }),
-      'GET /api/space/unread': () => Response.json({ features: { wishes: 2 } }),
+      'GET /api/space/unread': () => Response.json({ features: { wishes: 2, anniversaries: 0 } }),
     });
     renderAt('/');
     const entry = await screen.findByRole('link', { name: /心愿与礼物/ });
     expect(entry.getAttribute('href')).toBe('/wishes');
     await waitFor(() => expect(entry.querySelector('.unread-dot')).not.toBeNull());
+    const anniversaries = screen.getByRole('link', { name: /纪念日/ });
+    expect(anniversaries.getAttribute('href')).toBe('/anniversaries');
+    expect(anniversaries.querySelector('.unread-dot')).toBeNull();
   });
 });

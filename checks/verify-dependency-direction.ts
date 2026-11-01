@@ -67,6 +67,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'clocks',
         'space-records',
         'wishes',
+        'anniversaries',
       ],
       ws: ['auth', 'errors', 'commit', 'diaries', 'reader', 'events'],
       // server-backup-and-google-docs: `google` calls Google and seals or opens tokens, knowing
@@ -88,10 +89,12 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       // two-clocks: the caller's own zone and sleep schedule, and the partner's while bound.
       clocks: ['store'],
       // space-records: membership, the open binding, history and unread for every space
-      // feature, knowing none of them; a feature (`wishes`) writes only through it and never
-      // imports another feature. `link-preview` reads a link and knows no database.
+      // feature, knowing none of them; a feature (`wishes`, `anniversaries`) writes only
+      // through it and never imports another feature; transport composes them where they
+      // meet (a gift's anniversary). `link-preview` reads a link and knows no database.
       'space-records': ['store'],
       wishes: ['space-records', 'store'],
+      anniversaries: ['space-records', 'store'],
       'link-preview': [],
       store: ['db', 'errors'],
     },
@@ -109,7 +112,17 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
     dir: 'apps/web/src',
     units: {
       main: ['*'],
-      routes: ['auth', 'pages', 'diary', 'join', 'space', 'backup', 'two-clocks', 'wishes'],
+      routes: [
+        'auth',
+        'pages',
+        'diary',
+        'join',
+        'space',
+        'backup',
+        'two-clocks',
+        'wishes',
+        'anniversaries',
+      ],
       api: [],
       auth: ['api'],
       pages: [
@@ -144,6 +157,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       // every space feature uses; features import it and never each other.
       'space-common': ['api'],
       wishes: ['api', 'space-common'],
+      anniversaries: ['api', 'space-common'],
       diary: [
         'api',
         'auth',

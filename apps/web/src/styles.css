@@ -708,6 +708,13 @@ button.link {
   padding: 0.5rem 0.75rem;
 }
 
+/* The strip's anniversary line (anniversaries D3), under the partner's clock. */
+.anniversary-line {
+  margin: 0;
+  padding: 0 0.75rem 0.5rem;
+  border-left: 0.25rem solid var(--line);
+}
+
 .period-dawn {
   border-left-color: #e2b07a;
 }
@@ -867,6 +874,7 @@ button.link {
 }
 
 .wish-form,
+.anniversary-form,
 .card-editor,
 .actions,
 .filters {
@@ -880,4 +888,28 @@ button.link {
 .card-editor textarea {
   min-width: 16rem;
   min-height: 5rem;
+}
+
+/* Anniversaries (anniversaries ADR): the next day with its countdown, whose date counts
+   (partner-local-dates D1), "第 N 天" and each year's gifts. */
+.anniversary-next .basis,
+.anniversary-note {
+  color: var(--ink-soft);
+  font-size: 0.875rem;
+}
+
+.day-count {
+  margin: 0.25rem 0;
+  font-family: var(--font-title);
+}
+
+label.inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.year-gifts {
+  margin: 0.25rem 0 0.5rem;
+  color: var(--ink-soft);
 }

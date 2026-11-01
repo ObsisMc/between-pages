@@ -31,6 +31,7 @@ export const ErrorCode = z.enum([
   'GOOGLE_DISCONNECTING',
   'SPACE_READ_ONLY',
   'RECORD_STALE',
+  'RECORD_EXISTS',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
 
@@ -75,6 +76,7 @@ export const errorStatus = {
   GOOGLE_DISCONNECTING: 409,
   SPACE_READ_ONLY: 409,
   RECORD_STALE: 409,
+  RECORD_EXISTS: 409,
 } as const satisfies Record<ErrorCode, number>;
 
 /**
@@ -119,7 +121,9 @@ export const errorCategory = {
   GOOGLE_EXCHANGE_FAILED: 'show',
   GOOGLE_DISCONNECTING: 'show',
   // Space records (space-records D3, D5): unbound, so read-only; or the record changed
-  // since it was loaded. The screen explains and reloads.
+  // since it was loaded; or the space may hold only one such record (anniversaries D1).
+  // The screen explains and reloads.
   SPACE_READ_ONLY: 'show',
   RECORD_STALE: 'show',
+  RECORD_EXISTS: 'show',
 } as const satisfies Record<ErrorCode, ErrorCategory>;

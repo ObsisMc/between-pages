@@ -37,6 +37,10 @@ import { createSharingService } from './sharing/sharing.ts';
 import { createSpaceRecords } from './space-records/space-records.ts';
 import { createSpaceRecordStore } from './store/space-records.ts';
 import { wishHandlers } from './routes/wishes.ts';
+import { spaceRecordHandlers } from './routes/space-records.ts';
+import { anniversaryHandlers } from './routes/anniversaries.ts';
+import { createAnniversaryService } from './anniversaries/anniversaries.ts';
+import { createReminderStore } from './store/anniversaries.ts';
 import { createWishService } from './wishes/wishes.ts';
 import { createBackupStore } from './store/backup.ts';
 import { createCopyStore } from './store/copy.ts';
@@ -176,9 +180,15 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   contractRoute('saveSleep', clocks.saveSleep);
 
   const records = createSpaceRecords(createSpaceRecordStore(deps.db));
-  const wishes = wishHandlers({ records, wishes: createWishService(records) });
-  contractRoute('spaceUnread', wishes.spaceUnread);
-  contractRoute('reportSeen', wishes.reportSeen);
+  const services = {
+    records,
+    wishes: createWishService(records),
+    anniversaries: createAnniversaryService(records, createReminderStore(deps.db)),
+  };
+  const space = spaceRecordHandlers(services);
+  contractRoute('spaceUnread', space.spaceUnread);
+  contractRoute('reportSeen', space.reportSeen);
+  const wishes = wishHandlers(services);
   contractRoute('wishes', wishes.wishes);
   contractRoute('createWish', wishes.createWish);
   contractRoute('editWish', wishes.editWish);
@@ -191,6 +201,15 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   contractRoute('saveGiftCard', wishes.saveGiftCard);
   contractRoute('setGiftDate', wishes.setGiftDate);
   contractRoute('setGiftOccasion', wishes.setGiftOccasion);
+  const anniversaries = anniversaryHandlers(services);
+  contractRoute('anniversaries', anniversaries.anniversaries);
+  contractRoute('anniversary', anniversaries.anniversary);
+  contractRoute('createAnniversary', anniversaries.createAnniversary);
+  contractRoute('editAnniversary', anniversaries.editAnniversary);
+  contractRoute('deleteAnniversary', anniversaries.deleteAnniversary);
+  contractRoute('setAnniversaryDate', anniversaries.setAnniversaryDate);
+  contractRoute('setAnniversaryCount', anniversaries.setAnniversaryCount);
+  contractRoute('saveAnniversaryReminder', anniversaries.saveAnniversaryReminder);
 
   const backup = backupHandlers(backupService);
   contractRoute('backup', backup.backup);

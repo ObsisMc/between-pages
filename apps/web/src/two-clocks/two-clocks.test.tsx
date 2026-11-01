@@ -44,6 +44,62 @@ describe('ClockStrip', () => {
     expect(screen.queryByText(/TA 那边/)).toBeNull();
   });
 
+  it('[adr:anniversaries#5] [adr:partner-local-dates#4] adds the home anniversary, counting hours in its last day, with the partner’s wishes', async () => {
+    // Bo's birthday starts a little under three hours from now on Bo's side.
+    const startsAt = NOW + 3 * 3_600_000 - 1;
+    at(NOW);
+    const birthday = {
+      id: '0d0d0d0d-0000-4000-8000-000000000001',
+      authorId: PARTNER.id,
+      kind: 'birthday',
+      birthdayOf: PARTNER.id,
+      name: null,
+      note: null,
+      year: null,
+      month: 11,
+      day: 11,
+      dateSet: null,
+      showCount: false,
+      countSet: null,
+      reminder: 7,
+      basis: 'partner',
+      dayCount: null,
+      next: {
+        date: '2026-11-11',
+        startsAt: new Date(startsAt).toISOString(),
+        endsAt: new Date(startsAt + 86_400_000).toISOString(),
+        type: 'yearly',
+        years: null,
+        count: null,
+        daysLeft: 1,
+      },
+      due: true,
+      revision: 1,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      unread: null,
+      mark: 0,
+    };
+    stubApi({
+      'GET /api/clocks': clocks({}, { timezone: 'Asia/Tokyo' }),
+      'GET /api/anniversaries?timezone=Asia%2FShanghai': () =>
+        Response.json({
+          me: { id: '6f1c1d0e-0000-4000-8000-000000000001', displayName: 'alice' },
+          partner: PARTNER,
+          readOnly: false,
+          anniversaries: [birthday],
+          home: birthday.id,
+          notes: [],
+        }),
+    });
+    renderAt('/', routes);
+    const line = await screen.findByText('TA 那边还有 3 小时到生日');
+    expect(line.getAttribute('href')).toBe(`/anniversaries/${birthday.id}`);
+    expect(screen.getByRole('link', { name: '看看 TA 的心愿' }).getAttribute('href')).toBe(
+      '/wishes',
+    );
+  });
+
   it("shows the partner's local time, its region and that they are probably asleep", async () => {
     at(NOW);
     stubApi({
