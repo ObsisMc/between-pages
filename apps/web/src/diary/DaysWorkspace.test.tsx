@@ -1,5 +1,8 @@
 import 'fake-indexeddb/auto';
-import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { StrictMode } from 'react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Day } from '@between-pages/contracts';
 import { FakeSocket, GENERATION, stubLocks } from '../../test/diary.ts';
@@ -7,6 +10,7 @@ import { stateOf, type Turn } from '../../test/day-text.ts';
 import { renderAt, signedIn, stubApi } from '../../test/render.tsx';
 import { ME, space } from '../../test/relationship.ts';
 import { POSITION_MS } from '../day-feed/index.ts';
+import { appRoutes } from '../routes.tsx';
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const NO_COPY = { connected: false, docUrl: null, mine: null, partner: null, problem: null };
@@ -188,6 +192,25 @@ describe('DaysWorkspace', () => {
     const calls = requested(fetchMock);
     expect(calls).not.toContain('GET /api/days');
     expect(calls.filter((r) => r.startsWith('POST'))).toEqual([]);
+  });
+
+  it('[adr:book-frontend-workspace#4] loads a deep link’s feed through StrictMode’s second mount, as in development', async () => {
+    stubApi({
+      ...fourDates,
+      'GET /api/days?before=2026-10-26': page([dated('2026-10-25', 3)]),
+      'GET /api/days?after=2026-10-25': page([dated('2026-10-27', 1)]),
+    });
+    const router = createMemoryRouter(appRoutes, { initialEntries: ['/days/2026-10-25'] });
+    render(
+      <StrictMode>
+        <QueryClientProvider client={new QueryClient()}>
+          <RouterProvider router={router} />
+        </QueryClientProvider>
+      </StrictMode>,
+    );
+    const region = await feed();
+    await waitFor(() => expect(dateOf(region, '2026-10-27')).not.toBeNull());
+    expect(within(region).queryByText('正在读取…')).toBeNull();
   });
 
   it('[adr:book-frontend-workspace#9] collapses the own diary open in the left page and reads it afresh once the left page moves on', async () => {

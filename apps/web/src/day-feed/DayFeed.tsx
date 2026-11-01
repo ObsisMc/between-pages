@@ -326,12 +326,19 @@ export function DayFeed({
     anchor.current = captureAnchor(root);
   }, [target, place]);
 
-  // Where the caller wants the list (D3): not where it already said it is.
+  // Where the caller wants the list (D3): not where it already said it is. Undefined until
+  // mounted: a (re)mount drops the reads in flight, so it goes there again.
   const { start, jump } = feed;
-  const reported = useRef<string | null>(null);
+  const reported = useRef<string | null | undefined>(undefined);
+  useEffect(
+    () => () => {
+      reported.current = undefined;
+    },
+    [],
+  );
   const positionKey = position && JSON.stringify(position);
   useEffect(() => {
-    if (positionKey !== null && positionKey === reported.current) return;
+    if (positionKey === reported.current) return;
     reported.current = positionKey;
     const at = positionKey === null ? null : (JSON.parse(positionKey) as Anchor);
     const root = scroller.current;
