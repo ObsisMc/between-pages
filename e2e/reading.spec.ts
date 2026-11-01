@@ -177,6 +177,14 @@ test('[adr:unread-and-day-page#6] [adr:unread-and-day-page#8] READ-01 SYNC-06 op
   expect(Math.abs(flashTop - (page.top + (page.bottom - page.top) / 3))).toBeLessThan(40);
   await expect(b.getByText('↑ 上面有新内容')).toHaveCount(0);
 
+  // The notice keeps its line once used (D5): idle, it is as tall as while it offered the
+  // jump, so nothing below it moves under the reader.
+  const banner = b.locator('.workspace-left .unread-banner');
+  const offered = (await banner.boundingBox())!.height;
+  await b.getByRole('button', { name: '跳到第一处' }).click();
+  await expect(b.getByText('有 1 处新内容 · 跳到第一处')).toHaveCount(0);
+  expect((await banner.boundingBox())!.height).toBe(offered);
+
   // B writes a block of their own between lines 60 and 61, then reads around line 60.
   const next = (await b.evaluate(() => {
     const walker = document.createTreeWalker(
