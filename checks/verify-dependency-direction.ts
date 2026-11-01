@@ -129,13 +129,16 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'api',
         'auth',
         'backup',
-        'diary-list',
+        'book',
         'join',
         'relationship',
         'shared-diaries',
         'space-common',
         'two-clocks',
       ],
+      // book-frontend-workspace D1, D2: the spread, the bookmark and the contents are layout
+      // and navigation only; the caller says which entries exist.
+      book: [],
       'editor-binding': [],
       journal: [],
       sender: ['journal'],
@@ -151,7 +154,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       'shared-diaries': ['api'],
       // server-backup-and-google-docs D9: the backup page, the Google callback and the home banner.
       backup: ['api'],
-      // two-clocks: the home strip, the clocks page and the browser's zone report.
+      // two-clocks: the home time area, the clocks page and the browser's zone report.
       'two-clocks': ['api'],
       // space-records: the entry dot, seen reports, unread jumps and the read-only notice
       // every space feature uses; features import it and never each other.
