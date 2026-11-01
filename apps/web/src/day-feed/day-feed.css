@@ -14,12 +14,83 @@
   align-items: center;
 }
 
-/* The feed keeps the reading position itself (D8); see `anchor.ts`. */
+/* The box and the unread buttons over it (D5). */
+.feed-body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* The feed keeps the reading position itself (D8); see `anchor.ts`. The bottom padding
+   keeps the last line and action clear of the ↓ button. */
 .day-feed-scroll {
   flex: 1;
   min-height: 0;
+  padding-bottom: 3.5rem;
   overflow-y: auto;
   overflow-anchor: none;
+}
+
+/* "加载更新的日记" sits below the ↑ button. */
+.feed-edge[data-edge='newer'] {
+  padding-top: 3.5rem;
+}
+
+/* The round unread buttons (D5): centred at the box's top (↑) and bottom (↓), arrow only,
+   the name shown on hover and focus. */
+.feed-arrow {
+  position: absolute;
+  left: 50%;
+  z-index: 1;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--ink) 20%, transparent);
+  color: var(--accent);
+  font-size: 1.25rem;
+  line-height: 1;
+  transform: translateX(-50%);
+  cursor: pointer;
+}
+
+.feed-arrow.newer {
+  top: 0.5rem;
+}
+
+.feed-arrow.older {
+  bottom: 0.5rem;
+}
+
+.feed-arrow-tip {
+  position: absolute;
+  left: 50%;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.feed-arrow.newer .feed-arrow-tip {
+  top: calc(100% + 0.25rem);
+}
+
+.feed-arrow.older .feed-arrow-tip {
+  bottom: calc(100% + 0.25rem);
+}
+
+.feed-arrow:hover .feed-arrow-tip,
+.feed-arrow:focus-visible .feed-arrow-tip {
+  opacity: 1;
 }
 
 .feed-date {

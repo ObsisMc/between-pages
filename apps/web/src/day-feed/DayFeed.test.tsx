@@ -199,7 +199,7 @@ describe('DayFeed', () => {
       '2026-06-01',
     ]);
     // Paging never walked from the newest to the date, and nothing was created.
-    expect(requested(fetchMock).filter((r) => r.includes('/api/days'))).toEqual([
+    expect(requested(fetchMock).filter((r) => /^GET \/api\/days(\?|$)/.test(r))).toEqual([
       'GET /api/days',
       'GET /api/days?before=2026-06-11',
       'GET /api/days?after=2026-06-10',
@@ -415,5 +415,119 @@ describe('DayFeed', () => {
       `GET /api/diaries/${id(5)}`,
       `GET /api/diaries/${id(5)}`,
     ]);
+  });
+});
+
+describe('DayFeed unread buttons', () => {
+  const down = (region: HTMLElement) =>
+    within(region).queryByRole('button', { name: '下一处未读' });
+  const up = (region: HTMLElement) => within(region).queryByRole('button', { name: '上一处未读' });
+  /** The feed's box shows 600px; unread passages lie below it, everything else at 0. */
+  const layout = () =>
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: Element,
+    ) {
+      if (this.classList.contains('day-feed-scroll')) return new DOMRect(0, 0, 400, 600);
+      if (this.tagName === 'MARK') return new DOMRect(0, 900, 100, 20);
+      return new DOMRect(0, 0, 0, 0);
+    });
+
+  it('[adr:book-frontend-workspace#5] looks both ways on entry without scrolling or reading, and shows only the way with unread', async () => {
+    layout();
+    const fetchMock = stubApi({
+      ...signedInWithSpace,
+      'GET /api/days': page([{ diaryDate: '2026-10-27', mine: null, partner: shared(2) }], {
+        nextBefore: '2026-10-27',
+      }),
+      'GET /api/days/next-unread?before=2026-10-27': () => Response.json({ date: '2026-06-01' }),
+      ...sharedDiary(2, [theySay('都读过了')], [{ clientId: 2, from: 0, to: 4 }]),
+    });
+    renderAt('/days');
+    const region = await feed();
+    await waitFor(() => expect(down(region)).not.toBeNull());
+    // The newest date is loaded: nothing newer to look for, so no ↑ and no ask.
+    expect(up(region)).toBeNull();
+    expect(requested(fetchMock).filter((r) => r.includes('next-unread'))).toEqual([
+      'GET /api/days/next-unread?before=2026-10-27',
+    ]);
+    // Looking moved nothing and jumped nowhere.
+    expect(region.querySelector('.day-feed-scroll')!.scrollTop).toBe(0);
+    expect(shownDates(region)).toEqual(['2026-10-27']);
+    expect(requested(fetchMock).filter((r) => r.startsWith('POST'))).toEqual([]);
+  });
+
+  it('[adr:book-frontend-workspace#5] jumps to an unread date not loaded and its first unread passage, leaving the focus in the left page', async () => {
+    layout();
+    stubApi({
+      ...signedInWithSpace,
+      'GET /api/days': page([{ diaryDate: '2026-10-27', mine: own(1), partner: null }], {
+        nextBefore: '2026-10-27',
+      }),
+      'GET /api/days/next-unread?before=2026-10-27': () => Response.json({ date: '2026-06-01' }),
+      'GET /api/days?before=2026-06-02': page([
+        { diaryDate: '2026-06-01', mine: null, partner: shared(3, { unread: true }) },
+      ]),
+      'GET /api/days?after=2026-06-01': page(
+        [{ diaryDate: '2026-10-27', mine: own(1), partner: null }],
+        { nextAfter: '2026-10-27' },
+      ),
+      'GET /api/days/next-unread?after=2026-10-27': () => Response.json({ date: null }),
+      ...ownDiary(1, [mineSays('今天')]),
+      ...sharedDiary(3, [theySay('读过的'), theySay('没读的')], [{ clientId: 2, from: 0, to: 3 }]),
+    });
+    renderAt('/', [
+      {
+        path: '/',
+        element: (
+          <>
+            <textarea aria-label="左页" />
+            <DayFeed {...people} />
+          </>
+        ),
+      },
+    ]);
+    const region = await feed();
+    const editor = screen.getByLabelText('左页');
+    editor.focus();
+    const arrow = await within(region).findByRole('button', { name: '下一处未读' });
+    // Pressing the button does not take the focus; the click jumps.
+    expect(fireEvent.mouseDown(arrow)).toBe(false);
+    fireEvent.click(arrow);
+
+    const passage = await within(region).findByText('没读的');
+    await waitFor(() => expect(passage.classList).toContain('unread-flash'));
+    expect(passage.tagName).toBe('MARK');
+    // A third down the 600px box: the passage at 900 moves up by 700.
+    expect(region.querySelector('.day-feed-scroll')!.scrollTop).toBe(700);
+    expect(document.activeElement).toBe(editor);
+  });
+
+  it('hides a button whose lookup failed, without saying there is no unread, and looks again on refresh', async () => {
+    let fail = false;
+    const lookup = 'GET /api/days/next-unread?before=2026-10-27';
+    const fetchMock = stubApi({
+      ...signedInWithSpace,
+      'GET /api/days': page([{ diaryDate: '2026-10-27', mine: own(1), partner: null }], {
+        nextBefore: '2026-10-27',
+      }),
+      [lookup]: () => (fail ? errorBody('INTERNAL', 500)() : Response.json({ date: '2026-06-01' })),
+      ...ownDiary(1, [mineSays('今天')]),
+    });
+    const lookups = () => requested(fetchMock).filter((r) => r === lookup).length;
+    renderAt('/days');
+    const region = await feed();
+    await within(region).findByRole('button', { name: '下一处未读' });
+
+    fail = true;
+    act(() => void window.dispatchEvent(new Event('focus')));
+    await waitFor(() => expect(lookups()).toBe(2));
+    await waitFor(() => expect(down(region)).toBeNull());
+    expect(up(region)).toBeNull();
+    expect(within(region).queryByText(/没有未读/)).toBeNull();
+
+    fail = false;
+    act(() => void window.dispatchEvent(new Event('focus')));
+    await within(region).findByRole('button', { name: '下一处未读' });
+    expect(lookups()).toBe(3);
   });
 });

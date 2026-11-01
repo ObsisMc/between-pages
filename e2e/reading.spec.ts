@@ -161,7 +161,7 @@ test('[adr:unread-and-day-page#6] [adr:unread-and-day-page#8] READ-01 SYNC-06 op
   expect((await leftPage(b)).scrollTop).toBe(0);
 
   // "下一处未读" brings the unread passage about a third down the page, highlighted.
-  await b.getByRole('button', { name: '下一处未读' }).click();
+  await b.locator('.workspace-left').getByRole('button', { name: '下一处未读' }).click();
   const flash = b.locator('.unread-flash');
   await expect(flash).toBeVisible();
   const page = await leftPage(b);
