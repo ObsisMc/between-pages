@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { homeLine, type HomeAnniversary } from './anniversary-line.ts';
 
-// The anniversary line of the home strip (anniversaries D3, partner-local-dates D3).
+// The anniversary line of the home time area (anniversaries D3, partner-local-dates D3).
 
 const ME = '6f1c1d0e-0000-4000-8000-000000000001';
 const PARTNER = '6f1c1d0e-0000-4000-8000-000000000002';

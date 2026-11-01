@@ -3,7 +3,17 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-libra
 import type { Day } from '@between-pages/contracts';
 import { renderAt, signedIn, stubApi } from '../../test/render.tsx';
 import { space } from '../../test/relationship.ts';
-import { REFRESH_MS } from './index.ts';
+import { DayList, REFRESH_MS } from './index.ts';
+
+// The home page no longer shows the list (opening-book-home D1); until the day workspace
+// replaces it, it is mounted on its own with the people the home page used to pass.
+const routes = [
+  {
+    path: '/',
+    element: <DayList me={{ name: 'alice', slot: 1 }} partner={{ name: 'bob', slot: 2 }} />,
+  },
+  { path: '*', element: null },
+];
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const mine = (n: number, excerpt: string | null, unread = false) => ({
@@ -70,7 +80,7 @@ describe('DayList', () => {
         { diaryDate: '2026-10-20', mine: mine(5, ''), partner: null },
       ]),
     });
-    const { router } = renderAt('/');
+    const { router } = renderAt('/', routes);
 
     const region = await list();
     await within(region).findByText('今天下雨');
@@ -113,7 +123,7 @@ describe('DayList', () => {
     );
     const second = vi.fn(page([{ diaryDate: '2026-10-20', mine: mine(2, '更早'), partner: null }]));
     stubApi({ ...bound, 'GET /api/days': first, 'GET /api/days?before=2026-10-27': second });
-    renderAt('/');
+    renderAt('/', routes);
     const region = await list();
     fireEvent.click(await within(region).findByText('加载更早的日记'));
     await within(region).findByText('更早');
@@ -141,7 +151,7 @@ describe('DayList', () => {
           ? page([{ diaryDate: '2026-10-27', mine: mine(1, '早上', true), partner: null }])()
           : Promise.reject(new TypeError('Failed to fetch')),
     });
-    renderAt('/');
+    renderAt('/', routes);
     const region = await list();
     await within(region).findByLabelText('有新内容');
 
@@ -156,12 +166,12 @@ describe('DayList', () => {
 
   it('invites a first diary when there is none, and says it cannot read the list offline', async () => {
     stubApi({ ...bound, 'GET /api/days': page([]) });
-    renderAt('/');
+    renderAt('/', routes);
     expect(await within(await list()).findByText('还没有日记，从今天开始写吧')).toBeDefined();
     cleanup();
 
     stubApi({ ...bound, 'GET /api/days': () => Promise.reject(new TypeError('Failed to fetch')) });
-    renderAt('/');
+    renderAt('/', routes);
     const region = await list();
     expect((await within(region).findByRole('alert')).textContent).toBe(
       '离线时无法读取日记列表，联网后再试',

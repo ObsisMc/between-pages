@@ -1,2 +1,2 @@
-export { ClockStrip } from './ClockStrip.tsx';
 export { ClocksPage } from './ClocksPage.tsx';
+export { HomeClocks } from './HomeClocks.tsx';

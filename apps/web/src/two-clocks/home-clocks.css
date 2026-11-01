@@ -1,0 +1,105 @@
+/* The home page's time area (opening-book-home D2): two clocks side by side and today's
+   timeline. Warm orange for the shared hours, quiet blue for the rest of the day. */
+.home-clocks h2,
+.home-clocks .clock-who {
+  font-family: var(--font-title);
+  font-weight: 600;
+}
+
+.home-clocks h2 {
+  font-size: 1.125rem;
+  margin: 0 0 1.25rem;
+}
+
+.clock-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+}
+
+.clock-face {
+  margin: 0;
+  padding: 0 0.75rem;
+  text-align: center;
+}
+
+.clock-face + .clock-face {
+  border-left: 1px solid var(--line);
+}
+
+.clock-face p {
+  margin: 0;
+}
+
+.clock-time {
+  font-family: var(--font-title);
+  font-size: 3rem;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.clock-day,
+.clock-missing {
+  color: var(--ink-soft);
+  font-size: 0.875rem;
+}
+
+.awake {
+  margin-top: 2rem;
+}
+
+.awake-text {
+  color: var(--accent);
+  margin: 1.5rem 0 0.75rem;
+}
+
+/* The track, its shared spans, the hour labels under it and the "现在" mark. */
+.awake-line {
+  position: relative;
+  height: 0.5rem;
+  margin: 0 1rem 3.5rem;
+  border-radius: 0.25rem;
+  background: color-mix(in srgb, var(--author-2) 22%, transparent);
+}
+
+.awake-span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 0.25rem;
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.awake-tick,
+.awake-now > span {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 0.75rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.awake-tick {
+  top: 1rem;
+  color: var(--ink-soft);
+}
+
+/* A mark across the track, its label under the hour labels. */
+.awake-now {
+  position: absolute;
+  top: -0.25rem;
+  height: 1rem;
+  margin-left: -1px;
+  border-left: 2px solid var(--accent);
+}
+
+.awake-now > span {
+  top: 2.5rem;
+  left: 0;
+  color: var(--accent);
+}
+
+.home-clocks .anniversary-line {
+  border-left: 0;
+  padding: 0;
+  margin-top: 1rem;
+}

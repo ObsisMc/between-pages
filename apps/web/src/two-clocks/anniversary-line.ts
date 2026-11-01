@@ -1,6 +1,6 @@
 import type { ResponseOf } from '@between-pages/contracts';
 
-// The anniversary line of the home strip (anniversaries D3, partner-local-dates D1–D3): one
+// The anniversary line of the home time area (anniversaries D3, partner-local-dates D1–D3): one
 // anniversary, counted in its basis zone. Days until the last 24 hours, then hours to the
 // day's start there, then "今天是…" until the day ends there.
 

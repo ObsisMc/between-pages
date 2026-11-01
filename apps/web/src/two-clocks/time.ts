@@ -149,6 +149,15 @@ export function clockText(instant: number, zone: string, dayEnd?: number): strin
   return `${p.hour}:${String(p.minute).padStart(2, '0')}`;
 }
 
+/** "11 月 1 日 · 周日": the local date of `instant` in `zone`, so a crossed day shows. */
+export function dayText(instant: number, zone: string): string {
+  const { month, day } = localParts(instant, zone);
+  const weekday = new Intl.DateTimeFormat('zh-CN', { timeZone: zone, weekday: 'short' }).format(
+    instant,
+  );
+  return `${month} 月 ${day} 日 · ${weekday}`;
+}
+
 /** "23:30" for a local minute of the day. */
 export const minuteText = (minute: number) =>
   `${Math.floor(minute / 60)}:${String(minute % 60).padStart(2, '0')}`;

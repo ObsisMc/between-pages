@@ -1,19 +1,21 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { noRelationship, renderAt, signedIn, signedOut, stubApi } from '../../test/render.tsx';
-import { SPACE, space } from '../../test/relationship.ts';
+import { PARTNER, SPACE, space } from '../../test/relationship.ts';
 
-const diary = {
-  diaryId: '7c1d2b8e-3f4a-4b5c-8d6e-9f0a1b2c3d4e',
-  diaryDate: '2026-10-05',
-  ownerId: '6f1c1d0e-0000-4000-8000-000000000001',
-  generationId: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d',
-  seq: 0,
-  state: '',
-  bindings: [],
+const today = new Intl.DateTimeFormat('en-CA').format(new Date());
+const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+const bound = {
+  'GET /api/binding': () =>
+    Response.json({ binding: { space: space(), periodId: SPACE }, invitation: null }),
+  'GET /api/spaces': () => Response.json({ spaces: [space()] }),
+  'GET /api/clocks': () =>
+    Response.json({
+      me: { timezone: zone, sleep: null },
+      partner: { user: { id: PARTNER, displayName: 'bob' }, timezone: zone, sleep: null },
+    }),
 };
-
-const noDays = () => Response.json({ days: [], nextBefore: null, nextAfter: null });
 
 afterEach(() => {
   cleanup();
@@ -26,7 +28,6 @@ describe('HomePage', () => {
     stubApi({
       ...noRelationship,
       'GET /api/me': () => (session ? signedIn('alice')() : signedOut()),
-      'GET /api/days': noDays,
       'POST /api/auth/sign-out': () => ((session = false), Response.json({ success: true })),
     });
     const { router, client } = renderAt('/');
@@ -40,7 +41,6 @@ describe('HomePage', () => {
     stubApi({
       ...noRelationship,
       'GET /api/me': signedIn('alice'),
-      'GET /api/days': noDays,
       'POST /api/auth/sign-out': () => new Response(null, { status: 500 }),
     });
     const { router } = renderAt('/');
@@ -49,88 +49,81 @@ describe('HomePage', () => {
     expect(router.state.location.pathname).toBe('/');
   });
 
-  it('opens today in the device time zone and goes to that diary', async () => {
-    const opened = vi.fn((init: RequestInit | undefined) => {
-      void init;
-      return Response.json({ created: true, diary: { ...diary, diaryDate: '2026-10-27' } });
-    });
-    stubApi({
-      ...noRelationship,
-      'GET /api/me': signedIn('alice'),
-      'GET /api/days': noDays,
-      'POST /api/diaries': opened,
-    });
-    const { router } = renderAt('/');
-    fireEvent.click(await screen.findByText('写今天'));
-    await waitFor(() => expect(router.state.location.pathname).toBe(`/diaries/${diary.diaryId}`));
-    expect(JSON.parse(String(opened.mock.calls[0]![0]?.body))).toEqual({
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    });
-  });
-
-  it('opens a past date the user picks', async () => {
-    const opened = vi.fn((init: RequestInit | undefined) => {
-      void init;
-      return Response.json({ created: true, diary });
-    });
-    stubApi({
-      ...noRelationship,
-      'GET /api/me': signedIn('alice'),
-      'GET /api/days': noDays,
-      'POST /api/diaries': opened,
-    });
-    const { router } = renderAt('/');
-    fireEvent.change(await screen.findByLabelText('打开或补写过去的日期'), {
-      target: { value: '2026-10-05' },
-    });
-    fireEvent.click(screen.getByText('打开'));
-    await waitFor(() => expect(router.state.location.pathname).toBe(`/diaries/${diary.diaryId}`));
-    expect(JSON.parse(String(opened.mock.calls[0]![0]?.body))).toMatchObject({
-      date: '2026-10-05',
-    });
-  });
-
-  it('does not claim to open today while offline', async () => {
-    stubApi({
-      ...noRelationship,
-      'GET /api/me': signedIn('alice'),
-      'GET /api/days': noDays,
-      'POST /api/diaries': () => Promise.reject(new TypeError('Failed to fetch')),
-    });
-    const { router } = renderAt('/');
-    fireEvent.click(await screen.findByText('写今天'));
-    expect((await screen.findByRole('alert')).textContent).toBe(
-      '离线时无法确认要打开的日记，请联网后再试',
+  it('[adr:opening-book-home#1] [adr:book-frontend-workspace#2] shows no diary text and never asks for diaries', async () => {
+    const days = vi.fn(() =>
+      Response.json({
+        days: [
+          {
+            diaryDate: today,
+            mine: {
+              diaryId: '7c1d2b8e-3f4a-4b5c-8d6e-9f0a1b2c3d4e',
+              excerpt: '今天下雨',
+              updatedAt: '2026-10-27T08:00:00Z',
+              hasText: true,
+              unread: false,
+              sharedWithPartner: false,
+              writing: false,
+            },
+            partner: null,
+          },
+        ],
+        nextBefore: null,
+        nextAfter: null,
+      }),
     );
-    expect(router.state.location.pathname).toBe('/');
+    stubApi({
+      ...noRelationship,
+      ...bound,
+      'GET /api/me': signedIn('alice'),
+      'GET /api/days': days,
+    });
+    renderAt('/');
+    expect(await screen.findByText('TA 那边')).toBeDefined();
+    expect(await screen.findByText('已登录为 alice')).toBeDefined();
+    expect(days).not.toHaveBeenCalled();
+    expect(screen.queryByText(/今天下雨/)).toBeNull();
   });
 
-  it('[adr:space-records#10] lists the space features only for an account with a space, with a dot for news', async () => {
-    stubApi({
-      ...noRelationship,
-      'GET /api/me': signedIn('alice'),
-      'GET /api/days': noDays,
-    });
-    renderAt('/');
-    expect(await screen.findByText('写今天')).toBeDefined();
-    expect(screen.queryByText('心愿与礼物')).toBeNull();
-    cleanup();
+  it("[adr:opening-book-home#3] [adr:book-frontend-workspace#2] leads to today's diary and to all diaries", async () => {
+    stubApi({ ...noRelationship, 'GET /api/me': signedIn('alice') });
+    const { router } = renderAt('/');
+    const todayLink = await screen.findByRole('link', { name: '打开今天的日记' });
+    expect(todayLink.getAttribute('href')).toBe(`/days/${today}`);
+    expect(screen.getByRole('link', { name: '浏览所有日记' }).getAttribute('href')).toBe('/days');
 
+    fireEvent.click(todayLink);
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/days/${today}`));
+  });
+
+  it('[adr:opening-book-home#5] offers the invitation instead of the partner while unbound', async () => {
+    stubApi({ ...noRelationship, 'GET /api/me': signedIn('alice') });
+    renderAt('/');
+    expect(await screen.findByText('生成邀请链接')).toBeDefined();
+    expect(screen.getByText('我这边')).toBeDefined();
+    expect(screen.queryByText(/TA 那边|醒着/)).toBeNull();
+  });
+
+  it('[adr:opening-book-home#5] keeps the archived space and the restore invitation after unbinding, without the partner', async () => {
     stubApi({
       ...noRelationship,
       'GET /api/me': signedIn('alice'),
-      'GET /api/days': noDays,
-      'GET /api/binding': () =>
-        Response.json({ binding: { space: space(), periodId: SPACE }, invitation: null }),
-      'GET /api/spaces': () => Response.json({ spaces: [space()] }),
-      'GET /api/space/unread': () => Response.json({ features: { wishes: 2, anniversaries: 0 } }),
+      'GET /api/spaces': () => Response.json({ spaces: [space('archived')] }),
     });
     renderAt('/');
-    const entry = await screen.findByRole('link', { name: /心愿与礼物/ });
-    expect(entry.getAttribute('href')).toBe('/wishes');
-    await waitFor(() => expect(entry.querySelector('.unread-dot')).not.toBeNull());
-    const anniversaries = screen.getByRole('link', { name: /纪念日/ });
-    expect(anniversaries.getAttribute('href')).toBe('/anniversaries');
-    expect(anniversaries.querySelector('.unread-dot')).toBeNull();
+    expect(await screen.findByText('邀请原搭档恢复关系')).toBeDefined();
+    expect(screen.getByRole('link', { name: '与 bob 的空间' }).getAttribute('href')).toBe(
+      `/spaces/${SPACE}`,
+    );
+    expect(screen.queryByText(/TA 那边|醒着/)).toBeNull();
+  });
+
+  it('shows the partner and the current space in place of the invitation while bound', async () => {
+    stubApi({ ...noRelationship, ...bound, 'GET /api/me': signedIn('alice') });
+    renderAt('/');
+    expect(await screen.findByText('TA 那边')).toBeDefined();
+    expect((await screen.findByRole('link', { name: '与 bob 的空间' })).getAttribute('href')).toBe(
+      `/spaces/${SPACE}`,
+    );
+    expect(screen.queryByText(/邀请/)).toBeNull();
   });
 });
