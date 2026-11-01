@@ -1,0 +1,20 @@
+/* `/days` in one column: the page is the window's height so the feed scrolls inside it. */
+.days-page {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: 40rem;
+  padding-top: 1.5rem;
+  padding-bottom: 0;
+}
+
+.days-page-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.days-page .day-feed {
+  flex: 1;
+}
