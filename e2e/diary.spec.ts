@@ -1,8 +1,8 @@
 import { expect, test, type Browser, type Page, type WebSocketRoute } from '@playwright/test';
 import * as Y from 'yjs';
 
-// Kernel phase 3 through the real stack in Chromium, Firefox and WebKit: the diary screen,
-// IndexedDB journal, Web Lock sender and sync socket against the API and PostgreSQL.
+// Kernel phase 3 through the real stack in Chromium, Firefox and WebKit: the diary screen
+// (the day editor in the workspace's left page, and the old single-diary link), IndexedDB journal, Web Lock sender and sync socket against the API and PostgreSQL.
 // Failures are made at the socket with routeWebSocket; everything behind it is real.
 // Names carry the browser and a per-run suffix, so projects running at once and reruns
 // against one database stay independent.
@@ -15,14 +15,37 @@ async function devLogin(page: Page, name: string) {
   await expect(page).toHaveURL(/\/$/);
 }
 
+/** "写今天" in the diary workspace; returns the diary's ID, as the server lists it. */
 async function writeToday(page: Page) {
+  await page.goto('/days');
   await page.getByRole('button', { name: '写今天' }).click();
-  await expect(page).toHaveURL(/\/diaries\/[0-9a-f-]{36}$/);
+  await expect(page).toHaveURL(/\/days\/\d{4}-\d{2}-\d{2}$/);
   await expect(editor(page)).toBeVisible();
-  return page.url().split('/').at(-1)!;
+  return ownDiaryId(page);
 }
 
-const editor = (page: Page) => page.getByRole('textbox');
+/** The caller's diary of the date the page shows. */
+const ownDiaryId = (page: Page) =>
+  page.evaluate(async (date) => {
+    const res = await fetch(`/api/days/${date}`);
+    return ((await res.json()) as { day: { mine: { diaryId: string } } }).day.mine.diaryId;
+  }, page.url().split('/').at(-1)!);
+
+/** Opens `date` from the feed's date jump, as the reader would. */
+async function openDate(page: Page, date: string) {
+  await page.getByLabel('跳到日期').fill(date);
+  await page.getByRole('button', { name: '跳转' }).click();
+  await page
+    .getByRole('region', { name: '所有日记' })
+    .locator(`[data-date="${date}"]`)
+    .getByRole('link')
+    .first()
+    .click();
+  await expect(page).toHaveURL(new RegExp(`/days/${date}$`));
+}
+
+// The diary editors; the feed's date jump is a textbox too.
+const editor = (page: Page) => page.locator('.diary-editor').getByRole('textbox');
 const status = (page: Page) => page.locator('.save-status');
 const saved = (page: Page) =>
   expect(status(page)).toHaveText('已保存到服务器', { timeout: 15_000 });
@@ -96,46 +119,53 @@ test('SAVE-01 DATE-02 writes today, saves to the server and finds it again', asy
 
   await page.reload();
   await expect(editor(page)).toHaveText('今天很累，但是想到你就开心了。');
-  await page.getByRole('link', { name: '← 返回' }).click();
+  await page.getByRole('link', { name: '← 序言' }).click();
+  await expect(page).toHaveURL(/\/$/);
   expect(await writeToday(page)).toBe(diaryId);
 });
 
 test('DATE-06 opens a past date as its own diary', async ({ page, browserName }) => {
   await devLogin(page, `backfill-${browserName}-${run}`);
   const today = await writeToday(page);
-  await page.getByRole('link', { name: '← 返回' }).click();
-  await page.getByLabel('打开或补写过去的日期').fill('2026-10-05');
-  await page.getByRole('button', { name: '打开', exact: true }).click();
-  await expect(page).toHaveURL(/\/diaries\/[0-9a-f-]{36}$/);
-  expect(page.url()).not.toContain(today);
+  await openDate(page, '2026-10-05');
+  await page.getByRole('button', { name: '写这天' }).click();
+  await expect(editor(page)).toBeVisible();
+  expect(await ownDiaryId(page)).not.toBe(today);
   await typeAtEnd(page, '补写');
   await saved(page);
 });
 
-test('DATE-07 lists the own diaries as cards, newest first, and opens one', async ({
+test('DATE-07 lists the own diaries in the feed, newest first, in full, and opens one', async ({
   page,
   browserName,
 }) => {
+  test.setTimeout(60_000);
   await devLogin(page, `cards-${browserName}-${run}`);
-  const today = await writeToday(page);
+  await writeToday(page);
+  const today = page.url().split('/').at(-1)!;
   await typeAtEnd(page, '今天的第一行\n第二行');
   await saved(page);
-  await page.getByRole('link', { name: '← 返回' }).click();
-  await page.getByLabel('打开或补写过去的日期').fill('2026-10-05');
-  await page.getByRole('button', { name: '打开', exact: true }).click();
-  await expect(page).toHaveURL(/\/diaries\/[0-9a-f-]{36}$/);
-  const past = page.url().split('/').at(-1)!;
-  await page.getByRole('link', { name: '← 返回' }).click();
+  await openDate(page, '2026-10-05');
+  await page.getByRole('button', { name: '写这天' }).click();
+  await expect(editor(page)).toBeVisible();
+  await page.goto('/days');
 
-  const cards = page.getByRole('region', { name: '日记', exact: true }).getByRole('link');
-  await expect(cards).toHaveCount(2);
-  await expect(cards.first()).toContainText('今天的第一行 第二行');
-  await expect(cards.first()).toHaveAttribute('href', `/diaries/${today}`);
-  await expect(cards.last()).toContainText('还没有写字');
-  await expect(cards.last()).toHaveAttribute('href', `/diaries/${past}`);
+  const dates = page.getByRole('region', { name: '所有日记' }).locator('[data-date]');
+  await expect(dates).toHaveCount(2);
+  await expect(dates.first()).toHaveAttribute('data-date', today);
+  // Text written in the last few seconds shows once its history point closes (3 s here);
+  // until then the feed folds it as being written (book-frontend-workspace D8).
+  await expect(async () => {
+    await page.reload();
+    await expect(dates.first()).toContainText('今天的第一行', { timeout: 3_000 });
+  }).toPass({ timeout: 30_000 });
+  await expect(dates.first()).toContainText('第二行');
+  await expect(dates.first().getByRole('link').first()).toHaveAttribute('href', `/days/${today}`);
+  await expect(dates.last()).toContainText('还没有写字');
+  await expect(dates.last().getByRole('link').first()).toHaveAttribute('href', '/days/2026-10-05');
 
-  await cards.first().click();
-  await expect(page).toHaveURL(new RegExp(`/diaries/${today}$`));
+  await dates.first().getByRole('link').first().click();
+  await expect(page).toHaveURL(new RegExp(`/days/${today}$`));
   await expect(editor(page)).toHaveText('今天的第一行\n第二行');
 });
 
@@ -147,6 +177,7 @@ test('SYNC-04 two devices of one account edit together without overwriting', asy
   const a1 = await signedInPage(browser, name);
   const diaryId = await writeToday(a1);
   const a2 = await signedInPage(browser, name);
+  // An old link to the diary keeps working beside the workspace (book-frontend-workspace D3).
   await a2.goto(`/diaries/${diaryId}`);
   await expect(editor(a2)).toBeVisible();
 
