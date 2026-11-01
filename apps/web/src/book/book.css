@@ -23,7 +23,7 @@
 .book {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  /* The gutter: a narrow gap the two inner shadows meet across. */
+  /* The gutter: a narrow gap the two inner shadings meet across. */
   column-gap: 0.375rem;
   width: min(var(--book-width), 100% - 2rem);
   margin: 2rem auto;
@@ -35,25 +35,41 @@
   overflow-wrap: anywhere;
   overflow-x: clip;
   padding: 3rem 3.5rem;
+  position: relative;
   border: 1px solid var(--book-edge);
-  /* Paper grain from two faint gradients; decoration only. */
-  background:
-    radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.35), transparent 40%),
-    radial-gradient(circle at 80% 90%, rgba(181, 104, 63, 0.04), transparent 45%), var(--book-page);
+  /* Plain paper, a crisp edge below it and a narrow band of shading at the gutter. Blurred
+     shadows and gradients across a whole page cost WebKit about a second per paint at a
+     device pixel ratio of 2, so the page could not be used right after it loaded. */
+  background: var(--book-page);
+}
+
+.book-page::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1.5rem;
+  pointer-events: none;
 }
 
 .book-left {
   border-radius: 1.1rem 0.3rem 0.35rem 1.25rem;
-  box-shadow:
-    inset -1.5rem 0 1.5rem -1.5rem var(--book-shadow),
-    -0.25rem 0.375rem 1rem var(--book-shadow);
+  box-shadow: -0.2rem 0.3rem 0 var(--book-edge);
+}
+
+.book-left::after {
+  right: 0;
+  background: linear-gradient(to left, var(--book-shadow), transparent);
 }
 
 .book-right {
   border-radius: 0.3rem 1.2rem 1.1rem 0.35rem;
-  box-shadow:
-    inset 1.5rem 0 1.5rem -1.5rem var(--book-shadow),
-    0.25rem 0.375rem 1rem var(--book-shadow);
+  box-shadow: 0.2rem 0.3rem 0 var(--book-edge);
+}
+
+.book-right::after {
+  left: 0;
+  background: linear-gradient(to right, var(--book-shadow), transparent);
 }
 
 @media (max-width: 56rem) {
@@ -72,6 +88,10 @@
     border-radius: 0;
     box-shadow: none;
     background: none;
+  }
+
+  .book-page::after {
+    content: none;
   }
 
   .book-left {
