@@ -552,9 +552,11 @@ test('[adr:book-frontend-workspace#3] [adr:book-frontend-workspace#4] the feed a
 }) => {
   test.setTimeout(90_000);
   const page = await signedIn(browser, `bj${browserName}${run}`);
+  // The first page holds the newest 20; the target is the next one down, so the jump's
+  // newer page is all 20 above it and no further page can load in between.
   const dates = datesFrom('2026-07-01', 45);
   await createDiaries(page, dates);
-  const target = dates[3]!;
+  const target = dates[24]!;
   await page.goto('/days');
   await expect(dateIn(page, dates[44]!)).toBeVisible();
   await expect(dateIn(page, target)).toHaveCount(0);
@@ -563,7 +565,7 @@ test('[adr:book-frontend-workspace#3] [adr:book-frontend-workspace#4] the feed a
     let tabs = 0;
     while (!(await locator.evaluate((el) => el === document.activeElement))) {
       await page.keyboard.press('Tab');
-      expect(++tabs).toBeLessThan(60);
+      expect(++tabs).toBeLessThan(80);
     }
   };
   // The date input's segments differ by engine; the value is set, the rest is keys.
@@ -572,16 +574,17 @@ test('[adr:book-frontend-workspace#3] [adr:book-frontend-workspace#4] the feed a
   await page.keyboard.press('Enter');
   await expect(dateIn(page, target)).toBeVisible();
 
-  // Tab moves on from the jump into the list; Enter on a date opens it in the left page.
+  // Tab moves on from the jump through the dates above it (two links each) to the date;
+  // Enter opens it in the left page.
   await focusBy(dateIn(page, target).getByRole('link').first());
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(new RegExp(`/days/${target}$`));
   await expect(dateIn(page, target).getByText('在左页', { exact: true })).toBeVisible();
 
   // "编辑" by keyboard hands the focus to the left page's diary.
-  await focusBy(dateIn(page, dates[2]!).getByRole('link', { name: '编辑' }));
+  await focusBy(dateIn(page, dates[23]!).getByRole('link', { name: '编辑' }));
   await page.keyboard.press('Enter');
-  await expect(page).toHaveURL(new RegExp(`/days/${dates[2]}$`));
+  await expect(page).toHaveURL(new RegExp(`/days/${dates[23]}$`));
   await expect(editor(page)).toBeFocused();
   await page.keyboard.type('用键盘写');
   await expect(page.locator('.save-status')).toHaveText('已保存到服务器', { timeout: 15_000 });
