@@ -50,6 +50,20 @@
       "when": 1793288096444,
       "tag": "0006_two_clocks",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793325082896,
+      "tag": "0007_space_records",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793325298244,
+      "tag": "0008_wishes_and_gifts",
+      "breakpoints": true
     }
   ]
 }

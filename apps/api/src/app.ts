@@ -34,6 +34,10 @@ import { clockHandlers } from './routes/clocks.ts';
 import { meHandler } from './routes/me.ts';
 import { spaceHandlers } from './routes/spaces.ts';
 import { createSharingService } from './sharing/sharing.ts';
+import { createSpaceRecords } from './space-records/space-records.ts';
+import { createSpaceRecordStore } from './store/space-records.ts';
+import { wishHandlers } from './routes/wishes.ts';
+import { createWishService } from './wishes/wishes.ts';
 import { createBackupStore } from './store/backup.ts';
 import { createCopyStore } from './store/copy.ts';
 import { createClockStore } from './store/clocks.ts';
@@ -170,6 +174,23 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   contractRoute('clocks', clocks.clocks);
   contractRoute('reportTimezone', clocks.reportTimezone);
   contractRoute('saveSleep', clocks.saveSleep);
+
+  const records = createSpaceRecords(createSpaceRecordStore(deps.db));
+  const wishes = wishHandlers({ records, wishes: createWishService(records) });
+  contractRoute('spaceUnread', wishes.spaceUnread);
+  contractRoute('reportSeen', wishes.reportSeen);
+  contractRoute('wishes', wishes.wishes);
+  contractRoute('createWish', wishes.createWish);
+  contractRoute('editWish', wishes.editWish);
+  contractRoute('deleteWish', wishes.deleteWish);
+  contractRoute('receiveWish', wishes.receiveWish);
+  contractRoute('prepareGift', wishes.prepareGift);
+  contractRoute('editGift', wishes.editGift);
+  contractRoute('deleteGift', wishes.deleteGift);
+  contractRoute('revealGift', wishes.revealGift);
+  contractRoute('saveGiftCard', wishes.saveGiftCard);
+  contractRoute('setGiftDate', wishes.setGiftDate);
+  contractRoute('setGiftOccasion', wishes.setGiftOccasion);
 
   const backup = backupHandlers(backupService);
   contractRoute('backup', backup.backup);
