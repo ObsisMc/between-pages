@@ -482,8 +482,11 @@ test('[adr:book-frontend-workspace#5] the feed says when it cannot read, keeps w
 
   // Offline from the start: the failure row and its retry, nothing else claimed.
   await b.goto('/');
+  // The home renders after its own requests, which going offline first would fail.
+  const allDiaries = b.getByRole('link', { name: '浏览所有日记' });
+  await expect(allDiaries).toBeVisible();
   await context.setOffline(true);
-  await b.getByRole('link', { name: '浏览所有日记' }).click();
+  await allDiaries.click();
   await expect(feed(b).getByRole('alert')).toHaveText('离线时无法读取日记，联网后再试');
   await expect(feed(b).locator('[data-date]')).toHaveCount(0);
   await context.setOffline(false);
