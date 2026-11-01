@@ -154,7 +154,7 @@ describe('DayEditor', () => {
     expect(subscribed.sort()).toEqual([DIARY, THEIRS].sort());
   });
 
-  it('[adr:server-backup-and-google-docs#7] shows how far the own Drive holds each diary, beside its save status', async () => {
+  it('[adr:server-backup-and-google-docs#7] [adr:book-frontend-workspace#8] shows how far the own Drive holds each diary, beside its save status', async () => {
     const day = dayOf('我的', '他的');
     openDay(day, {
       [`GET /api/days/${DATE}`]: () =>
