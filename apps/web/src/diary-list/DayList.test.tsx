@@ -13,6 +13,7 @@ const mine = (n: number, excerpt: string | null, unread = false) => ({
   hasText: !!excerpt,
   unread,
   sharedWithPartner: true,
+  writing: false,
 });
 const theirs = (
   n: number,
@@ -27,11 +28,12 @@ const theirs = (
   updatedAt: '2026-10-27T09:00:00Z',
   hasText: !!excerpt,
   unread,
+  writing: false,
 });
 const page =
   (days: Day[], nextBefore: string | null = null) =>
   () =>
-    Response.json({ days, nextBefore });
+    Response.json({ days, nextBefore, nextAfter: null });
 
 const bound = {
   'GET /api/me': signedIn('alice'),
@@ -106,6 +108,7 @@ describe('DayList', () => {
       Response.json({
         days: [{ diaryDate: '2026-10-27', mine: mine(1, '早上', unread), partner: null }],
         nextBefore: '2026-10-27',
+        nextAfter: null,
       }),
     );
     const second = vi.fn(page([{ diaryDate: '2026-10-20', mine: mine(2, '更早'), partner: null }]));

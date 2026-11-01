@@ -3,7 +3,7 @@ import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { renderAt, signedIn, stubApi } from '../../test/render.tsx';
 import { INVITE, SPACE, TOKEN, errorBody, space } from '../../test/relationship.ts';
 
-const noDays = () => Response.json({ days: [], nextBefore: null });
+const noDays = () => Response.json({ days: [], nextBefore: null, nextAfter: null });
 
 afterEach(() => {
   cleanup();

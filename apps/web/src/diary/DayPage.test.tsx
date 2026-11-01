@@ -65,6 +65,7 @@ const card = (excerpt: string) => ({
   updatedAt: '2026-10-27T08:00:00Z',
   hasText: excerpt !== '',
   unread: false,
+  writing: false,
 });
 const dayOf = (mine: string | null, theirs: string | null, shared = true): Day => ({
   diaryDate: DATE,

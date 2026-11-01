@@ -13,7 +13,7 @@ const diary = {
   bindings: [],
 };
 
-const noDays = () => Response.json({ days: [], nextBefore: null });
+const noDays = () => Response.json({ days: [], nextBefore: null, nextAfter: null });
 
 afterEach(() => {
   cleanup();

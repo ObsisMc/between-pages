@@ -90,9 +90,19 @@ async function ownDiary(owner: Person, date = DATE) {
 }
 
 async function days(who: Person, before?: string) {
-  const res = await get(who, routes.days.path + (before ? `?before=${before}` : ''));
+  return daysAt(who, before ? `?before=${before}` : '');
+}
+
+async function daysAt(who: Person, search: string) {
+  const res = await get(who, routes.days.path + search);
   expect(res.statusCode).toBe(200);
   return routes.days.response.parse(res.json());
+}
+
+async function nextUnread(who: Person, search = '') {
+  const res = await get(who, routes.nextUnread.path + search);
+  expect(res.statusCode).toBe(200);
+  return routes.nextUnread.response.parse(res.json()).date;
 }
 
 async function day(who: Person, date = DATE): Promise<Day> {
@@ -309,6 +319,7 @@ describe.runIf(testDatabaseUrl)('the day list', () => {
     expect(listed).toEqual({
       days: [{ diaryDate: DATE, mine: expect.objectContaining({ unread: false }), partner: null }],
       nextBefore: null,
+      nextAfter: null,
     });
     expect(await day(b, '2026-10-21')).toEqual({
       diaryDate: '2026-10-21',
@@ -346,5 +357,104 @@ describe.runIf(testDatabaseUrl)('the day list', () => {
     // A shares, B does not: A's diaries say so, B's do not.
     expect((await day(a, '2026-09-12')).mine!.sharedWithPartner).toBe(true);
     expect(first.days[0]!.mine!.sharedWithPartner).toBe(false);
+  });
+
+  it('[adr:book-frontend-workspace#4] pages newer dates after an anchor, nearest first, still newest first in the page', async () => {
+    const odd = { include: [{ from: '2026-09-01', to: '2026-09-30' }], exclude: [] };
+    const { a, b } = await pair(odd, NOTHING);
+    for (let n = 1; n <= 15; n++) await ownDiary(a, `2026-09-${String(n).padStart(2, '0')}`);
+    for (let n = 11; n <= 25; n++) await ownDiary(b, `2026-09-${String(n).padStart(2, '0')}`);
+    const dates = (page: { days: Day[] }) => page.days.map((d) => d.diaryDate);
+    const sept = (n: number) => `2026-09-${String(n).padStart(2, '0')}`;
+
+    const up = await daysAt(b, '?after=2026-09-01');
+    expect(dates(up)).toEqual(Array.from({ length: 20 }, (_, i) => sept(21 - i)));
+    expect(up).toMatchObject({ nextBefore: null, nextAfter: '2026-09-21' });
+    const top = await daysAt(b, `?after=${up.nextAfter}`);
+    expect(dates(top)).toEqual(['2026-09-25', '2026-09-24', '2026-09-23', '2026-09-22']);
+    expect(top).toMatchObject({ nextBefore: null, nextAfter: null });
+
+    // Jumping to the 30th, a date with no diary: older ones below it, nothing above.
+    const below = await daysAt(b, '?before=2026-10-01');
+    const above = await daysAt(b, '?after=2026-09-30');
+    expect(dates(below)[0]).toBe('2026-09-25');
+    expect(above).toEqual({ days: [], nextBefore: null, nextAfter: null });
+    expect(
+      (await get(b, `${routes.days.path}?before=2026-09-10&after=2026-09-01`)).statusCode,
+    ).toBe(400);
+  });
+
+  it('[adr:book-frontend-workspace#9] says a diary is being written until a history point holds its last text', async () => {
+    const { a, b, saveRange } = await pair();
+    const diaryId = await ownDiary(a);
+    // An opened share alone has no author: nobody is writing.
+    expect((await day(b)).partner).toMatchObject({ writing: false });
+
+    await write(a, diaryId, (t) => t.insert(0, 'still typing'));
+    expect((await day(a)).mine).toMatchObject({ writing: true });
+    expect((await day(b)).partner).toMatchObject({ writing: true });
+    await settle(diaryId);
+    expect((await day(a)).mine).toMatchObject({ writing: false });
+    expect((await day(b)).partner).toMatchObject({ writing: false });
+
+    // The partner writing in A's diary counts for A too; a frozen share is never being written.
+    const { epochId } = (await day(b)).partner!;
+    await write(b, diaryId, (t) => t.insert(t.length, ' and B'), epochId);
+    expect((await days(a)).days[0]!.mine).toMatchObject({ writing: true });
+    await saveRange(NOTHING);
+    await write(a, diaryId, (t) => t.insert(0, SECRET));
+    expect((await day(b)).partner).toMatchObject({ share: 'frozen', writing: false });
+  });
+});
+
+describe.runIf(testDatabaseUrl)('the nearest unread date', () => {
+  it('[adr:book-frontend-workspace#5] finds list unread older or newer than a date, skipping what was read', async () => {
+    const { a, b } = await pair();
+    const written = new Map<string, number>();
+    const ids = new Map<string, string>();
+    for (const date of ['2026-08-01', '2026-08-10', '2026-08-20']) {
+      const diaryId = await ownDiary(a, date);
+      ids.set(date, diaryId);
+      written.set(date, await write(a, diaryId, (t) => t.insert(0, 'hello')));
+      await settle(diaryId);
+    }
+    await report(b, ids.get('2026-08-10')!, [
+      { clientId: written.get('2026-08-10')!, from: 0, to: 5 },
+    ]);
+
+    expect(await nextUnread(b)).toBe('2026-08-20');
+    expect(await nextUnread(b, '?before=2026-08-20')).toBe('2026-08-01');
+    expect(await nextUnread(b, '?after=2026-08-01')).toBe('2026-08-20');
+    expect(await nextUnread(b, '?before=2026-08-01')).toBeNull();
+    expect(await nextUnread(b, '?after=2026-08-20')).toBeNull();
+    // The writer has nothing unread in their own text.
+    expect(await nextUnread(a)).toBeNull();
+
+    // Reading changes the answer at once; text that is not yet in a point does not count.
+    await report(b, ids.get('2026-08-20')!, [
+      { clientId: written.get('2026-08-20')!, from: 0, to: 5 },
+    ]);
+    expect(await nextUnread(b)).toBe('2026-08-01');
+    await write(a, ids.get('2026-08-20')!, (t) => t.insert(5, ' again'));
+    expect(await nextUnread(b, '?after=2026-08-01')).toBeNull();
+    await settle(ids.get('2026-08-20')!);
+    expect(await nextUnread(b, '?after=2026-08-01')).toBe('2026-08-20');
+    expect(
+      (await get(b, `${routes.nextUnread.path}?before=2026-08-02&after=2026-08-01`)).statusCode,
+    ).toBe(400);
+  });
+
+  it('[adr:book-frontend-workspace#5] [adr:book-frontend-workspace#7] finds the partner’s text in the own diary, never an unshared one', async () => {
+    const { a, b } = await pair(NOTHING, ALL);
+    // A shares nothing: A's text is no one's unread, and B's search never learns of it.
+    await write(a, await ownDiary(a, '2026-07-05'), (t) => t.insert(0, SECRET));
+    const bDiary = await ownDiary(b, '2026-07-01');
+    const { epochId } = (await day(a, '2026-07-01')).partner!;
+    await write(a, bDiary, (t) => t.insert(0, 'from A'), epochId);
+    await settle(bDiary);
+
+    expect(await nextUnread(b)).toBe('2026-07-01');
+    expect(await nextUnread(b, '?after=2026-07-01')).toBeNull();
+    expect(await nextUnread(a)).toBeNull();
   });
 });

@@ -1135,6 +1135,9 @@
           },
           "sharedWithPartner": {
             "type": "boolean"
+          },
+          "writing": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -1143,7 +1146,8 @@
           "updatedAt",
           "hasText",
           "unread",
-          "sharedWithPartner"
+          "sharedWithPartner",
+          "writing"
         ]
       },
       "PartnerDayInput": {
@@ -1182,6 +1186,9 @@
           },
           "unread": {
             "type": "boolean"
+          },
+          "writing": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -1191,7 +1198,8 @@
           "excerpt",
           "updatedAt",
           "hasText",
-          "unread"
+          "unread",
+          "writing"
         ]
       },
       "DayInput": {
@@ -1249,11 +1257,44 @@
                 "type": "null"
               }
             ]
+          },
+          "nextAfter": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "days",
-          "nextBefore"
+          "nextBefore",
+          "nextAfter"
+        ]
+      },
+      "NextUnreadResponseInput": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "date"
         ]
       },
       "DayResponseInput": {
@@ -4600,6 +4641,9 @@
           },
           "sharedWithPartner": {
             "type": "boolean"
+          },
+          "writing": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -4608,7 +4652,8 @@
           "updatedAt",
           "hasText",
           "unread",
-          "sharedWithPartner"
+          "sharedWithPartner",
+          "writing"
         ],
         "additionalProperties": false
       },
@@ -4648,6 +4693,9 @@
           },
           "unread": {
             "type": "boolean"
+          },
+          "writing": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -4657,7 +4705,8 @@
           "excerpt",
           "updatedAt",
           "hasText",
-          "unread"
+          "unread",
+          "writing"
         ],
         "additionalProperties": false
       },
@@ -4717,11 +4766,45 @@
                 "type": "null"
               }
             ]
+          },
+          "nextAfter": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "days",
-          "nextBefore"
+          "nextBefore",
+          "nextAfter"
+        ],
+        "additionalProperties": false
+      },
+      "NextUnreadResponse": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "date"
         ],
         "additionalProperties": false
       },
@@ -7530,6 +7613,16 @@
             "in": "query",
             "name": "before",
             "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "in": "query",
+            "name": "after",
+            "required": false
           }
         ],
         "responses": {
@@ -7539,6 +7632,55 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DaysPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/days/next-unread": {
+      "get": {
+        "summary": "The nearest date older than `before` or newer than `after` whose diaries have list unread for the caller.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "in": "query",
+            "name": "before",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "in": "query",
+            "name": "after",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NextUnreadResponse"
                 }
               }
             }

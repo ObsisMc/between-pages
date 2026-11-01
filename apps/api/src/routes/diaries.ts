@@ -150,10 +150,24 @@ export function diaryHandlers(services: {
       reply.header('cache-control', 'no-store');
       const page = await services.reader.days(
         request.user!.id,
-        request.query.before,
+        request.query,
         services.history.settled(new Date()),
       );
-      return { days: page.days.map(dayBody), nextBefore: page.nextBefore };
+      return {
+        days: page.days.map(dayBody),
+        nextBefore: page.nextBefore,
+        nextAfter: page.nextAfter,
+      };
+    },
+
+    async nextUnread(request: ContractRequest<'nextUnread'>, reply: FastifyReply) {
+      reply.header('cache-control', 'no-store');
+      const date = await services.reader.nextUnread(
+        request.user!.id,
+        request.query,
+        services.history.settled(new Date()),
+      );
+      return { date };
     },
 
     async day(request: ContractRequest<'day'>, reply: FastifyReply) {

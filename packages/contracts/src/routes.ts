@@ -28,7 +28,14 @@ import {
   ReportTimezoneRequest,
   SaveSleepRequest,
 } from './clocks.ts';
-import { DayParams, DayResponse, DaysPage, DaysQuery } from './days.ts';
+import {
+  DayParams,
+  DayResponse,
+  DaysPage,
+  DaysQuery,
+  NextUnreadQuery,
+  NextUnreadResponse,
+} from './days.ts';
 import { ReportSeenRequest, ReportSeenResponse, SpaceUnreadResponse } from './space-records.ts';
 import {
   AnniversariesQuery,
@@ -301,6 +308,15 @@ export const routes = {
     access: 'user',
     query: DaysQuery,
     response: DaysPage,
+  },
+  nextUnread: {
+    method: 'GET',
+    path: '/api/days/next-unread',
+    summary:
+      'The nearest date older than `before` or newer than `after` whose diaries have list unread for the caller.',
+    access: 'user',
+    query: NextUnreadQuery,
+    response: NextUnreadResponse,
   },
   backup: {
     method: 'GET',

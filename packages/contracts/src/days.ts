@@ -9,8 +9,17 @@ import { ShareState } from './diaries.ts';
 
 const Uuid = z.uuid();
 
-/** Days dated before `before`; omitted means from the newest. */
-export const DaysQuery = z.strictObject({ before: z.iso.date().optional() });
+/**
+ * Days dated before `before`, or the page of days nearest after `after` (book-frontend-workspace
+ * D4); at most one of them, and neither means from the newest. Jumping to a date asks
+ * `before` the next day and `after` the date side by side.
+ */
+export const DaysQuery = z
+  .strictObject({ before: z.iso.date().optional(), after: z.iso.date().optional() })
+  .refine(
+    (query) => query.before === undefined || query.after === undefined,
+    'give at most one of before and after',
+  );
 
 export const DayParams = z.object({ date: z.iso.date() });
 
@@ -28,6 +37,8 @@ export const OwnDay = z
     unread: z.boolean(),
     /** In a live share the partner can read now. */
     sharedWithPartner: z.boolean(),
+    /** Someone wrote after its newest history point, so the list shows no text yet (D8). */
+    writing: z.boolean(),
   })
   .meta({ id: 'OwnDay' });
 
@@ -43,6 +54,8 @@ export const PartnerDay = z
     hasText: z.boolean(),
     /** As `OwnDay.unread`; a frozen share counts all of its text. */
     unread: z.boolean(),
+    /** As `OwnDay.writing`; never for a frozen share. */
+    writing: z.boolean(),
   })
   .meta({ id: 'PartnerDay' });
 
@@ -51,10 +64,34 @@ export const Day = z
   .meta({ id: 'Day' });
 export type Day = z.infer<typeof Day>;
 
-/** Newest date first, each date with a diary on at least one side; `nextBefore` asks for the next page. */
+/**
+ * Newest date first, each date with a diary on at least one side. Only the cursor of the
+ * direction asked is set: `nextBefore` for older pages (no query or `before`), `nextAfter`
+ * for newer ones (`after`); null when that direction has no more, and always for the other.
+ */
 export const DaysPage = z
-  .object({ days: z.array(Day), nextBefore: z.iso.date().nullable() })
+  .object({
+    days: z.array(Day),
+    nextBefore: z.iso.date().nullable(),
+    nextAfter: z.iso.date().nullable(),
+  })
   .meta({ id: 'DaysPage' });
+
+/**
+ * Where to look for the nearest date with list unread: older than `before`, newer than
+ * `after`, or from the newest when neither; at most one (book-frontend-workspace D5).
+ */
+export const NextUnreadQuery = z
+  .strictObject({ before: z.iso.date().optional(), after: z.iso.date().optional() })
+  .refine(
+    (query) => query.before === undefined || query.after === undefined,
+    'give at most one of before and after',
+  );
+
+/** The nearest such date the caller may see, or null when that direction has none. */
+export const NextUnreadResponse = z
+  .object({ date: z.iso.date().nullable() })
+  .meta({ id: 'NextUnreadResponse' });
 
 /** One date; both sides null when the caller can see no diary on it. */
 export const DayResponse = z
