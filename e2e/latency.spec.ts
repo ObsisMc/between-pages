@@ -6,6 +6,12 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 // sync socket of both goes through a proxy that holds each message 250 ms each way, so
 // each side has about 500 ms round trip to the server. Prints one JSON line of results.
 const run = Date.now().toString(36);
+
+// Contexts opened with browser.newContext() outlive the test on the worker's browser, and
+// their pages keep polling into every later test; each test closes the ones it opened.
+test.afterEach(async ({ browser }) => {
+  await Promise.all(browser.contexts().map((context) => context.close()));
+});
 const ONE_WAY_MS = 250;
 const SAMPLES = Number(process.env.LATENCY_SAMPLES ?? 100);
 

@@ -9,6 +9,12 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 // The API runs with HISTORY_IDLE_MS=3000, so "正在写" ends seconds after the last commit.
 const run = Date.now().toString(36);
 
+// Contexts opened with browser.newContext() outlive the test on the worker's browser, and
+// their pages keep polling into every later test; each test closes the ones it opened.
+test.afterEach(async ({ browser }) => {
+  await Promise.all(browser.contexts().map((context) => context.close()));
+});
+
 const WIDE = { width: 1280, height: 800 };
 const NARROW = [
   { width: 375, height: 740 },

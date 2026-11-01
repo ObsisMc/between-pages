@@ -5,6 +5,12 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 // browser and a per-run suffix, so projects running at once and reruns stay independent.
 const run = Date.now().toString(36);
 
+// Contexts opened with browser.newContext() outlive the test on the worker's browser, and
+// their pages keep polling into every later test; each test closes the ones it opened.
+test.afterEach(async ({ browser }) => {
+  await Promise.all(browser.contexts().map((context) => context.close()));
+});
+
 async function devLogin(page: Page, name: string) {
   await page.getByLabel('开发登录').fill(name);
   await page.getByRole('button', { name: '开发登录' }).click();

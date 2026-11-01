@@ -5,6 +5,12 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 // both again, a deep link opens its date at once, and the narrow window's single pages.
 const run = Date.now().toString(36);
 
+// Contexts opened with browser.newContext() outlive the test on the worker's browser, and
+// their pages keep polling into every later test; each test closes the ones it opened.
+test.afterEach(async ({ browser }) => {
+  await Promise.all(browser.contexts().map((context) => context.close()));
+});
+
 async function signedIn(
   browser: Browser,
   name: string,

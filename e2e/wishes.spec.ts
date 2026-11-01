@@ -6,6 +6,12 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 // the wall. Names carry the browser and a per-run suffix, so projects and reruns stay apart.
 const run = Date.now().toString(36);
 
+// Contexts opened with browser.newContext() outlive the test on the worker's browser, and
+// their pages keep polling into every later test; each test closes the ones it opened.
+test.afterEach(async ({ browser }) => {
+  await Promise.all(browser.contexts().map((context) => context.close()));
+});
+
 async function signedIn(browser: Browser, name: string): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
   page.on('dialog', (dialog) => void dialog.accept());
