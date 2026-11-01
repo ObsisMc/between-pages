@@ -61,9 +61,12 @@ test('[adr:wishes-and-gifts#2] [adr:wishes-and-gifts#4] [adr:wishes-and-gifts#5]
   await b.goto('/');
   await openContents(b);
   await expect(entryDot(b)).toBeVisible();
+  // Seen once on screen for about a second (SEEN_DWELL_MS): B stays until the server has it.
+  const seen = b.waitForResponse((r) => r.url().endsWith('/api/space/seen') && r.ok());
   await entry(b).click();
   const wish = b.locator('li.wish', { hasText: '灰色围巾' });
   await expect(wish.getByText('新')).toBeVisible();
+  await seen;
   await b.goto('/');
   await openContents(b);
   await expect(entryDot(b)).toHaveCount(0);
