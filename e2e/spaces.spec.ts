@@ -10,6 +10,16 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 // combined scenario did not fit one test's budget.
 const run = Date.now().toString(36);
 
+// Ray chose 60 s on 2026-11-01 for the combined scenario (19–27 s normally); it still holds
+// for each part.
+test.describe.configure({ timeout: 60_000 });
+
+// Contexts opened with browser.newContext() outlive the test on the worker's browser, and
+// their pages keep polling into every later test; each test closes the ones it opened.
+test.afterEach(async ({ browser }) => {
+  await Promise.all(browser.contexts().map((context) => context.close()));
+});
+
 async function signedIn(browser: Browser, name: string): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
   await page.goto('/login');

@@ -111,6 +111,15 @@ export class EpochQueries {
       .orderBy(asc(shareEpochs.openedAt), asc(shareEpochs.id));
   }
 
+  /** Every epoch shared with `recipientId`, of any diary, in the order of `recipientEpochs`. */
+  allRecipientEpochs(recipientId: string): Promise<EpochRow[]> {
+    return this.tx
+      .select(epochColumns)
+      .from(shareEpochs)
+      .where(eq(shareEpochs.recipientId, recipientId))
+      .orderBy(asc(shareEpochs.openedAt), asc(shareEpochs.id));
+  }
+
   /** Whether `userId` is one of the space's pair. */
   async isParticipant(spaceId: string, userId: string): Promise<boolean> {
     const [row] = await this.tx

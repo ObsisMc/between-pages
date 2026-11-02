@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import { useContext, useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { ResponseOf } from '@between-pages/contracts';
 import { callApi } from '../api/client.ts';
 import { HistoryPanel, HistoryPreview, type HistoryPointView } from '../history/index.ts';
 import { DraftList } from './DraftList.tsx';
+import { ScrollBox } from './scroll-box.ts';
 import { createDiarySession, type DiarySession, type DiaryState } from './session.ts';
 import { failureText, refusalText, statusLine } from './status.ts';
 
@@ -123,6 +124,7 @@ export function DiaryBlock({
   const [dismissed, setDismissed] = useState(0);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null);
+  const scrollBox = useContext(ScrollBox);
 
   useEffect(() => {
     if (!place.current) return;
@@ -137,6 +139,7 @@ export function DiaryBlock({
       },
       nameOf: (user) => peopleRef.current.get(user)?.name ?? '',
       onChange: setState,
+      scroller: scrollBox?.current ?? undefined,
       // A page that holds the position itself says so when the diary opens.
       ...(keepRef.current
         ? { keepPosition: (apply: () => void) => keepRef.current?.(apply) ?? apply() }
@@ -149,7 +152,7 @@ export function DiaryBlock({
       session.current = null;
       sessionRef.current?.(null);
     };
-  }, [userId, diaryId, epochId]);
+  }, [userId, diaryId, epochId, scrollBox]);
 
   useEffect(() => {
     if (state)
@@ -205,12 +208,15 @@ export function DiaryBlock({
     setPreview((open) => ({
       point,
       remoteChanges: open?.remoteChanges ?? state?.remoteChanges ?? 0,
-      scrollY: open?.scrollY ?? window.scrollY,
+      scrollY: open?.scrollY ?? scrollBox?.current?.scrollTop ?? window.scrollY,
     }));
   const closePreview = () => {
     const scrollY = preview?.scrollY ?? 0;
     setPreview(null);
-    requestAnimationFrame(() => window.scrollTo(0, scrollY));
+    requestAnimationFrame(() => {
+      if (scrollBox?.current) scrollBox.current.scrollTop = scrollY;
+      else window.scrollTo(0, scrollY);
+    });
   };
 
   const status = state ? statusLine(state) : null;

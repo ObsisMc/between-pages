@@ -65,6 +65,9 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'sharing',
         'backup',
         'clocks',
+        'space-records',
+        'wishes',
+        'anniversaries',
       ],
       ws: ['auth', 'errors', 'commit', 'diaries', 'reader', 'events'],
       // server-backup-and-google-docs: `google` calls Google and seals or opens tokens, knowing
@@ -85,6 +88,14 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       sharing: ['store', 'events', 'errors'],
       // two-clocks: the caller's own zone and sleep schedule, and the partner's while bound.
       clocks: ['store'],
+      // space-records: membership, the open binding, history and unread for every space
+      // feature, knowing none of them; a feature (`wishes`, `anniversaries`) writes only
+      // through it and never imports another feature; transport composes them where they
+      // meet (a gift's anniversary). `link-preview` reads a link and knows no database.
+      'space-records': ['store'],
+      wishes: ['space-records', 'store'],
+      anniversaries: ['space-records', 'store'],
+      'link-preview': [],
       store: ['db', 'errors'],
     },
   },
@@ -101,25 +112,38 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
     dir: 'apps/web/src',
     units: {
       main: ['*'],
-      routes: ['auth', 'pages', 'diary', 'join', 'space', 'backup', 'two-clocks'],
+      routes: [
+        'auth',
+        'pages',
+        'diary',
+        'join',
+        'space',
+        'backup',
+        'two-clocks',
+        'wishes',
+        'anniversaries',
+      ],
       api: [],
       auth: ['api'],
       pages: [
         'api',
         'auth',
         'backup',
-        'diary-list',
+        'book',
         'join',
         'relationship',
         'shared-diaries',
+        'space-common',
         'two-clocks',
       ],
+      // book-frontend-workspace D1, D2: the spread, the bookmark and the contents are layout
+      // and navigation only; the caller says which entries exist.
+      book: [],
       'editor-binding': [],
       journal: [],
       sender: ['journal'],
       'sync-client': ['api'],
       history: ['api'],
-      'diary-list': ['api', 'avatar'],
       // unread-and-day-page: the initial avatar knows no other module.
       avatar: [],
       'sharing-range': [],
@@ -129,11 +153,23 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       'shared-diaries': ['api'],
       // server-backup-and-google-docs D9: the backup page, the Google callback and the home banner.
       backup: ['api'],
-      // two-clocks: the home strip, the clocks page and the browser's zone report.
+      // two-clocks: the home time area, the clocks page and the browser's zone report.
       'two-clocks': ['api'],
+      // space-records: the entry dot, seen reports, unread jumps and the read-only notice
+      // every space feature uses; features import it and never each other.
+      'space-common': ['api'],
+      wishes: ['api', 'space-common'],
+      anniversaries: ['api', 'space-common'],
+      // book-frontend-workspace: `day-text` renders one diary's text read-only and knows no
+      // other module; `day-feed` is the right page's list of them, which `diary` mounts
+      // beside the day editor in a `book` spread (D3).
+      'day-text': [],
+      'day-feed': ['api', 'avatar', 'day-text', 'read-tracker'],
       diary: [
         'api',
         'auth',
+        'book',
+        'day-feed',
         'editor-binding',
         'journal',
         'sender',

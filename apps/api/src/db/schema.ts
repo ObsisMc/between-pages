@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm';
+import { sql, type Column } from 'drizzle-orm';
 import {
   type AnyPgColumn,
   bigint,
@@ -10,6 +10,7 @@ import {
   index,
   integer,
   jsonb,
+  pgSequence,
   pgTable,
   primaryKey,
   smallint,
@@ -19,7 +20,15 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import type { DateSelection } from '@between-pages/contracts';
+import {
+  AnniversaryActionKind,
+  AnniversaryKind,
+  GiftActionKind,
+  GiftOccasion,
+  SpaceRecordType,
+  WishActionKind,
+  type DateSelection,
+} from '@between-pages/contracts';
 
 // Domain users (authentication-and-sessions ADR): written only by our code, keyed by the
 // same UUID the auth layer issues. No email, no login method, and no foreign key into
@@ -620,6 +629,293 @@ export const backupEvents = pgTable(
     diaryDate: date('diary_date'),
   },
   (t) => [index('backup_events_user').on(t.userId, t.at)],
+);
+
+// Shared tables of the space features beyond the diary (space-records ADR). Only
+// src/store/space-records.ts writes them, always in the transaction that changes the record
+// they describe (D4). One sequence numbers both histories, so "seen up to" is one number per
+// record (D8). The record they point at lives in a feature table ("功能 + 记录 ID"), without
+// a foreign key: every write goes through the space-records service, which checks it.
+//
+// No space record row has a foreign key to users or spaces: the key check would take FOR KEY
+// SHARE on a row the relationship flows lock FOR UPDATE, while a record write already holds
+// the open period FOR SHARE that unbinding waits for (D5), which could deadlock.
+export const spaceRecordSeq = pgSequence('space_record_seq');
+const quoted = (values: readonly string[]) => values.map((v) => `'${v}'`).join(', ');
+/** Record types of every feature, and the actions each registered (D4). */
+const recordTypeCheck = (column: Column) =>
+  sql`${column} in (${sql.raw(quoted(SpaceRecordType.options))})`;
+const ACTION_KINDS: Record<string, readonly string[]> = {
+  wish: WishActionKind.options,
+  gift: GiftActionKind.options,
+  anniversary: AnniversaryActionKind.options,
+};
+const recordSeq = () =>
+  int8('seq')
+    .primaryKey()
+    .default(sql`nextval('space_record_seq')`);
+
+// Creation, edits and deletion of a record by its author (D3, D6), append-only.
+export const spaceChanges = pgTable(
+  'space_changes',
+  {
+    seq: recordSeq(),
+    spaceId: uuid('space_id').notNull(),
+    recordType: text('record_type').notNull(),
+    recordId: uuid('record_id').notNull(),
+    kind: text('kind', { enum: ['create', 'edit', 'delete'] }).notNull(),
+    actorId: uuid('actor_id').notNull(),
+    /** Set while the record is private to this user (D9); the row never changes after. */
+    privateTo: uuid('private_to'),
+    committedAt: timestamp('committed_at', { withTimezone: true }).notNull().defaultNow(),
+    /** A creation is sent once: the same request ID returns the record it made (D4). */
+    requestId: uuid('request_id'),
+    requestDigest: text('request_digest'),
+  },
+  (t) => [
+    unique('space_changes_request').on(t.actorId, t.requestId),
+    index('space_changes_record').on(t.recordType, t.recordId),
+    index('space_changes_space').on(t.spaceId, t.seq),
+    check('space_changes_kind', sql`${t.kind} in ('create', 'edit', 'delete')`),
+    check('space_changes_record_type', recordTypeCheck(t.recordType)),
+    check(
+      'space_changes_request_fields',
+      sql`num_nulls(${t.requestId}, ${t.requestDigest}) in (0, 2)`,
+    ),
+  ],
+);
+
+// Actions on a record (D4): the record keeps the current state, this keeps every step,
+// append-only; an undo is a step of its own.
+export const spaceActions = pgTable(
+  'space_actions',
+  {
+    seq: recordSeq(),
+    spaceId: uuid('space_id').notNull(),
+    recordType: text('record_type').notNull(),
+    recordId: uuid('record_id').notNull(),
+    kind: text('kind').notNull(),
+    actorId: uuid('actor_id').notNull(),
+    privateTo: uuid('private_to'),
+    committedAt: timestamp('committed_at', { withTimezone: true }).notNull().defaultNow(),
+    requestId: uuid('request_id').notNull(),
+    requestDigest: text('request_digest').notNull(),
+  },
+  (t) => [
+    unique('space_actions_request').on(t.actorId, t.requestId),
+    index('space_actions_record').on(t.recordType, t.recordId),
+    index('space_actions_space').on(t.spaceId, t.seq),
+    check(
+      'space_actions_kind',
+      sql.raw(
+        Object.entries(ACTION_KINDS)
+          .map(([type, kinds]) => `(record_type = '${type}' and kind in (${quoted(kinds)}))`)
+          .join(' or '),
+      ),
+    ),
+  ],
+);
+
+// What each person has seen of a record: the newest change or action of the partner on
+// it that was on their screen (D8). Only the reader writes their rows.
+export const spaceReads = pgTable(
+  'space_reads',
+  {
+    userId: uuid('user_id').notNull(),
+    spaceId: uuid('space_id').notNull(),
+    recordType: text('record_type').notNull(),
+    recordId: uuid('record_id').notNull(),
+    seq: int8('seq').notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.recordType, t.recordId] }),
+    check('space_reads_record_type', recordTypeCheck(t.recordType)),
+  ],
+);
+
+// Columns every space record carries (space-records 数据与模块). `private_to` is set while
+// the record exists only for that user (D9); `revision` counts the author's edits (D3).
+const spaceRecordColumns = () => ({
+  id: uuid('id').primaryKey(),
+  spaceId: uuid('space_id').notNull(),
+  authorId: uuid('author_id').notNull(),
+  createdPeriodId: uuid('created_period_id').notNull(),
+  privateTo: uuid('private_to'),
+  revision: integer('revision').notNull().default(1),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  deletedBy: uuid('deleted_by'),
+});
+const deletionCheck = (t: { deletedAt: Column; deletedBy: Column }) =>
+  sql`num_nulls(${t.deletedAt}, ${t.deletedBy}) in (0, 2)`;
+// What the worker read from a link (wishes-and-gifts D7): text and an image address only.
+// `preview_read_at` is null until it tried; it stays null with no link.
+const previewColumns = () => ({
+  previewTitle: text('preview_title'),
+  previewSite: text('preview_site'),
+  previewImage: text('preview_image'),
+  previewReadAt: timestamp('preview_read_at', { withTimezone: true }),
+});
+
+// Wishes (wishes-and-gifts D1). `received_*` is the current state of the wisher's "收到了"
+// (D4): the wish has then left the list for the gift wall.
+export const wishes = pgTable(
+  'wishes',
+  {
+    ...spaceRecordColumns(),
+    name: text('name').notNull(),
+    link: text('link'),
+    note: text('note'),
+    want: smallint('want'),
+    ...previewColumns(),
+    receivedAt: timestamp('received_at', { withTimezone: true }),
+    receivedBy: uuid('received_by'),
+  },
+  (t) => [
+    index('wishes_space').on(t.spaceId),
+    index('wishes_preview_pending')
+      .on(t.createdAt)
+      .where(sql`${t.link} is not null and ${t.previewReadAt} is null`),
+    check('wishes_want', sql`${t.want} between 1 and 5`),
+    check('wishes_not_private', sql`${t.privateTo} is null`),
+    check('wishes_deleted', deletionCheck(t)),
+    check('wishes_received', sql`num_nulls(${t.receivedAt}, ${t.receivedBy}) in (0, 2)`),
+  ],
+);
+
+// Gifts (D2, D4, D5): private to the giver while `preparing`, on the gift wall once
+// `revealed`. At most one gift in preparation per wish (invariant 3).
+export const gifts = pgTable(
+  'gifts',
+  {
+    ...spaceRecordColumns(),
+    giverId: uuid('giver_id').notNull(),
+    receiverId: uuid('receiver_id').notNull(),
+    wishId: uuid('wish_id').references(() => wishes.id),
+    name: text('name').notNull(),
+    link: text('link'),
+    ...previewColumns(),
+    status: text('status', { enum: ['preparing', 'revealed'] }).notNull(),
+    revealedAt: timestamp('revealed_at', { withTimezone: true }),
+    revealedBy: uuid('revealed_by'),
+    giftDate: date('gift_date'),
+    dateSetBy: uuid('date_set_by'),
+    dateSetAt: timestamp('date_set_at', { withTimezone: true }),
+    occasion: text('occasion').$type<(typeof GiftOccasion.options)[number]>(),
+    /** An anniversary as the occasion, with its name then, kept after it is deleted (anniversaries D4). */
+    occasionAnniversaryId: uuid('occasion_anniversary_id').references(() => anniversaries.id),
+    occasionName: text('occasion_name'),
+    occasionSetBy: uuid('occasion_set_by'),
+    occasionSetAt: timestamp('occasion_set_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('gifts_space').on(t.spaceId),
+    uniqueIndex('gifts_preparing_wish')
+      .on(t.wishId)
+      .where(sql`${t.status} = 'preparing' and ${t.deletedAt} is null`),
+    index('gifts_preview_pending')
+      .on(t.createdAt)
+      .where(sql`${t.link} is not null and ${t.previewReadAt} is null`),
+    check(
+      'gifts_status',
+      sql`case ${t.status}
+        when 'preparing' then ${t.privateTo} is not distinct from ${t.giverId}
+          and num_nonnulls(${t.revealedAt}, ${t.revealedBy}, ${t.giftDate}) = 0
+        when 'revealed' then ${t.privateTo} is null
+          and num_nulls(${t.revealedAt}, ${t.revealedBy}, ${t.giftDate}) = 0
+        else false end`,
+    ),
+    check('gifts_parties', sql`${t.giverId} <> ${t.receiverId}`),
+    check('gifts_occasion', sql`${t.occasion} in (${sql.raw(quoted(GiftOccasion.options))})`),
+    check('gifts_occasion_one', sql`${t.occasion} is null or ${t.occasionAnniversaryId} is null`),
+    check(
+      'gifts_occasion_name',
+      sql`num_nulls(${t.occasionAnniversaryId}, ${t.occasionName}) in (0, 2)`,
+    ),
+    index('gifts_occasion_anniversary').on(t.occasionAnniversaryId),
+    check('gifts_date_set', sql`num_nulls(${t.dateSetBy}, ${t.dateSetAt}) in (0, 2)`),
+    check('gifts_occasion_set', sql`num_nulls(${t.occasionSetBy}, ${t.occasionSetAt}) in (0, 2)`),
+    check('gifts_deleted', deletionCheck(t)),
+  ],
+);
+
+// The giver's card of a gift (D3): a record of its own, because the gift may have been
+// created by the receiver's "收到了", while the card's text is always the giver's.
+export const giftCards = pgTable(
+  'gift_cards',
+  {
+    ...spaceRecordColumns(),
+    giftId: uuid('gift_id')
+      .notNull()
+      .references(() => gifts.id),
+    body: text('body').notNull(),
+  },
+  (t) => [unique('gift_cards_gift').on(t.giftId), check('gift_cards_deleted', deletionCheck(t))],
+);
+
+// Anniversaries (anniversaries D1, D2, D7), repeating every year on the same month and day.
+// The author owns kind, whose birthday, name and note; either of the two sets the date and
+// the day count, whose current state lives here with who set it last.
+export const anniversaries = pgTable(
+  'anniversaries',
+  {
+    ...spaceRecordColumns(),
+    kind: text('kind').$type<(typeof AnniversaryKind.options)[number]>().notNull(),
+    birthdayOf: uuid('birthday_of'),
+    name: text('name'),
+    note: text('note'),
+    year: smallint('year'),
+    month: smallint('month').notNull(),
+    day: smallint('day').notNull(),
+    dateSetBy: uuid('date_set_by'),
+    dateSetAt: timestamp('date_set_at', { withTimezone: true }),
+    showCount: boolean('show_count').notNull(),
+    countSetBy: uuid('count_set_by'),
+    countSetAt: timestamp('count_set_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('anniversaries_space').on(t.spaceId),
+    // At most one together day per space (invariant 1).
+    uniqueIndex('anniversaries_together')
+      .on(t.spaceId)
+      .where(sql`${t.kind} = 'together' and ${t.deletedAt} is null`),
+    check('anniversaries_kind', sql`${t.kind} in (${sql.raw(quoted(AnniversaryKind.options))})`),
+    check(
+      'anniversaries_kind_fields',
+      sql`(${t.kind} = 'birthday') = (${t.birthdayOf} is not null)
+        and (${t.kind} = 'other') = (${t.name} is not null)
+        and (${t.kind} = 'birthday' or ${t.year} is not null)`,
+    ),
+    // A real calendar day; 2 月 29 日 without a year is a leap-day birthday.
+    check(
+      'anniversaries_date',
+      sql`${t.month} between 1 and 12 and ${t.day} between 1 and 31
+        and make_date(coalesce(${t.year}, 2000), ${t.month}, 1) + (${t.day} - 1)
+          < make_date(coalesce(${t.year}, 2000), ${t.month}, 1) + interval '1 month'`,
+    ),
+    check('anniversaries_count', sql`not ${t.showCount} or ${t.year} is not null`),
+    check('anniversaries_not_private', sql`${t.privateTo} is null`),
+    check('anniversaries_date_set', sql`num_nulls(${t.dateSetBy}, ${t.dateSetAt}) in (0, 2)`),
+    check('anniversaries_count_set', sql`num_nulls(${t.countSetBy}, ${t.countSetAt}) in (0, 2)`),
+    check('anniversaries_deleted', deletionCheck(t)),
+  ],
+);
+
+// Each person's own reminder per anniversary (D3, invariant 4): a personal setting, not a
+// space record, so it has no history and stays editable after unbinding. No row means the
+// default: 7 days, only the day itself for one's own birthday. `days` null is no reminder.
+export const anniversaryReminders = pgTable(
+  'anniversary_reminders',
+  {
+    userId: uuid('user_id').notNull(),
+    anniversaryId: uuid('anniversary_id').notNull(),
+    days: smallint('days'),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.anniversaryId] }),
+    check('anniversary_reminders_days', sql`${t.days} in (0, 1, 3, 7, 14, 30)`),
+  ],
 );
 
 // Auth layer tables, owned by Better Auth; exported so drizzle-kit migrates them with ours.

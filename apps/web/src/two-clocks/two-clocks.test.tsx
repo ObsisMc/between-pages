@@ -1,8 +1,8 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { renderAt, signedIn, stubApi } from '../../test/render.tsx';
-import { ClockStrip } from './ClockStrip.tsx';
 import { ClocksPage } from './ClocksPage.tsx';
+import { HomeClocks } from './HomeClocks.tsx';
 
 // The viewer is in Shanghai; 2026-11-10 18:00 UTC is 2:00 in Shanghai and 3:00 in Tokyo.
 const NOW = Date.UTC(2026, 10, 10, 18);
@@ -32,27 +32,157 @@ const clocks = (me: object, partner: object | null) => () =>
   });
 
 const routes = [
-  { path: '/', element: <ClockStrip /> },
+  { path: '/', element: <HomeClocks /> },
   { path: '/clocks', element: <ClocksPage /> },
 ];
 
-describe('ClockStrip', () => {
-  it('[adr:two-clocks#6] shows nothing without a current binding', async () => {
-    const fetchMock = stubApi({ 'GET /api/clocks': clocks({}, null) });
+describe('HomeClocks', () => {
+  it('[adr:two-clocks#6] [adr:opening-book-home#5] shows only the own clock without a current binding', async () => {
+    at(NOW);
+    stubApi({ 'GET /api/clocks': clocks({ sleep: { start: 0, end: 480 } }, null) });
     renderAt('/', routes);
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    expect(screen.queryByText(/TA 那边/)).toBeNull();
+    expect(await screen.findByText('我这边')).toBeDefined();
+    expect(screen.getByText('2:00')).toBeDefined();
+    expect(screen.queryByText(/TA/)).toBeNull();
+    expect(screen.queryByText(/醒着/)).toBeNull();
+    expect(screen.queryByText('现在')).toBeNull();
   });
 
-  it("shows the partner's local time, its region and that they are probably asleep", async () => {
+  it('[adr:opening-book-home#2] shows both local times, the shared awake hours worked out from sleep and now', async () => {
+    at(NOW);
+    stubApi({
+      'GET /api/clocks': clocks(
+        { sleep: { start: 0, end: 480 } },
+        { timezone: 'Asia/Tokyo', sleep: { start: 1380, end: 420 } },
+      ),
+    });
+    renderAt('/', routes);
+    expect(await screen.findByText('共同醒着 8:00–22:00 · 按作息推算')).toBeDefined();
+    expect(screen.getByText('我这边')).toBeDefined();
+    expect(screen.getByText('TA 那边')).toBeDefined();
+    expect(screen.getByText('2:00')).toBeDefined();
+    expect(screen.getByText('3:00')).toBeDefined();
+    // Two o'clock is outside the shared hours, and "现在" still marks it.
+    expect(screen.getByText('现在')).toBeDefined();
+    expect(screen.queryByText(/在线|醒着呢/)).toBeNull();
+  });
+
+  it("[adr:opening-book-home#2] shows each side's date, so a crossed day shows", async () => {
+    at(NOW);
+    stubApi({ 'GET /api/clocks': clocks({}, { timezone: 'America/Los_Angeles' }) });
+    renderAt('/', routes);
+    expect(await screen.findByText(/^11 月 10 日 · 周二/)).toBeDefined();
+    expect(screen.getByText(/^11 月 11 日 · 周三/)).toBeDefined();
+  });
+
+  it('[adr:opening-book-home#2] lists several shared intervals, or says there is none, keeping now', async () => {
+    at(NOW);
+    // Tokyo 13:00–15:00 is 12:00–14:00 in Shanghai, splitting the day in two.
+    stubApi({
+      'GET /api/clocks': clocks(
+        { sleep: { start: 0, end: 480 } },
+        { timezone: 'Asia/Tokyo', sleep: { start: 780, end: 900 } },
+      ),
+    });
+    renderAt('/', routes);
+    expect(await screen.findByText('共同醒着 8:00–12:00、14:00–24:00 · 按作息推算')).toBeDefined();
+    cleanup();
+
+    // Shanghai sleeps 8:00–0:00 and Tokyo 1:00–9:00 (0:00–8:00 here): never both awake.
+    stubApi({
+      'GET /api/clocks': clocks(
+        { sleep: { start: 480, end: 0 } },
+        { timezone: 'Asia/Tokyo', sleep: { start: 60, end: 540 } },
+      ),
+    });
+    renderAt('/', routes);
+    expect(await screen.findByText('今天没有两人都醒着的时间 · 按作息推算')).toBeDefined();
+    expect(screen.getByText('现在')).toBeDefined();
+  });
+
+  it('keeps the clocks and links to the schedules while one is missing', async () => {
+    at(NOW);
+    stubApi({
+      'GET /api/clocks': clocks({ sleep: { start: 0, end: 480 } }, { timezone: 'Asia/Tokyo' }),
+    });
+    renderAt('/', routes);
+    const link = await screen.findByRole('link', { name: '设置作息' });
+    expect(link.getAttribute('href')).toBe('/clocks');
+    expect(screen.getByText('3:00')).toBeDefined();
+    expect(screen.queryByText('现在')).toBeNull();
+  });
+
+  it("does not guess the partner's time before they report a zone", async () => {
+    at(NOW);
+    stubApi({ 'GET /api/clocks': clocks({}, {}) });
+    renderAt('/', routes);
+    expect(await screen.findByText('TA 还没打开过新版本，暂时看不到 TA 那边的时间')).toBeDefined();
+    expect(screen.queryByText('TA 那边')).toBeNull();
+  });
+
+  it('[adr:anniversaries#5] [adr:partner-local-dates#4] adds the home anniversary, counting hours in its last day, with the partner’s wishes', async () => {
+    // Bo's birthday starts a little under three hours from now on Bo's side.
+    const startsAt = NOW + 3 * 3_600_000 - 1;
+    at(NOW);
+    const birthday = {
+      id: '0d0d0d0d-0000-4000-8000-000000000001',
+      authorId: PARTNER.id,
+      kind: 'birthday',
+      birthdayOf: PARTNER.id,
+      name: null,
+      note: null,
+      year: null,
+      month: 11,
+      day: 11,
+      dateSet: null,
+      showCount: false,
+      countSet: null,
+      reminder: 7,
+      basis: 'partner',
+      dayCount: null,
+      next: {
+        date: '2026-11-11',
+        startsAt: new Date(startsAt).toISOString(),
+        endsAt: new Date(startsAt + 86_400_000).toISOString(),
+        type: 'yearly',
+        years: null,
+        count: null,
+        daysLeft: 1,
+      },
+      due: true,
+      revision: 1,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      unread: null,
+      mark: 0,
+    };
+    stubApi({
+      'GET /api/clocks': clocks({}, { timezone: 'Asia/Tokyo' }),
+      'GET /api/anniversaries?timezone=Asia%2FShanghai': () =>
+        Response.json({
+          me: { id: '6f1c1d0e-0000-4000-8000-000000000001', displayName: 'alice' },
+          partner: PARTNER,
+          readOnly: false,
+          anniversaries: [birthday],
+          home: birthday.id,
+          notes: [],
+        }),
+    });
+    renderAt('/', routes);
+    const line = await screen.findByText('TA 那边还有 3 小时到生日');
+    expect(line.getAttribute('href')).toBe(`/anniversaries/${birthday.id}`);
+    expect(screen.getByRole('link', { name: '看看 TA 的心愿' }).getAttribute('href')).toBe(
+      '/wishes',
+    );
+  });
+
+  it("shows the partner's region and that they are probably asleep", async () => {
     at(NOW);
     stubApi({
       'GET /api/clocks': clocks({}, { timezone: 'Asia/Tokyo', sleep: { start: 0, end: 480 } }),
     });
     renderAt('/', routes);
-    const strip = await screen.findByText(/TA 那边/);
-    expect(strip.textContent).toBe('TA 那边 3:00 · 夜里 · 日本标准时间 · 大概在睡 · 两地时间');
-    expect(strip.className).toContain('period-night');
+    expect(await screen.findByText('11 月 11 日 · 周三 · 日本标准时间 · 大概在睡')).toBeDefined();
   });
 
   it('[adr:two-clocks#2] reports a browser zone that differs from the stored one', async () => {

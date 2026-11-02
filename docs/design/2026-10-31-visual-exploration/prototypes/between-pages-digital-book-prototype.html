@@ -1,0 +1,173 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap');
+  #bp-digital-book { --b-ground:light-dark(#f2eee7,#23211e); --b-shell:light-dark(#f8f3eb,#302b27); --b-page:light-dark(#fffaf2,#3a342f); --b-ink:light-dark(#3b312b,#f0e7dc); --b-soft:light-dark(#81756c,#c1b4a8); --b-line:light-dark(#e5d9ca,#62564c); --b-rust:light-dark(#b7674d,#de9276); --b-blue:light-dark(#5f7f88,#93bac1); --b-sage:light-dark(#dce5d9,#576a58); --b-pink:light-dark(#f1ddd5,#654c44); --b-sky:light-dark(#dce9e6,#516a6e); color:var(--b-ink); font-family:system-ui,'PingFang SC',sans-serif; }
+  #bp-digital-book *, #bp-digital-book *::before, #bp-digital-book *::after { box-sizing:border-box; }
+  #bp-digital-book [hidden] { display:none!important; }
+  #bp-digital-book button, #bp-digital-book textarea, #bp-digital-book select { font:inherit; }
+  #bp-digital-book .serif { font-family:'Fraunces','Songti SC','Noto Serif SC',Georgia,serif; font-weight:400; }
+  #bp-digital-book .stage { display:flex; justify-content:center; align-items:flex-start; gap:17px; min-height:750px; }
+  #bp-digital-book .desktop { width:695px; height:705px; position:relative; background:var(--b-shell); border:1px solid var(--b-line); border-radius:13px; overflow:hidden; box-shadow:0 18px 46px light-dark(#5b463226,#0005); }
+  #bp-digital-book .phone { width:250px; height:705px; position:relative; background:var(--b-shell); border:1px solid var(--b-line); border-radius:29px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 46px light-dark(#5b463226,#0005); }
+  #bp-digital-book .header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:19px 25px 11px; }
+  #bp-digital-book .wordmark { display:flex; align-items:center; gap:8px; white-space:nowrap; font:400 18px 'Fraunces',Georgia,serif; letter-spacing:-.03em; }
+  #bp-digital-book .mark { display:grid; place-items:center; width:22px; height:22px; border-radius:7px 7px 2px 7px; background:var(--b-rust); color:var(--b-page); font-size:13px; transform:rotate(-5deg); }
+  #bp-digital-book .header-note { color:var(--b-soft); font-size:11px; }
+  #bp-digital-book .time-bar { display:flex; align-items:center; gap:10px; width:calc(100% - 50px); margin:0 25px; padding:9px 0 11px; border:0; border-top:1px solid var(--b-line); border-bottom:1px solid var(--b-line); background:transparent; color:var(--b-ink); text-align:left; }
+  #bp-digital-book .time-symbol { display:grid; place-items:center; width:25px; height:25px; flex:0 0 auto; border-radius:50%; background:var(--b-sage); color:var(--b-blue); font-size:14px; }
+  #bp-digital-book .time-copy { flex:1; font-size:11px; line-height:1.45; }
+  #bp-digital-book .time-copy strong { font-weight:500; }
+  #bp-digital-book .time-copy small { display:block; color:var(--b-soft); font-size:10px; }
+  #bp-digital-book .time-arrow { color:var(--b-rust); font-size:16px; }
+  #bp-digital-book .chapter-tabs { display:flex; gap:4px; padding:17px 27px 0; }
+  #bp-digital-book .chapter-tabs button { border:1px solid var(--b-line); border-bottom:0; border-radius:8px 8px 0 0; background:light-dark(#ece4d9,#453b35); color:var(--b-soft); min-width:74px; padding:8px 13px; font-size:11px; }
+  #bp-digital-book .chapter-tabs button[data-go="wishes"] { background:var(--b-pink); }
+  #bp-digital-book .chapter-tabs button[data-go="meeting"] { background:var(--b-sage); }
+  #bp-digital-book .chapter-tabs button[data-go="clocks"] { background:var(--b-sky); }
+  #bp-digital-book .chapter-tabs button.active { background:var(--b-page); color:var(--b-ink); border-color:var(--b-line); position:relative; z-index:2; }
+  #bp-digital-book .chapter-tabs button .dot { display:inline-block; width:5px; height:5px; border-radius:50%; background:var(--b-rust); vertical-align:middle; margin-left:4px; }
+  #bp-digital-book .book-view { margin:0 27px; height:480px; display:grid; grid-template-columns:1fr 1fr; background:var(--b-page); border:1px solid var(--b-line); border-radius:0 10px 10px 10px; overflow:hidden; box-shadow:0 9px 23px light-dark(#68503b14,#0003); }
+  #bp-digital-book .leaf { min-width:0; display:flex; flex-direction:column; padding:25px 23px 15px; }
+  #bp-digital-book .leaf + .leaf { border-left:1px solid var(--b-line); }
+  #bp-digital-book .eyebrow { color:var(--b-soft); font-size:10px; text-transform:uppercase; letter-spacing:.12em; }
+  #bp-digital-book .leaf h1 { font-size:28px; line-height:1.2; margin:14px 0 16px; }
+  #bp-digital-book .leaf h2 { font-size:19px; line-height:1.25; margin:11px 0 13px; }
+  #bp-digital-book .leaf p { font-size:12px; line-height:1.85; margin:0 0 10px; }
+  #bp-digital-book .author { display:flex; gap:7px; align-items:center; color:var(--b-soft); font-size:11px; margin:10px 0; }
+  #bp-digital-book .author i { width:8px; height:8px; border-radius:50%; background:var(--b-rust); flex:0 0 auto; }
+  #bp-digital-book .author.other i { background:var(--b-blue); }
+  #bp-digital-book .day-copy { min-height:137px; }
+  #bp-digital-book .primary { border:0; border-radius:99px; background:var(--b-rust); color:light-dark(#fffaf4,#30231e); padding:10px 16px; font-size:11px; font-weight:500; white-space:nowrap; }
+  #bp-digital-book .text-action { border:0; color:var(--b-rust); background:transparent; padding:3px 0; font-size:11px; text-align:left; }
+  #bp-digital-book .leaf-bottom { margin-top:auto; padding-top:12px; border-top:1px solid var(--b-line); display:flex; align-items:center; justify-content:space-between; color:var(--b-soft); font-size:10px; }
+  #bp-digital-book .book-footer { display:flex; align-items:center; justify-content:space-between; padding:13px 29px; color:var(--b-soft); font-size:11px; }
+  #bp-digital-book .book-footer button { border:0; background:transparent; color:var(--b-rust); font-size:11px; padding:4px; }
+  #bp-digital-book .scene { position:relative; overflow:hidden; width:100%; height:155px; margin:7px 0 16px; background:linear-gradient(180deg,var(--b-sky) 0%,light-dark(#e9eeea,#59706e) 55%,light-dark(#e7ccb3,#7c6551) 56%,light-dark(#d9b89a,#67564a) 100%); border-radius:6px; }
+  #bp-digital-book .scene .sun { position:absolute; width:43px; height:43px; top:16px; right:30px; border-radius:50%; background:light-dark(#f5dfad,#c8a56e); }
+  #bp-digital-book .scene .hill { position:absolute; bottom:24px; left:-10%; width:120%; height:35px; border-radius:50% 50% 0 0; background:light-dark(#a5b9ac,#6f8778); }
+  #bp-digital-book .scene .house-a, #bp-digital-book .scene .house-b { position:absolute; bottom:0; width:61px; height:70px; background:light-dark(#d6a086,#9b705f); }
+  #bp-digital-book .scene .house-a { left:23px; }
+  #bp-digital-book .scene .house-b { left:109px; height:92px; background:light-dark(#efcfad,#af8b6e); }
+  #bp-digital-book .scene .roof { position:absolute; left:19px; bottom:70px; width:69px; height:27px; background:light-dark(#aa705b,#795448); clip-path:polygon(50% 0,100% 100%,0 100%); }
+  #bp-digital-book .scene .window-a, #bp-digital-book .scene .window-b { position:absolute; left:46px; bottom:28px; width:11px; height:18px; background:light-dark(#5d7980,#566a6e); box-shadow:0 0 0 2px light-dark(#c68b72,#805d4c); }
+  #bp-digital-book .scene .window-b { left:134px; bottom:42px; }
+  #bp-digital-book .scene .plant { position:absolute; right:14px; bottom:0; width:5px; height:44px; transform:rotate(8deg); background:light-dark(#728e73,#91aa8a); }
+  #bp-digital-book .scene .plant::before, #bp-digital-book .scene .plant::after { content:''; position:absolute; width:16px; height:8px; left:-14px; top:15px; border-radius:100% 0 100% 0; background:light-dark(#749577,#99b294); transform:rotate(20deg); }
+  #bp-digital-book .scene .plant::after { left:3px; top:25px; transform:rotate(105deg); }
+  #bp-digital-book .clock-big { font:400 42px 'Fraunces',Georgia,serif; line-height:1.1; margin:7px 0 3px; }
+  #bp-digital-book .clock-side { padding:12px 0; border-top:1px solid var(--b-line); }
+  #bp-digital-book .clock-side small { display:block; color:var(--b-soft); font-size:10px; }
+  #bp-digital-book .overlap-result { border-top:1px solid var(--b-line); border-bottom:1px solid var(--b-line); padding:11px 0; margin:5px 0 14px; font-size:11px; line-height:1.7; }
+  #bp-digital-book .overlap-result strong, #bp-digital-book .overlap-result span { display:block; font-weight:500; }
+  #bp-digital-book .overlap-result span { color:var(--b-soft); font-weight:400; }
+  #bp-digital-book .track { position:relative; height:11px; overflow:hidden; border-radius:99px; background:light-dark(#e8e1d8,#554d45); }
+  #bp-digital-book .track .awake { position:absolute; top:0; height:100%; background:var(--b-blue); }
+  #bp-digital-book .track-labels { display:flex; justify-content:space-between; margin:4px 0 14px; color:var(--b-soft); font-size:10px; }
+  #bp-digital-book .schedule { margin-top:auto; font-size:10px; line-height:1.7; color:var(--b-soft); }
+  #bp-digital-book .schedule button { border:0; background:transparent; color:var(--b-rust); font-size:10px; padding:0; }
+  #bp-digital-book .schedule-form { display:flex; gap:7px; align-items:end; flex-wrap:wrap; margin-top:9px; padding:10px; background:light-dark(#f3ece2,#4a4038); border-radius:7px; }
+  #bp-digital-book .schedule-form label { display:grid; gap:3px; color:var(--b-soft); font-size:10px; }
+  #bp-digital-book .schedule-form select { width:69px; min-height:30px; padding:3px; border:1px solid var(--b-line); border-radius:4px; background:var(--b-page); color:var(--b-ink); font-size:10px; }
+  #bp-digital-book .schedule-form button { border:0; border-radius:99px; color:light-dark(#fffaf4,#30231e); background:var(--b-rust); font-size:10px; padding:8px 10px; }
+  #bp-digital-book .list-title { font-size:17px; margin:14px 0 8px; }
+  #bp-digital-book .list-item { display:flex; gap:6px; align-items:center; padding:10px 0; border-bottom:1px solid var(--b-line); font-size:11px; }
+  #bp-digital-book .list-item input { accent-color:var(--b-rust); }
+  #bp-digital-book .wish { padding:16px 0; border-top:1px solid var(--b-line); }
+  #bp-digital-book .wish strong { display:block; font-size:12px; font-weight:500; }
+  #bp-digital-book .wish small { display:block; margin-top:4px; color:var(--b-soft); font-size:10px; }
+  #bp-digital-book .hearts { color:var(--b-rust); font-size:11px; letter-spacing:2px; margin-top:6px; }
+  #bp-digital-book .phone .header { padding:18px 15px 10px; }
+  #bp-digital-book .phone .wordmark { font-size:16px; }
+  #bp-digital-book .phone .mark { width:18px; height:18px; font-size:11px; }
+  #bp-digital-book .phone .header-note { font-size:10px; }
+  #bp-digital-book .phone .time-bar { width:calc(100% - 30px); margin:0 15px; }
+  #bp-digital-book .phone .time-copy { font-size:10px; }
+  #bp-digital-book .phone .time-copy small { font-size:9px; }
+  #bp-digital-book .phone-page { flex:1; min-height:0; overflow:auto; padding:0 13px 10px; scrollbar-width:none; }
+  #bp-digital-book .phone-page::-webkit-scrollbar { display:none; }
+  #bp-digital-book .mobile-view { min-height:100%; background:var(--b-page); border:1px solid var(--b-line); border-radius:9px; margin:17px 0 0; padding:16px 13px; box-shadow:0 4px 14px light-dark(#5f483712,#0003); }
+  #bp-digital-book .mobile-view h1 { font-size:23px; line-height:1.25; margin:8px 0 13px; }
+  #bp-digital-book .mobile-view h2 { font-size:17px; line-height:1.3; margin:12px 0; }
+  #bp-digital-book .mobile-view p { font-size:11px; line-height:1.7; margin:0 0 10px; }
+  #bp-digital-book .phone .scene { height:125px; }
+  #bp-digital-book .phone .author { font-size:10px; }
+  #bp-digital-book .phone .clock-big { font-size:29px; }
+  #bp-digital-book .phone .clock-side { padding:8px 0; }
+  #bp-digital-book .phone .track-labels { font-size:9px; }
+  #bp-digital-book .mobile-bottom { display:flex; justify-content:space-around; background:var(--b-shell); border-top:1px solid var(--b-line); padding:9px 4px 13px; }
+  #bp-digital-book .mobile-bottom button { border:0; background:transparent; color:var(--b-soft); font-size:10px; padding:5px 3px; }
+  #bp-digital-book .mobile-bottom button.active { color:var(--b-rust); border-bottom:2px solid var(--b-rust); }
+  #bp-digital-book .mobile-write { padding:8px 15px; border-top:1px solid var(--b-line); background:var(--b-shell); }
+  #bp-digital-book .mobile-write button { width:100%; }
+  #bp-digital-book .mobile-date-nav { display:flex; justify-content:space-between; border-top:1px solid var(--b-line); padding-top:11px; margin-top:15px; }
+  #bp-digital-book .mobile-date-nav button { border:0; background:transparent; color:var(--b-rust); font-size:10px; padding:2px; }
+  #bp-digital-book .editor { position:absolute; z-index:5; inset:0; padding:24px 25px; background:var(--b-page); }
+  #bp-digital-book .editor .back { border:0; background:transparent; color:var(--b-rust); font-size:11px; padding:4px 0; }
+  #bp-digital-book .editor h2 { font-size:27px; margin:24px 0 7px; }
+  #bp-digital-book .editor p { color:var(--b-soft); font-size:11px; }
+  #bp-digital-book .editor textarea { display:block; width:100%; min-height:290px; margin:20px 0; border:1px solid var(--b-line); border-radius:7px; background:var(--b-page); color:var(--b-ink); padding:12px; font-size:14px; line-height:1.7; resize:vertical; }
+  #bp-digital-book .phone .editor { padding:20px 16px; }
+  #bp-digital-book .phone .editor textarea { min-height:390px; }
+  @media (max-width:990px) { #bp-digital-book .stage { flex-direction:column; align-items:center; } }
+  @media (max-width:710px) { #bp-digital-book .desktop { display:none; } #bp-digital-book .stage { min-height:730px; } }
+</style>
+<div id="bp-digital-book">
+  <div class="stage">
+    <div class="desktop" aria-label="数字书页桌面原型">
+      <header class="header"><div class="wordmark"><span class="mark">✦</span>Between Pages</div><span class="header-note">各自生活，在同一页相遇。</span></header>
+      <button class="time-bar" type="button" data-go="clocks"><span class="time-symbol">◐</span><span class="time-copy"><strong>TA 那边 12:30 · 白天 · 英国时间</strong><small data-meeting-line>下次见面：大概 2027 年 3 月</small></span><span class="time-arrow">↗</span></button>
+      <nav class="chapter-tabs" aria-label="章节"><button type="button" data-go="journal">日记</button><button type="button" data-go="wishes">心愿<span class="dot"></span></button><button type="button" data-go="meeting">见面</button><button type="button" data-go="clocks">两地时间</button></nav>
+      <section class="book-view" data-screen="journal"><div class="leaf"><span class="eyebrow">OUR JOURNAL · 2026</span><h1 class="serif" data-date-title>十月三十日</h1><div class="author"><i></i>我的日记</div><div class="day-copy"><p data-own-copy>今天的风终于凉了下来。路过面包店时，我想起你说过喜欢橙皮的味道。</p><p>不是什么特别的事，但很想把它留在这里，等你有空的时候读到。</p></div><button class="text-action" type="button" data-go="write">继续写这一天　→</button><div class="leaf-bottom"><span>已保存到服务器</span><span>01 / 02</span></div></div><div class="leaf"><span class="eyebrow">THE OTHER PAGE</span><div class="author other"><i></i>TA 的日记 · 有新内容</div><div class="scene" role="img" aria-label="暖色街道插画"><span class="sun"></span><span class="hill"></span><span class="house-a"></span><span class="house-b"></span><span class="roof"></span><span class="window-a"></span><span class="window-b"></span><span class="plant"></span></div><p data-other-copy>我这里刚下过雨。等你醒来，想给你讲讲路上遇见的那只猫。</p><div class="leaf-bottom"><span>下一处未读　→</span><span>02 / 02</span></div></div></section>
+      <section class="book-view" data-screen="clocks" hidden><div class="leaf"><span class="eyebrow">BETWEEN OUR HOURS</span><h1 class="serif">两地时间</h1><p>相隔八小时，写下的日子仍能在这里相遇。</p><div class="clock-side"><span class="eyebrow">你这边 · 中国标准时间</span><div class="clock-big">20:30</div><small>夜里</small></div><div class="clock-side"><span class="eyebrow">TA 那边 · 英国时间</span><div class="clock-big">12:30</div><small>白天</small></div><div class="leaf-bottom"><span>时区随各自设备更新</span><span>01 / 02</span></div></div><div class="leaf"><span class="eyebrow">A QUIET WINDOW</span><h2 class="serif">今天都醒着的时间</h2><p>按平时作息估算，不代表谁正在在线。</p><div class="overlap-result"><strong data-own-window>你 07:00–08:00、16:00–23:00</strong><span data-partner-window>TA 23:00–00:00、08:00–15:00</span></div><div class="track" aria-label="今天共同清醒时段"></div><div class="track-labels"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div><div class="schedule">你平时 <span data-own-sleep>23:00–07:00</span> 睡 · <button type="button" data-edit-sleep>调整我的作息</button><br>TA 平时 00:00–08:00 睡</div><div class="schedule-form" hidden><label>入睡<select data-sleep-start></select></label><label>起床<select data-sleep-end></select></label><button type="button" data-save-sleep>保存示例</button></div><div class="leaf-bottom"><span>只显示给当前搭档</span><span>02 / 02</span></div></div></section>
+      <section class="book-view" data-screen="meeting" hidden><div class="leaf"><span class="eyebrow">THE NEXT CHAPTER</span><h1 class="serif">下一次见面</h1><p>日期还没定好，也可以先为那天留一个位置。</p><div style="font:400 29px 'Fraunces','Songti SC',serif;margin:24px 0 9px">大概 2027 年 3 月</div><p style="color:var(--b-soft)">定下确切日期后，这一页会显示倒数。</p><div class="leaf-bottom"><span>见面日历在本章节里</span><span>01 / 02</span></div></div><div class="leaf"><span class="eyebrow">PLANS WE MAKE</span><h2 class="serif">一起去做的事</h2><div class="list-title serif">要准备的</div><label class="list-item"><input type="checkbox">确认假期</label><label class="list-item"><input type="checkbox">看看车票</label><div class="list-title serif">想一起做的</div><label class="list-item"><input type="checkbox">去海边散步</label><label class="list-item"><input type="checkbox">吃那家说过很多次的店</label><div class="leaf-bottom"><span>谁添加、谁勾选都会留下记录</span><span>02 / 02</span></div></div></section>
+      <section class="book-view" data-screen="wishes" hidden><div class="leaf"><span class="eyebrow">THINGS WE REMEMBER</span><h1 class="serif">心愿</h1><p>那些随口说起、却值得记住的小事。</p><div class="wish"><strong>一本旅行素描本</strong><small>TA 的心愿 · 新加入</small><div class="hearts">♥ ♥ ♥ ♥</div></div><div class="wish"><strong>橙皮味的香氛蜡烛</strong><small>我的心愿 · 有参考链接</small><div class="hearts">♥ ♥ ♥</div></div><div class="leaf-bottom"><span>两个人的心愿</span><span>01 / 02</span></div></div><div class="leaf"><span class="eyebrow">A LITTLE SECRET</span><h2 class="serif">送礼也可以悄悄准备</h2><p>准备中的礼物和卡片，只有准备的人看得到。直到揭晓，对方的界面里都不会出现提示。</p><div style="background:var(--b-pink);border-radius:8px;padding:17px;margin-top:14px;font-size:11px;line-height:1.7">✦　这页是自己的私密准备区；对方的未读圆点也不会因此亮起。</div><div class="leaf-bottom"><span>揭晓后进入共同礼物墙</span><span>02 / 02</span></div></div></section>
+      <div class="book-footer"><button type="button" data-day="28">← 10月28日</button><span data-date-footer>10月30日 · 今天</span><button type="button" data-day="30">今天 →</button></div>
+      <div class="editor" data-editor hidden><button class="back" type="button" data-close-editor>← 返回书页</button><span class="eyebrow" style="display:block;margin-top:30px">MY WORDS · OCTOBER 30</span><h2 class="serif">继续写这一天</h2><p>这里是交互演示，输入的文字不会保存。</p><textarea aria-label="演示日记输入" placeholder="从一件小事写起……"></textarea><button class="primary" type="button" data-close-editor>返回书页</button></div>
+    </div>
+    <div class="phone" aria-label="数字书页手机原型"><header class="header"><div class="wordmark"><span class="mark">✦</span>Between Pages</div><span class="header-note">我的书页</span></header><button class="time-bar" type="button" data-go="clocks"><span class="time-symbol">◐</span><span class="time-copy"><strong>TA 那边 12:30 · 白天</strong><small data-meeting-line>下次见面：大概 2027 年 3 月</small></span><span class="time-arrow">↗</span></button><div class="phone-page">
+      <section class="mobile-view" data-screen="journal"><span class="eyebrow">OUR JOURNAL · 2026</span><h1 class="serif" data-date-title>十月三十日</h1><div class="author other"><i></i>TA 的日记 · 有新内容</div><div class="scene" role="img" aria-label="暖色街道插画"><span class="sun"></span><span class="hill"></span><span class="house-a"></span><span class="house-b"></span><span class="roof"></span><span class="window-a"></span><span class="window-b"></span><span class="plant"></span></div><p data-other-copy>我这里刚下过雨。等你醒来，想给你讲讲路上遇见的那只猫。</p><div class="author"><i></i>我的日记</div><p data-own-copy>今天的风终于凉了下来。路过面包店时，想起你说过喜欢橙皮的味道。</p><div class="mobile-date-nav"><button type="button" data-day="28">← 10月28日</button><button type="button" data-day="30">今天 →</button></div></section>
+      <section class="mobile-view" data-screen="clocks" hidden><span class="eyebrow">BETWEEN OUR HOURS</span><h1 class="serif">两地时间</h1><div class="clock-side"><span class="eyebrow">你这边</span><div class="clock-big">20:30</div><small>中国标准时间 · 夜里</small></div><div class="clock-side"><span class="eyebrow">TA 那边</span><div class="clock-big">12:30</div><small>英国时间 · 白天</small></div><h2 class="serif">今天都醒着的时间</h2><p>按平时作息估算，不代表在线。</p><div class="overlap-result"><strong data-own-window>你 07:00–08:00、16:00–23:00</strong><span data-partner-window>TA 23:00–00:00、08:00–15:00</span></div><div class="track" aria-label="今天共同清醒时段"></div><div class="track-labels"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div><div class="schedule">你 <span data-own-sleep>23:00–07:00</span> 睡 · <button type="button" data-edit-sleep>调整</button><br>TA 00:00–08:00 睡</div><div class="schedule-form" hidden><label>入睡<select data-sleep-start></select></label><label>起床<select data-sleep-end></select></label><button type="button" data-save-sleep>保存示例</button></div></section>
+      <section class="mobile-view" data-screen="meeting" hidden><span class="eyebrow">THE NEXT CHAPTER</span><h1 class="serif">下一次见面</h1><p>日期没定，也可以先记下想一起做的事。</p><h2 class="serif">大概 2027 年 3 月</h2><div class="list-title serif">要准备的</div><label class="list-item"><input type="checkbox">确认假期</label><label class="list-item"><input type="checkbox">看看车票</label><div class="list-title serif">想一起做的</div><label class="list-item"><input type="checkbox">去海边散步</label><label class="list-item"><input type="checkbox">吃那家说过很多次的店</label></section>
+      <section class="mobile-view" data-screen="wishes" hidden><span class="eyebrow">THINGS WE REMEMBER</span><h1 class="serif">心愿</h1><p>那些随口说起、却值得记住的小事。</p><div class="wish"><strong>一本旅行素描本</strong><small>TA 的心愿 · 新加入</small><div class="hearts">♥ ♥ ♥ ♥</div></div><div class="wish"><strong>橙皮味的香氛蜡烛</strong><small>我的心愿</small><div class="hearts">♥ ♥ ♥</div></div><p style="margin-top:17px;color:var(--b-soft)">准备中的礼物只给准备的人看。</p></section>
+    </div><div class="mobile-write" data-mobile-write><button class="primary" type="button" data-go="write">写下今天　↗</button></div><nav class="mobile-bottom" aria-label="手机章节"><button type="button" data-go="journal">日记</button><button type="button" data-go="wishes">心愿</button><button type="button" data-go="meeting">见面</button><button type="button" data-go="clocks">时间</button></nav><div class="editor" data-editor hidden><button class="back" type="button" data-close-editor>← 返回书页</button><span class="eyebrow" style="display:block;margin-top:30px">MY WORDS · OCTOBER 30</span><h2 class="serif">继续写这一天</h2><p>交互演示，文字不会保存。</p><textarea aria-label="演示日记输入" placeholder="从一件小事写起……"></textarea><button class="primary" type="button" data-close-editor>返回书页</button></div></div>
+  </div>
+</div>
+<script>
+  const bookRoot=document.getElementById('bp-digital-book');
+  const bookState={screen:'journal',day:'30',editing:false,sleepStart:1380,sleepEnd:420,showMeeting:true};
+  const pad=n=>String(n).padStart(2,'0');
+  const fmt=n=>`${pad(Math.floor(n/60)%24)}:${pad(n%60)}`;
+  const asleep=(minute,start,end)=>start<end?minute>=start&&minute<end:minute>=start||minute<end;
+  function overlap(){const list=[];let first=-1;for(let t=0;t<=1440;t+=15){const yes=t<1440&&!asleep(t,bookState.sleepStart,bookState.sleepEnd)&&!asleep((t-480+1440)%1440,0,480);if(yes&&first<0)first=t;if(!yes&&first>=0){list.push([first,t]);first=-1;}}return list;}
+  function renderBook(){
+    bookRoot.querySelectorAll('[data-screen]').forEach(el=>{el.hidden=el.dataset.screen!==bookState.screen;});
+    bookRoot.querySelectorAll('[data-go]').forEach(el=>{el.classList.toggle('active',el.dataset.go===bookState.screen);});
+    bookRoot.querySelectorAll('[data-editor]').forEach(el=>{el.hidden=!bookState.editing;});
+    bookRoot.querySelectorAll('[data-mobile-write]').forEach(el=>{el.hidden=bookState.screen!=='journal'||bookState.editing;});
+    bookRoot.querySelector('.book-footer').hidden=bookState.screen!=='journal'||bookState.editing;
+    bookRoot.querySelectorAll('[data-meeting-line]').forEach(el=>{el.hidden=!bookState.showMeeting;});
+    const onToday=bookState.day==='30';
+    bookRoot.querySelectorAll('[data-date-title]').forEach(el=>{el.textContent=onToday?'十月三十日':'十月二十八日';});
+    bookRoot.querySelectorAll('[data-date-footer]').forEach(el=>{el.textContent=onToday?'10月30日 · 今天':'10月28日 · 过去的一页';});
+    bookRoot.querySelectorAll('[data-own-copy]').forEach(el=>{el.textContent=onToday?'今天的风终于凉了下来。路过面包店时，我想起你说过喜欢橙皮的味道。':'两天前我们聊起那家海边书店，我把它记在这一页。';});
+    bookRoot.querySelector('.desktop .day-copy p:not([data-own-copy])').textContent=onToday?'不是什么特别的事，但很想把它留在这里，等你有空的时候读到。':'那天很普通，但我们关于下次见面的约定，还是值得认真记下。';
+    bookRoot.querySelectorAll('[data-other-copy]').forEach(el=>{el.textContent=onToday?'我这里刚下过雨。等你醒来，想给你讲讲路上遇见的那只猫。':'我把你说的地址记下了。等下次见面，我们一起去找那本书。';});
+    bookRoot.querySelectorAll('[data-own-sleep]').forEach(el=>{el.textContent=`${fmt(bookState.sleepStart)}–${fmt(bookState.sleepEnd)}`;});
+    const windows=overlap();
+    const own=windows.map(([a,b])=>`${fmt(a)}–${b===1440?'24:00':fmt(b)}`).join('、');
+    const other=windows.map(([a,b])=>`${fmt((a-480+1440)%1440)}–${fmt((b-480+1440)%1440)}`).join('、');
+    bookRoot.querySelectorAll('[data-own-window]').forEach(el=>{el.textContent=windows.length?`你 ${own}`:'今天没有重叠时段';});
+    bookRoot.querySelectorAll('[data-partner-window]').forEach(el=>{el.textContent=windows.length?`TA ${other}`:'';});
+    bookRoot.querySelectorAll('.track').forEach(bar=>{bar.replaceChildren(...windows.map(([a,b])=>{const mark=document.createElement('span');mark.className='awake';mark.style.left=`${a/1440*100}%`;mark.style.width=`${(b-a)/1440*100}%`;return mark;}));});
+  }
+  const options=Array.from({length:96},(_,i)=>i*15);
+  bookRoot.querySelectorAll('[data-sleep-start],[data-sleep-end]').forEach(select=>{select.innerHTML=options.map(n=>`<option value="${n}">${fmt(n)}</option>`).join('');select.value=String(select.hasAttribute('data-sleep-start')?bookState.sleepStart:bookState.sleepEnd);});
+  bookRoot.addEventListener('click',event=>{
+    const go=event.target.closest('[data-go]');if(go){if(go.dataset.go==='write'){bookState.editing=true;}else{bookState.screen=go.dataset.go;bookState.editing=false;}renderBook();return;}
+    if(event.target.closest('[data-close-editor]')){bookState.editing=false;renderBook();return;}
+    const day=event.target.closest('[data-day]');if(day){bookState.day=day.dataset.day;bookState.screen='journal';renderBook();return;}
+    const edit=event.target.closest('[data-edit-sleep]');if(edit){edit.closest('[data-screen]').querySelector('.schedule-form').hidden=false;return;}
+    const save=event.target.closest('[data-save-sleep]');if(save){const form=save.closest('.schedule-form');const start=Number(form.querySelector('[data-sleep-start]').value),end=Number(form.querySelector('[data-sleep-end]').value);if(start!==end){bookState.sleepStart=start;bookState.sleepEnd=end;bookRoot.querySelectorAll('[data-sleep-start]').forEach(el=>el.value=String(start));bookRoot.querySelectorAll('[data-sleep-end]').forEach(el=>el.value=String(end));bookRoot.querySelectorAll('.schedule-form').forEach(el=>el.hidden=true);renderBook();}}
+  });
+  renderBook();
+  if(globalThis.Tweak){const tweak=new Tweak({container:bookRoot,onChange:renderBook});tweak.addToggle(bookState,'showMeeting',{label:'显示下次见面信息'});}
+</script>

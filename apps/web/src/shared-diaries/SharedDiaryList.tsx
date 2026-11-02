@@ -23,7 +23,8 @@ const updatedText = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', ti
 /**
  * The diaries the partner shares with the caller in one space, newest date first (kernel
  * D5, spaces-and-invitations D4): each by its live share, or else its last frozen one,
- * marked so. Like the own list, the excerpts are diary text and stay in this component's
+ * marked so. Each opens its date in the diary workspace, which shows the same share
+ * (book-frontend-workspace D3). The excerpts are diary text and stay in this component's
  * state, never in Query (ADR-0006 §8).
  */
 export function SharedDiaryList({ spaceId, partner }: { spaceId: string; partner: string }) {
@@ -61,7 +62,7 @@ export function SharedDiaryList({ spaceId, partner }: { spaceId: string; partner
         <ul>
           {cards.map((card) => (
             <li key={card.diaryId}>
-              <Link className="diary-card" to={`/diaries/${card.diaryId}/shares/${card.epochId}`}>
+              <Link className="diary-card" to={`/days/${card.diaryDate}`}>
                 <span className="diary-card-date">{dayOf(card.diaryDate)}</span>
                 {card.share === 'frozen' && <span className="share-state">已停止共享</span>}
                 <span className={card.excerpt ? 'diary-card-excerpt' : 'diary-card-excerpt empty'}>

@@ -22,7 +22,7 @@ afterEach(() => {
 });
 
 describe('SharedDiaryList', () => {
-  it('[adr:diary-collaboration-kernel#11] lists the partner’s shared diaries, marks frozen ones and links each to its epoch', async () => {
+  it('[adr:diary-collaboration-kernel#11] lists the partner’s shared diaries, marks frozen ones and opens each one’s date', async () => {
     stubApi({
       [`GET /api/spaces/${SPACE}/shared-diaries`]: () =>
         Response.json({
@@ -39,8 +39,8 @@ describe('SharedDiaryList', () => {
     const links = await screen.findAllByRole('link');
     expect(screen.getByRole('heading').textContent).toBe('bob 共享的日记');
     expect(links.map((l) => l.getAttribute('href'))).toEqual([
-      `/diaries/${id(1)}/shares/${id(101)}`,
-      `/diaries/${id(2)}/shares/${id(102)}`,
+      '/days/2026-10-27',
+      '/days/2026-10-20',
     ]);
     expect(links[0]!.textContent).not.toContain('已停止共享');
     expect(links[1]!.textContent).toContain('已停止共享');

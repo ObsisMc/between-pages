@@ -6,6 +6,12 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 // sync socket of both goes through a proxy that holds each message 250 ms each way, so
 // each side has about 500 ms round trip to the server. Prints one JSON line of results.
 const run = Date.now().toString(36);
+
+// Contexts opened with browser.newContext() outlive the test on the worker's browser, and
+// their pages keep polling into every later test; each test closes the ones it opened.
+test.afterEach(async ({ browser }) => {
+  await Promise.all(browser.contexts().map((context) => context.close()));
+});
 const ONE_WAY_MS = 250;
 const SAMPLES = Number(process.env.LATENCY_SAMPLES ?? 100);
 
@@ -58,10 +64,10 @@ test('K17 local input, remote text and caret latency at ~500 ms RTT per side', a
   const spacePage = new URL(b.url()).pathname;
 
   // About 100,000 characters, pasted in one operation.
-  await a.goto('/');
+  await a.goto('/days');
   await a.getByRole('button', { name: '写今天' }).click();
-  await expect(a).toHaveURL(/\/diaries\/[0-9a-f-]{36}$/);
-  const editorA = a.getByRole('textbox');
+  await expect(a).toHaveURL(/\/days\/\d{4}-\d{2}-\d{2}$/);
+  const editorA = a.locator('.diary-editor').getByRole('textbox');
   await editorA.click();
   await a.evaluate(() => {
     const line = '今天的风很轻，我们沿着河边走了很久，说起小时候的事。\n';
@@ -86,7 +92,7 @@ test('K17 local input, remote text and caret latency at ~500 ms RTT per side', a
     .getByRole('region', { name: `${name('la')} 共享的日记` })
     .getByRole('link')
     .click();
-  const editorB = b.getByRole('textbox');
+  const editorB = b.locator('.diary-editor').getByRole('textbox');
   await expect(editorB).toContainText('今天的风很轻', { timeout: 60_000 });
   await expect(b.locator('.save-status')).toHaveText('已同步 · 对方可以看到', { timeout: 60_000 });
 
