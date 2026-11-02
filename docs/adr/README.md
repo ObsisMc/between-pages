@@ -30,6 +30,7 @@
 | [partner-local-dates](./2026-10-30-partner-local-dates.md) | 纪念日与礼物的日期以对方的当地日期为准，最后一天精确到小时 | 已实现 | 领域 | 5/5 已完成 |
 | [opening-book-home](./2026-10-31-opening-book-home.md) | 主页以一本书的开篇呈现，两地时间与日记入口融入书页 | 已实现 | 领域 | 4/5 部分 |
 | [book-frontend-workspace](./2026-11-01-book-frontend-workspace.md) | 书页式前端以目录连接页面，日记用双页工作区和按日期连续浏览 | 已采纳 | 领域 | 9/9 已完成 |
+| [book-fit-and-bookmark](./2026-11-02-book-fit-and-bookmark.md) | 主页的书放进窗口，书签画在书上，任何时候都先有一本书 | 已实现 | 技术栈 | 2/4 部分 |
 | [book-surface](./2026-11-02-book-surface.md) | 所有书页共用主页复现的 SVG 书本、纸纹、衬线字与小角色 | 已实现 | 技术栈 | 3/5 部分 |
 | [contents-spread](./2026-11-02-contents-spread.md) | 「目录」是书里完整的一页跨页，翻到它时当前页保持原样 | 已实现 | 领域 | 4/5 部分 |
 | [home-decorative-assets](./2026-11-02-home-decorative-assets.md) | 主页的书本与纸张用 CSS/SVG，水彩插画用静态素材 | 已取代 | 技术栈 | 0/3 未开始 |

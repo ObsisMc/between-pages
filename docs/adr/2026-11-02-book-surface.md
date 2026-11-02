@@ -4,7 +4,7 @@
 - 日期：2026-11-02
 - 决策者：Ray
 - 范围：技术栈
-- 关联：取代 home-decorative-assets；依赖 opening-book-home；依赖 book-frontend-workspace
+- 关联：取代 home-decorative-assets；依赖 opening-book-home；依赖 book-frontend-workspace；D1 aspect 行、D6 书签位置与不变量 3 的书签部分被 book-fit-and-bookmark 取代
 
 主页复现（home-decorative-assets）的视觉系统推广到所有书页：`src/book` 提供唯一的书本表面（内联 SVG 封面、层叠页边、书脊折痕、投影和 128px 缓存纸纹块），`<BookSpread>` 的所有使用者共用它，原 `book.css` 的纯色纸面与主页专用的 `HomeBookSurface` 都去掉。日记工作区、目录、两地时间、心愿与礼物、纪念日、双人空间、备份、登录、邀请和旧日记链接都放进这本书：宽窗口是一张窗口高的展开双页，每页在书页内各自滚动；窄窗口是一张带纸纹的单页，随窗口滚动。字体用随项目提供的 Noto Serif SC，作者头像用圆润的小角色。文字与控件仍全部是真实 HTML。水彩窗台只留在主页、登录和邀请的左页，日记工作区仍不放窗户、砖墙和藤蔓（book-frontend-workspace D1）。本 ADR 不改变任何页面的数据、权限或交互规则；目录的呈现见 [contents-spread](./2026-11-02-contents-spread.md)。
 
