@@ -129,7 +129,7 @@ async function paste(editor: HTMLElement, content: string) {
 }
 
 describe('DayEditor', () => {
-  it('[adr:unread-and-day-page#9] stacks both diaries as two sessions, so a paste reaches only the one it was made in', async () => {
+  it('[adr:unread-and-day-page#9] [adr:book-surface#4] stacks both diaries as two sessions, so a paste reaches only the one it was made in', async () => {
     openDay(dayOf('我的早上', '他的晚上'));
     const mine = await editorOf('我的日记');
     const theirs = await editorOf('TA 的日记');

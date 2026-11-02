@@ -55,7 +55,7 @@ async function pair(browser: Browser, prefix: string) {
   return { a, b };
 }
 
-test('READ-01 the feed lights once A’s text is in a history point and goes out after B reads it', async ({
+test('[adr:book-surface#4] READ-01 the feed lights once A’s text is in a history point and goes out after B reads it', async ({
   browser,
   browserName,
 }) => {

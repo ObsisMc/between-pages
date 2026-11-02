@@ -239,7 +239,7 @@ describe('DayFeed', () => {
     expect(requested(fetchMock).filter((r) => r.startsWith('POST'))).toEqual([]);
   });
 
-  it('[adr:book-frontend-workspace#5] reports only the other person’s text on screen for a second, not prefetched or collapsed text', async () => {
+  it('[adr:book-frontend-workspace#5] [adr:book-surface#5] reports only the other person’s text on screen for a second, not prefetched or collapsed text', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
     const fetchMock = stubApi({
       ...signedInWithSpace,

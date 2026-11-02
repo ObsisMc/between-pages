@@ -110,7 +110,7 @@ npx vitest run --project web
 
 ## Known limitations
 
-- Book pages use the light paper palette at every system theme; only screens outside the book (the loading line) follow a dark one. The look awaits Ray's comparison with the design; the generated watercolor art approximates the reference rather than fixing its pixels.
+- Book pages use the light paper palette at every system theme; only screens outside the book (the loading line) follow a dark one. Ray settled on this look on 2026-11-02; the generated watercolor art approximates the reference rather than fixing its pixels.
 - WebKit at a device pixel ratio of 2 takes about 0.6–1.5 s for the frame after a click on the home page (measured 2026-11-02), and every page now carries the same book; texture and detail are kept and not optimized for now (book-surface D6 risk).
 - The feature pages put their existing sections on two pages as they were; the layouts of single records in the wishes and dates explorations are not reproduced.
 - The bundled font is about 6 MiB in 101 slices; a browser loads only the slices a page needs, and shows the fallback serif until they arrive.

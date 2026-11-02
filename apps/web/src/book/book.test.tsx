@@ -51,7 +51,7 @@ const contents = () => screen.queryByRole('main', { name: '目录' });
 afterEach(cleanup);
 
 describe('BookSpread', () => {
-  it('[adr:book-frontend-workspace#1] keeps each page in its own container', () => {
+  it('[adr:book-frontend-workspace#1] [adr:book-surface#1] keeps each page in its own container', () => {
     renderAt('/', [{ path: '/', element: <BookSpread left={page('左')} right={page('右')} /> }]);
     const left = screen.getByText('左的正文').closest('.book-page')!;
     const right = screen.getByText('右的正文').closest('.book-page')!;

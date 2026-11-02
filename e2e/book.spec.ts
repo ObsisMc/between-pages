@@ -171,7 +171,7 @@ const bookmarkOnScreen = async (page: Page) => {
   expect(box!.y + box!.height).toBeLessThanOrEqual(height);
 };
 
-test('[adr:book-frontend-workspace#1] wide: no text or control crosses the gutter or the foot of the book, long text included', async ({
+test('[adr:book-frontend-workspace#1] [adr:book-surface#1] [adr:book-surface#3] wide: no text or control crosses the gutter or the foot of the book, long text included', async ({
   browser,
   browserName,
 }) => {
@@ -223,7 +223,7 @@ test('[adr:book-frontend-workspace#1] wide: no text or control crosses the gutte
 });
 
 for (const viewport of NARROW) {
-  test(`[adr:opening-book-home#4] [adr:book-frontend-workspace#1] [adr:book-frontend-workspace#6] ${viewport.width}px: one sheet with the bookmark on screen and no sideways scroll`, async ({
+  test(`[adr:opening-book-home#4] [adr:book-frontend-workspace#1] [adr:book-frontend-workspace#6] [adr:book-surface#3] [adr:contents-spread#5] ${viewport.width}px: one sheet with the bookmark on screen and no sideways scroll`, async ({
     browser,
     browserName,
   }) => {
@@ -257,7 +257,7 @@ for (const viewport of NARROW) {
   });
 }
 
-test('[adr:opening-book-home#1] [adr:book-frontend-workspace#2] [adr:contents-spread#2] [adr:contents-spread#3] the home shows no diary text; the 目录 opens over it, keeps Tab off the page below and closes by keyboard and back', async ({
+test('[adr:opening-book-home#1] [adr:book-frontend-workspace#2] [adr:book-surface#2] [adr:contents-spread#2] [adr:contents-spread#3] the home shows no diary text; the 目录 opens over it, keeps Tab off the page below and closes by keyboard and back', async ({
   browser,
   browserName,
 }) => {
@@ -349,7 +349,7 @@ test('[adr:opening-book-home#1] [adr:book-frontend-workspace#2] [adr:contents-sp
   await expect(contents(page)).toHaveCount(0);
 });
 
-test('[adr:opening-book-home#5] [adr:book-frontend-workspace#7] home and 目录 per relationship: never bound, bound without a sleep schedule, unbound with history', async ({
+test('[adr:opening-book-home#5] [adr:book-frontend-workspace#7] [adr:contents-spread#4] home and 目录 per relationship: never bound, bound without a sleep schedule, unbound with history', async ({
   browser,
   browserName,
 }) => {
