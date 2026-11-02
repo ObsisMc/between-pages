@@ -1,10 +1,10 @@
 # 主页的书本与纸张用 CSS/SVG，水彩插画用静态素材
 
-- 状态：已采纳
+- 状态：已取代
 - 日期：2026-11-02
 - 决策者：Ray（确认书本、书脊和页边用 CSS/SVG，水彩插画使用图片；视觉效果待验收）
 - 范围：技术栈
-- 关联：依赖 opening-book-home；依赖 book-frontend-workspace
+- 关联：依赖 opening-book-home；依赖 book-frontend-workspace；被 book-surface 取代
 
 ## 背景与问题
 

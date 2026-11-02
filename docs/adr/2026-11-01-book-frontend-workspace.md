@@ -4,7 +4,7 @@
 - 日期：2026-11-01
 - 决策者：Ray
 - 范围：领域
-- 关联：依赖 opening-book-home；依赖 unread-and-day-page；依赖 diary-collaboration-kernel；依赖 space-records；依赖 two-clocks；依赖 wishes-and-gifts；依赖 meeting-plans；依赖 anniversaries
+- 关联：依赖 opening-book-home；依赖 unread-and-day-page；依赖 diary-collaboration-kernel；依赖 space-records；依赖 two-clocks；依赖 wishes-and-gifts；依赖 meeting-plans；依赖 anniversaries；D2 目录呈现被 contents-spread 取代
 
 已采纳的[开篇主页](./2026-10-31-opening-book-home.md)作为书的序言；本提议把「目录」「今天的日记」「所有日记」接成可用的前端路径。桌面日记工作区左页读写所选日期，右页按新到旧连续展示可读的日记全文；窄窗口用单页列表和单页日期编辑。日记列表按需加载，支持跳到日期及下一处未读。书页、书签、小角色是界面语言，正文、控件和状态仍由真实 HTML 呈现。本 ADR 决定前端信息架构与交互；不改变日记作者与共享规则，也不批准新依赖、数据库迁移或尚未实现的双人空间功能。尚无后端的自由 note／随笔／草稿文档不在本轮范围。心愿、见面和纪念日的图片在本文只作后续视觉参考。
 
