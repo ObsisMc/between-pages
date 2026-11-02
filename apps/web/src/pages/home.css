@@ -1,187 +1,613 @@
-/* The opening of the book (opening-book-home D3): warm cream paper, restrained orange and
-   blue, two windows drawn in CSS. The illustration is decoration; every word is text. */
+@font-face {
+  font-family: 'Opening Serif';
+  src: url('/home/serif-sc.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+/* Page geometry and paper fibres are inline SVG; only the watercolor windows are raster.
+   No full-page blur or noise filter runs behind the live text. */
+.home {
+  --ink: #27262b;
+  --ink-soft: #81796e;
+  --accent: #e47732;
+  --line: #ddc6a6;
+  --font-title: 'Opening Serif', 'Songti SC', 'Noto Serif SC', Georgia, serif;
+  color-scheme: light;
+  color: var(--ink);
+  width: min(100%, 96rem);
+  margin: 0 auto;
+  container-type: inline-size;
+  font-family: var(--font-title);
+}
+
+.home-surface {
+  position: relative;
+  isolation: isolate;
+}
+
+.home-paper-desktop,
+.home-paper-mobile {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Keep the static desktop paper on its own compositing layer when the contents opens. */
+.home-paper-desktop {
+  transform: translateZ(0);
+}
+
+.home-paper-mobile {
+  display: none;
+}
+
+.home .book {
+  width: 100%;
+  min-height: 66.667cqw;
+  margin: 0;
+  gap: 0;
+  background: none;
+  position: relative;
+}
+
+.home .book-page {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: none;
+  padding: 6.7cqw 5.5cqw 7cqw 9.8cqw;
+}
+
+.home .book-page::after,
+.home .book-page::before {
+  content: none;
+}
+
+.home .book-right {
+  padding: 11.4cqw 9.8cqw 7cqw 4.5cqw;
+  display: flex;
+  flex-direction: column;
+}
+
 .home-brand {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin: 0 0 2.5rem;
-  font-family: var(--font-title);
-  letter-spacing: 0.08em;
+  gap: 1.15cqw;
+  margin: 0 0 4.8cqw;
+  font-family: Georgia, serif;
+  font-size: 1.4cqw;
+  letter-spacing: 0.11em;
 }
 
-/* Two soft little figures, one per person. */
 .home-pair {
-  width: 2.75rem;
-  height: 1.5rem;
-  background:
-    radial-gradient(ellipse 0.7rem 0.65rem at 0.7rem 55%, #f0a77c 98%, transparent),
-    radial-gradient(ellipse 0.7rem 0.65rem at 2rem 55%, #9fb9cf 98%, transparent);
+  flex: none;
+  width: 4.1cqw;
+  height: 2.5cqw;
+  background: url('/home/mascots.svg') center / contain no-repeat;
 }
 
 .home-preface {
   margin: 0;
-  color: var(--ink-soft);
-  font-family: var(--font-title);
+  font-size: 1.35cqw;
+  letter-spacing: 0.16em;
 }
 
 .home-preface::after,
-.home-clocks h2::after {
+.home .home-clocks h2::after {
   content: '';
   display: block;
-  width: 1.75rem;
-  height: 0.15rem;
-  margin-top: 0.375rem;
-  border-radius: 0.1rem;
-  background: var(--accent);
+  width: 2.5cqw;
+  height: 0.22cqw;
+  margin-top: 0.5cqw;
+  border-radius: 50% 20% 35% 20%;
+  background: #ffa266;
 }
 
 .home-date {
-  font-size: clamp(3rem, 7vw, 4.5rem);
-  line-height: 1.1;
-  margin: 1.5rem 0 0;
-  padding-bottom: 1.25rem;
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 1.2cqw;
+  font-weight: 400;
+  font-family: Georgia, var(--font-title);
+  font-size: 6cqw;
+  line-height: 1.05;
+  margin: 1cqw 0 0;
+  padding-bottom: 1.65cqw;
   border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.home-date-month,
+.home-date-day {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1.1cqw;
+}
+
+.home-date-month > span,
+.home-date-day > span {
+  font-family: var(--font-title);
+  font-size: 3cqw;
 }
 
 .home-weekday {
-  margin-left: 0.75rem;
-  font-size: 1.25rem;
+  margin-left: auto;
   color: var(--ink-soft);
+  font-family: var(--font-title);
+  font-size: 0.85cqw;
 }
 
 .home-line {
-  margin: 1.5rem 0 2.5rem;
-  font-family: var(--font-title);
-  font-size: 1.125rem;
+  margin: 2.05cqw 0 0;
+  font-size: 1.55cqw;
   letter-spacing: 0.15em;
+  white-space: nowrap;
 }
 
 .home-windows {
+  display: block;
+  width: 115%;
+  max-width: none;
+  height: auto;
+  margin: 0.7cqw 0 0 -1.1cqw;
+}
+
+.home .home-clocks h2 {
+  margin: 0 0 2cqw;
+  font-size: 1.3cqw;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+}
+
+.home .clock-pair {
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+}
+
+.home .clock-face {
+  padding: 0 0.5cqw;
+}
+
+.home .clock-who {
   display: flex;
-  justify-content: space-around;
-  gap: 1.5rem;
-  padding: 1rem 0 2rem;
+  justify-content: center;
+  align-items: center;
+  gap: 0.7cqw;
+  margin-bottom: 0.35cqw;
+  font-size: 1.4cqw;
+  font-weight: 400;
+  letter-spacing: 0.12em;
 }
 
-.home-window {
-  position: relative;
-  width: min(8.5rem, 38%);
-  aspect-ratio: 4 / 5;
-  border: 0.4rem solid;
-  border-radius: 0.2rem 0.3rem 0.15rem 0.25rem;
-  box-shadow: 0 0.6rem 0 -0.15rem #d8cbbb;
+.home .clock-who::before {
+  content: '';
+  width: 2.7cqw;
+  height: 2.6cqw;
+  background: url('/home/mascots.svg') left center / 5.6cqw auto no-repeat;
 }
 
-/* The crossbars. */
-.home-window::before,
-.home-window::after {
+.home .clock-face + .clock-face .clock-who::before {
+  background-position: right center;
+}
+
+.home .clock-time {
+  font-family: var(--font-title);
+  font-size: 4.25cqw;
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: -0.04em;
+}
+
+.home .clock-day {
+  margin-top: 0.5cqw;
+  font-size: 0.9cqw;
+  letter-spacing: 0.035em;
+}
+
+.home .awake {
+  margin-top: 3.3cqw;
+}
+
+.home .awake-text {
+  margin: 0 0 3.5cqw;
+  text-align: right;
+  font-size: 1.1cqw;
+  letter-spacing: 0.04em;
+  color: #ba622b;
+}
+
+.home .awake-line {
+  height: 0.8cqw;
+  margin: 0 0.4cqw 4.7cqw;
+  border-radius: 0.6cqw;
+  background: linear-gradient(
+    90deg,
+    #abc8d8b3,
+    #c4d5df88 23%,
+    #ecddc8a6 24%,
+    #ecddc8a6 85%,
+    #a6c5d8b3
+  );
+}
+
+.home .awake-line::after {
   content: '';
   position: absolute;
-  background: inherit;
-  border-color: inherit;
+  inset: 1.35cqw 0 auto;
+  height: 0.35cqw;
+  background: repeating-linear-gradient(90deg, #b7a68f 0 1px, transparent 1px 5%);
 }
 
-.home-window::before {
-  inset: 38% 0 auto;
-  border-top: 0.25rem solid;
+.home .awake-span {
+  background: linear-gradient(90deg, #ffbe8273, #ffb578cf, #ffc38d9e);
+  box-shadow: 0 0 0 0.2cqw #fff4e64d;
 }
 
-.home-window::after {
-  inset: 0 auto 62% 50%;
-  border-left: 0.25rem solid;
-}
-
-.home-window.warm {
-  border-color: #8a5a3a;
-  background: linear-gradient(#fbd9a4, #f6b98a);
-}
-
-.home-window.cool {
-  border-color: #3f5f80;
-  background: linear-gradient(#c9dcef, #9ab8d6);
-}
-
-.home-figure {
+.home .awake-span::before,
+.home .awake-span::after {
+  content: '';
   position: absolute;
-  left: 50%;
-  bottom: 0;
-  width: 46%;
-  aspect-ratio: 5 / 4;
-  transform: translateX(-50%);
-  border-radius: 55% 50% 0.3rem 0.3rem;
-  background: #f0a77c;
+  top: 0.12cqw;
+  width: 0.55cqw;
+  height: 0.55cqw;
+  border: 1.5px solid #e67e35;
+  background: #fff7e7;
+  border-radius: 50%;
 }
 
-.cool .home-figure {
-  background: #8fb0cf;
+.home .awake-span::before {
+  left: 0;
+}
+.home .awake-span::after {
+  right: 0;
+}
+.home .awake-tick {
+  top: 2.15cqw;
+  font-size: 0.95cqw;
+}
+.home .awake-now {
+  top: 0.3cqw;
+  height: 3.4cqw;
+  border-left: 1px solid #e8782c;
+}
+.home .awake-now::before {
+  content: '';
+  position: absolute;
+  width: 0.75cqw;
+  height: 0.75cqw;
+  top: -0.3cqw;
+  left: -0.44cqw;
+  border: 1px solid #fff8ea;
+  background: #ed893c;
+  border-radius: 50%;
+}
+.home .awake-now > span {
+  top: 4cqw;
+  font-size: 1.05cqw;
 }
 
 .home-entries {
-  margin: 2.5rem 0 2rem;
+  margin: 1.4cqw 0 0;
 }
-
 .home-entry {
+  --entry-ink: #c76b25;
+  --entry-wash: #ffddae7a;
   display: flex;
   align-items: center;
-  gap: 1rem;
-  min-height: 4rem;
-  border-bottom: 1px solid var(--line);
+  gap: 1.3cqw;
+  min-height: 6.7cqw;
   color: var(--ink);
   text-decoration: none;
-  font-family: var(--font-title);
-  font-size: 1.25rem;
+  font-size: 1.55cqw;
+  letter-spacing: 0.08em;
 }
-
-/* Book-shaped mark before, a round arrow after; both decoration. */
-.home-entry::before {
-  content: '';
-  flex: none;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
+.home-entry + .home-entry {
+  border-top: 1px solid #e5c7a59e;
 }
-
-.home-entry.all::before {
-  background: color-mix(in srgb, var(--author-2) 22%, transparent);
+.home-entry.all {
+  --entry-ink: #38677f;
+  --entry-wash: #c4d6e47d;
 }
-
-.home-entry::after {
-  content: '→' / '';
-  margin-left: auto;
+.home-entry-icon,
+.home-entry-arrow {
   display: grid;
   place-items: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 50%;
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  flex: none;
+  width: 3.9cqw;
+  height: 3.9cqw;
+  color: var(--entry-ink);
+  border-radius: 49% 53% 47% 51%;
+  background: var(--entry-wash);
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease;
 }
-
-.home-entry.all::after {
-  color: var(--author-2);
-  background: color-mix(in srgb, var(--author-2) 12%, transparent);
+.home-entry-icon svg {
+  width: 2cqw;
+  height: 2cqw;
 }
-
+.home-entry-arrow {
+  margin-left: auto;
+  font-family: Georgia, serif;
+  font-size: 2.1cqw;
+}
+.home-entry-leader {
+  flex: 1;
+  height: 1px;
+  background: repeating-linear-gradient(90deg, var(--entry-ink) 0 1px, transparent 1px 10px);
+  opacity: 0.75;
+}
+.home-entry:hover .home-entry-arrow {
+  transform: translateX(3px);
+  background: var(--entry-wash);
+}
 .home-entry:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 2px;
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
 }
-
 .home-account {
-  margin-top: 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3em;
+  margin: auto 0 0;
+  padding-top: 1.8cqw;
   color: var(--ink-soft);
+  font-size: max(11px, 0.8cqw);
+}
+.home-space {
+  margin-right: auto;
+  color: inherit;
+  text-decoration-color: #c7bda9;
+  text-underline-offset: 4px;
+}
+.home-sign-out {
+  color: inherit;
+  min-height: 2.75rem;
+  padding: 0 0.25rem;
+  border: 0;
+  text-decoration: underline;
+}
+.home .relationship {
+  margin-top: 1rem;
+}
+.home .notice {
+  font-family: var(--font-body);
   font-size: 0.875rem;
 }
 
-.home-sign-out {
-  min-height: 2.75rem;
-  padding: 0 0.5rem;
-  border: 0;
-  color: var(--ink-soft);
-  text-decoration: underline;
+/* The bookmark's dimensions follow the same canvas as the home book. Other screens keep
+   their existing book layout and fixed bookmark placement. */
+body:has(.home) .bookmark {
+  top: min(8.3vw, 8rem);
+  right: max(1.8vw, calc((100vw - 96rem) / 2 + 1.8rem));
+  width: clamp(38px, 3.2vw, 49px);
+  height: clamp(130px, 13vw, 200px);
+  padding: 1.2rem 0.5rem 4rem;
+  writing-mode: horizontal-tb;
+  font:
+    1.25rem / 1.4 'Opening Serif',
+    Georgia,
+    serif;
+  letter-spacing: 0.2em;
+  background: linear-gradient(95deg, #e9bc84, #f9dfb8 25%, #f5d4a8);
+  color: #655334;
+  border: 1px solid #e0b783;
+  border-radius: 4px 7px 0 0;
+}
+body:has(.home) .bookmark::after {
+  content: '';
+  position: absolute;
+  inset: auto 7px 1rem;
+  height: 4.5rem;
+  background: url('/home/leaf.svg') center / contain no-repeat;
 }
 
-.home .relationship {
-  margin-top: 1rem;
+@media (min-width: 56.001rem) {
+  .home {
+    min-width: 56rem;
+  }
+}
+
+@media (max-width: 56rem) {
+  .home {
+    width: 100%;
+    padding: 12px;
+    background: #f9f4e9;
+  }
+  .home-paper-desktop {
+    display: none;
+  }
+  .home-paper-mobile {
+    display: block;
+    border-radius: 18px 22px 20px 14px;
+  }
+  .home .book {
+    display: block;
+    min-height: 100svh;
+    border: 1px solid #e2ccad;
+    border-radius: 18px 22px 20px 14px;
+    background: none;
+    box-shadow:
+      3px 3px 0 #edddc6,
+      6px 5px 0 #e5d2b7;
+  }
+  .home .book-page {
+    padding: 32px 6cqw 20px;
+  }
+  .home .book-right {
+    padding: 0 6cqw 24px;
+  }
+  .home-brand {
+    gap: 10px;
+    margin: 0 35px 38px 0;
+    font-size: clamp(14px, 4cqw, 23px);
+    letter-spacing: 0.08em;
+  }
+  .home-pair {
+    width: 43px;
+    height: 28px;
+  }
+  .home-preface {
+    font-size: 15px;
+  }
+  .home-preface::after,
+  .home .home-clocks h2::after {
+    width: 28px;
+    height: 3px;
+    margin-top: 7px;
+  }
+  .home-date {
+    gap: 12px;
+    margin-top: 14px;
+    padding-bottom: 18px;
+    font-size: 17cqw;
+  }
+  .home-date-month,
+  .home-date-day {
+    gap: 6px;
+  }
+  .home-date-month > span,
+  .home-date-day > span {
+    font-size: 8cqw;
+  }
+  .home-weekday {
+    font-size: 12px;
+  }
+  .home-line {
+    margin-top: 20px;
+    font-size: 4cqw;
+    letter-spacing: 0.08em;
+  }
+  .home-windows {
+    width: 110%;
+    margin: 22px 0 0 -5%;
+  }
+  .home .home-clocks h2 {
+    margin: 10px 0 24px;
+    font-size: 19px;
+  }
+  .home .clock-pair {
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  }
+  .home .clock-face {
+    padding: 0 4px;
+  }
+  .home .clock-who {
+    gap: 6px;
+    margin-bottom: 8px;
+    font-size: 16px;
+    letter-spacing: 0.04em;
+  }
+  .home .clock-who::before {
+    width: 26px;
+    height: 28px;
+    background-size: 54px auto;
+  }
+  .home .clock-time {
+    font-size: 10cqw;
+  }
+  .home .clock-day {
+    margin-top: 6px;
+    font-size: max(10px, 2.8cqw);
+    letter-spacing: 0;
+  }
+  .home .awake {
+    margin-top: 28px;
+  }
+  .home .awake-text {
+    margin-bottom: 23px;
+    font-size: 13px;
+    text-align: center;
+  }
+  .home .awake-line {
+    height: 8px;
+    margin: 0 9px 62px;
+    border-radius: 6px;
+  }
+  .home .awake-line::after {
+    top: 14px;
+    height: 4px;
+  }
+  .home .awake-span::before,
+  .home .awake-span::after {
+    top: 1px;
+    width: 6px;
+    height: 6px;
+  }
+  .home .awake-tick {
+    top: 23px;
+    font-size: 11px;
+  }
+  .home .awake-now {
+    top: 3px;
+    height: 33px;
+  }
+  .home .awake-now::before {
+    width: 8px;
+    height: 8px;
+    top: -3px;
+    left: -4.5px;
+  }
+  .home .awake-now > span {
+    top: 41px;
+    font-size: 13px;
+  }
+  .home-entries {
+    margin: 15px 0 0;
+  }
+  .home-entry {
+    gap: 11px;
+    min-height: 78px;
+    font-size: 4.2cqw;
+    letter-spacing: 0.03em;
+  }
+  .home-entry-icon,
+  .home-entry-arrow {
+    width: 42px;
+    height: 42px;
+  }
+  .home-entry-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+  .home-entry-arrow {
+    font-size: 26px;
+  }
+  .home-entry-leader {
+    min-width: 4px;
+  }
+  .home-account {
+    gap: 4px;
+    padding-top: 20px;
+    font-size: 11px;
+  }
+  .home-space {
+    width: 100%;
+  }
+  body:has(.home) .bookmark {
+    top: max(21px, env(safe-area-inset-top));
+    right: max(22px, env(safe-area-inset-right));
+    width: 35px;
+    min-width: 35px;
+    height: 113px;
+    min-height: 113px;
+    padding: 9px 7px 50px;
+    font-size: 15px;
+  }
+  body:has(.home) .bookmark::after {
+    inset: auto 5px 10px;
+    height: 42px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-entry-icon,
+  .home-entry-arrow {
+    transition: none;
+  }
 }

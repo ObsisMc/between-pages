@@ -6,8 +6,9 @@ import { useMe } from '../auth/me.ts';
 import { BackupBanner } from '../backup/index.ts';
 import { BookSpread } from '../book/index.ts';
 import { clearPendingInvite, pendingInvite } from '../join/index.ts';
-import { RelationshipPanel, useBinding } from '../relationship/index.ts';
+import { partnerOf, RelationshipPanel, useBinding } from '../relationship/index.ts';
 import { HomeClocks } from '../two-clocks/index.ts';
+import { HomeBookSurface } from './HomeBookSurface.tsx';
 import { localToday } from './today.ts';
 import './home.css';
 
@@ -25,12 +26,36 @@ const dateParts = () =>
 /** Two lit windows, one per person; the second stays empty while there is no partner. */
 function Windows({ together }: { together: boolean }) {
   return (
-    <div className="home-windows" aria-hidden="true">
-      <span className="home-window warm">
-        <span className="home-figure" />
-      </span>
-      <span className="home-window cool">{together && <span className="home-figure" />}</span>
-    </div>
+    <img
+      className="home-windows"
+      src={together ? '/home/windows-watercolor.webp' : '/home/windows-unbound.webp'}
+      width="1536"
+      height="1024"
+      alt=""
+    />
+  );
+}
+
+function EntryIcon({ all = false }: { all?: boolean }) {
+  return (
+    <span className="home-entry-icon" aria-hidden="true">
+      <svg
+        viewBox="0 0 32 32"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      >
+        {all ? (
+          <>
+            <path d="M6 6h21l-4 7H3zM6 6v6M3 13v6h21v-6M6 19l-3 7h21l4-7M24 26v-7M7 9h15" />
+            <path d="M7 16h13M7 22h13" />
+          </>
+        ) : (
+          <path d="M16 8C12 5 7 5 3 7v19c4-2 9-2 13 1 4-3 9-3 13-1V7c-4-2-9-2-13 1Zm0 0v19" />
+        )}
+      </svg>
+    </span>
   );
 }
 
@@ -64,48 +89,74 @@ export function HomePage() {
 
   return (
     <main className="home">
-      <BookSpread
-        left={
-          <>
-            <p className="home-brand">
-              <span className="home-pair" aria-hidden="true" />
-              Between Pages
-            </p>
-            <p className="home-preface">序言</p>
-            <h1 className="home-date">
-              {date.month} 月 {date.day} 日<span className="home-weekday">{date.weekday}</span>
-            </h1>
-            <p className="home-line">不同的地方，同一片天空。</p>
-            <Windows together={bound} />
-          </>
-        }
-        right={
-          <>
-            <BackupBanner />
-            <HomeClocks />
-            <nav className="home-entries" aria-label="日记">
-              <Link to={`/days/${localToday()}`} className="home-entry today">
-                打开今天的日记
-              </Link>
-              <Link to="/days" className="home-entry all">
-                浏览所有日记
-              </Link>
-            </nav>
-            {me.data && <RelationshipPanel userId={me.data.user.id} />}
-            <p className="home-account">
-              <span>已登录为 {me.data?.user.displayName}</span> ·{' '}
-              <button type="button" className="home-sign-out" onClick={() => void onSignOut()}>
-                退出
-              </button>
-            </p>
-            {failed && (
-              <p className="notice" role="alert">
-                退出失败，请重试
+      <div className="home-surface">
+        <HomeBookSurface />
+        <BookSpread
+          left={
+            <>
+              <p className="home-brand">
+                <span className="home-pair" aria-hidden="true" />
+                Between Pages
               </p>
-            )}
-          </>
-        }
-      />
+              <p className="home-preface">序言</p>
+              <h1 className="home-date">
+                <span className="home-date-month">
+                  {date.month}
+                  <span>月</span>
+                </span>{' '}
+                <span className="home-date-day">
+                  {date.day}
+                  <span>日</span>
+                </span>
+                <span className="home-weekday">{date.weekday}</span>
+              </h1>
+              <p className="home-line">不同的地方，同一片天空。</p>
+              <Windows together={bound} />
+            </>
+          }
+          right={
+            <>
+              <BackupBanner />
+              <HomeClocks />
+              <nav className="home-entries" aria-label="日记">
+                <Link to={`/days/${localToday()}`} className="home-entry today">
+                  <EntryIcon />
+                  <span>打开今天的日记</span>
+                  <span className="home-entry-leader" aria-hidden="true" />
+                  <span className="home-entry-arrow" aria-hidden="true">
+                    →
+                  </span>
+                </Link>
+                <Link to="/days" className="home-entry all">
+                  <EntryIcon all />
+                  <span>浏览所有日记</span>
+                  <span className="home-entry-leader" aria-hidden="true" />
+                  <span className="home-entry-arrow" aria-hidden="true">
+                    →
+                  </span>
+                </Link>
+              </nav>
+              {me.data && !bound && <RelationshipPanel userId={me.data.user.id} />}
+              <p className="home-account">
+                {me.data && binding.data?.binding && (
+                  <Link className="home-space" to={`/spaces/${binding.data.binding.space.id}`}>
+                    与 {partnerOf(binding.data.binding.space, me.data.user.id).displayName} 的空间
+                  </Link>
+                )}
+                <span>已登录为 {me.data?.user.displayName}</span> ·{' '}
+                <button type="button" className="home-sign-out" onClick={() => void onSignOut()}>
+                  退出
+                </button>
+              </p>
+              {failed && (
+                <p className="notice" role="alert">
+                  退出失败，请重试
+                </p>
+              )}
+            </>
+          }
+        />
+      </div>
     </main>
   );
 }
