@@ -57,6 +57,8 @@ In `e2e/`, a context opened with `browser.newContext()` belongs to the worker's 
 
 Fix them when you meet them: find the cause, repair it, verify the behavior. Do not add a retry, a longer timeout or a sleep; do not weaken the assertion; do not skip without an issue link and an owner. A retry hides a race; the race ships.
 
+Known: in WebKit, `e2e/anniversaries.spec.ts` "the partner’s birthday is today on their side…" runs 29–30 s against its 30 s budget since every page carries the book (2026-11-02, [validation](validation/book-pages-reproduction-2026-11-02.md)); Ray deferred the speed work, so it waits for that, not for a longer timeout.
+
 Known: the prototype browser test "firefox: peer caret stays anchored after insertion and vanishes on disconnect" timed out in one of eight Node 26 suite runs on 2026-10-24 and passed on both reruns. TODO(owner): investigate before porting caret behavior to the formal editor.
 
 ## Running subsets
