@@ -124,7 +124,8 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'anniversaries',
       ],
       api: [],
-      auth: ['api'],
+      // book-fit-and-bookmark D3: the session check waits and fails on the book.
+      auth: ['api', 'book'],
       pages: [
         'api',
         'auth',
