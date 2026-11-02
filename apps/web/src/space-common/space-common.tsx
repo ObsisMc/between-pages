@@ -56,7 +56,8 @@ export function useSeenReporter(queryKey: readonly unknown[]) {
 /**
  * A ref for one record's element: while `target` is set (the record holds something
  * unread), it is reported once it has been at least half visible on a visible page for
- * about a second without a break.
+ * about a second without a break. A page made inert (the 「目录」 covers it, contents-spread
+ * D1) is not visible: the second starts again once it is uncovered.
  */
 export function useSeen(target: SeenTarget | null, report: (target: SeenTarget) => void) {
   const [element, setElement] = useState<HTMLElement | null>(null);
@@ -67,10 +68,19 @@ export function useSeen(target: SeenTarget | null, report: (target: SeenTarget) 
     if (!element || !type || !id || mark === undefined) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let inView = false;
+    // Whether the last full second had the page covered, so this one does not count.
+    let covered = false;
     const arm = () => {
       clearTimeout(timer);
+      covered = false;
       if (inView && document.visibilityState === 'visible')
-        timer = setTimeout(() => report({ type, id, mark }), SEEN_DWELL_MS);
+        timer = setTimeout(dwell, SEEN_DWELL_MS);
+    };
+    const dwell = () => {
+      const now = !!element.closest('[inert]');
+      if (!now && !covered) return report({ type, id, mark });
+      covered = now;
+      timer = setTimeout(dwell, SEEN_DWELL_MS);
     };
     const observer = new IntersectionObserver(
       ([entry]) => {

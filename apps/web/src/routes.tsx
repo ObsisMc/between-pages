@@ -120,10 +120,9 @@ const pages: RouteObject[] = [
 export const appRoutes: RouteObject[] = [
   {
     element: (
-      <>
+      <SiteBookmark>
         <Outlet />
-        <SiteBookmark />
-      </>
+      </SiteBookmark>
     ),
     children: pages,
   },

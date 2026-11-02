@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { callApi } from '../api/client.ts';
+import { BookSpread } from '../book/index.ts';
 import { PERIOD_TEXT } from './HomeClocks.tsx';
 import { browserZone, clocksKey, useClocks, useNow, useTimezoneReport } from './queries.ts';
 import {
@@ -16,7 +17,8 @@ import {
 
 // The clocks page (two-clocks D2, D3): both local times, both sleep schedules (only the
 // caller's editable) and today's hours when both are awake, each in its own local time.
-// Without a current binding it shows nothing of anyone (D5).
+// Without a current binding it shows nothing of anyone (D5). The clocks are the left page,
+// the schedules the right (book-surface D5).
 
 const STEPS = Array.from({ length: 96 }, (_, i) => i * 15);
 
@@ -87,13 +89,27 @@ export function ClocksPage() {
   const partner = clocks.data?.partner;
   const zone = browserZone();
 
-  if (clocks.isPending) return <main className="page clocks" />;
+  if (clocks.isPending)
+    return (
+      <main className="clocks">
+        <BookSpread left={null} right={null} />
+      </main>
+    );
   if (!partner)
     return (
-      <main className="page clocks">
-        <Link to="/">返回首页</Link>
-        <h1>两地时间</h1>
-        <p>绑定搭档后，这里会显示你们两边的时间。</p>
+      <main className="clocks">
+        <BookSpread
+          left={
+            <>
+              <Link className="book-back" to="/">
+                ← 序言
+              </Link>
+              <h1>两地时间</h1>
+              <p>绑定搭档后，这里会显示你们两边的时间。</p>
+            </>
+          }
+          right={null}
+        />
       </main>
     );
 
@@ -111,36 +127,47 @@ export function ClocksPage() {
     );
 
   return (
-    <main className="page clocks">
-      <Link to="/">返回首页</Link>
-      <h1>两地时间</h1>
-      <section>
-        {side('你这边', zone)}
-        {side('TA 那边', partner.timezone)}
-      </section>
-      <section>
-        <h2>今天你们都醒着的时间</h2>
-        {together === null ? (
-          <p>两人都设好作息后，会显示今天你们都醒着的时间。</p>
-        ) : together.length === 0 ? (
-          <p>今天没有两人都醒着的时间。</p>
-        ) : (
-          <ul className="awake-together">
-            {together.map((free) => (
-              <li key={free.start}>
-                你 {clockText(free.start, zone, day.end)}–{clockText(free.end, zone, day.end)} · TA{' '}
-                {clockText(free.start, partner.timezone!)}–{clockText(free.end, partner.timezone!)}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      <section>
-        <h2>作息</h2>
-        <p>你平时 {sleepText(me.sleep)} 睡</p>
-        <SleepEditor key={JSON.stringify(me.sleep)} sleep={me.sleep} />
-        <p>TA 平时 {sleepText(partner.sleep)} 睡</p>
-      </section>
+    <main className="clocks">
+      <BookSpread
+        left={
+          <>
+            <Link className="book-back" to="/">
+              ← 序言
+            </Link>
+            <h1>两地时间</h1>
+            <section>
+              {side('你这边', zone)}
+              {side('TA 那边', partner.timezone)}
+            </section>
+            <section>
+              <h2>今天你们都醒着的时间</h2>
+              {together === null ? (
+                <p>两人都设好作息后，会显示今天你们都醒着的时间。</p>
+              ) : together.length === 0 ? (
+                <p>今天没有两人都醒着的时间。</p>
+              ) : (
+                <ul className="awake-together">
+                  {together.map((free) => (
+                    <li key={free.start}>
+                      你 {clockText(free.start, zone, day.end)}–{clockText(free.end, zone, day.end)}{' '}
+                      · TA {clockText(free.start, partner.timezone!)}–
+                      {clockText(free.end, partner.timezone!)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </>
+        }
+        right={
+          <section>
+            <h2>作息</h2>
+            <p>你平时 {sleepText(me.sleep)} 睡</p>
+            <SleepEditor key={JSON.stringify(me.sleep)} sleep={me.sleep} />
+            <p>TA 平时 {sleepText(partner.sleep)} 睡</p>
+          </section>
+        }
+      />
     </main>
   );
 }

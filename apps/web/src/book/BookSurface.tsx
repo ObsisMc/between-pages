@@ -1,16 +1,21 @@
-import { useId } from 'react';
+import { memo, useId } from 'react';
 
 // The browser caches a small SVG texture resource; the full book has no noise filter.
 function PaperGrain({ id }: { id: string }) {
   return (
     <pattern id={id} width="128" height="128" patternUnits="userSpaceOnUse">
-      <image href="/home/paper-grain.svg" width="128" height="128" />
+      <image href="/book/paper-grain.svg" width="128" height="128" />
     </pattern>
   );
 }
 
-/** The entire book is editable vector geometry; no book or paper bitmap is used. */
-export function HomeBookSurface() {
+/**
+ * The book every page is drawn on (book-surface D1): cover, stacked page edges, both pages,
+ * fold and shadow as inline SVG, stretched to the spread's box with strokes kept at their
+ * width; on narrow windows one textured sheet instead. No book or paper bitmap is used. It
+ * takes nothing, so a page's own updates never render it again.
+ */
+export const BookSurface = memo(function BookSurface() {
   const id = useId();
   const left =
     'M110 68C327 53 662 35 768 78L768 953C676 925 353 949 109 939Q91 938 92 920L97 90Q98 71 110 68Z';
@@ -19,7 +24,7 @@ export function HomeBookSurface() {
   return (
     <>
       <svg
-        className="home-paper-desktop"
+        className="book-surface-wide"
         viewBox="0 0 1536 1024"
         preserveAspectRatio="none"
         aria-hidden="true"
@@ -56,6 +61,7 @@ export function HomeBookSurface() {
           fill={`url(#${id}-cover)`}
           stroke="#c7a77c"
           strokeWidth="1.5"
+          vectorEffect="non-scaling-stroke"
         />
         {[0, 1, 2, 3].map((layer) => (
           <g
@@ -68,15 +74,29 @@ export function HomeBookSurface() {
             <path
               d="M93 66C288 48 653 39 768 78L768 953C668 932 299 950 88 940Q69 939 71 920L79 88Q80 68 93 66Z"
               transform={`translate(${layer * 4} 0)`}
+              vectorEffect="non-scaling-stroke"
             />
             <path
               d="M768 78C882 40 1237 46 1446 66Q1467 67 1468 88L1475 921Q1476 942 1455 943C1246 945 858 932 768 953Z"
               transform={`translate(${-layer * 4} 0)`}
+              vectorEffect="non-scaling-stroke"
             />
           </g>
         ))}
-        <path d={left} fill={`url(#${id}-left)`} stroke="#e1cbaa" strokeWidth="0.8" />
-        <path d={right} fill={`url(#${id}-right)`} stroke="#e1cbaa" strokeWidth="0.8" />
+        <path
+          d={left}
+          fill={`url(#${id}-left)`}
+          stroke="#e1cbaa"
+          strokeWidth="0.8"
+          vectorEffect="non-scaling-stroke"
+        />
+        <path
+          d={right}
+          fill={`url(#${id}-right)`}
+          stroke="#e1cbaa"
+          strokeWidth="0.8"
+          vectorEffect="non-scaling-stroke"
+        />
         <g fill={`url(#${id}-grain)`}>
           <path d={left} />
           <path d={right} />
@@ -86,6 +106,7 @@ export function HomeBookSurface() {
           fill="none"
           stroke="#fffdf5"
           strokeWidth="2"
+          vectorEffect="non-scaling-stroke"
         />
         <path
           d="M768 80C765 310 772 723 768 952"
@@ -93,6 +114,7 @@ export function HomeBookSurface() {
           stroke="#a98555"
           strokeOpacity="0.45"
           strokeWidth="1.2"
+          vectorEffect="non-scaling-stroke"
         />
         <path
           d="M772 84C769 310 776 723 772 947"
@@ -100,15 +122,16 @@ export function HomeBookSurface() {
           stroke="#fffaf0"
           strokeOpacity="0.55"
           strokeWidth="1.7"
+          vectorEffect="non-scaling-stroke"
         />
       </svg>
-      <svg className="home-paper-mobile" aria-hidden="true">
+      <svg className="book-surface-narrow" aria-hidden="true">
         <defs>
-          <PaperGrain id={`${id}-mobile-grain`} />
+          <PaperGrain id={`${id}-narrow-grain`} />
         </defs>
         <rect width="100%" height="100%" fill="#fcf7eb" />
-        <rect width="100%" height="100%" fill={`url(#${id}-mobile-grain)`} />
+        <rect width="100%" height="100%" fill={`url(#${id}-narrow-grain)`} />
       </svg>
     </>
   );
-}
+});

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReadRange } from '@between-pages/contracts';
 import { callApi } from '../api/client.ts';
+import { Avatar, type AvatarPerson } from '../avatar/index.ts';
 import { DayText, decodeText, visibleOthers, type Clip, type TextRun } from '../day-text/index.ts';
 import { createReadTracker, unreadSpans } from '../read-tracker/index.ts';
 import { needsText, type DiaryRef, type LoadedVersion, type Side } from './model.ts';
@@ -32,7 +33,7 @@ function readState({ diaryId, epochId }: DiaryRef) {
  */
 export function FeedDiary({
   diary,
-  name,
+  person,
   readerId,
   near,
   listUnread,
@@ -41,8 +42,8 @@ export function FeedDiary({
   onUnread,
 }: {
   diary: DiaryRef;
-  /** Shown above the text when the date has both diaries. */
-  name: string | null;
+  /** Whose diary: their avatar and name above the text. */
+  person: AvatarPerson;
   readerId: string;
   near: boolean;
   /** Whether the list marks this diary unread, and is trusted. */
@@ -110,12 +111,11 @@ export function FeedDiary({
       data-diary={diaryId}
       data-unread={listUnread && anyUnread === undefined ? 'loading' : undefined}
     >
-      {(name || diary.frozen) && (
-        <p className="feed-diary-who">
-          {name}
-          {diary.frozen && <span className="share-state">已停止共享</span>}
-        </p>
-      )}
+      <p className="feed-diary-who">
+        <Avatar person={person} hollow={!diary.hasText} />
+        {person.name}
+        {diary.frozen && <span className="share-state">已停止共享</span>}
+      </p>
       {text &&
         (text.runs.length ? (
           <DayText

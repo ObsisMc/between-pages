@@ -1,8 +1,9 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
 // Browser acceptance of the book frontend (book-frontend-workspace 落地顺序 step 4,
-// opening-book-home): the book's layout at a wide and at narrow widths, long text, the
-// 「目录」 by keyboard, the home and contents per relationship state, both people writing
+// opening-book-home, book-surface, contents-spread): the book's layout at a wide and at
+// narrow widths on every page, long text, the 「目录」 by keyboard and what it keeps of the
+// page below, the home and contents per relationship state, both people writing
 // across days, a frozen share, an empty list, failures in the feed, keyboard use of the
 // feed, the narrow window's round unread buttons and save state that only the server sets.
 // Names carry the browser and a per-run suffix, so projects and reruns stay independent.
@@ -72,7 +73,7 @@ const feed = (page: Page) => page.getByRole('region', { name: '所有日记' });
 const dateIn = (page: Page, date: string) => feed(page).locator(`[data-date="${date}"]`);
 const editor = (page: Page) => page.locator('.diary-editor').getByRole('textbox');
 const bookmark = (page: Page) => page.getByRole('button', { name: '目录', exact: true });
-const contents = (page: Page) => page.getByRole('dialog', { name: '目录' });
+const contents = (page: Page) => page.getByRole('main', { name: '目录' });
 
 /**
  * Opens `path` until the feed shows `text` in `date`: a diary written seconds ago is
@@ -180,16 +181,26 @@ test('[adr:book-frontend-workspace#1] wide: no text or control crosses the gutte
   await createDiaries(page, [older, longDay]);
   await paste(page, longDay, LONG_TEXT);
 
-  for (const path of ['/', '/days', `/days/${longDay}`]) {
+  for (const path of ['/', '/days', `/days/${longDay}`, '/clocks', '/backup', 'contents']) {
     if (path === '/days') await untilRead(page, path, longDay, '最后一行');
+    else if (path === 'contents') await bookmark(page).click();
     else await page.goto(path);
-    await expect(page.locator('.book-page').first()).toBeVisible();
-    if (path !== '/') await expect(editor(page).or(page.getByText('从右页选一天'))).toBeVisible();
+    // With the contents open, the page below is there but hidden.
+    await expect(
+      path === 'contents' ? contents(page) : page.locator('.book-page').first(),
+    ).toBeVisible();
+    if (path.startsWith('/days'))
+      await expect(editor(page).or(page.getByText('从右页选一天'))).toBeVisible();
     if (path === `/days/${longDay}`) await expect(editor(page)).toContainText('最后一行');
+    if (path === '/clocks')
+      await expect(page.getByRole('heading', { name: '两地时间' })).toBeVisible();
+    if (path === '/backup') await expect(page.getByRole('heading', { name: '备份' })).toBeVisible();
+    if (path === 'contents') await expect(contents(page)).toBeVisible();
     expect(await outside(page), path).toEqual([]);
     await bookmarkOnScreen(page);
     if (path === '/') continue;
-    // The workspace is the window's height: the pages scroll inside, never past the book.
+    // Every book but the home is the window's height: the pages scroll inside, never past
+    // the book.
     const foot = await page.evaluate(() => ({
       window: document.documentElement.scrollHeight <= window.innerHeight,
       pages: [...document.querySelectorAll('.book-page')].every(
@@ -222,7 +233,7 @@ for (const viewport of NARROW) {
     await createDiaries(page, [older, longDay]);
     await paste(page, longDay, LONG_TEXT);
 
-    for (const path of ['/', '/days', `/days/${longDay}`]) {
+    for (const path of ['/', '/days', `/days/${longDay}`, '/clocks', '/backup']) {
       if (path === '/days') await untilRead(page, path, longDay, '最后一行');
       else await page.goto(path);
       await expect(page.locator('.book-page').first()).toBeVisible();
@@ -246,7 +257,7 @@ for (const viewport of NARROW) {
   });
 }
 
-test('[adr:opening-book-home#1] [adr:book-frontend-workspace#2] the home shows no diary text; the 目录 opens, wraps and closes by keyboard and back', async ({
+test('[adr:opening-book-home#1] [adr:book-frontend-workspace#2] [adr:contents-spread#2] [adr:contents-spread#3] the home shows no diary text; the 目录 opens over it, keeps Tab off the page below and closes by keyboard and back', async ({
   browser,
   browserName,
 }) => {
@@ -275,7 +286,8 @@ test('[adr:opening-book-home#1] [adr:book-frontend-workspace#2] the home shows n
   await expect(page.locator('body')).not.toContainText('只给自己看的一句');
   expect(asked).toEqual([]);
 
-  // Tab reaches the bookmark; Enter opens the contents with the focus inside it.
+  // Tab reaches the bookmark; Enter opens the contents, a page and not a dialog, with the
+  // focus on its title.
   let tabs = 0;
   while (!(await bookmark(page).evaluate((el) => el === document.activeElement))) {
     await page.keyboard.press('Tab');
@@ -284,18 +296,22 @@ test('[adr:opening-book-home#1] [adr:book-frontend-workspace#2] the home shows n
   await page.keyboard.press('Enter');
   await expect(contents(page)).toBeVisible();
   await expect(bookmark(page)).toHaveAttribute('aria-expanded', 'true');
-  expect(await contents(page).evaluate((el) => el.contains(document.activeElement))).toBe(true);
+  await expect(contents(page).getByRole('heading', { name: '目录' })).toBeFocused();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: '浏览所有日记' })).toBeHidden();
   await expect(contents(page).getByRole('link', { name: /今天的日记/ })).toBeVisible();
   await expect(contents(page).getByRole('link', { name: /所有日记/ })).toBeVisible();
   await expect(page.locator('body')).not.toContainText('只给自己看的一句');
 
-  // Tab stays inside: from the last control it wraps to the first, and back again.
-  const links = contents(page).locator('a[href], button');
-  await links.last().focus();
-  await page.keyboard.press('Tab');
-  await expect(links.first()).toBeFocused();
-  await page.keyboard.press('Shift+Tab');
-  await expect(links.last()).toBeFocused();
+  // Tab goes through the contents and the bookmark, never into the home below it.
+  const count = await contents(page).locator('a[href], button').count();
+  for (let i = 0; i <= count; i++) {
+    await page.keyboard.press('Tab');
+    expect(
+      await page.evaluate(() => !document.activeElement?.closest('.contents-origin')),
+      `Tab ${i + 1}`,
+    ).toBe(true);
+  }
 
   // Escape closes it where it was opened, the focus back on the bookmark.
   await page.keyboard.press('Escape');
@@ -365,15 +381,23 @@ test('[adr:opening-book-home#5] [adr:book-frontend-workspace#7] home and 目录 
   await expect(a.locator('.clock-face', { hasText: 'TA 那边' })).toBeVisible();
   await expect(a.getByRole('link', { name: '设置作息' })).toBeVisible();
   await expect(a.getByText(/共同醒着/)).toHaveCount(0);
+  // The left page holds 「日记」 and 「管理」, the right 「一起」 (contents-spread D3).
   expect(await entries(a)).toEqual([
     '今天的日记',
     '所有日记',
+    '双人空间',
+    '备份',
     '两地时间',
     '心愿与礼物',
     '纪念日',
-    '双人空间',
-    '备份',
   ]);
+  // The features' pages are books inside the window too.
+  for (const path of ['/wishes', '/anniversaries', space]) {
+    await a.goto(path);
+    await expect(a.locator('.book-page h1').first()).toBeVisible();
+    expect(await outside(a), path).toEqual([]);
+    await bookmarkOnScreen(a);
+  }
 
   // A writes a shared diary, then unbinds; B keeps it read-only and nothing of A's later.
   const date = '2026-09-10';
@@ -395,15 +419,52 @@ test('[adr:opening-book-home#5] [adr:book-frontend-workspace#7] home and 目录 
     expect(await entries(page)).toEqual([
       '今天的日记',
       '所有日记',
-      '心愿与礼物',
-      '纪念日',
       '双人空间',
       '备份',
+      '心愿与礼物',
+      '纪念日',
     ]);
   }
   await untilRead(b, '/days', date, '绑定时写的');
   await expect(dateIn(b, date)).toContainText('已停止共享');
   await expect(dateIn(b, date)).not.toContainText('解绑后写的');
+});
+
+test('[adr:contents-spread#1] the 目录 gives back the page below as it was: a half-written form, unsent text and the feed’s place', async ({
+  browser,
+  browserName,
+}) => {
+  test.setTimeout(120_000);
+  const { a } = await pair(browser, `bs${browserName}${run}`);
+
+  // A wish half written stays in its field across the contents.
+  await a.goto('/wishes');
+  const wish = a.getByLabel('名称').first();
+  await wish.fill('写到一半的心愿');
+  await bookmark(a).click();
+  await expect(contents(a)).toBeVisible();
+  await contents(a).getByRole('button', { name: '合上目录' }).click();
+  await expect(contents(a)).toHaveCount(0);
+  await expect(wish).toHaveValue('写到一半的心愿');
+  await expect(bookmark(a)).toBeFocused();
+
+  // Text just typed on the left page and the place in the feed on the right stay too.
+  const dates = datesFrom('2026-08-01', 12);
+  await createDiaries(a, dates);
+  await a.goto(`/days/${dates[11]}`);
+  await expect(dateIn(a, dates[0]!)).toBeAttached();
+  await editor(a).click();
+  await a.keyboard.type('还没离开');
+  const box = feed(a).locator('.day-feed-scroll');
+  await box.evaluate((el) => (el.scrollTop = 300));
+  const kept = await box.evaluate((el) => el.scrollTop);
+  expect(kept).toBeGreaterThan(0);
+  await bookmark(a).click();
+  await expect(contents(a)).toBeVisible();
+  await a.keyboard.press('Escape');
+  await expect(contents(a)).toHaveCount(0);
+  await expect(editor(a)).toContainText('还没离开');
+  expect(await box.evaluate((el) => el.scrollTop)).toBe(kept);
 });
 
 test('[adr:book-frontend-workspace#7] both people writing across days read in one feed; a frozen share stays as it was', async ({

@@ -1,194 +1,392 @@
-/* The book (book-frontend-workspace D1, D2): paper, gutter and bookmark are CSS only; every
-   word and control inside is real HTML. Two pages need about 56rem; below that the spread
-   reads as one page. */
+/* The book (book-surface D1, D6; book-frontend-workspace D1): the book's geometry and
+   paper are the inline SVG of `BookSurface`, the bookmark and the type are here; every word
+   and control is real HTML over them. Two pages need about 56rem; below that the spread
+   reads as one sheet. Book pages are light paper at every system theme. */
 :root {
-  --book-width: 72rem;
-  --book-page: #fffbf5;
-  --book-edge: #eadbc8;
-  --book-shadow: rgba(92, 64, 38, 0.14);
-  --bookmark: #f2d6b8;
-  --bookmark-ink: #5a3d27;
+  /* Where the window-high book is, so the bookmark can sit on its edge. */
+  --book-width: min(100vw - 2rem, 96rem, (100dvh - 2rem) * 1.75);
+  --book-height: calc(100dvh - 2rem);
+  --book-top: 1rem;
+  --bookmark-at: 0.09;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --book-page: #2a241f;
-    --book-edge: #3d342c;
-    --book-shadow: rgba(0, 0, 0, 0.4);
-    --bookmark: #6b4a32;
-    --bookmark-ink: #f6e3cf;
-  }
+/* The home page's book keeps the reference's 3:2 at the top of the window, unless the
+   contents covers it. */
+body:has(.contents-origin:not([inert]) .book-desk.aspect) {
+  --book-width: min(100vw, 96rem);
+  --book-height: calc(var(--book-width) * 2 / 3);
+  --book-top: 0px;
+  --bookmark-at: 0.125;
+}
+
+body:has(.book-desk) {
+  background: #f8f2e8;
+  color-scheme: light;
+}
+
+.book-desk {
+  --paper: #fcf7eb;
+  --ink: #27262b;
+  --ink-soft: #736b61;
+  --accent: #b35f2e;
+  --accent-ink: #fffaf4;
+  --line: #e3cfb2;
+  --notice: #f6e4cf;
+  --done: #44704a;
+  --author-1: #a2532a;
+  --author-2: #33677f;
+  --font-title: 'Book Serif', 'Songti SC', 'Source Han Serif SC', 'Noto Serif CJK SC', serif;
+  --font-body: var(--font-title);
+  color-scheme: light;
+  color: var(--ink);
+  font-family: var(--font-body);
+  line-height: 1.7;
 }
 
 .book {
+  position: relative;
+  isolation: isolate;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  /* The gutter: a narrow gap the two inner shadings meet across. */
-  column-gap: 0.375rem;
-  width: min(var(--book-width), 100% - 2rem);
-  margin: 2rem auto;
+}
+
+.book-surface-wide,
+.book-surface-narrow {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* The static paper keeps its own compositing layer while the page above it changes. */
+.book-surface-wide {
+  transform: translateZ(0);
+}
+
+.book-surface-narrow {
+  display: none;
 }
 
 .book-page {
   /* Each page is its own box: long words wrap, nothing reaches over the gutter. */
+  position: relative;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+  min-height: 0;
   overflow-wrap: anywhere;
   overflow-x: clip;
-  padding: 3rem 3.5rem;
-  position: relative;
-  border: 1px solid var(--book-edge);
-  /* Plain paper, a crisp edge below it and a narrow band of shading at the gutter. Blurred
-     shadows and gradients across a whole page cost WebKit about a second per paint at a
-     device pixel ratio of 2, so the page could not be used right after it loaded. */
-  background: var(--book-page);
 }
 
-.book-page::after {
+.book-scroll {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Window-high: the pages scroll inside the paper, inside the page's curved edges. */
+.book-desk.window .book {
+  container-type: size;
+  width: var(--book-width);
+  height: var(--book-height);
+  margin: var(--book-top) auto;
+}
+
+.book-desk.window .book-left {
+  padding: 10cqh 3.5cqw 9cqh 9cqw;
+}
+
+.book-desk.window .book-right {
+  padding: 10cqh 9cqw 10cqh 3.5cqw;
+}
+
+.book-desk.window .book-scroll {
+  overflow-y: auto;
+  overflow-x: clip;
+  scrollbar-width: thin;
+  scrollbar-color: #d9c4a5 transparent;
+}
+
+.book-desk h1 {
+  font-family: var(--font-title);
+  font-weight: 600;
+  font-size: 2rem;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+}
+
+.book-desk.window h1::after {
   content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 1.5rem;
-  pointer-events: none;
+  display: block;
+  width: 2.25rem;
+  height: 0.2rem;
+  margin-top: 0.6rem;
+  border-radius: 50% 20% 35% 20%;
+  background: #ffa266;
 }
 
-.book-left {
-  border-radius: 1.1rem 0.3rem 0.35rem 1.25rem;
-  box-shadow: -0.2rem 0.3rem 0 var(--book-edge);
+.book-desk h2,
+.book-desk h3 {
+  font-family: var(--font-title);
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
 
-.book-left::after {
-  right: 0;
-  background: linear-gradient(to left, var(--book-shadow), transparent);
+:where(.book-desk) button {
+  border-color: #e3c49f;
+  border-radius: 999px;
+  background: #fffaf2;
 }
 
-.book-right {
-  border-radius: 0.3rem 1.2rem 1.1rem 0.35rem;
-  box-shadow: 0.2rem 0.3rem 0 var(--book-edge);
+:where(.book-desk) button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
-.book-right::after {
-  left: 0;
-  background: linear-gradient(to right, var(--book-shadow), transparent);
+:where(.book-desk) :is(input:not([type='checkbox'], [type='radio']), select, textarea) {
+  min-height: 2.25rem;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid #dcc4a3;
+  border-radius: 0.5rem;
+  background: #fffdf8;
+  color: var(--ink);
+  font: inherit;
+}
+
+:where(.book-desk) a {
+  color: #8a4a2b;
+  text-underline-offset: 0.2em;
+}
+
+/* Back to the opening, top left of a page. */
+.book-back {
+  align-self: flex-start;
+  margin-bottom: 1rem;
+  color: var(--ink-soft);
+  text-decoration: none;
+  letter-spacing: 0.08em;
+}
+
+.book-back:hover,
+.book-back:focus-visible {
+  text-decoration: underline;
+}
+
+/* The opening's left page (BookOpening) in a window-high book; the home page sizes its own. */
+.opening-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 0 2rem;
+  font-family: Georgia, var(--font-title);
+  font-size: 1.1rem;
+  letter-spacing: 0.11em;
+}
+
+.opening-pair {
+  flex: none;
+  width: 3.2rem;
+  height: 2rem;
+  background: url('/book/mascots.svg') center / contain no-repeat;
+}
+
+.opening-line {
+  margin: 0;
+  font-size: 1.2rem;
+  letter-spacing: 0.15em;
+}
+
+.opening-windows {
+  display: block;
+  width: 100%;
+  max-width: 34rem;
+  height: auto;
+  margin-top: auto;
 }
 
 @media (max-width: 56rem) {
-  /* One sheet: the paper moves to the book, so the two halves show no seam. */
-  .book {
-    grid-template-columns: 1fr;
+  /* One sheet: the paper is the whole book and the window scrolls. */
+  .book-desk {
+    padding: 12px;
+  }
+
+  .book-desk .book,
+  .book-desk.window .book {
+    display: block;
     width: auto;
+    height: auto;
+    min-height: calc(100svh - 24px);
     margin: 0;
-    background: var(--book-page);
+    container-type: normal;
+    border: 1px solid #e2ccad;
+    border-radius: 18px 22px 20px 14px;
+    box-shadow:
+      3px 3px 0 #edddc6,
+      6px 5px 0 #e5d2b7;
   }
 
-  .book-page {
-    padding: 2rem max(1.25rem, env(safe-area-inset-right)) 2rem
-      max(1.25rem, env(safe-area-inset-left));
-    border: 0;
-    border-radius: 0;
-    box-shadow: none;
-    background: none;
+  .book-surface-wide {
+    display: none;
   }
 
-  .book-page::after {
-    content: none;
+  .book-surface-narrow {
+    display: block;
+    border-radius: 18px 22px 20px 14px;
   }
 
-  .book-left {
+  .book-desk .book-page,
+  .book-desk.window .book-left,
+  .book-desk.window .book-right {
+    display: block;
+    padding: 2rem max(1.25rem, 6vw, env(safe-area-inset-right)) 1.25rem
+      max(1.25rem, 6vw, env(safe-area-inset-left));
+  }
+
+  .book-desk .book-scroll,
+  .book-desk.window .book-scroll {
+    display: block;
+    overflow: visible;
+  }
+
+  .book-desk .book-left {
     padding-top: max(2rem, env(safe-area-inset-top));
   }
 
   /* Text at the top flows around the bookmark instead of under it. */
-  .book-left::before {
+  .book-desk .book-left > .book-scroll::before {
     content: '';
     float: right;
     width: 2.5rem;
     height: 6rem;
   }
 
-  .book-right {
+  .book-desk .book-right,
+  .book-desk.window .book-right {
     padding-top: 0;
-    padding-bottom: max(3rem, env(safe-area-inset-bottom));
+    padding-bottom: max(2rem, env(safe-area-inset-bottom));
+  }
+
+  .book-desk h1 {
+    font-size: 1.75rem;
   }
 }
 
-/* The bookmark: on the right page's outer edge when the book is at full width, else just
-   inside the window's right edge; fixed, so it never leaves the screen. */
+/* The bookmark (book-surface D6): a ribbon tucked under the right page's outer edge on
+   wide windows, inside the sheet's top right otherwise; fixed, so it never leaves the
+   screen. */
 .bookmark {
   position: fixed;
   z-index: 30;
-  top: max(2.75rem, env(safe-area-inset-top));
-  right: max(0.5rem, env(safe-area-inset-right), calc((100vw - var(--book-width)) / 2 - 2.25rem));
-  writing-mode: vertical-rl;
-  letter-spacing: 0.3em;
-  min-height: 5.5rem;
-  min-width: 2.75rem;
-  padding: 0.75rem 0.5rem 1.5rem;
-  border: 0;
-  border-radius: 0.25rem 0.25rem 0 0;
-  background: var(--bookmark);
-  color: var(--bookmark-ink);
-  font-family: var(--font-title);
-  box-shadow: 0 0.25rem 0.5rem var(--book-shadow);
+  top: calc(var(--book-top) + var(--book-height) * var(--bookmark-at));
+  right: calc((100vw - var(--book-width)) / 2 + var(--book-width) * 0.018);
+  width: clamp(38px, 3.2vw, 49px);
+  min-width: 0;
+  height: clamp(130px, 13vw, 200px);
+  padding: 1.2rem 0.5rem 4rem;
+  border: 1px solid #e0b783;
+  border-radius: 4px 7px 0 0;
+  background: linear-gradient(95deg, #e9bc84, #f9dfb8 25%, #f5d4a8);
+  color: #655334;
+  font:
+    1.25rem / 1.4 'Book Serif',
+    Georgia,
+    serif;
+  letter-spacing: 0.2em;
+  box-shadow: 0 0.25rem 0.5rem rgba(92, 64, 38, 0.14);
   /* The ribbon's notch. */
   clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 0.75rem), 0 100%);
 }
 
+.bookmark::after {
+  content: '';
+  position: absolute;
+  inset: auto 7px 1rem;
+  height: 4.5rem;
+  background: url('/book/leaf.svg') center / contain no-repeat;
+}
+
+.bookmark[aria-expanded='true'] {
+  background: linear-gradient(95deg, #e2ab6c, #f4d09f 25%, #efc48f);
+}
+
 .bookmark:focus-visible {
-  outline: 3px solid var(--accent);
+  outline: 3px solid #b35f2e;
   outline-offset: 2px;
   clip-path: none;
 }
 
-.contents-layer {
+@media (max-width: 56rem) {
+  .bookmark {
+    top: max(21px, env(safe-area-inset-top));
+    right: max(22px, env(safe-area-inset-right));
+    width: 35px;
+    height: 113px;
+    min-height: 113px;
+    padding: 9px 7px 50px;
+    font-size: 15px;
+  }
+
+  .bookmark::after {
+    inset: auto 5px 10px;
+    height: 42px;
+  }
+}
+
+/* The contents (contents-spread D1): a whole spread over the page it was opened on, which
+   stays mounted below, hidden and inert. */
+.contents-origin[inert] {
+  visibility: hidden;
+}
+
+.contents {
   position: fixed;
   inset: 0;
   z-index: 20;
   overflow-y: auto;
-  background: rgba(59, 50, 43, 0.35);
+  background: #f8f2e8;
 }
 
-.contents:focus {
+/* 「一起」 starts level with 「日记」 across the gutter. */
+.book-desk.window.contents-book .book-right .contents-group:first-child h2 {
+  margin-top: 8.6rem;
+}
+
+.contents-title:focus {
   outline: none;
 }
 
-.contents-book {
-  counter-reset: contents-entry;
-}
-
-@media (max-width: 56rem) {
-  .contents-layer {
-    background: var(--book-page);
-  }
-}
-
 .contents-home {
+  align-self: flex-start;
   color: var(--ink-soft);
   text-decoration: none;
+  letter-spacing: 0.08em;
 }
 
-.contents-title {
-  font-family: var(--font-title);
-  font-size: 2.5rem;
-  margin: 1.5rem 0 1rem;
+.book-desk h1.contents-title {
+  font-size: 2.75rem;
+  margin: 1.5rem 0 0.5rem;
 }
 
-.contents-title::after {
-  content: '';
-  display: block;
-  width: 2.5rem;
-  height: 0.2rem;
-  margin-top: 0.5rem;
-  border-radius: 0.1rem;
-  background: var(--accent);
-}
-
-.contents-group h3 {
-  font-family: var(--font-title);
+.contents-group h2 {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
   font-size: 1.5rem;
-  margin: 1.5rem 0 0.25rem;
-  padding-bottom: 0.5rem;
+  margin: 1.5rem 0 0;
+  padding-bottom: 0.6rem;
   border-bottom: 1px solid var(--line);
+}
+
+/* Both mascots before each group's title. */
+.contents-group h2::before {
+  content: '';
+  flex: none;
+  width: 3.5rem;
+  height: 1.75rem;
+  background: url('/book/mascots.svg') center / contain no-repeat;
 }
 
 .contents-group ul {
@@ -200,41 +398,116 @@
 .contents-entry {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  min-height: 3.25rem;
+  gap: 1rem;
+  min-height: 3.75rem;
   border-bottom: 1px solid var(--line);
   color: var(--ink);
   text-decoration: none;
   font-size: 1.125rem;
+  letter-spacing: 0.04em;
 }
 
-.contents-entry::before {
-  counter-increment: contents-entry;
-  content: counter(contents-entry, decimal-leading-zero);
-  color: var(--accent);
-  font-family: var(--font-title);
+.contents-no,
+.contents-icon {
+  flex: none;
   min-width: 2rem;
+  color: #b07a52;
+  font-size: 1.25rem;
+}
+
+/* The managing entries carry an icon instead of a number. */
+.contents-icon {
+  height: 1.4rem;
+  background: currentColor;
+  mask: var(--entry-icon) left center / contain no-repeat;
+}
+
+.contents-icon-space {
+  --entry-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.4'%3E%3Ccircle cx='9' cy='8' r='3.2'/%3E%3Cpath d='M3 19c0-3.5 2.7-6 6-6s6 2.5 6 6'/%3E%3Cpath d='M15 5.3a3 3 0 0 1 0 5.4M17 13.4c2.4.6 4 2.8 4 5.6'/%3E%3C/svg%3E");
+}
+
+.contents-icon-backup {
+  --entry-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.4'%3E%3Cpath d='M7 18H6a4 4 0 0 1-.6-8A6 6 0 0 1 17 8.5 4.8 4.8 0 0 1 17.5 18H17'/%3E%3Cpath d='M12 20v-8M9 15l3-3 3 3'/%3E%3C/svg%3E");
 }
 
 /* A dotted leader runs from the label to the arrow. */
 .contents-leader {
   flex: 1;
   align-self: stretch;
-  background: radial-gradient(circle, var(--ink-soft) 0.5px, transparent 1px) left center / 0.5rem
+  background: radial-gradient(circle, var(--ink-soft) 0.6px, transparent 1px) left center / 0.5rem
     0.5rem repeat-x;
   opacity: 0.6;
 }
 
 .contents-arrow {
-  color: var(--accent);
+  color: #8a3d25;
 }
 
 .contents-entry[aria-current='page'] .contents-label {
   text-decoration: underline;
-  text-decoration-thickness: 0.15em;
-  text-underline-offset: 0.3em;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.35em;
 }
 
 .contents-close {
-  margin-top: 2rem;
+  align-self: flex-end;
+  margin-top: auto;
+  color: var(--ink-soft);
+}
+
+:where(.book-desk) .contents-close {
+  border: 0;
+  background: none;
+}
+
+.contents-folio {
+  position: absolute;
+  bottom: 9.5cqh;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+
+.book-left .contents-folio {
+  left: 8cqw;
+}
+
+.book-right .contents-folio {
+  right: 8cqw;
+}
+
+@media (max-width: 56rem) {
+  /* One sheet in reading order: 日记, 一起, 管理, whichever page each sits on wide. */
+  .contents-book .book {
+    display: flex;
+    flex-direction: column;
+    padding: max(2rem, env(safe-area-inset-top)) max(1.25rem, 6vw)
+      max(2rem, env(safe-area-inset-bottom));
+  }
+
+  .book-desk.window.contents-book .book-left,
+  .book-desk.window.contents-book .book-right,
+  .book-desk.window.contents-book .book-scroll {
+    display: contents;
+  }
+
+  .contents-group {
+    order: var(--order);
+  }
+
+  .contents-book .book-left > .book-scroll::before {
+    content: none;
+  }
+
+  .contents-book .contents-home {
+    margin-right: 3rem;
+  }
+
+  .contents-folio {
+    display: none;
+  }
+
+  .contents-close {
+    order: 99;
+    margin-top: 2rem;
+  }
 }

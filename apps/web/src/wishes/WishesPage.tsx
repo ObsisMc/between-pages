@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { GiftOccasion } from '@between-pages/contracts';
 import { callApi } from '../api/client.ts';
+import { BookSpread } from '../book/index.ts';
 import {
   ReadOnlyNotice,
   StampText,
@@ -761,14 +762,26 @@ export function WishesPage() {
   const view = wishes.data;
   if (wishes.isError)
     return (
-      <main className="page wishes">
-        <p className="notice" role="alert">
-          打不开心愿与礼物，请稍后再试
-        </p>
-        <Link to="/">回到首页</Link>
+      <main className="wishes">
+        <BookSpread
+          left={
+            <>
+              <p className="notice" role="alert">
+                打不开心愿与礼物，请稍后再试
+              </p>
+              <Link to="/">回到首页</Link>
+            </>
+          }
+          right={null}
+        />
       </main>
     );
-  if (!view) return <main className="page wishes">正在打开…</main>;
+  if (!view)
+    return (
+      <main className="wishes">
+        <BookSpread left="正在打开…" right={null} />
+      </main>
+    );
   const unreadIds = [
     ...view.notes.filter((n) => n.unread).map((n) => elementId('note', n.id)),
     ...view.mine.filter((w) => w.unread).map((w) => elementId('wish', w.id)),
@@ -776,53 +789,63 @@ export function WishesPage() {
     ...view.wall.filter((g) => g.unread || g.card?.unread).map((g) => elementId('gift', g.id)),
   ];
   return (
-    <main className="page wishes">
-      <header>
-        <Link to="/">← 首页</Link>
-      </header>
-      <h1>心愿与礼物</h1>
-      {view.readOnly && <ReadOnlyNotice />}
-      <UnreadJump ids={unreadIds} />
-      {view.notes.length > 0 && (
-        <ul className="records notes">
-          {view.notes.map((n) => (
-            <Note key={n.id} note={n} view={view} report={report} />
-          ))}
-        </ul>
-      )}
-      <section>
-        <h2>我的心愿</h2>
-        {!view.readOnly && <NewWish />}
-        <ul className="records">
-          {view.mine.map((w) => (
-            <MyWish key={w.id} wish={w} view={view} report={report} />
-          ))}
-        </ul>
-      </section>
-      <section>
-        <h2>{view.partner.displayName} 的心愿</h2>
-        {view.theirs.length ? (
-          <ul className="records">
-            {view.theirs.map((w) => (
-              <TheirWish key={w.id} wish={w} view={view} report={report} />
-            ))}
-          </ul>
-        ) : (
-          <p className="empty">TA 还没有许愿</p>
-        )}
-      </section>
-      <section>
-        <h2>
-          我在准备 <span className="secret">只有你看得到</span>
-        </h2>
-        {!view.readOnly && <SurpriseForm />}
-        <ul className="records">
-          {view.preparing.map((g) => (
-            <Preparing key={g.id} gift={g} view={view} report={report} />
-          ))}
-        </ul>
-      </section>
-      <Wall view={view} report={report} />
+    <main className="wishes">
+      <BookSpread
+        left={
+          <>
+            <Link className="book-back" to="/">
+              ← 序言
+            </Link>
+            <h1>心愿与礼物</h1>
+            {view.readOnly && <ReadOnlyNotice />}
+            <UnreadJump ids={unreadIds} />
+            {view.notes.length > 0 && (
+              <ul className="records notes">
+                {view.notes.map((n) => (
+                  <Note key={n.id} note={n} view={view} report={report} />
+                ))}
+              </ul>
+            )}
+            <section>
+              <h2>{view.partner.displayName} 的心愿</h2>
+              {view.theirs.length ? (
+                <ul className="records">
+                  {view.theirs.map((w) => (
+                    <TheirWish key={w.id} wish={w} view={view} report={report} />
+                  ))}
+                </ul>
+              ) : (
+                <p className="empty">TA 还没有许愿</p>
+              )}
+            </section>
+          </>
+        }
+        right={
+          <>
+            <section>
+              <h2>我的心愿</h2>
+              {!view.readOnly && <NewWish />}
+              <ul className="records">
+                {view.mine.map((w) => (
+                  <MyWish key={w.id} wish={w} view={view} report={report} />
+                ))}
+              </ul>
+            </section>
+            <section>
+              <h2>
+                我在准备 <span className="secret">只有你看得到</span>
+              </h2>
+              {!view.readOnly && <SurpriseForm />}
+              <ul className="records">
+                {view.preparing.map((g) => (
+                  <Preparing key={g.id} gift={g} view={view} report={report} />
+                ))}
+              </ul>
+            </section>
+            <Wall view={view} report={report} />
+          </>
+        }
+      />
     </main>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { callApi } from '../api/client.ts';
+import { BookSpread } from '../book/index.ts';
 import {
   ReadOnlyNotice,
   StampText,
@@ -434,43 +435,61 @@ export function AnniversariesPage() {
   const view = anniversaries.data;
   if (anniversaries.isError)
     return (
-      <main className="page anniversaries">
-        <p className="notice" role="alert">
-          打不开纪念日，请稍后再试
-        </p>
-        <Link to="/">回到首页</Link>
+      <main className="anniversaries">
+        <BookSpread
+          left={
+            <>
+              <p className="notice" role="alert">
+                打不开纪念日，请稍后再试
+              </p>
+              <Link to="/">回到首页</Link>
+            </>
+          }
+          right={null}
+        />
       </main>
     );
-  if (!view) return <main className="page anniversaries">正在打开…</main>;
+  if (!view)
+    return (
+      <main className="anniversaries">
+        <BookSpread left="正在打开…" right={null} />
+      </main>
+    );
   const unreadIds = [
     ...view.notes.filter((n) => n.unread).map((n) => elementId('note', n.id)),
     ...view.anniversaries.filter((a) => a.unread).map((a) => elementId('anniversary', a.id)),
   ];
   return (
-    <main className="page anniversaries">
-      <header>
-        <Link to="/">← 首页</Link>
-      </header>
-      <h1>纪念日</h1>
-      {view.readOnly && <ReadOnlyNotice />}
-      <UnreadJump ids={unreadIds} />
-      {view.notes.length > 0 && (
-        <ul className="records notes">
-          {view.notes.map((n) => (
-            <Note key={n.id} note={n} view={view} report={report} />
-          ))}
-        </ul>
-      )}
-      {!view.readOnly && <NewAnniversary view={view} />}
-      {view.anniversaries.length ? (
-        <ul className="records">
-          {view.anniversaries.map((a) => (
-            <Item key={a.id} a={a} view={view} now={now} report={report} />
-          ))}
-        </ul>
-      ) : (
-        <p className="empty">还没有纪念日</p>
-      )}
+    <main className="anniversaries">
+      <BookSpread
+        left={
+          <>
+            <Link className="book-back" to="/">
+              ← 序言
+            </Link>
+            <h1>纪念日</h1>
+            {view.readOnly && <ReadOnlyNotice />}
+            <UnreadJump ids={unreadIds} />
+            {view.notes.length > 0 && (
+              <ul className="records notes">
+                {view.notes.map((n) => (
+                  <Note key={n.id} note={n} view={view} report={report} />
+                ))}
+              </ul>
+            )}
+            {view.anniversaries.length ? (
+              <ul className="records">
+                {view.anniversaries.map((a) => (
+                  <Item key={a.id} a={a} view={view} now={now} report={report} />
+                ))}
+              </ul>
+            ) : (
+              <p className="empty">还没有纪念日</p>
+            )}
+          </>
+        }
+        right={!view.readOnly && <NewAnniversary view={view} />}
+      />
     </main>
   );
 }

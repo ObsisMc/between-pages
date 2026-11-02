@@ -53,12 +53,6 @@ body {
   line-height: 1.6;
 }
 
-.page {
-  max-width: 28rem;
-  margin: 0 auto;
-  padding: 4rem 1.25rem;
-}
-
 h1 {
   font-family: var(--font-title);
   font-weight: 600;
@@ -134,11 +128,6 @@ button.primary {
 .draft-help {
   color: var(--ink-soft);
   font-size: 0.875rem;
-}
-
-.page.diary {
-  max-width: 42rem;
-  padding-top: 2rem;
 }
 
 .diary header {
@@ -220,10 +209,6 @@ button.primary {
 .draft-context ins {
   text-decoration: none;
   background: var(--notice);
-}
-
-.page.diary:has(.with-history) {
-  max-width: 64rem;
 }
 
 .diary-body.with-history {
@@ -506,34 +491,40 @@ button.primary {
   background: color-mix(in srgb, currentColor 15%, transparent);
 }
 
-/* Initial avatars and the unread dot (unread-and-day-page D3). */
+/* Mascot avatars (book-surface D4) and the unread dot (unread-and-day-page D3). */
 .avatar {
-  display: inline-grid;
-  place-items: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 50%;
-  border: 1.5px solid currentColor;
-  background: currentColor;
-  font-size: 0.875rem;
-  line-height: 1;
-}
-
-/* Outside a space nobody has an author color. */
-.avatar:not(.author-slot-1, .author-slot-2) {
+  flex: none;
+  width: 2.25rem;
+  height: 1.95rem;
   color: var(--ink-soft);
+  vertical-align: middle;
 }
 
-.avatar > span {
-  color: var(--paper);
+.avatar.author-slot-1 {
+  color: #f3a274;
 }
 
-.avatar.hollow {
-  background: transparent;
+.avatar.author-slot-2 {
+  color: #94b6c9;
 }
 
-.avatar.hollow > span {
-  color: inherit;
+.avatar-body {
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.avatar.hollow .avatar-body {
+  fill: none;
+}
+
+.avatar-face {
+  fill: #384349;
+  stroke: #384349;
+}
+
+.avatar-face ellipse {
+  stroke: none;
 }
 
 .unread-dot {

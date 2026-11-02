@@ -138,7 +138,7 @@ describe('DayEditor', () => {
     // Slot order: alice (1) above bob (2).
     const regions = screen.getAllByRole('region').map((r) => r.getAttribute('aria-label'));
     expect(regions.filter((n) => n?.endsWith('的日记'))).toEqual(['我的日记', 'TA 的日记']);
-    expect(within(await section('TA 的日记')).getByLabelText('bob').textContent).toBe('B');
+    expect(within(await section('TA 的日记')).getByRole('img', { name: 'bob' })).toBeTruthy();
 
     await paste(mine, '，下雨');
     await waitFor(() => expect(mine.textContent).toBe('我的早上，下雨'));

@@ -1,4 +1,4 @@
-import { useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router';
 import { ApiError, callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
@@ -6,20 +6,9 @@ import { BookSpread } from '../book/index.ts';
 import { DayFeed, type FeedPosition } from '../day-feed/index.ts';
 import { DayEditor, timezone } from './DayEditor.tsx';
 import { usePeople } from './DiaryPage.tsx';
+import { useNarrow } from './narrow.ts';
 import { ScrollBox } from './scroll-box.ts';
 import './workspace.css';
-
-/** Below this width the book is one page (book.css), and so is the workspace (D6). */
-const NARROW = '(max-width: 56rem)';
-
-function onWidthChange(changed: () => void) {
-  const query = globalThis.matchMedia?.(NARROW);
-  query?.addEventListener('change', changed);
-  return () => query?.removeEventListener('change', changed);
-}
-// Without matchMedia (jsdom) the window counts as wide.
-const isNarrow = () => globalThis.matchMedia?.(NARROW).matches ?? false;
-const useNarrow = () => useSyncExternalStore(onWidthChange, isNarrow);
 
 /**
  * What a workspace entry keeps in the browser's history, never in the address (D3): where

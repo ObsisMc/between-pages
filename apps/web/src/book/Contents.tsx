@@ -5,22 +5,30 @@ import {
   useEffect,
   useId,
   useRef,
-  type KeyboardEvent,
-  type MouseEvent,
+  type CSSProperties,
   type ReactNode,
 } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { BookSpread } from './BookSpread.tsx';
 import './book.css';
 
-// The 「目录」 bookmark and the contents it opens (book-frontend-workspace D2,
-// opening-book-home D4). The contents is a history entry of its own: opening it pushes the
-// current address again with `contents` in its state, so the browser's back button closes
-// it, and an entry replaces it, so back from the destination returns to the page the
-// contents was opened on. The caller decides which entries exist; this module knows no data.
+// The 「目录」 bookmark and the contents it opens (contents-spread, opening-book-home D4).
+// The contents is a spread of its own over the page it was opened on, which stays mounted,
+// hidden and inert below, so nothing typed or scrolled there is lost. It is a history entry
+// of its own: opening it pushes the current address again with `contents` in its state, so
+// the browser's back button closes it, and an entry replaces it, so back from the
+// destination returns to the page the contents was opened on. The caller decides which
+// entries exist; this module knows no data.
 
-export type ContentsEntry = { to: string; label: string; badge?: ReactNode };
-export type ContentsGroup = { title: string; entries: readonly ContentsEntry[] };
+/** An entry: numbered, or with `icon` (a `contents-icon-*` name) in a group of `icons`. */
+export type ContentsEntry = { to: string; label: string; badge?: ReactNode; icon?: string };
+/** A group; `side: 'right'` puts it on the right page, `icons` shows icons for numbers. */
+export type ContentsGroup = {
+  title: string;
+  entries: readonly ContentsEntry[];
+  side?: 'left' | 'right';
+  icons?: boolean;
+};
 
 const ContentsContext = createContext<{ close: () => void; titleId: string } | null>(null);
 
@@ -34,19 +42,26 @@ const isOpen = (state: unknown) =>
   typeof state === 'object' && state !== null && 'contents' in state && state.contents === true;
 
 /**
- * The bookmark, always on screen, and while open the contents as a modal layer holding
- * `children`, which mount only then. Focus moves into the contents on opening, Tab stays in
- * it, Escape, the close button, a click beside the book or back close it and focus returns
- * to the bookmark, unless an entry led to another page.
+ * `children`, the page, and with `contents` (null while signed out) the bookmark, always on
+ * screen, and while open the contents over the page, which mounts only then. Opening moves
+ * the focus to the contents' title and makes the page inert; back, Escape, "合上目录" or
+ * the bookmark close it and the focus returns to the bookmark, unless an entry led to
+ * another page.
  */
-export function ContentsBookmark({ children }: { children: ReactNode }) {
+export function ContentsBookmark({
+  contents,
+  children,
+}: {
+  contents: ReactNode | null;
+  children: ReactNode;
+}) {
   const location = useLocation();
   const navigate = useNavigate();
-  const open = isOpen(location.state);
+  const open = contents !== null && isOpen(location.state);
   const titleId = useId();
   const panelId = useId();
   const bookmark = useRef<HTMLButtonElement>(null);
-  const dialog = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLElement>(null);
   const openedOn = useRef<string | null>(null);
   // A second Escape before the first close lands must not go back one more page.
   const closing = useRef(false);
@@ -61,16 +76,16 @@ export function ContentsBookmark({ children }: { children: ReactNode }) {
     closing.current = false;
     if (open) {
       openedOn.current = location.pathname;
-      dialog.current?.focus();
+      panel.current?.querySelector<HTMLElement>(`[id="${titleId}"]`)?.focus();
       return;
     }
     if (openedOn.current === location.pathname) bookmark.current?.focus();
     openedOn.current = null;
-  }, [open, location.pathname]);
+  }, [open, location.pathname, titleId]);
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (event: globalThis.KeyboardEvent) => {
+    const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       event.preventDefault();
       close();
@@ -88,62 +103,31 @@ export function ContentsBookmark({ children }: { children: ReactNode }) {
 
   return (
     <>
+      <div className="contents-origin" inert={open}>
+        {children}
+      </div>
       {open && (
-        <div
-          className="contents-layer"
-          onClick={(event: MouseEvent) => {
-            if (event.target === event.currentTarget) close();
-          }}
-        >
-          <div
-            ref={dialog}
-            id={panelId}
-            className="contents"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={titleId}
-            tabIndex={-1}
-            onKeyDown={keepFocusInside}
-          >
-            <ContentsContext value={{ close, titleId }}>{children}</ContentsContext>
-          </div>
-        </div>
+        <main ref={panel} id={panelId} className="contents" aria-labelledby={titleId}>
+          <ContentsContext value={{ close, titleId }}>{contents}</ContentsContext>
+        </main>
       )}
-      <button
-        ref={bookmark}
-        type="button"
-        className="bookmark"
-        aria-expanded={open}
-        aria-controls={open ? panelId : undefined}
-        aria-haspopup="dialog"
-        onClick={toggle}
-      >
-        目录
-      </button>
+      {contents !== null && (
+        <button
+          ref={bookmark}
+          type="button"
+          className="bookmark"
+          aria-expanded={open}
+          aria-controls={open ? panelId : undefined}
+          onClick={toggle}
+        >
+          目录
+        </button>
+      )}
     </>
   );
 }
 
-/** Tab and Shift+Tab wrap around inside the open contents (it is modal). */
-function keepFocusInside(event: KeyboardEvent<HTMLDivElement>) {
-  if (event.key !== 'Tab') return;
-  const items = [
-    ...event.currentTarget.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
-  ];
-  const first = items[0];
-  const last = items.at(-1);
-  if (!first || !last) return;
-  const active = document.activeElement;
-  if (event.shiftKey && (active === first || active === event.currentTarget)) {
-    event.preventDefault();
-    last.focus();
-  } else if (!event.shiftKey && active === last) {
-    event.preventDefault();
-    first.focus();
-  }
-}
-
-/** An entry; the page already showing is marked current and only closes the contents. */
+/** An entry; the page the contents covers is marked current and only closes the contents. */
 function Entry({
   to,
   className,
@@ -176,14 +160,33 @@ function Entry({
   );
 }
 
-function Groups({ groups }: { groups: readonly ContentsGroup[] }) {
+type Placed = ContentsGroup & { order: number; first: number };
+
+/**
+ * Groups as placed: `--order` keeps the reading order on the one narrow sheet, `first` is
+ * the number of the group's first entry, counted across the spread's numbered groups.
+ */
+function Groups({ groups }: { groups: readonly Placed[] }) {
   return groups.map((group) => (
-    <section key={group.title} className="contents-group" aria-label={group.title}>
-      <h3>{group.title}</h3>
+    <section
+      key={group.title}
+      className={group.icons ? 'contents-group icons' : 'contents-group'}
+      aria-labelledby={`contents-${group.order}`}
+      style={{ '--order': group.order } as CSSProperties}
+    >
+      <h2 id={`contents-${group.order}`}>{group.title}</h2>
       <ul>
-        {group.entries.map((entry) => (
+        {group.entries.map((entry, index) => (
           <li key={entry.to}>
             <Entry to={entry.to} className="contents-entry">
+              <span
+                className={
+                  group.icons ? `contents-icon contents-icon-${entry.icon}` : 'contents-no'
+                }
+                aria-hidden="true"
+              >
+                {group.icons ? null : String(group.first + index).padStart(2, '0')}
+              </span>
               <span className="contents-label">{entry.label}</span>
               {entry.badge}
               <span className="contents-leader" aria-hidden="true" />
@@ -199,12 +202,23 @@ function Groups({ groups }: { groups: readonly ContentsGroup[] }) {
 }
 
 /**
- * The contents as a spread: 「返回序言」, the title and the first half of the groups on the
- * left page, the rest on the right; one page in narrow windows. Only inside the bookmark.
+ * The contents as a spread (contents-spread D3): 「返回序言」, the title and the left groups
+ * on the left page, the right groups and "合上目录" on the right; on narrow windows one
+ * sheet with the groups in the order given. Only inside the bookmark.
  */
 export function ContentsPages({ groups }: { groups: readonly ContentsGroup[] }) {
   const { close, titleId } = useContents();
-  const split = Math.ceil(groups.length / 2);
+  const sides = [
+    ...groups.filter((group) => group.side !== 'right'),
+    ...groups.filter((group) => group.side === 'right'),
+  ];
+  let next = 1;
+  const placed = new Map<ContentsGroup, Placed>();
+  for (const group of sides) {
+    placed.set(group, { ...group, order: groups.indexOf(group) + 1, first: next });
+    if (!group.icons) next += group.entries.length;
+  }
+  const ordered = groups.map((group) => placed.get(group)!);
   return (
     <BookSpread
       className="contents-book"
@@ -213,18 +227,24 @@ export function ContentsPages({ groups }: { groups: readonly ContentsGroup[] }) 
           <Entry to="/" className="contents-home">
             <span aria-hidden="true">← </span>返回序言
           </Entry>
-          <h2 id={titleId} className="contents-title">
+          <h1 id={titleId} className="contents-title" tabIndex={-1}>
             目录
-          </h2>
-          <Groups groups={groups.slice(0, split)} />
+          </h1>
+          <Groups groups={ordered.filter((group) => group.side !== 'right')} />
+          <span className="contents-folio" aria-hidden="true">
+            01
+          </span>
         </>
       }
       right={
         <>
-          <Groups groups={groups.slice(split)} />
+          <Groups groups={ordered.filter((group) => group.side === 'right')} />
           <button type="button" className="contents-close" onClick={close}>
             合上目录
           </button>
+          <span className="contents-folio" aria-hidden="true">
+            02
+          </span>
         </>
       }
     />

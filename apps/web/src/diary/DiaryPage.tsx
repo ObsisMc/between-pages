@@ -4,8 +4,12 @@ import { Link, useParams } from 'react-router';
 import type { ResponseOf } from '@between-pages/contracts';
 import { callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
+import { BookSpread } from '../book/index.ts';
 import { DiaryBlock, copyOf, type BlockReport, type Person } from './DiaryBlock.tsx';
+import { useNarrow } from './narrow.ts';
+import { ScrollBox } from './scroll-box.ts';
 import type { DiarySession, Unread } from './session.ts';
+import './workspace.css';
 
 /** The people of the caller's spaces by user ID, for author colors and names. */
 export function usePeople(): { people: Map<string, Person>; known: boolean } {
@@ -103,8 +107,10 @@ export function DiaryPage() {
   const dayCheck = useDayCheck(state?.diaryDate);
   const partnerWrote = !epochId && !!dayCheck?.day.partner;
   const unread = open && !report?.previewing ? state.unread : undefined;
-  return (
-    <main className="page diary">
+  const narrow = useNarrow();
+  const box = useRef<HTMLDivElement>(null);
+  const page = (
+    <>
       <header>
         <Link to="/">← 返回</Link>
       </header>
@@ -148,6 +154,27 @@ export function DiaryPage() {
           onReport={setReport}
         />
       )}
+    </>
+  );
+  // An old link (book-frontend-workspace D3): the diary on the left page, scrolling in its
+  // own box on wide windows like the workspace's, and the way to its date on the right.
+  return (
+    <main className="diary-page">
+      <BookSpread
+        className={narrow ? 'workspace narrow-day' : 'workspace wide'}
+        left={
+          narrow ? (
+            page
+          ) : (
+            <div className="workspace-left" ref={box}>
+              <ScrollBox value={box}>{page}</ScrollBox>
+            </div>
+          )
+        }
+        right={
+          state?.diaryDate && <Link to={`/days/${state.diaryDate}`}>在所有日记中打开这一天</Link>
+        }
+      />
     </main>
   );
 }

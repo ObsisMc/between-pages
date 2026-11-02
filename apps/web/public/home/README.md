@@ -1,16 +1,13 @@
 # Opening-page artwork
 
-Watercolor assets for the home-page reproduction experiment (2026-11-02). Book geometry, page stacks, fold and paper grain are implemented in [HomeBookSurface.tsx](../../src/pages/HomeBookSurface.tsx) and CSS, without a book or paper bitmap. All content, clocks, timeline positions, links and controls remain live HTML; none of the reference's text is baked into the page background. The original design remains in [the homepage reference](../../../../docs/adr/assets/opening-book-home-desktop.png).
+The watercolor windows of the opening's left page (home, login and invitation), drawn by `<BookOpening>` in [src/book](../../src/book/Opening.tsx). The book itself, its paper grain, the mascots, the bookmark leaf and the type are shared by every page and live in [public/book](../book/README.md). All content, clocks, links and controls remain live HTML; none of the reference's text is baked into an image. The original design remains in [the homepage reference](../../../../docs/adr/assets/opening-book-home-desktop.png).
 
 | File | Purpose | Source |
 | --- | --- | --- |
 | `windows-watercolor.webp` | Two windows with both mascots | Built-in imagegen, reference-guided watercolor illustration |
 | `windows-unbound.webp` | Same illustration with an empty partner window | Built-in imagegen edit of the preceding illustration |
-| `mascots.svg`, `leaf.svg` | Rounded, asymmetric mascots and the bookmark leaf | Local SVG artwork |
-| `paper-grain.svg` | A cached 128px procedural texture tile | Local SVG code; noise filter runs on the tile, not across the book |
-| `serif-sc.ttf` | Homepage label and date glyphs | Google Fonts Noto Serif SC, static text subset; [OFL license](OFL.txt) |
 
-The selected illustration PNG originals were transcoded to WebP (quality 90), without changing their composition. The bound illustration is about 379 KiB and the unbound variant about 322 KiB. There is no raster book background or paper texture. Images and fonts are served locally and do not call an image or font service at runtime. The font subset covers fixed homepage copy; names and other text fall back to the existing font stack.
+The selected illustration PNG originals were transcoded to WebP (quality 90), without changing their composition. The bound illustration is about 379 KiB and the unbound variant about 322 KiB. Images are served locally and call no image service at runtime.
 
 ## Generation prompts
 

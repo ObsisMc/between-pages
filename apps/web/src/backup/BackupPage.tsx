@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import type { ResponseOf } from '@between-pages/contracts';
 import { ApiError, callApi } from '../api/client.ts';
+import { BookSpread } from '../book/index.ts';
 
 // The backup page (server-backup-and-google-docs D9): the caller's own Google Drive
 // connection and the problems worth knowing. Nothing here is visible to the partner.
@@ -108,105 +109,115 @@ export function BackupPage({ goTo = (url) => window.location.assign(url) }: Back
   const google = backup.data?.google;
   const progress = backup.data?.progress;
   return (
-    <main className="page backup">
-      <header>
-        <Link to="/">返回</Link>
-      </header>
-      <h1>备份</h1>
-      <p>
-        服务器每分钟把数据库加密备份到另一处，你不需要做任何事。下面是你自己 Google Drive
-        里的可读副本。
-      </p>
-      {backup.isError && <p role="alert">读取备份状态失败，请稍后再试</p>}
-      {google && (
-        <section aria-label="Google Drive">
-          {google.state === 'unavailable' && <p>这台服务器还没有配置 Google 备份</p>}
-          {google.state === 'disconnected' && (
-            <>
-              <p>未开启 Google 备份</p>
-              <button
-                type="button"
-                className="primary"
-                disabled={busy}
-                onClick={() => void connect()}
-              >
-                连接 Google Drive
-              </button>
-            </>
-          )}
-          {google.state === 'disconnecting' && (
-            <p role={google.retrying ? 'alert' : undefined}>
-              {google.retrying
-                ? '正在断开：暂时没能通知 Google 收回授权，正在重试'
-                : '正在断开 Google Drive…'}
-            </p>
-          )}
-          {google.state === 'reconnect' && (
-            <>
-              <p role="alert">需要重新连接 Google（{google.email}）</p>
-              <button
-                type="button"
-                className="primary"
-                disabled={busy}
-                onClick={() => void connect()}
-              >
-                重新连接
-              </button>
-            </>
-          )}
-          {google.state === 'connected' && (
-            <>
-              <p>已连接 {google.email}</p>
-              {google.expiresAt && (
-                <p>Google 授权将在 {dateTime(google.expiresAt)} 过期，到时请重新连接</p>
-              )}
-              <button type="button" disabled={busy} onClick={() => void runNow()}>
-                现在备份
-              </button>
-              <button type="button" disabled={busy} onClick={() => void disconnect()}>
-                断开连接
-              </button>
-              <p className="hint">断开后停止备份，Drive 里已有的文件都会保留。</p>
-            </>
-          )}
-        </section>
-      )}
-      {progress && (
-        <section aria-label="备份进度">
-          {progress.waitingDays > 0 ? (
-            <p>还有 {progress.waitingDays} 天等待备份</p>
-          ) : progress.backedUpTo ? (
-            <p>全部日记已备份到 {dateTime(progress.backedUpTo)} 的版本</p>
-          ) : (
-            <p>还没有需要备份的日记</p>
-          )}
-          {failingOf(progress, 'unreachable')}
-          {failingOf(progress, 'failed')}
-          {backup.data?.attention === 'storage_full' && (
-            <p role="alert">Google 空间已满，备份暂停。腾出空间后点"现在备份"继续</p>
-          )}
-          {progress.folderUrl && (
+    <main className="backup">
+      <BookSpread
+        left={
+          <>
+            <Link className="book-back" to="/">
+              ← 序言
+            </Link>
+            <h1>备份</h1>
             <p>
-              <a href={progress.folderUrl} target="_blank" rel="noreferrer">
-                在 Google Drive 打开文件夹
-              </a>
+              服务器每分钟把数据库加密备份到另一处，你不需要做任何事。下面是你自己 Google Drive
+              里的可读副本。
             </p>
-          )}
-        </section>
-      )}
-      {error && <p role="alert">{error}</p>}
-      {backup.data && backup.data.events.length > 0 && (
-        <section aria-label="备份记录">
-          <h2>备份记录</h2>
-          <ul>
-            {backup.data.events.map((event) => (
-              <li key={`${event.at}-${event.kind}`}>
-                {dateTime(event.at)} · {EVENT_TEXT[event.kind](event.diaryDate)}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+            {backup.isError && <p role="alert">读取备份状态失败，请稍后再试</p>}
+            {google && (
+              <section aria-label="Google Drive">
+                {google.state === 'unavailable' && <p>这台服务器还没有配置 Google 备份</p>}
+                {google.state === 'disconnected' && (
+                  <>
+                    <p>未开启 Google 备份</p>
+                    <button
+                      type="button"
+                      className="primary"
+                      disabled={busy}
+                      onClick={() => void connect()}
+                    >
+                      连接 Google Drive
+                    </button>
+                  </>
+                )}
+                {google.state === 'disconnecting' && (
+                  <p role={google.retrying ? 'alert' : undefined}>
+                    {google.retrying
+                      ? '正在断开：暂时没能通知 Google 收回授权，正在重试'
+                      : '正在断开 Google Drive…'}
+                  </p>
+                )}
+                {google.state === 'reconnect' && (
+                  <>
+                    <p role="alert">需要重新连接 Google（{google.email}）</p>
+                    <button
+                      type="button"
+                      className="primary"
+                      disabled={busy}
+                      onClick={() => void connect()}
+                    >
+                      重新连接
+                    </button>
+                  </>
+                )}
+                {google.state === 'connected' && (
+                  <>
+                    <p>已连接 {google.email}</p>
+                    {google.expiresAt && (
+                      <p>Google 授权将在 {dateTime(google.expiresAt)} 过期，到时请重新连接</p>
+                    )}
+                    <button type="button" disabled={busy} onClick={() => void runNow()}>
+                      现在备份
+                    </button>
+                    <button type="button" disabled={busy} onClick={() => void disconnect()}>
+                      断开连接
+                    </button>
+                    <p className="hint">断开后停止备份，Drive 里已有的文件都会保留。</p>
+                  </>
+                )}
+              </section>
+            )}
+          </>
+        }
+        right={
+          <>
+            {progress && (
+              <section aria-label="备份进度">
+                {progress.waitingDays > 0 ? (
+                  <p>还有 {progress.waitingDays} 天等待备份</p>
+                ) : progress.backedUpTo ? (
+                  <p>全部日记已备份到 {dateTime(progress.backedUpTo)} 的版本</p>
+                ) : (
+                  <p>还没有需要备份的日记</p>
+                )}
+                {failingOf(progress, 'unreachable')}
+                {failingOf(progress, 'failed')}
+                {backup.data?.attention === 'storage_full' && (
+                  <p role="alert">Google 空间已满，备份暂停。腾出空间后点"现在备份"继续</p>
+                )}
+                {progress.folderUrl && (
+                  <p>
+                    <a href={progress.folderUrl} target="_blank" rel="noreferrer">
+                      在 Google Drive 打开文件夹
+                    </a>
+                  </p>
+                )}
+              </section>
+            )}
+            {error && <p role="alert">{error}</p>}
+            {backup.data && backup.data.events.length > 0 && (
+              <section aria-label="备份记录">
+                <h2>备份记录</h2>
+                <ul>
+                  {backup.data.events.map((event) => (
+                    <li key={`${event.at}-${event.kind}`}>
+                      {dateTime(event.at)} · {EVENT_TEXT[event.kind](event.diaryDate)}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </>
+        }
+      />
     </main>
   );
 }

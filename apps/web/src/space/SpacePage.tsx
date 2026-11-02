@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router';
 import type { DateSelection, ResponseOf } from '@between-pages/contracts';
 import { callApi } from '../api/client.ts';
+import { BookSpread } from '../book/index.ts';
 import { useMe } from '../auth/me.ts';
 import {
   partnerOf,
@@ -197,11 +198,18 @@ export function SpacePage() {
   if (space.isPending || mine.isPending || !me.data) return <p className="status">正在打开…</p>;
   if (space.isError || mine.isError)
     return (
-      <main className="page space">
-        <p className="notice" role="alert">
-          {refusalText(space.error ?? mine.error)}
-        </p>
-        <Link to="/">回到首页</Link>
+      <main className="space">
+        <BookSpread
+          left={
+            <>
+              <p className="notice" role="alert">
+                {refusalText(space.error ?? mine.error)}
+              </p>
+              <Link to="/">回到首页</Link>
+            </>
+          }
+          right={null}
+        />
       </main>
     );
 
@@ -225,62 +233,74 @@ export function SpacePage() {
   };
 
   return (
-    <main className="page space">
-      <header>
-        <Link to="/">← 首页</Link>
-        <button type="button" onClick={() => void refreshRelationships(client)}>
-          刷新
-        </button>
-      </header>
-      <h1>与 {partner.displayName} 的空间</h1>
-      <p>{summary.state === 'active' ? '当前绑定中' : '已解绑，只能与原搭档恢复'}</p>
-      <p className="relationship-note">每人只共享自己确认过的日期</p>
-      <p>参与者：{summary.participants.map((p) => p.user.displayName).join('、')}</p>
-      <section aria-labelledby="periods-title">
-        <h2 id="periods-title">绑定记录</h2>
-        <ul className="periods">
-          {periods.map((p) => (
-            <li key={p.id}>
-              {timeText.format(new Date(p.startedAt))} —{' '}
-              {p.endedAt ? timeText.format(new Date(p.endedAt)) : '至今'}
-            </li>
-          ))}
-        </ul>
-      </section>
-      <SharedDiaryList key={spaceId} spaceId={spaceId} partner={partner.displayName} />
-      <MyRange
-        key={`${mine.data.revision}:${open?.id ?? ''}`}
-        spaceId={spaceId}
-        periodId={open?.id ?? null}
-        mine={mine.data}
-      />
-      {open && (
-        <section className="unbind">
-          {unbinding ? (
-            <>
-              <p>
-                解除绑定不需要对方同意。之后你们都不能与其他人绑定，只能与原搭档恢复；空间与记录都会保留。
+    <main className="space">
+      <BookSpread
+        left={
+          <>
+            <header>
+              <Link className="book-back" to="/">
+                ← 序言
+              </Link>
+              <button type="button" onClick={() => void refreshRelationships(client)}>
+                刷新
+              </button>
+            </header>
+            <h1>与 {partner.displayName} 的空间</h1>
+            <p>{summary.state === 'active' ? '当前绑定中' : '已解绑，只能与原搭档恢复'}</p>
+            <p className="relationship-note">每人只共享自己确认过的日期</p>
+            <p>参与者：{summary.participants.map((p) => p.user.displayName).join('、')}</p>
+            <section aria-labelledby="periods-title">
+              <h2 id="periods-title">绑定记录</h2>
+              <ul className="periods">
+                {periods.map((p) => (
+                  <li key={p.id}>
+                    {timeText.format(new Date(p.startedAt))} —{' '}
+                    {p.endedAt ? timeText.format(new Date(p.endedAt)) : '至今'}
+                  </li>
+                ))}
+              </ul>
+            </section>
+            <SharedDiaryList key={spaceId} spaceId={spaceId} partner={partner.displayName} />
+          </>
+        }
+        right={
+          <>
+            <MyRange
+              key={`${mine.data.revision}:${open?.id ?? ''}`}
+              spaceId={spaceId}
+              periodId={open?.id ?? null}
+              mine={mine.data}
+            />
+            {open && (
+              <section className="unbind">
+                {unbinding ? (
+                  <>
+                    <p>
+                      解除绑定不需要对方同意。之后你们都不能与其他人绑定，只能与原搭档恢复；空间与记录都会保留。
+                    </p>
+                    <button type="button" disabled={busy} onClick={() => void unbind()}>
+                      确认解除绑定
+                    </button>
+                    <button type="button" disabled={busy} onClick={() => setUnbinding(false)}>
+                      取消
+                    </button>
+                  </>
+                ) : (
+                  <button type="button" onClick={() => setUnbinding(true)}>
+                    解除绑定
+                  </button>
+                )}
+              </section>
+            )}
+            {!open && <p>想恢复关系，请回到首页生成邀请，发给 {partner.displayName}。</p>}
+            {error && (
+              <p className="notice" role="alert">
+                {error}
               </p>
-              <button type="button" disabled={busy} onClick={() => void unbind()}>
-                确认解除绑定
-              </button>
-              <button type="button" disabled={busy} onClick={() => setUnbinding(false)}>
-                取消
-              </button>
-            </>
-          ) : (
-            <button type="button" onClick={() => setUnbinding(true)}>
-              解除绑定
-            </button>
-          )}
-        </section>
-      )}
-      {!open && <p>想恢复关系，请回到首页生成邀请，发给 {partner.displayName}。</p>}
-      {error && (
-        <p className="notice" role="alert">
-          {error}
-        </p>
-      )}
+            )}
+          </>
+        }
+      />
     </main>
   );
 }

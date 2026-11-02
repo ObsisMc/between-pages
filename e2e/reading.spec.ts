@@ -68,11 +68,15 @@ test('READ-01 the feed lights once A’s text is in a history point and goes out
   await a.keyboard.type('A写的新内容');
   await synced(a);
 
-  // B's feed shows the date with A's initial; the dot appears once the point closes.
+  // B's feed shows the date with A's mascot and name; the dot appears once the point closes.
   const day = feed(b).locator(`[data-date="${date}"]`);
   const dot = day.getByLabel('有新内容');
   await b.goto('/days');
-  await expect(day.getByRole('img', { name: `${prefix}a` })).toHaveText(prefix[0]!.toUpperCase());
+  await expect(
+    day
+      .locator('.feed-diary-who', { hasText: `${prefix}a` })
+      .getByRole('img', { name: `${prefix}a` }),
+  ).toBeVisible();
   // The feed shows the text in full once the point closes; B reads it there for about a
   // second, and the dot goes out.
   const reported = b.waitForResponse(

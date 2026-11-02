@@ -27,7 +27,7 @@ async function openContents(page: Page) {
   const bookmark = page.getByRole('button', { name: '目录', exact: true });
   // Going to the same address keeps the history state, so the contents may still be open.
   if ((await bookmark.getAttribute('aria-expanded')) !== 'true') await bookmark.click();
-  await expect(page.getByRole('dialog', { name: '目录' })).toBeVisible();
+  await expect(page.getByRole('main', { name: '目录' })).toBeVisible();
 }
 
 const entry = (page: Page) => page.getByRole('link', { name: /心愿与礼物/ });

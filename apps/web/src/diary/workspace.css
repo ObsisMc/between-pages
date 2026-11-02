@@ -1,22 +1,10 @@
-/* The diary workspace (book-frontend-workspace D3, D6). Wide: the book is the window's
-   height and each page scrolls inside itself, the left one in `.workspace-left`, the right
-   one in the feed's own box. The session keeps the reading position itself, as on the
-   window (see `overflow-anchor` there). */
-.workspace.wide {
-  height: calc(100dvh - 4rem);
-  grid-template-rows: minmax(0, 1fr);
-}
-
-.workspace.wide .book-page {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  padding: 2rem 2.5rem;
-}
-
-/* The unread tools float over the left page, not the window. */
-.workspace.wide .book-left {
+/* The diary workspace (book-frontend-workspace D3, D6). Wide: the window-high book
+   (book-surface D1) whose left page scrolls in `.workspace-left` and right page in the
+   feed's own box, so neither page's own box scrolls. The session keeps the reading position
+   itself, as on the window (see `overflow-anchor` there). */
+.book-desk.workspace.wide .book-scroll {
   position: relative;
+  overflow: visible;
 }
 
 .workspace-left {
@@ -34,8 +22,8 @@
 }
 
 .workspace-left .unread-tools {
-  right: 3rem;
-  bottom: 2.5rem;
+  right: 1rem;
+  bottom: 0.5rem;
 }
 
 .workspace-left .unread-direction.above {
@@ -84,11 +72,18 @@
 .workspace.narrow-feed .book-left {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  height: calc(100dvh - 26px);
   padding-bottom: 0;
 }
 
-.workspace.narrow-feed .book-left::before {
+.workspace.narrow-feed .book-left > .book-scroll {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.workspace.narrow-feed .book-left > .book-scroll::before {
   content: none;
 }
 

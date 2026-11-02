@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Navigate, useSearchParams } from 'react-router';
 import { signIn, type Provider } from '../api/auth.ts';
 import { useMe } from '../auth/me.ts';
+import { BookOpening, BookSpread } from '../book/index.ts';
 
 // Better Auth error codes from `?error=` (authentication-and-sessions D10); anything
 // else falls back to a generic retry message.
@@ -51,41 +52,48 @@ export function LoginPage({ goTo = (url) => window.location.assign(url) }: Login
   const error = loginErrorText(params.get('error'));
 
   return (
-    <main className="page login">
-      <h1>Between Pages</h1>
-      <p className="tagline">各自生活，在同一页相遇。</p>
-      {error && (
-        <p className="notice" role="alert">
-          {error}
-        </p>
-      )}
-      {failed && (
-        <p className="notice" role="alert">
-          无法连接登录服务，请稍后再试
-        </p>
-      )}
-      <button
-        type="button"
-        className="primary"
-        disabled={pending !== null}
-        onClick={() => void start('google')}
-      >
-        {pending === 'google' ? '正在前往 Google…' : '使用 Google 登录'}
-      </button>
-      {import.meta.env.DEV && (
-        <form className="dev-login" onSubmit={onDevSubmit}>
-          <label htmlFor="dev-name">开发登录</label>
-          <input
-            id="dev-name"
-            value={devName}
-            placeholder="名字，例如 alice"
-            onChange={(event) => setDevName(event.target.value)}
-          />
-          <button type="submit" disabled={pending !== null || !devName.trim()}>
-            开发登录
-          </button>
-        </form>
-      )}
+    <main className="login">
+      <BookSpread
+        left={<BookOpening together />}
+        right={
+          <>
+            <h1>登录</h1>
+            <p className="tagline">各自生活，在同一页相遇。</p>
+            {error && (
+              <p className="notice" role="alert">
+                {error}
+              </p>
+            )}
+            {failed && (
+              <p className="notice" role="alert">
+                无法连接登录服务，请稍后再试
+              </p>
+            )}
+            <button
+              type="button"
+              className="primary"
+              disabled={pending !== null}
+              onClick={() => void start('google')}
+            >
+              {pending === 'google' ? '正在前往 Google…' : '使用 Google 登录'}
+            </button>
+            {import.meta.env.DEV && (
+              <form className="dev-login" onSubmit={onDevSubmit}>
+                <label htmlFor="dev-name">开发登录</label>
+                <input
+                  id="dev-name"
+                  value={devName}
+                  placeholder="名字，例如 alice"
+                  onChange={(event) => setDevName(event.target.value)}
+                />
+                <button type="submit" disabled={pending !== null || !devName.trim()}>
+                  开发登录
+                </button>
+              </form>
+            )}
+          </>
+        }
+      />
     </main>
   );
 }

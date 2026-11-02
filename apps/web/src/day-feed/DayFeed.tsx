@@ -144,16 +144,7 @@ function DateSection({
   );
   return (
     <section {...sectionProps}>
-      {head(
-        <>
-          <span className="feed-avatars">
-            {diaries.map(({ diary, person }) => (
-              <Avatar key={diary.side} person={person} hollow={!diary.hasText} />
-            ))}
-          </span>
-          {unread && <span className="unread-dot" role="img" aria-label="有新内容" />}
-        </>,
-      )}
+      {head(unread && <span className="unread-dot" role="img" aria-label="有新内容" />)}
       {diaries.map(({ diary, person }) => {
         const collapse = collapseOf(entry.date, diary, editingDate);
         if (collapse)
@@ -163,7 +154,10 @@ function DateSection({
               className="feed-collapsed"
               data-unread={listTrusted && diary.unread ? 'collapsed' : undefined}
             >
-              {diaries.length > 1 && <span className="feed-diary-who">{person.name}</span>}
+              <span className="feed-diary-who">
+                <Avatar person={person} hollow={!diary.hasText} />
+                {person.name}
+              </span>
               <span>{collapseText[collapse]}</span>
               {collapse !== 'editing' && (
                 <Link to={to} onClick={opening(false)}>
@@ -176,7 +170,7 @@ function DateSection({
           <FeedDiary
             key={`${diary.diaryId}:${diary.epochId ?? ''}`}
             diary={diary}
-            name={diaries.length > 1 ? person.name : null}
+            person={person}
             readerId={me.id}
             near={near}
             listUnread={listTrusted && diary.unread}

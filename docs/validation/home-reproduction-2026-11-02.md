@@ -4,7 +4,7 @@
 
 ## 最终实现边界
 
-按 Ray 本次确认，书本轮廓、页边、书脊和阴影为 [HomeBookSurface.tsx](../../apps/web/src/pages/HomeBookSurface.tsx) 的内联 SVG 与 [home.css](../../apps/web/src/pages/home.css)，没有整本书的位图背景。纸张使用本地 128px 过程式 SVG 纹理块，避免整页噪声滤镜；静态桌面书页单独合成。只有水彩窗台使用 WebP 插画，来源与实际生成提示词见 [素材说明](../../apps/web/public/home/README.md)。全部文字、日期、时钟、时间轴与控件仍为真实 HTML。
+按 Ray 本次确认，书本轮廓、页边、书脊和阴影为 [HomeBookSurface.tsx](../../apps/web/src/book/BookSurface.tsx)（后移至 `src/book/BookSurface.tsx`） 的内联 SVG 与 [home.css](../../apps/web/src/pages/home.css)，没有整本书的位图背景。纸张使用本地 128px 过程式 SVG 纹理块，避免整页噪声滤镜；静态桌面书页单独合成。只有水彩窗台使用 WebP 插画，来源与实际生成提示词见 [素材说明](../../apps/web/public/home/README.md)。全部文字、日期、时钟、时间轴与控件仍为真实 HTML。
 
 宽窗口为展开的双页，896px 及以下为纵向单页。双人空间入口收在页脚；未绑定与解绑后的邀请保持可用。日记工作区与服务端不在本次修改范围。
 

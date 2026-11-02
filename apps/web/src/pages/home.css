@@ -1,48 +1,13 @@
-@font-face {
-  font-family: 'Opening Serif';
-  src: url('/home/serif-sc.ttf') format('truetype');
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-}
-
-/* Page geometry and paper fibres are inline SVG; only the watercolor windows are raster.
-   No full-page blur or noise filter runs behind the live text. */
+/* The opening (opening-book-home) on the shared book (book-surface D1), at the reference's
+   proportions: sizes follow the book's width. Only the watercolor windows are raster. */
 .home {
   --ink: #27262b;
   --ink-soft: #81796e;
   --accent: #e47732;
   --line: #ddc6a6;
-  --font-title: 'Opening Serif', 'Songti SC', 'Noto Serif SC', Georgia, serif;
-  color-scheme: light;
-  color: var(--ink);
   width: min(100%, 96rem);
   margin: 0 auto;
   container-type: inline-size;
-  font-family: var(--font-title);
-}
-
-.home-surface {
-  position: relative;
-  isolation: isolate;
-}
-
-.home-paper-desktop,
-.home-paper-mobile {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-/* Keep the static desktop paper on its own compositing layer when the contents opens. */
-.home-paper-desktop {
-  transform: translateZ(0);
-}
-
-.home-paper-mobile {
-  display: none;
 }
 
 .home .book {
@@ -50,20 +15,14 @@
   min-height: 66.667cqw;
   margin: 0;
   gap: 0;
-  background: none;
-  position: relative;
 }
 
 .home .book-page {
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  background: none;
   padding: 6.7cqw 5.5cqw 7cqw 9.8cqw;
 }
 
-.home .book-page::after,
-.home .book-page::before {
+/* The brand line keeps clear of the narrow bookmark itself. */
+.home .book-left > .book-scroll::before {
   content: none;
 }
 
@@ -73,7 +32,7 @@
   flex-direction: column;
 }
 
-.home-brand {
+.home .opening-brand {
   display: flex;
   align-items: center;
   gap: 1.15cqw;
@@ -83,11 +42,11 @@
   letter-spacing: 0.11em;
 }
 
-.home-pair {
+.home .opening-pair {
   flex: none;
   width: 4.1cqw;
   height: 2.5cqw;
-  background: url('/home/mascots.svg') center / contain no-repeat;
+  background: url('/book/mascots.svg') center / contain no-repeat;
 }
 
 .home-preface {
@@ -142,14 +101,14 @@
   font-size: 0.85cqw;
 }
 
-.home-line {
+.home .opening-line {
   margin: 2.05cqw 0 0;
   font-size: 1.55cqw;
   letter-spacing: 0.15em;
   white-space: nowrap;
 }
 
-.home-windows {
+.home .opening-windows {
   display: block;
   width: 115%;
   max-width: none;
@@ -187,7 +146,7 @@
   content: '';
   width: 2.7cqw;
   height: 2.6cqw;
-  background: url('/home/mascots.svg') left center / 5.6cqw auto no-repeat;
+  background: url('/book/mascots.svg') left center / 5.6cqw auto no-repeat;
 }
 
 .home .clock-face + .clock-face .clock-who::before {
@@ -380,33 +339,6 @@
   font-size: 0.875rem;
 }
 
-/* The bookmark's dimensions follow the same canvas as the home book. Other screens keep
-   their existing book layout and fixed bookmark placement. */
-body:has(.home) .bookmark {
-  top: min(8.3vw, 8rem);
-  right: max(1.8vw, calc((100vw - 96rem) / 2 + 1.8rem));
-  width: clamp(38px, 3.2vw, 49px);
-  height: clamp(130px, 13vw, 200px);
-  padding: 1.2rem 0.5rem 4rem;
-  writing-mode: horizontal-tb;
-  font:
-    1.25rem / 1.4 'Opening Serif',
-    Georgia,
-    serif;
-  letter-spacing: 0.2em;
-  background: linear-gradient(95deg, #e9bc84, #f9dfb8 25%, #f5d4a8);
-  color: #655334;
-  border: 1px solid #e0b783;
-  border-radius: 4px 7px 0 0;
-}
-body:has(.home) .bookmark::after {
-  content: '';
-  position: absolute;
-  inset: auto 7px 1rem;
-  height: 4.5rem;
-  background: url('/home/leaf.svg') center / contain no-repeat;
-}
-
 @media (min-width: 56.001rem) {
   .home {
     min-width: 56rem;
@@ -416,25 +348,6 @@ body:has(.home) .bookmark::after {
 @media (max-width: 56rem) {
   .home {
     width: 100%;
-    padding: 12px;
-    background: #f9f4e9;
-  }
-  .home-paper-desktop {
-    display: none;
-  }
-  .home-paper-mobile {
-    display: block;
-    border-radius: 18px 22px 20px 14px;
-  }
-  .home .book {
-    display: block;
-    min-height: 100svh;
-    border: 1px solid #e2ccad;
-    border-radius: 18px 22px 20px 14px;
-    background: none;
-    box-shadow:
-      3px 3px 0 #edddc6,
-      6px 5px 0 #e5d2b7;
   }
   .home .book-page {
     padding: 32px 6cqw 20px;
@@ -442,13 +355,13 @@ body:has(.home) .bookmark::after {
   .home .book-right {
     padding: 0 6cqw 24px;
   }
-  .home-brand {
+  .home .opening-brand {
     gap: 10px;
     margin: 0 35px 38px 0;
     font-size: clamp(14px, 4cqw, 23px);
     letter-spacing: 0.08em;
   }
-  .home-pair {
+  .home .opening-pair {
     width: 43px;
     height: 28px;
   }
@@ -478,12 +391,12 @@ body:has(.home) .bookmark::after {
   .home-weekday {
     font-size: 12px;
   }
-  .home-line {
+  .home .opening-line {
     margin-top: 20px;
     font-size: 4cqw;
     letter-spacing: 0.08em;
   }
-  .home-windows {
+  .home .opening-windows {
     width: 110%;
     margin: 22px 0 0 -5%;
   }
@@ -588,20 +501,6 @@ body:has(.home) .bookmark::after {
   }
   .home-space {
     width: 100%;
-  }
-  body:has(.home) .bookmark {
-    top: max(21px, env(safe-area-inset-top));
-    right: max(22px, env(safe-area-inset-right));
-    width: 35px;
-    min-width: 35px;
-    height: 113px;
-    min-height: 113px;
-    padding: 9px 7px 50px;
-    font-size: 15px;
-  }
-  body:has(.home) .bookmark::after {
-    inset: auto 5px 10px;
-    height: 42px;
   }
 }
 

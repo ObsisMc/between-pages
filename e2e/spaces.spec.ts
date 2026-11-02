@@ -159,7 +159,7 @@ test('AUTH-08 AUTH-11 SHARE-03 restores the same space with the former partner w
   await unbind(a);
 
   // B invites A again without setting a range; A restores the same space without one.
-  await b.getByRole('link', { name: '← 首页' }).click();
+  await b.getByRole('link', { name: '← 序言' }).click();
   const again = await inviteLink(b, (page) => page.getByLabel('暂不设置').check());
   await a.goto(again);
   await expect(a.getByText(`接受后恢复你和 ${name('b')} 原来的双人空间。`)).toBeVisible();

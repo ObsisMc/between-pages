@@ -240,8 +240,9 @@ describe('a shared diary', () => {
 
   it('[adr:diary-collaboration-kernel#26] counts nothing hidden by the own-text-only filter as read (EDIT-14)', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
-    // jsdom has no layout: the editor fills the window and no point maps to a position,
-    // so the whole text counts as on screen; text measures as a zero box at the top.
+    // jsdom has no layout: the editor and the left page's box fill the window and no point
+    // maps to a position, so the whole text counts as on screen; text measures as a zero
+    // box at the top.
     Object.defineProperty(document, 'elementFromPoint', { value: () => null, configurable: true });
     for (const [name, value] of [
       ['getClientRects', () => []],
@@ -262,6 +263,12 @@ describe('a shared diary', () => {
       vi.spyOn(editor.parentElement!, 'getBoundingClientRect').mockReturnValue({
         top: 0,
         bottom: 400,
+        left: 0,
+        right: 600,
+      } as DOMRect);
+      vi.spyOn(editor.closest('.workspace-left')!, 'getBoundingClientRect').mockReturnValue({
+        top: 0,
+        bottom: window.innerHeight,
         left: 0,
         right: 600,
       } as DOMRect);

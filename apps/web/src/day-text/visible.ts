@@ -42,10 +42,11 @@ export function charTop(segment: Element, offset: number): number {
 /**
  * The other person's characters of one rendered `DayText` that are inside `clip` now
  * (book-frontend-workspace D5): only what has a box on screen, so hidden or clipped text,
- * and a segment the browser cannot measure by character, never counts.
+ * text under an inert page (the 「目录」 covers it, contents-spread D1) and a segment the
+ * browser cannot measure by character never count.
  */
 export function visibleOthers(root: Element, clip: Clip): CharacterRun[] {
-  if (clip.bottom <= clip.top) return [];
+  if (clip.bottom <= clip.top || root.closest('[inert]')) return [];
   const runs: CharacterRun[] = [];
   for (const segment of root.querySelectorAll<HTMLElement>('[data-other]')) {
     const rect = segment.getBoundingClientRect();

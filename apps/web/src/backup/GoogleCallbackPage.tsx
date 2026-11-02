@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { ApiError, callApi } from '../api/client.ts';
+import { BookSpread } from '../book/index.ts';
 
 // Where Google sends the browser back (server-backup-and-google-docs D10). The page hands
 // code and state to the API, which checks the state against this session; the code and
@@ -46,17 +47,22 @@ export function GoogleCallbackPage() {
 
   const shown = refused ?? error;
   return (
-    <main className="page backup">
-      {shown ? (
-        <>
-          <p role="alert">{shown}</p>
-          <Link to="/backup" replace>
-            回到备份页
-          </Link>
-        </>
-      ) : (
-        <p>正在连接 Google Drive…</p>
-      )}
+    <main className="backup">
+      <BookSpread
+        left={
+          shown ? (
+            <>
+              <p role="alert">{shown}</p>
+              <Link to="/backup" replace>
+                回到备份页
+              </Link>
+            </>
+          ) : (
+            <p>正在连接 Google Drive…</p>
+          )
+        }
+        right={null}
+      />
     </main>
   );
 }

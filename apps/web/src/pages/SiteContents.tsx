@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useMe } from '../auth/me.ts';
 import { ContentsBookmark, ContentsPages, type ContentsGroup } from '../book/index.ts';
 import { useBinding, useSpaces } from '../relationship/index.ts';
@@ -29,6 +30,7 @@ function SiteContents() {
   if (space)
     groups.push({
       title: '一起',
+      side: 'right',
       entries: [
         ...(current ? [{ to: '/clocks', label: '两地时间' }] : []),
         { to: '/wishes', label: '心愿与礼物', badge: <EntryDot count={unread?.wishes} /> },
@@ -41,21 +43,24 @@ function SiteContents() {
     });
   groups.push({
     title: '管理',
+    // 「一起」 takes the right page when there is one (contents-spread D3).
+    side: space ? 'left' : 'right',
+    icons: true,
     entries: [
-      ...(space ? [{ to: `/spaces/${space.id}`, label: '双人空间' }] : []),
-      { to: '/backup', label: '备份' },
+      ...(space ? [{ to: `/spaces/${space.id}`, label: '双人空间', icon: 'space' }] : []),
+      { to: '/backup', label: '备份', icon: 'backup' },
     ],
   });
   return <ContentsPages groups={groups} />;
 }
 
-/** The site-wide bookmark, for a signed-in user; its contents read their data only while open. */
-export function SiteBookmark() {
+/**
+ * Every page under the site-wide bookmark, which shows for a signed-in user; its contents
+ * read their data only while open.
+ */
+export function SiteBookmark({ children }: { children: ReactNode }) {
   const me = useMe();
-  if (!me.data) return null;
   return (
-    <ContentsBookmark>
-      <SiteContents />
-    </ContentsBookmark>
+    <ContentsBookmark contents={me.data ? <SiteContents /> : null}>{children}</ContentsBookmark>
   );
 }

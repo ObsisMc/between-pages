@@ -1,1 +1,1 @@
-export { Avatar, initialOf, type AvatarPerson } from './Avatar.tsx';
+export { Avatar, type AvatarPerson } from './Avatar.tsx';

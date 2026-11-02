@@ -99,18 +99,19 @@ test('[adr:book-frontend-workspace#3] a chosen date opens in the left page while
   const kept = await feedTop(page);
   expect(kept?.scrollTop).toBeGreaterThan(0);
 
-  // The left page edits the chosen date; the feed stays where it was, the date marked.
-  await chooseDate(page, DATES[6]!);
-  await expect(page).toHaveURL(new RegExp(`/days/${DATES[6]}$`));
+  // The left page edits the chosen date; the feed stays where it was, the date marked. The
+  // dates chosen are on screen, so reaching them scrolls nothing.
+  await chooseDate(page, DATES[5]!);
+  await expect(page).toHaveURL(new RegExp(`/days/${DATES[5]}$`));
   await expect(editor(page)).toBeVisible();
-  await expect(dateIn(page, DATES[6]!).getByText('在左页', { exact: true })).toBeVisible();
-  await expect(dateIn(page, DATES[6]!).getByText('正在左页编辑')).toBeVisible();
+  await expect(dateIn(page, DATES[5]!).getByText('在左页', { exact: true })).toBeVisible();
+  await expect(dateIn(page, DATES[5]!).getByText('正在左页编辑')).toBeVisible();
   expect(await feedTop(page)).toEqual(kept);
 
-  await chooseDate(page, DATES[7]!);
-  await expect(page).toHaveURL(new RegExp(`/days/${DATES[7]}$`));
-  await expect(dateIn(page, DATES[7]!).getByText('在左页', { exact: true })).toBeVisible();
-  await expect(dateIn(page, DATES[6]!).getByText('在左页', { exact: true })).toHaveCount(0);
+  await chooseDate(page, DATES[6]!);
+  await expect(page).toHaveURL(new RegExp(`/days/${DATES[6]}$`));
+  await expect(dateIn(page, DATES[6]!).getByText('在左页', { exact: true })).toBeVisible();
+  await expect(dateIn(page, DATES[5]!).getByText('在左页', { exact: true })).toHaveCount(0);
   expect(await feedTop(page)).toEqual(kept);
 
   // The left page scrolls on its own; the feed does not move with it.
@@ -122,8 +123,8 @@ test('[adr:book-frontend-workspace#3] a chosen date opens in the left page while
   // Read elsewhere in the feed, then back: the previous date, and the feed where it was then.
   await scrollFeedTo(page, DATES[0]!);
   await page.goBack();
-  await expect(page).toHaveURL(new RegExp(`/days/${DATES[6]}$`));
-  await expect(dateIn(page, DATES[6]!).getByText('在左页', { exact: true })).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`/days/${DATES[5]}$`));
+  await expect(dateIn(page, DATES[5]!).getByText('在左页', { exact: true })).toBeVisible();
   await expect.poll(() => feedTop(page)).toEqual(kept);
   await page.goBack();
   await expect(page).toHaveURL(/\/days$/);

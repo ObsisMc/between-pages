@@ -13,13 +13,13 @@ afterEach(() => {
 /** Opens the contents from the bookmark and lists it as { group: [label, href][] }. */
 async function contents() {
   fireEvent.click(await screen.findByRole('button', { name: '目录' }));
-  const dialog = await screen.findByRole('dialog', { name: '目录' });
+  const dialog = await screen.findByRole('main', { name: '目录' });
   const listed = () =>
     Object.fromEntries(
       within(dialog)
         .getAllByRole('region')
         .map((group) => [
-          group.querySelector('h3')!.textContent,
+          group.querySelector('h2')!.textContent,
           within(group)
             .getAllByRole('link')
             .map((a) => [a.querySelector('.contents-label')!.textContent, a.getAttribute('href')]),
@@ -29,10 +29,10 @@ async function contents() {
 }
 
 describe('SiteBookmark', () => {
-  it('[adr:space-records#10] [adr:book-frontend-workspace#2] lists only the diaries and backup for an account that was never bound', async () => {
+  it('[adr:space-records#10] [adr:book-frontend-workspace#2] [adr:contents-spread#4] lists only the diaries and backup for an account that was never bound', async () => {
     stubApi({ ...noRelationship, 'GET /api/me': signedIn('alice') });
     renderAt('/');
-    const { listed } = await contents();
+    const { dialog, listed } = await contents();
     await waitFor(() =>
       expect(listed()).toEqual({
         日记: [
@@ -41,6 +41,10 @@ describe('SiteBookmark', () => {
         ],
         管理: [['备份', '/backup']],
       }),
+    );
+    // Without 「一起」, 「管理」 takes the right page (contents-spread D3).
+    expect(within(dialog).getByRole('region', { name: '管理' }).closest('.book-right')).not.toBe(
+      null,
     );
   });
 
@@ -80,9 +84,15 @@ describe('SiteBookmark', () => {
     expect(within(dialog).getByRole('link', { name: /备份/ }).getAttribute('aria-current')).toBe(
       'page',
     );
+    expect(within(dialog).getByRole('region', { name: '一起' }).closest('.book-right')).not.toBe(
+      null,
+    );
+    expect(within(dialog).getByRole('region', { name: '管理' }).closest('.book-left')).not.toBe(
+      null,
+    );
   });
 
-  it('[adr:book-frontend-workspace#7] keeps the read-only space and its records after unbinding, without the clocks', async () => {
+  it('[adr:book-frontend-workspace#7] [adr:contents-spread#4] keeps the read-only space and its records after unbinding, without the clocks', async () => {
     stubApi({
       ...noRelationship,
       'GET /api/me': signedIn('alice'),
