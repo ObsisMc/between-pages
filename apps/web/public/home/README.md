@@ -6,7 +6,7 @@ Watercolor assets for the home-page reproduction experiment (2026-11-02). Book g
 | --- | --- | --- |
 | `windows-watercolor.webp` | Two windows with both mascots | Built-in imagegen, reference-guided watercolor illustration |
 | `windows-unbound.webp` | Same illustration with an empty partner window | Built-in imagegen edit of the preceding illustration |
-| `mascots.svg`, `leaf.svg` | Small decorative marks | Local SVG artwork |
+| `mascots.svg`, `leaf.svg` | Rounded, asymmetric mascots and the bookmark leaf | Local SVG artwork |
 | `paper-grain.svg` | A cached 128px procedural texture tile | Local SVG code; noise filter runs on the tile, not across the book |
 | `serif-sc.ttf` | Homepage label and date glyphs | Google Fonts Noto Serif SC, static text subset; [OFL license](OFL.txt) |
 
