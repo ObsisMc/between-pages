@@ -136,30 +136,31 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'space-common',
         'two-clocks',
       ],
-      // book-frontend-workspace D1, D2: the spread, the bookmark and the contents are layout
-      // and navigation only; the caller says which entries exist.
+      // book-frontend-workspace D1, D2, book-surface: the spread, the bookmark and the
+      // contents are layout and navigation only; the caller says which entries exist. Every
+      // screen draws its pages on it (book-surface D5).
       book: [],
       'editor-binding': [],
       journal: [],
       sender: ['journal'],
       'sync-client': ['api'],
       history: ['api'],
-      // unread-and-day-page: the initial avatar knows no other module.
+      // unread-and-day-page, book-surface D4: the mascot avatar knows no other module.
       avatar: [],
       'sharing-range': [],
       relationship: ['api', 'sharing-range'],
-      join: ['api', 'auth', 'relationship', 'sharing-range'],
-      space: ['api', 'auth', 'relationship', 'sharing-range', 'shared-diaries'],
+      join: ['api', 'auth', 'book', 'relationship', 'sharing-range'],
+      space: ['api', 'auth', 'book', 'relationship', 'sharing-range', 'shared-diaries'],
       'shared-diaries': ['api'],
       // server-backup-and-google-docs D9: the backup page, the Google callback and the home banner.
-      backup: ['api'],
+      backup: ['api', 'book'],
       // two-clocks: the home time area, the clocks page and the browser's zone report.
-      'two-clocks': ['api'],
+      'two-clocks': ['api', 'book'],
       // space-records: the entry dot, seen reports, unread jumps and the read-only notice
       // every space feature uses; features import it and never each other.
       'space-common': ['api'],
-      wishes: ['api', 'space-common'],
-      anniversaries: ['api', 'space-common'],
+      wishes: ['api', 'book', 'space-common'],
+      anniversaries: ['api', 'book', 'space-common'],
       // book-frontend-workspace: `day-text` renders one diary's text read-only and knows no
       // other module; `day-feed` is the right page's list of them, which `diary` mounts
       // beside the day editor in a `book` spread (D3).
