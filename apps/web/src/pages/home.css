@@ -1,20 +1,11 @@
 /* The opening (opening-book-home) on the shared book (book-surface D1), at the reference's
-   proportions: sizes follow the book's width. Only the watercolor windows are raster. */
+   proportions: sizes follow the book's width (cqw of the `aspect` book). Only the
+   watercolor windows are raster. */
 .home {
   --ink: #27262b;
   --ink-soft: #81796e;
   --accent: #e47732;
   --line: #ddc6a6;
-  width: min(100%, 96rem);
-  margin: 0 auto;
-  container-type: inline-size;
-}
-
-.home .book {
-  width: 100%;
-  min-height: 66.667cqw;
-  margin: 0;
-  gap: 0;
 }
 
 .home .book-page {
@@ -26,10 +17,25 @@
   content: none;
 }
 
+/* The left page is all in cqw and always fits; it does not scroll, so the windows may reach
+   into its margin. */
+.home .book-desk .book-left > .book-scroll {
+  overflow: visible;
+}
+
 .home .book-right {
   padding: 11.4cqw 9.8cqw 7cqw 4.5cqw;
   display: flex;
   flex-direction: column;
+}
+
+/* The right page scrolls when longer than the book; its box reaches into the page's margin,
+   so the hour labels at the timeline's ends are not cut. */
+@media (min-width: 56.001rem) {
+  .home .book-desk .book-right > .book-scroll {
+    margin-inline: -2cqw;
+    padding-inline: 2cqw;
+  }
 }
 
 .home .opening-brand {
@@ -339,16 +345,7 @@
   font-size: 0.875rem;
 }
 
-@media (min-width: 56.001rem) {
-  .home {
-    min-width: 56rem;
-  }
-}
-
 @media (max-width: 56rem) {
-  .home {
-    width: 100%;
-  }
   .home .book-page {
     padding: 32px 6cqw 20px;
   }

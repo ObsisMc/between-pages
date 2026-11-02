@@ -16,7 +16,8 @@ const groups: ContentsGroup[] = [
   { title: '管理', icons: true, entries: [{ to: '/c', label: '丙页', icon: 'backup' }] },
 ];
 
-const page = (name: string) => <p>{name}的正文</p>;
+const text = (name: string) => <p>{name}的正文</p>;
+const page = (name: string) => <BookSpread left={text(name)} right={null} />;
 const routes = [
   {
     element: (
@@ -29,11 +30,17 @@ const routes = [
       {
         path: '/draft',
         element: (
-          <div style={{ overflowY: 'auto' }} data-testid="box">
-            <input aria-label="草稿" />
-          </div>
+          <BookSpread
+            left={
+              <div style={{ overflowY: 'auto' }} data-testid="box">
+                <input aria-label="草稿" />
+              </div>
+            }
+            right={null}
+          />
         ),
       },
+      { path: '/plain', element: text('无书') },
       { path: '/a', element: page('甲') },
       { path: '/b', element: page('乙') },
       { path: '/c', element: page('丙') },
@@ -52,7 +59,7 @@ afterEach(cleanup);
 
 describe('BookSpread', () => {
   it('[adr:book-frontend-workspace#1] [adr:book-surface#1] keeps each page in its own container', () => {
-    renderAt('/', [{ path: '/', element: <BookSpread left={page('左')} right={page('右')} /> }]);
+    renderAt('/', [{ path: '/', element: <BookSpread left={text('左')} right={text('右')} /> }]);
     const left = screen.getByText('左的正文').closest('.book-page')!;
     const right = screen.getByText('右的正文').closest('.book-page')!;
     expect(left.className).toBe('book-page book-left');
@@ -112,6 +119,44 @@ describe('ContentsBookmark', () => {
     expect(document.activeElement).toBe(bookmark());
   });
 
+  it('[adr:book-fit-and-bookmark#2] draws one bookmark, on the book shown: the page’s while closed, the contents’ while open, none without a book', async () => {
+    const { router } = renderAt('/a', routes);
+    const pageBook = screen.getByText('甲的正文').closest('.book')!;
+    expect(screen.getAllByRole('button', { name: '目录' })).toHaveLength(1);
+    expect(pageBook.contains(bookmark())).toBe(true);
+
+    const dialog = await openContents();
+    expect(screen.getAllByRole('button', { name: '目录' })).toHaveLength(1);
+    expect(dialog.querySelector('.book')!.contains(bookmark())).toBe(true);
+    expect(pageBook.contains(bookmark())).toBe(false);
+    expect(bookmark().getAttribute('aria-controls')).toBe(dialog.id);
+
+    fireEvent.click(bookmark());
+    await waitFor(() => expect(contents()).toBeNull());
+    expect(screen.getAllByRole('button', { name: '目录' })).toHaveLength(1);
+    expect(pageBook.contains(bookmark())).toBe(true);
+    expect(document.activeElement).toBe(bookmark());
+
+    await router.navigate('/plain');
+    expect(await screen.findByText('无书的正文')).toBeDefined();
+    expect(screen.queryByRole('button', { name: '目录' })).toBeNull();
+  });
+
+  it('draws no bookmark without contents, as while signed out', () => {
+    renderAt('/', [
+      {
+        element: (
+          <ContentsBookmark contents={null}>
+            <Outlet />
+          </ContentsBookmark>
+        ),
+        children: [{ path: '/', element: page('序言') }],
+      },
+    ]);
+    expect(screen.getByText('序言的正文').closest('.book')).not.toBeNull();
+    expect(screen.queryByRole('button', { name: '目录' })).toBeNull();
+  });
+
   it('marks the page already showing as current, and choosing it only closes the contents', async () => {
     const { router } = renderAt('/a', routes);
     const dialog = await openContents();
@@ -134,6 +179,7 @@ describe('ContentsBookmark', () => {
     await waitFor(() => expect(contents()).toBeNull());
     expect(router.state.location.pathname).toBe('/a');
     expect(document.activeElement).toBe(bookmark());
+    expect(screen.getByText('甲的正文').closest('.book')!.contains(bookmark())).toBe(true);
 
     // A second Escape after it closed changes nothing.
     fireEvent.keyDown(document.body, { key: 'Escape' });

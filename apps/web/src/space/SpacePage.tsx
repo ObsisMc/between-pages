@@ -195,7 +195,12 @@ export function SpacePage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (space.isPending || mine.isPending || !me.data) return <p className="status">正在打开…</p>;
+  if (space.isPending || mine.isPending || !me.data)
+    return (
+      <main className="space">
+        <BookSpread left={null} right={null} />
+      </main>
+    );
   if (space.isError || mine.isError)
     return (
       <main className="space">

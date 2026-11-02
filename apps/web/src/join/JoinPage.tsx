@@ -76,7 +76,12 @@ export function JoinPage() {
     };
   }, [signedIn, token, attempt]);
 
-  if (me.isPending) return <p className="status">正在打开…</p>;
+  if (me.isPending)
+    return (
+      <main className="join">
+        <BookSpread left={<BookOpening together={false} />} right={null} />
+      </main>
+    );
   if (me.signedOut)
     return (
       <main className="join">

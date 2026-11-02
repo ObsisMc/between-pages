@@ -4,11 +4,13 @@ import {
   useContext,
   useEffect,
   useId,
+  useMemo,
   useRef,
   type CSSProperties,
   type ReactNode,
 } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
+import { BookmarkContext } from './Bookmark.tsx';
 import { BookSpread } from './BookSpread.tsx';
 import './book.css';
 
@@ -42,11 +44,11 @@ const isOpen = (state: unknown) =>
   typeof state === 'object' && state !== null && 'contents' in state && state.contents === true;
 
 /**
- * `children`, the page, and with `contents` (null while signed out) the bookmark, always on
- * screen, and while open the contents over the page, which mounts only then. Opening moves
- * the focus to the contents' title and makes the page inert; back, Escape, "合上目录" or
- * the bookmark close it and the focus returns to the bookmark, unless an entry led to
- * another page.
+ * `children`, the page, and with `contents` (null while signed out) the bookmark, drawn on
+ * the page's book, and while open the contents over the page, which mounts only then, with
+ * the bookmark on its book instead (book-fit-and-bookmark D2). Opening moves the focus to the
+ * contents' title and makes the page inert; back, Escape, "合上目录" or the bookmark close
+ * it and the focus returns to the bookmark, unless an entry led to another page.
  */
 export function ContentsBookmark({
   contents,
@@ -94,34 +96,42 @@ export function ContentsBookmark({
     return () => document.removeEventListener('keydown', onKey);
   }, [open, close]);
 
-  const toggle = () => {
-    if (open) return close();
-    const { pathname, search, hash } = location;
-    const state = typeof location.state === 'object' ? location.state : null;
-    void navigate({ pathname, search, hash }, { state: { ...state, contents: true } });
-  };
+  const attach = useCallback((button: HTMLButtonElement | null) => {
+    bookmark.current = button;
+  }, []);
+  const shown = contents !== null;
+  const mark = useMemo(
+    () =>
+      shown
+        ? {
+            open,
+            panelId,
+            attach,
+            toggle: () => {
+              if (open) return close();
+              const { pathname, search, hash } = location;
+              const state = typeof location.state === 'object' ? location.state : null;
+              void navigate({ pathname, search, hash }, { state: { ...state, contents: true } });
+            },
+          }
+        : null,
+    [shown, open, panelId, attach, close, location, navigate],
+  );
 
+  // One bookmark: on the page's book while closed, on the contents' book while open.
   return (
     <>
-      <div className="contents-origin" inert={open}>
-        {children}
-      </div>
+      <BookmarkContext value={open ? null : mark}>
+        <div className="contents-origin" inert={open}>
+          {children}
+        </div>
+      </BookmarkContext>
       {open && (
         <main ref={panel} id={panelId} className="contents" aria-labelledby={titleId}>
-          <ContentsContext value={{ close, titleId }}>{contents}</ContentsContext>
+          <BookmarkContext value={mark}>
+            <ContentsContext value={{ close, titleId }}>{contents}</ContentsContext>
+          </BookmarkContext>
         </main>
-      )}
-      {contents !== null && (
-        <button
-          ref={bookmark}
-          type="button"
-          className="bookmark"
-          aria-expanded={open}
-          aria-controls={open ? panelId : undefined}
-          onClick={toggle}
-        >
-          目录
-        </button>
       )}
     </>
   );

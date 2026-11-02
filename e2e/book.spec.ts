@@ -171,6 +171,60 @@ const bookmarkOnScreen = async (page: Page) => {
   expect(box!.y + box!.height).toBeLessThanOrEqual(height);
 };
 
+/**
+ * Whether the bookmark is drawn on the book being shown: inside that book's element and
+ * its box. With the contents open, that is the contents' book; the page below is hidden.
+ */
+const bookmarkOnBook = async (page: Page) => {
+  const placed = await bookmark(page).evaluate((mark) => {
+    const shown = [...document.querySelectorAll('.book')].filter((book) =>
+      book.checkVisibility({ visibilityProperty: true }),
+    );
+    const book = mark.closest('.book');
+    const [b, m] = [book?.getBoundingClientRect(), mark.getBoundingClientRect()];
+    return {
+      books: shown.length,
+      onShownBook: !!book && shown.includes(book),
+      inside:
+        !!b &&
+        m.left >= b.left - 1 &&
+        m.right <= b.right + 1 &&
+        m.top >= b.top - 1 &&
+        m.bottom <= b.bottom + 1,
+    };
+  });
+  expect(placed).toEqual({ books: 1, onShownBook: true, inside: true });
+};
+
+/**
+ * Records, from the first frame on, whether a bookmark was ever on the page outside a book
+ * (`window.strayBookmark`).
+ */
+const watchBookmark = (page: Page) =>
+  page.addInitScript(() => {
+    const seen = window as unknown as { strayBookmark: boolean };
+    seen.strayBookmark = false;
+    new MutationObserver(() => {
+      for (const mark of document.querySelectorAll('.bookmark'))
+        if (!mark.closest('.book')) seen.strayBookmark = true;
+    }).observe(document, { childList: true, subtree: true });
+  });
+const strayBookmark = (page: Page) =>
+  page.evaluate(() => (window as unknown as { strayBookmark: boolean }).strayBookmark);
+
+/** Holds every request matching `url` until the returned function is called, then lets them pass. */
+async function hold(page: Page, url: string) {
+  let release!: () => void;
+  const released = new Promise<void>((resolve) => (release = resolve));
+  await page.route(url, async (route) => {
+    await released;
+    await route.continue();
+  });
+  return release;
+}
+
+const PAPER = 'rgb(248, 242, 232)';
+
 test('[adr:book-frontend-workspace#1] [adr:book-surface#1] [adr:book-surface#3] wide: no text or control crosses the gutter or the foot of the book, long text included', async ({
   browser,
   browserName,
@@ -198,6 +252,7 @@ test('[adr:book-frontend-workspace#1] [adr:book-surface#1] [adr:book-surface#3] 
     if (path === 'contents') await expect(contents(page)).toBeVisible();
     expect(await outside(page), path).toEqual([]);
     await bookmarkOnScreen(page);
+    await bookmarkOnBook(page);
     if (path === '/') continue;
     // Every book but the home is the window's height: the pages scroll inside, never past
     // the book.
@@ -240,9 +295,16 @@ for (const viewport of NARROW) {
       if (path === `/days/${longDay}`) await expect(editor(page)).toContainText('最后一行');
       expect(await outside(page), path).toEqual([]);
       await bookmarkOnScreen(page);
-      // Scrolled to the end of the sheet, the bookmark is still there.
-      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-      await bookmarkOnScreen(page);
+      await bookmarkOnBook(page);
+      // Down the sheet and at its end, the bookmark is still on screen, on the sheet.
+      for (const at of [0.5, 1]) {
+        await page.evaluate(
+          (share) => window.scrollTo(0, document.documentElement.scrollHeight * share),
+          at,
+        );
+        await bookmarkOnScreen(page);
+        await bookmarkOnBook(page);
+      }
       expect(await outside(page), `${path} scrolled`).toEqual([]);
     }
 
@@ -253,6 +315,10 @@ for (const viewport of NARROW) {
     await expect(contents(page)).toBeVisible();
     expect(await outside(page)).toEqual([]);
     await bookmarkOnScreen(page);
+    await bookmarkOnBook(page);
+    await contents(page).evaluate((box) => (box.scrollTop = box.scrollHeight));
+    await bookmarkOnScreen(page);
+    await bookmarkOnBook(page);
     await expect(contents(page).getByRole('link', { name: /所有日记/ })).toBeInViewport();
   });
 }
@@ -347,6 +413,98 @@ test('[adr:opening-book-home#1] [adr:book-frontend-workspace#2] [adr:book-surfac
   await page.goBack();
   await expect(page).toHaveURL(/\/$/);
   await expect(contents(page)).toHaveCount(0);
+});
+
+test('[adr:book-fit-and-bookmark#1] [adr:book-fit-and-bookmark#2] the home book fits the window, and the bookmark is drawn on the book shown', async ({
+  browser,
+  browserName,
+}) => {
+  test.setTimeout(90_000);
+  const page = await signedIn(browser, `bf${browserName}${run}`);
+  for (const size of [
+    { width: 1280, height: 720 },
+    { width: 1440, height: 800 },
+    { width: 1920, height: 960 },
+  ]) {
+    await page.setViewportSize(size);
+    await page.goto('/');
+    await expect(page.getByRole('link', { name: '浏览所有日记' })).toBeVisible();
+    const fit = await page.evaluate(() => {
+      const book = document.querySelector('.book')!.getBoundingClientRect();
+      return {
+        scrolls: document.documentElement.scrollHeight > window.innerHeight,
+        inWindow: book.top >= 0 && book.bottom <= window.innerHeight,
+        ratio: Math.round((book.width / book.height) * 100) / 100,
+      };
+    });
+    expect(fit, `${size.width}×${size.height}`).toEqual({
+      scrolls: false,
+      inWindow: true,
+      ratio: 1.5,
+    });
+    await bookmarkOnBook(page);
+    // Were the window to scroll, the bookmark goes with the book.
+    await page.evaluate(() => window.scrollTo(0, 200));
+    await bookmarkOnBook(page);
+  }
+
+  // The window-high books and the contents carry it too, one at a time.
+  await page.setViewportSize(WIDE);
+  for (const path of ['/days', '/clocks']) {
+    await page.goto(path);
+    await expect(page.locator('.book-page').first()).toBeVisible();
+    await bookmarkOnBook(page);
+  }
+  await bookmark(page).click();
+  await expect(contents(page)).toBeVisible();
+  await expect(page.locator('.bookmark')).toHaveCount(1);
+  await expect(bookmark(page)).toHaveAttribute('aria-expanded', 'true');
+  await bookmarkOnBook(page);
+  await page.keyboard.press('Escape');
+  await expect(contents(page)).toHaveCount(0);
+  await expect(page.locator('.bookmark')).toHaveCount(1);
+  await expect(bookmark(page)).toBeFocused();
+  await bookmarkOnBook(page);
+});
+
+test('[adr:book-fit-and-bookmark#2] [adr:book-fit-and-bookmark#4] while the session, a page or the app itself loads, the window shows the book and no bookmark off it', async ({
+  browser,
+  browserName,
+}) => {
+  test.setTimeout(90_000);
+  const page = await signedIn(browser, `bl${browserName}${run}`);
+  await watchBookmark(page);
+
+  // Before the app's script runs, the window is already paper.
+  let release = await hold(page, '**/src/main.tsx');
+  await page.goto('/', { waitUntil: 'commit' });
+  await expect
+    .poll(() => page.evaluate(() => getComputedStyle(document.body).backgroundColor))
+    .toBe(PAPER);
+  await expect(page.locator('#root')).toBeEmpty();
+  release();
+  await expect(page.getByRole('link', { name: '浏览所有日记' })).toBeVisible();
+
+  // Asking who is signed in: a book with the message, no bookmark yet.
+  release = await hold(page, '**/api/me');
+  await page.goto('/');
+  await expect(page.locator('.book').getByText('正在打开…')).toBeVisible();
+  await expect(page.locator('.book')).toBeVisible();
+  await expect(bookmark(page)).toHaveCount(0);
+  release();
+  await expect(page.getByRole('link', { name: '浏览所有日记' })).toBeVisible();
+  await bookmarkOnBook(page);
+
+  // The space page waits for its data on a book, with the bookmark on it.
+  release = await hold(page, '**/api/spaces/**');
+  await page.goto(`/spaces/${crypto.randomUUID()}`);
+  await expect(page.locator('.book')).toBeVisible();
+  await expect(bookmark(page)).toBeVisible();
+  await bookmarkOnBook(page);
+  release();
+  await expect(page.locator('.book').getByRole('alert')).toBeVisible();
+  await bookmarkOnBook(page);
+  expect(await strayBookmark(page)).toBe(false);
 });
 
 test('[adr:opening-book-home#5] [adr:book-frontend-workspace#7] [adr:contents-spread#4] home and 目录 per relationship: never bound, bound without a sleep schedule, unbound with history', async ({

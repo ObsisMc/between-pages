@@ -1,24 +1,8 @@
-/* The book (book-surface D1, D6; book-frontend-workspace D1): the book's geometry and
-   paper are the inline SVG of `BookSurface`, the bookmark and the type are here; every word
-   and control is real HTML over them. Two pages need about 56rem; below that the spread
-   reads as one sheet. Book pages are light paper at every system theme. */
-:root {
-  /* Where the window-high book is, so the bookmark can sit on its edge. */
-  --book-width: min(100vw - 2rem, 96rem, (100dvh - 2rem) * 1.75);
-  --book-height: calc(100dvh - 2rem);
-  --book-top: 1rem;
-  --bookmark-at: 0.09;
-}
-
-/* The home page's book keeps the reference's 3:2 at the top of the window, unless the
-   contents covers it. */
-body:has(.contents-origin:not([inert]) .book-desk.aspect) {
-  --book-width: min(100vw, 96rem);
-  --book-height: calc(var(--book-width) * 2 / 3);
-  --book-top: 0px;
-  --bookmark-at: 0.125;
-}
-
+/* The book (book-surface D1; book-frontend-workspace D1; book-fit-and-bookmark D1, D2):
+   the book's geometry and paper are the inline SVG of `BookSurface`, the bookmark and the
+   type are here; every word and control is real HTML over them. Two pages need about 56rem;
+   below that the spread reads as one sheet. Book pages are light paper at every system
+   theme. */
 body:has(.book-desk) {
   background: #f8f2e8;
   color-scheme: light;
@@ -90,9 +74,9 @@ body:has(.book-desk) {
 /* Window-high: the pages scroll inside the paper, inside the page's curved edges. */
 .book-desk.window .book {
   container-type: size;
-  width: var(--book-width);
-  height: var(--book-height);
-  margin: var(--book-top) auto;
+  width: min(100vw - 2rem, 96rem, (100dvh - 2rem) * 1.75);
+  height: calc(100dvh - 2rem);
+  margin: 1rem auto;
 }
 
 .book-desk.window .book-left {
@@ -108,6 +92,29 @@ body:has(.book-desk) {
   overflow-x: clip;
   scrollbar-width: thin;
   scrollbar-color: #d9c4a5 transparent;
+}
+
+/* The home page's book: the reference's 3:2, as large as fits the window with the same
+   margin as the window-high book, never under the width two pages need. It is the size
+   container its content scales with (cqw); a page longer than that scrolls inside. */
+@media (min-width: 56.001rem) {
+  .book-desk.aspect {
+    container-type: inline-size;
+    width: min(100%, 96rem, (100dvh - 2rem) * 1.5);
+    min-width: 56rem;
+    margin: 1rem auto;
+  }
+
+  .book-desk.aspect .book {
+    height: 66.667cqw;
+  }
+
+  .book-desk.aspect .book-scroll {
+    overflow-y: auto;
+    overflow-x: clip;
+    scrollbar-width: thin;
+    scrollbar-color: #d9c4a5 transparent;
+  }
 }
 
 .book-desk h1 {
@@ -213,6 +220,16 @@ body:has(.book-desk) {
     padding: 12px;
   }
 
+  /* The home's sheet is the size container of its content, edge to edge. */
+  .book-desk.aspect {
+    container-type: inline-size;
+    padding: 0;
+  }
+
+  .book-desk.aspect .book {
+    margin: 12px;
+  }
+
   .book-desk .book,
   .book-desk.window .book {
     display: block;
@@ -274,14 +291,22 @@ body:has(.book-desk) {
   }
 }
 
-/* The bookmark (book-surface D6): a ribbon tucked under the right page's outer edge on
-   wide windows, inside the sheet's top right otherwise; fixed, so it never leaves the
-   screen. */
-.bookmark {
-  position: fixed;
+/* The bookmark (book-fit-and-bookmark D2): drawn on the book, a ribbon tucked under the
+   right page's outer edge on wide windows, in the sheet's top right otherwise. Its rail
+   covers the book and lets the pointer through, so the ribbon moves with the book. */
+.bookmark-rail {
+  position: absolute;
+  inset: 0;
+  /* Above the pages' own floating controls. */
   z-index: 30;
-  top: calc(var(--book-top) + var(--book-height) * var(--bookmark-at));
-  right: calc((100vw - var(--book-width)) / 2 + var(--book-width) * 0.018);
+  pointer-events: none;
+}
+
+.bookmark {
+  position: absolute;
+  top: 9%;
+  right: 1.8%;
+  pointer-events: auto;
   width: clamp(38px, 3.2vw, 49px);
   min-width: 0;
   height: clamp(130px, 13vw, 200px);
@@ -318,10 +343,21 @@ body:has(.book-desk) {
   clip-path: none;
 }
 
+@media (min-width: 56.001rem) {
+  .book-desk.aspect .bookmark {
+    top: 12.5%;
+  }
+}
+
+/* On one sheet the ribbon sticks to the window's top while the sheet scrolls past it, and
+   leaves with the sheet. */
 @media (max-width: 56rem) {
   .bookmark {
+    position: sticky;
     top: max(21px, env(safe-area-inset-top));
-    right: max(22px, env(safe-area-inset-right));
+    right: auto;
+    display: block;
+    margin: 9px max(10px, env(safe-area-inset-right) - 12px) 0 auto;
     width: 35px;
     height: 113px;
     min-height: 113px;
