@@ -125,7 +125,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'anniversaries',
       ],
       api: [],
-      auth: ['api'],
+      auth: ['api', 'ui'],
       pages: [
         'api',
         'auth',
@@ -154,8 +154,8 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       // unread-and-day-page: the initial avatar knows no other module.
       avatar: [],
       'sharing-range': ['ui'],
-      relationship: ['api', 'sharing-range'],
-      join: ['api', 'auth', 'relationship', 'sharing-range'],
+      relationship: ['api', 'sharing-range', 'ui'],
+      join: ['api', 'auth', 'relationship', 'sharing-range', 'ui', 'windows'],
       space: ['api', 'auth', 'relationship', 'sharing-range', 'shared-diaries', 'shell', 'ui'],
       'shared-diaries': ['api', 'ui'],
       // server-backup-and-google-docs D9: the backup page, the Google callback and the home banner.
