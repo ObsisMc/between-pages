@@ -23,7 +23,7 @@ The [unread-and-day-page](adr/2026-10-28-unread-and-day-page.md) design (stage 2
 
 ## Design proposals
 
-The [digital-paper-interface proposal](adr/2026-11-03-digital-paper-interface.md) and its [design package](design/2026-11-03-digital-paper/README.md) explore content-led layouts and tactile paired windows. They do not change the current decisions or runtime. Before adoption, reconcile the book design PRs and record any partial supersession on both sides.
+The [digital-paper-interface proposal](adr/2026-11-03-digital-paper-interface.md) and its [design package](design/2026-11-03-digital-paper/README.md) propose content-led layouts and tactile paired windows: a top navigation bar instead of the bookmark and contents, a home that lists recent dates without diary text, and a diary page whose single main area switches between continuous reading and one date beside a date index. Once adopted they partly supersede opening-book-home (D1 date list, D3 layout, D4 bookmark) and book-frontend-workspace (D1 spread, D2 bookmark and contents, D3 side-by-side pages, D7 book visuals); both sides record this. They do not change the current decisions or runtime yet.
 
 ## Modules
 
