@@ -1,7 +1,7 @@
 import { Navigate, type RouteObject } from 'react-router';
 import { RequireAuth } from './auth/RequireAuth.tsx';
 import { BackupPage, GoogleCallbackPage } from './backup/index.ts';
-import { DayPage, DiaryPage } from './diary/index.ts';
+import { DayPage, DaysPage, DiaryPage } from './diary/index.ts';
 import { JoinPage } from './join/index.ts';
 import { HomePage } from './pages/HomePage.tsx';
 import { LoginPage } from './pages/LoginPage.tsx';
@@ -37,6 +37,15 @@ export const appRoutes: RouteObject[] = [
     element: (
       <RequireAuth>
         <DiaryPage />
+      </RequireAuth>
+    ),
+  },
+  // All diaries by date, newest first (book-frontend-workspace D3).
+  {
+    path: '/days',
+    element: (
+      <RequireAuth>
+        <DaysPage />
       </RequireAuth>
     ),
   },

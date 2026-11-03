@@ -158,9 +158,14 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       'space-common': ['api'],
       wishes: ['api', 'space-common'],
       anniversaries: ['api', 'space-common'],
+      // book-frontend-workspace: `day-text` renders one diary's text read-only and knows no
+      // other module; `day-feed` is the right page's list of them, which `diary` mounts.
+      'day-text': [],
+      'day-feed': ['api', 'avatar', 'day-text', 'read-tracker'],
       diary: [
         'api',
         'auth',
+        'day-feed',
         'editor-binding',
         'journal',
         'sender',
