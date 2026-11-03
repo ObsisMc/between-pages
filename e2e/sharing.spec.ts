@@ -8,6 +8,12 @@ import * as Y from 'yjs';
 // IndexedDB; B is the partner. Failures are made at A1's socket; everything behind is real.
 const run = Date.now().toString(36);
 
+// Contexts opened with browser.newContext() outlive the test on the worker's browser, and
+// their pages keep polling into every later test; each test closes the ones it opened.
+test.afterEach(async ({ browser }) => {
+  await Promise.all(browser.contexts().map((context) => context.close()));
+});
+
 async function signedIn(browser: Browser, name: string): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
   await page.goto('/login');

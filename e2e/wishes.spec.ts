@@ -6,6 +6,12 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 // the wall. Names carry the browser and a per-run suffix, so projects and reruns stay apart.
 const run = Date.now().toString(36);
 
+// Contexts opened with browser.newContext() outlive the test on the worker's browser, and
+// their pages keep polling into every later test; each test closes the ones it opened.
+test.afterEach(async ({ browser }) => {
+  await Promise.all(browser.contexts().map((context) => context.close()));
+});
+
 async function signedIn(browser: Browser, name: string): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
   page.on('dialog', (dialog) => void dialog.accept());
@@ -31,6 +37,8 @@ test('[adr:wishes-and-gifts#2] [adr:wishes-and-gifts#4] [adr:wishes-and-gifts#5]
   browser,
   browserName,
 }) => {
+  // Two or three accounts through a dozen pages: 19–27 s normally (2026-11-01, Ray chose 60 s).
+  test.setTimeout(60_000);
   const name = (who: string) => `${who}${browserName}${run}wish`;
   const a = await signedIn(browser, name('a'));
   // Never bound: no space features at all.
@@ -55,9 +63,12 @@ test('[adr:wishes-and-gifts#2] [adr:wishes-and-gifts#4] [adr:wishes-and-gifts#5]
   await b.goto('/');
   await openContents(b);
   await expect(entryDot(b)).toBeVisible();
+  // Seen once on screen for about a second (SEEN_DWELL_MS): B stays until the server has it.
+  const seen = b.waitForResponse((r) => r.url().endsWith('/api/space/seen') && r.ok());
   await entry(b).click();
   const wish = b.locator('li.wish', { hasText: '灰色围巾' });
   await expect(wish.getByText('新')).toBeVisible();
+  await seen;
   await b.goto('/');
   await openContents(b);
   await expect(entryDot(b)).toHaveCount(0);

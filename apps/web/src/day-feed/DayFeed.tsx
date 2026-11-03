@@ -14,7 +14,7 @@ import { captureAnchor, restoreAnchor, type Anchor } from './anchor.ts';
 import { FeedDiary } from './FeedDiary.tsx';
 import { collapseOf, diariesOf, type Collapse, type Entry, type Side } from './model.ts';
 import { UnreadArrow, useUnreadArrows } from './UnreadArrows.tsx';
-import { useDayFeed, type Failure } from './useDayFeed.ts';
+import { useDayFeed, type Failure, type Loading } from './useDayFeed.ts';
 import './day-feed.css';
 
 /** A person of the feed: who they are, for whose text is whose, and their avatar. */
@@ -187,6 +187,29 @@ function DateSection({
         );
       })}
     </section>
+  );
+}
+
+/**
+ * Loads a page more at one end. It stays mounted and enabled while any page loads, saying
+ * so, because a disabled or replaced button drops a keyboard user's focus to the document;
+ * `onLoad` itself refuses while a read is in flight.
+ */
+function EdgeButton({
+  busy,
+  end,
+  onLoad,
+  children,
+}: {
+  busy: Loading | null;
+  end: 'newer' | 'older';
+  onLoad: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button type="button" aria-disabled={!!busy} onClick={onLoad}>
+      {busy === end ? '正在读取…' : children}
+    </button>
   );
 }
 
@@ -442,13 +465,9 @@ export function DayFeed({
           {busy && <p className="list-note">正在读取…</p>}
           {feedWindow?.nextAfter && (
             <div className="feed-edge" data-edge="newer">
-              {loading === 'newer' ? (
-                <p className="list-note">正在读取…</p>
-              ) : (
-                <button type="button" disabled={!!loading} onClick={newer}>
-                  加载更新的日记
-                </button>
-              )}
+              <EdgeButton busy={loading} end="newer" onLoad={newer}>
+                加载更新的日记
+              </EdgeButton>
             </div>
           )}
           {entries?.map((entry) => (
@@ -469,13 +488,9 @@ export function DayFeed({
           {entries?.length === 0 && <p className="list-note">还没有日记，从今天开始写吧</p>}
           {feedWindow?.nextBefore ? (
             <div className="feed-edge" data-edge="older">
-              {loading === 'older' ? (
-                <p className="list-note">正在读取…</p>
-              ) : (
-                <button type="button" disabled={!!loading} onClick={older}>
-                  加载更早的日记
-                </button>
-              )}
+              <EdgeButton busy={loading} end="older" onLoad={older}>
+                加载更早的日记
+              </EdgeButton>
             </div>
           ) : (
             !!entries?.length && <p className="feed-end">已经是最早的一天</p>

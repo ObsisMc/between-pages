@@ -8,6 +8,12 @@ import * as Y from 'yjs';
 // against one database stay independent.
 const run = Date.now().toString(36);
 
+// Contexts opened with browser.newContext() outlive the test on the worker's browser, and
+// their pages keep polling into every later test; each test closes the ones it opened.
+test.afterEach(async ({ browser }) => {
+  await Promise.all(browser.contexts().map((context) => context.close()));
+});
+
 async function devLogin(page: Page, name: string) {
   await page.goto('/login');
   await page.getByLabel('开发登录').fill(name);

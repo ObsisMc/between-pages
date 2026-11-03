@@ -6,6 +6,12 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 // browser and a per-run suffix, so projects running at once and reruns stay independent.
 const run = Date.now().toString(36);
 
+// Contexts opened with browser.newContext() outlive the test on the worker's browser, and
+// their pages keep polling into every later test; each test closes the ones it opened.
+test.afterEach(async ({ browser }) => {
+  await Promise.all(browser.contexts().map((context) => context.close()));
+});
+
 async function signedIn(browser: Browser, name: string): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
   await page.goto('/login');
@@ -34,6 +40,8 @@ test('AUTH-02 AUTH-07 AUTH-08 AUTH-11 SHARE-03 binds, unbinds and restores one f
   browser,
   browserName,
 }) => {
+  // Two or three accounts through a dozen pages: 19–27 s normally (2026-11-01, Ray chose 60 s).
+  test.setTimeout(60_000);
   const name = (who: string) => `${who}${browserName}${run}`;
   const a = await signedIn(browser, name('a'));
 

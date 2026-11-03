@@ -51,6 +51,8 @@ Assertions re-read state: re-query PG, re-render, re-parse the response with its
 
 Tests run concurrently. Every test owns what it acquires — Fastify instances (`app.close()`), stubbed globals (`vi.unstubAllGlobals()`), DB rows, ports — and releases it in teardown, including on failure.
 
+In `e2e/`, a context opened with `browser.newContext()` belongs to the worker's browser, not the test: Playwright never closes it, and its pages keep polling and holding sockets through every later test in that worker. Each spec that opens contexts closes them in `test.afterEach` (on 2026-11-01, 38 leftover pages took 75% of a core and pushed later specs past their 30 s timeout).
+
 ## Flaky tests
 
 Fix them when you meet them: find the cause, repair it, verify the behavior. Do not add a retry, a longer timeout or a sleep; do not weaken the assertion; do not skip without an issue link and an owner. A retry hides a race; the race ships.

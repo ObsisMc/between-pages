@@ -546,9 +546,11 @@ button.primary {
 /* Unread in a diary (unread-and-day-page D4): a notice that keeps its line, the
    next-unread button and direction hints floating at the window's edges, and a short
    highlight after a jump; never an author color. */
+/* As tall as its "跳到第一处" button (every button is at least 2.75rem), so the line it keeps
+   is the same offered and idle and the text below never moves. */
 .unread-banner {
   margin: 0.5rem 0;
-  min-height: 1.5rem;
+  min-height: 2.75rem;
 }
 
 .unread-tools {
