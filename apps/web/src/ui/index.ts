@@ -18,4 +18,6 @@ export {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './dropdown-menu.tsx';
-export { CheckboxLabel, Input, Label, NativeSelect } from './field.tsx';
+export { CheckboxLabel, Input, Label, NativeSelect, Textarea } from './field.tsx';
+export { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs.tsx';
+export { ToggleGroup, ToggleGroupItem } from './toggle-group.tsx';

@@ -58,10 +58,14 @@ test('[adr:wishes-and-gifts#2] [adr:wishes-and-gifts#4] [adr:wishes-and-gifts#5]
   await expect(b).toHaveURL(/\/spaces\/[0-9a-f-]{36}$/);
 
   await a.goto('/wishes');
-  await a.getByLabel('名称').first().fill('灰色围巾');
-  await a.getByLabel('备注').fill('要羊毛的');
-  await a.getByRole('button', { name: '4 颗心' }).click();
   await a.getByRole('button', { name: '许个愿' }).click();
+  const form = a.getByRole('dialog', { name: '许个愿' });
+  await form.getByLabel('名称').fill('灰色围巾');
+  await form.getByLabel('备注').fill('要羊毛的');
+  await form.getByRole('button', { name: '4 颗心' }).click();
+  await form.getByRole('button', { name: '许个愿' }).click();
+  // Sent: the dialog closes on the caller's own list.
+  await expect(a.getByRole('tab', { name: '我的心愿', selected: true })).toBeVisible();
   await expect(a.getByText('灰色围巾')).toBeVisible();
 
   // [adr:space-records#9] B's entry lights, the wish is new, and seeing it puts the dot out.
@@ -80,10 +84,14 @@ test('[adr:wishes-and-gifts#2] [adr:wishes-and-gifts#4] [adr:wishes-and-gifts#5]
 
   await b.goto('/wishes');
   await a.reload();
+  await a.getByRole('tab', { name: '我的心愿' }).click();
   await expect(a.getByText('灰色围巾')).toBeVisible();
-  const before = await a.locator('main').innerText();
+  // Every tab is in the page, hidden or not, so its text covers all four lists.
+  const before = await a.locator('main').textContent();
   await wish.getByRole('button', { name: '我在准备' }).click();
   await expect(wish.getByText('你在准备')).toBeVisible();
+  await wish.getByRole('button', { name: '写卡片、揭晓' }).click();
+  await expect(b.getByRole('tab', { name: '悄悄准备', selected: true })).toBeVisible();
   const preparing = b.locator('li.gift.preparing', { hasText: '灰色围巾' });
   await preparing.getByRole('button', { name: '写卡片' }).click();
   await preparing.getByLabel('卡片').fill('冬天快乐');
@@ -92,8 +100,9 @@ test('[adr:wishes-and-gifts#2] [adr:wishes-and-gifts#4] [adr:wishes-and-gifts#5]
 
   // [adr:wishes-and-gifts#2] A's page and entry are exactly as before.
   await a.reload();
+  await a.getByRole('tab', { name: '我的心愿' }).click();
   await expect(a.getByText('灰色围巾')).toBeVisible();
-  expect(await a.locator('main').innerText()).toBe(before);
+  expect(await a.locator('main').textContent()).toBe(before);
   await a.goto('/');
   await openContents(a);
   await expect(entryDot(a)).toHaveCount(0);
@@ -105,6 +114,7 @@ test('[adr:wishes-and-gifts#2] [adr:wishes-and-gifts#4] [adr:wishes-and-gifts#5]
   await openContents(a);
   await expect(entryDot(a)).toBeVisible();
   await entry(a).click();
+  await a.getByRole('tab', { name: /礼物墙/ }).click();
   const gift = a.locator('li.gift', { hasText: '灰色围巾' });
   await expect(gift.getByText(`${name('b')} 送给我`)).toBeVisible();
   await expect(gift.getByText('冬天快乐')).toBeVisible();

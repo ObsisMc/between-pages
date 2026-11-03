@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { SpaceRecordType } from '@between-pages/contracts';
 import { ApiError, callApi } from '../api/client.ts';
@@ -96,14 +97,17 @@ const FLASH_MS = 2_000;
 
 /**
  * "有 N 处新内容 · 跳到第一处", then "下一处" (D8, as in the diary). `ids` are the elements
- * of unread records in page order; the count is the one the page opened with.
+ * of unread records in page order; the count is the one the page opened with. `show(id)`
+ * reveals a record the page keeps out of sight (another tab) before it is scrolled to.
  */
-export function UnreadJump({ ids }: { ids: readonly string[] }) {
+export function UnreadJump({ ids, show }: { ids: readonly string[]; show?: (id: string) => void }) {
   const [atOpen] = useState(ids.length);
   const [next, setNext] = useState(0);
   if (!ids.length) return null;
   const jump = (index: number) => {
-    const target = document.getElementById(ids[index % ids.length]!);
+    const id = ids[index % ids.length]!;
+    if (show) flushSync(() => show(id));
+    const target = document.getElementById(id);
     if (!target) return;
     target.scrollIntoView({ block: 'center' });
     target.classList.add('unread-flash');
