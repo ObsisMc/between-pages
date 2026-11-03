@@ -78,7 +78,12 @@ describe('AnniversariesPage', () => {
   it('[adr:anniversaries#3] [adr:partner-local-dates#1] shows the day count and the next day in the partner’s date', async () => {
     stubApi({ [LIST]: () => Response.json(view()) });
     renderAt('/anniversaries', routes);
-    expect((await screen.findByText(/第 1034 天/)).textContent).toBe('在一起第 1034 天');
+    // The together day leads the page, its count set large.
+    expect(
+      await screen.findByText(
+        (_, el) => el?.tagName === 'P' && el.textContent === '在一起第 1034 天',
+      ),
+    ).toBeDefined();
     expect(screen.getByText(/2027 \/ 01 \/ 01/).textContent).toBe(
       '2027 / 01 / 01 · 3 周年 · 还有 63 天 · 按 TA 那边的日期',
     );
@@ -104,7 +109,7 @@ describe('AnniversariesPage', () => {
     });
     renderAt('/anniversaries', routes);
     expect(await screen.findByText('已解绑，记录只读')).toBeDefined();
-    for (const name of ['记下', '编辑', '删除'])
+    for (const name of ['记下一天', '修改', '编辑', '删除'])
       expect(screen.queryByRole('button', { name })).toBeNull();
     expect(screen.queryByLabelText('日期')).toBeNull();
     fireEvent.change(screen.getByLabelText('提醒我'), { target: { value: 'null' } });
@@ -127,10 +132,13 @@ describe('AnniversariesPage', () => {
       'GET /api/space/unread': () => Response.json({ features: { wishes: 0, anniversaries: 0 } }),
     });
     renderAt('/anniversaries', routes);
-    fireEvent.change(await screen.findByLabelText('日期'), { target: { value: '2001-02-28' } });
+    fireEvent.click(await screen.findByRole('button', { name: '记下一天' }));
+    fireEvent.change(screen.getByLabelText('日期'), { target: { value: '2001-02-28' } });
     fireEvent.click(screen.getByLabelText('不记年份'));
     fireEvent.click(screen.getByRole('button', { name: '记下' }));
     await waitFor(() => expect(bodies).toHaveLength(1));
+    // Recorded: the dialog closes.
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(bodies[0]).toMatchObject({
       kind: 'birthday',
       birthdayOf: PARTNER.id,
@@ -139,9 +147,37 @@ describe('AnniversariesPage', () => {
       month: 2,
       day: 28,
     });
+    fireEvent.click(screen.getByRole('button', { name: '记下一天' }));
     fireEvent.change(screen.getByLabelText('种类'), { target: { value: 'together' } });
     fireEvent.click(screen.getByRole('button', { name: '记下' }));
     expect((await screen.findByRole('alert')).textContent).toBe('已经有一个了，打开那一个修改');
+    // A refusal keeps the dialog open with what was entered.
+    expect(screen.getByRole('dialog')).toBeDefined();
+  });
+
+  it('[adr:digital-paper-interface#2] keeps what was typed when the dialog is closed unsent', async () => {
+    stubApi({ [LIST]: () => Response.json(view({ anniversaries: [] })) });
+    renderAt('/anniversaries', routes);
+    fireEvent.click(await screen.findByRole('button', { name: '记下一天' }));
+    fireEvent.change(screen.getByLabelText('种类'), { target: { value: 'other' } });
+    fireEvent.change(screen.getByLabelText('名称'), { target: { value: '第一次见面' } });
+    fireEvent.click(screen.getByRole('button', { name: '取消' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    fireEvent.click(screen.getByRole('button', { name: '记下一天' }));
+    expect((screen.getByLabelText('名称') as HTMLInputElement).value).toBe('第一次见面');
+  });
+
+  it('folds the shared changes under "修改", the reminder beside it', async () => {
+    stubApi({ [LIST]: () => Response.json(view()) });
+    renderAt('/anniversaries', routes);
+    const fold = await screen.findByRole('button', { name: '修改' });
+    expect(screen.getByLabelText('提醒我')).toBeDefined();
+    expect(screen.queryByLabelText('日期')).toBeNull();
+    fireEvent.click(fold);
+    expect(fold.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByLabelText('日期')).toBeDefined();
+    expect(screen.getByLabelText('显示第 N 天')).toBeDefined();
+    expect(screen.getByRole('button', { name: '编辑' })).toBeDefined();
   });
 });
 

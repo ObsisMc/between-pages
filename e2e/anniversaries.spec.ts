@@ -46,8 +46,10 @@ test('[adr:partner-local-dates#1] [adr:partner-local-dates#5] the partner’s bi
   await a.goto('/');
   await a.getByRole('navigation', { name: '主要' }).getByRole('button', { name: /^一起/ }).click();
   await a.getByRole('menuitem', { name: /纪念日/ }).click();
-  await a.getByLabel('日期').fill(todayIn(AHEAD));
-  await a.getByRole('button', { name: '记下' }).click();
+  await a.getByRole('button', { name: '记下一天' }).click();
+  await a.getByRole('dialog').getByLabel('日期').fill(todayIn(AHEAD));
+  await a.getByRole('button', { name: '记下', exact: true }).click();
+  await expect(a.getByRole('dialog')).toHaveCount(0);
   await expect(a.locator('li.anniversary')).toContainText(`${name('b')} 的生日`);
   await expect(a.locator('li.anniversary')).toContainText('就是今天 · 按 TA 那边的日期');
 

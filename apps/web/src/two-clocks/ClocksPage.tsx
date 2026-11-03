@@ -1,16 +1,20 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router';
+import { Moon, Sun, Sunrise, Sunset, type LucideIcon } from 'lucide-react';
 import { callApi } from '../api/client.ts';
-import { PERIOD_TEXT } from './HomeClocks.tsx';
+import { Page, PageHeader, SectionTitle } from '../shell/index.ts';
+import { Button, Label, NativeSelect } from '../ui/index.ts';
+import { AwakeLine, PERIOD_TEXT } from './HomeClocks.tsx';
 import { browserZone, clocksKey, useClocks, useNow, useTimezoneReport } from './queries.ts';
 import {
   awakeTogether,
   clockText,
   dayPeriod,
+  dayText,
   localDay,
   minuteText,
   regionName,
+  type DayPeriod,
   type Sleep,
 } from './time.ts';
 
@@ -19,6 +23,13 @@ import {
 // Without a current binding it shows nothing of anyone (D5).
 
 const STEPS = Array.from({ length: 96 }, (_, i) => i * 15);
+
+const PERIOD_ICON: Record<DayPeriod, LucideIcon> = {
+  dawn: Sunrise,
+  day: Sun,
+  dusk: Sunset,
+  night: Moon,
+};
 
 function SleepEditor({ sleep }: { sleep: Sleep | null }) {
   const client = useQueryClient();
@@ -39,20 +50,20 @@ function SleepEditor({ sleep }: { sleep: Sleep | null }) {
     }
   };
   const select = (label: string, value: number, set: (minute: number) => void) => (
-    <label>
+    <Label className="min-w-36 flex-1">
       {label}
-      <select value={value} onChange={(event) => set(Number(event.target.value))}>
+      <NativeSelect value={value} onChange={(event) => set(Number(event.target.value))}>
         {STEPS.map((minute) => (
           <option key={minute} value={minute}>
             {minuteText(minute)}
           </option>
         ))}
-      </select>
-    </label>
+      </NativeSelect>
+    </Label>
   );
   return (
     <form
-      className="sleep-editor"
+      className="flex flex-wrap items-end gap-3"
       onSubmit={(event) => {
         event.preventDefault();
         void save({ start, end });
@@ -60,16 +71,16 @@ function SleepEditor({ sleep }: { sleep: Sleep | null }) {
     >
       {select('入睡', start, setStart)}
       {select('起床', end, setEnd)}
-      <button type="submit" disabled={saving || start === end}>
+      <Button type="submit" variant="outline" disabled={saving || start === end}>
         保存作息
-      </button>
+      </Button>
       {sleep && (
-        <button type="button" disabled={saving} onClick={() => void save(null)}>
+        <Button type="button" variant="ghost" disabled={saving} onClick={() => void save(null)}>
           清除
-        </button>
+        </Button>
       )}
       {failed && (
-        <p className="notice" role="alert">
+        <p className="w-full rounded-xl bg-notice px-4 py-3 text-sm" role="alert">
           没有保存成功，请稍后再试
         </p>
       )}
@@ -80,67 +91,97 @@ function SleepEditor({ sleep }: { sleep: Sleep | null }) {
 const sleepText = (sleep: Sleep | null) =>
   sleep ? `${minuteText(sleep.start)}–${minuteText(sleep.end)}` : '还没设';
 
+function Side({ who, now, zone }: { who: string; now: number; zone: string | null }) {
+  if (!zone)
+    return (
+      <div>
+        <p className="text-sm text-ink-soft">{who}</p>
+        <p className="mt-3 text-ink-soft">TA 还没打开过新版本</p>
+      </div>
+    );
+  const period = dayPeriod(now, zone);
+  const Icon = PERIOD_ICON[period];
+  return (
+    <div>
+      <p className="flex items-center gap-2 text-sm text-ink-soft">
+        {who} · {PERIOD_TEXT[period]}
+        <Icon aria-hidden="true" className="size-4" />
+      </p>
+      <p className="mt-2 font-serif text-5xl leading-tight tabular-nums">{clockText(now, zone)}</p>
+      <p className="mt-1 text-sm text-ink-soft">
+        {dayText(now, zone)} · {regionName(zone)}
+      </p>
+    </div>
+  );
+}
+
 export function ClocksPage() {
   useTimezoneReport();
   const clocks = useClocks();
   const now = useNow();
   const partner = clocks.data?.partner;
   const zone = browserZone();
+  const header = (
+    <PageHeader title="两地时间" description="看看彼此的白天和夜晚，也给聊天留一点时间。" />
+  );
 
-  if (clocks.isPending) return <main className="page clocks" />;
+  if (clocks.isPending) return <Page aria-busy="true" />;
   if (!partner)
     return (
-      <main className="page clocks">
-        <Link to="/">返回首页</Link>
-        <h1>两地时间</h1>
-        <p>绑定搭档后，这里会显示你们两边的时间。</p>
-      </main>
+      <Page>
+        {header}
+        <p className="text-ink-soft">绑定搭档后，这里会显示你们两边的时间。</p>
+      </Page>
     );
 
   const me = { timezone: zone, sleep: clocks.data!.me.sleep };
   const day = localDay(now, zone);
   const together = awakeTogether(now, zone, [me, partner]);
-  const side = (who: string, timezone: string | null) =>
-    timezone ? (
-      <p className={`clock period-${dayPeriod(now, timezone)}`}>
-        {who} <strong>{clockText(now, timezone)}</strong> · {PERIOD_TEXT[dayPeriod(now, timezone)]}{' '}
-        · {regionName(timezone)}
-      </p>
-    ) : (
-      <p className="clock">{who}：TA 还没打开过新版本</p>
-    );
 
   return (
-    <main className="page clocks">
-      <Link to="/">返回首页</Link>
-      <h1>两地时间</h1>
-      <section>
-        {side('你这边', zone)}
-        {side('TA 那边', partner.timezone)}
+    <Page>
+      {header}
+      <section className="grid gap-8 border-b border-line pb-8 sm:grid-cols-2">
+        <Side who="你这边" now={now} zone={zone} />
+        <Side who="TA 那边" now={now} zone={partner.timezone} />
       </section>
-      <section>
-        <h2>今天你们都醒着的时间</h2>
+      <section className="border-b border-line py-8">
+        <SectionTitle>今天你们都醒着的时间</SectionTitle>
         {together === null ? (
-          <p>两人都设好作息后，会显示今天你们都醒着的时间。</p>
-        ) : together.length === 0 ? (
-          <p>今天没有两人都醒着的时间。</p>
+          <p className="text-sm text-ink-soft">两人都设好作息后，会显示今天你们都醒着的时间。</p>
         ) : (
-          <ul className="awake-together">
-            {together.map((free) => (
-              <li key={free.start}>
-                你 {clockText(free.start, zone, day.end)}–{clockText(free.end, zone, day.end)} · TA{' '}
-                {clockText(free.start, partner.timezone!)}–{clockText(free.end, partner.timezone!)}
-              </li>
-            ))}
-          </ul>
+          <>
+            <p className="mb-6 text-sm text-ink-soft">
+              {together.length === 0
+                ? '今天没有两人都醒着的时间。'
+                : '按你这边的日期与两人的作息推算。'}
+            </p>
+            <AwakeLine now={now} zone={zone} together={together} />
+            {together.length > 0 && (
+              <ul className="flex flex-wrap gap-x-10 gap-y-3">
+                {together.map((free) => (
+                  <li key={free.start}>
+                    <span className="font-serif text-lg">
+                      你 {clockText(free.start, zone, day.end)}–{clockText(free.end, zone, day.end)}
+                    </span>
+                    <span className="text-sm text-ink-soft">
+                      {' '}
+                      · TA {clockText(free.start, partner.timezone!)}–
+                      {clockText(free.end, partner.timezone!)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         )}
       </section>
-      <section>
-        <h2>作息</h2>
-        <p>你平时 {sleepText(me.sleep)} 睡</p>
+      <section className="py-8">
+        <SectionTitle>作息</SectionTitle>
+        <p className="mb-4 text-sm text-ink-soft">你平时 {sleepText(me.sleep)} 睡</p>
         <SleepEditor key={JSON.stringify(me.sleep)} sleep={me.sleep} />
-        <p>TA 平时 {sleepText(partner.sleep)} 睡</p>
+        <p className="mt-6 text-sm text-ink-soft">TA 平时 {sleepText(partner.sleep)} 睡</p>
       </section>
-    </main>
+    </Page>
   );
 }

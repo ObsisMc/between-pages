@@ -17,6 +17,7 @@ import {
   localToInstant,
   regionName,
   type DayPeriod,
+  type Interval,
   type Sleep,
 } from './time.ts';
 import './home-clocks.css';
@@ -78,8 +79,49 @@ const TICKS = [0, 6, 12, 18, 24];
 
 /**
  * The viewer's local today from 0:00 to 24:00 with every shared awake interval (none, one or
- * several) and "现在", which stays even outside them. The words say the same as the line, and
- * that it is worked out from sleep schedules, never that anyone is online.
+ * several) and "现在", which stays even outside them. For the eye only: the page says the
+ * same in words.
+ */
+export function AwakeLine({
+  now,
+  zone,
+  together,
+}: {
+  now: number;
+  zone: string;
+  together: readonly Interval[];
+}) {
+  const day = localDay(now, zone);
+  const today = localParts(now, zone);
+  const at = (instant: number) => ((instant - day.start) / (day.end - day.start)) * 100;
+  return (
+    <div className="awake-line" aria-hidden="true">
+      {together.map((free) => (
+        <span
+          key={free.start}
+          className="awake-span"
+          style={{ left: `${at(free.start)}%`, width: `${at(free.end) - at(free.start)}%` }}
+        />
+      ))}
+      {TICKS.map((hour) => (
+        <span
+          key={hour}
+          className="awake-tick"
+          style={{ left: `${at(localToInstant(today, hour * 60, zone))}%` }}
+        >
+          {hour}:00
+        </span>
+      ))}
+      <span className="awake-now" style={{ left: `${at(now)}%` }}>
+        <span>现在</span>
+      </span>
+    </div>
+  );
+}
+
+/**
+ * The shared awake hours on the line, in words as well, worked out from sleep schedules:
+ * never that anyone is online.
  */
 function AwakeTogether({
   now,
@@ -98,8 +140,6 @@ function AwakeTogether({
       </p>
     );
   const day = localDay(now, zone);
-  const today = localParts(now, zone);
-  const at = (instant: number) => ((instant - day.start) / (day.end - day.start)) * 100;
   const range = (start: number, end: number) =>
     `${clockText(start, zone, day.end)}–${clockText(end, zone, day.end)}`;
   return (
@@ -110,27 +150,7 @@ function AwakeTogether({
           : '今天没有两人都醒着的时间'}{' '}
         · 按作息推算
       </p>
-      <div className="awake-line" aria-hidden="true">
-        {together.map((free) => (
-          <span
-            key={free.start}
-            className="awake-span"
-            style={{ left: `${at(free.start)}%`, width: `${at(free.end) - at(free.start)}%` }}
-          />
-        ))}
-        {TICKS.map((hour) => (
-          <span
-            key={hour}
-            className="awake-tick"
-            style={{ left: `${at(localToInstant(today, hour * 60, zone))}%` }}
-          >
-            {hour}:00
-          </span>
-        ))}
-        <span className="awake-now" style={{ left: `${at(now)}%` }}>
-          <span>现在</span>
-        </span>
-      </div>
+      <AwakeLine now={now} zone={zone} together={together} />
     </div>
   );
 }

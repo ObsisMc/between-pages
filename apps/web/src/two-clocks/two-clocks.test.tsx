@@ -221,6 +221,19 @@ describe('ClocksPage', () => {
     expect((await screen.findByRole('list')).textContent).toBe('你 8:00–22:00 · TA 9:00–23:00');
   });
 
+  it("shows each side's time, date and region, and the partner's before they report a zone", async () => {
+    at(NOW);
+    stubApi({ 'GET /api/clocks': clocks({}, { timezone: 'America/Los_Angeles' }) });
+    renderAt('/clocks', routes);
+    expect(await screen.findByText(/^11 月 11 日 · 周三 · /)).toBeDefined();
+    expect(screen.getByText(/^11 月 10 日 · 周二 · /)).toBeDefined();
+    expect(screen.getByText('2:00', { selector: 'p' })).toBeDefined();
+    cleanup();
+    stubApi({ 'GET /api/clocks': clocks({}, {}) });
+    renderAt('/clocks', routes);
+    expect(await screen.findByText('TA 还没打开过新版本')).toBeDefined();
+  });
+
   it('asks for both schedules before showing shared hours', async () => {
     at(NOW);
     stubApi({
