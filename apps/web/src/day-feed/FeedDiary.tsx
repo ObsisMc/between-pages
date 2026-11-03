@@ -35,6 +35,7 @@ export function FeedDiary({
   name,
   readerId,
   near,
+  listUnread,
   authorClass,
   clip,
   onUnread,
@@ -44,6 +45,8 @@ export function FeedDiary({
   name: string | null;
   readerId: string;
   near: boolean;
+  /** Whether the list marks this diary unread, and is trusted. */
+  listUnread: boolean;
   authorClass: (author: string) => string;
   clip: () => Clip;
   onUnread: (side: Side, unread: boolean | undefined) => void;
@@ -102,7 +105,11 @@ export function FeedDiary({
   }, [onUnread, side, anyUnread]);
 
   return (
-    <div className="feed-diary" data-diary={diaryId}>
+    <div
+      className="feed-diary"
+      data-diary={diaryId}
+      data-unread={listUnread && anyUnread === undefined ? 'loading' : undefined}
+    >
       {(name || diary.frozen) && (
         <p className="feed-diary-who">
           {name}

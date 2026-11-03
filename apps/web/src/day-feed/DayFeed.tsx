@@ -13,6 +13,7 @@ import type { Clip } from '../day-text/index.ts';
 import { captureAnchor, restoreAnchor, type Anchor } from './anchor.ts';
 import { FeedDiary } from './FeedDiary.tsx';
 import { collapseOf, diariesOf, type Collapse, type Entry, type Side } from './model.ts';
+import { UnreadArrow, useUnreadArrows } from './UnreadArrows.tsx';
 import { useDayFeed, type Failure } from './useDayFeed.ts';
 import './day-feed.css';
 
@@ -157,7 +158,11 @@ function DateSection({
         const collapse = collapseOf(entry.date, diary, editingDate);
         if (collapse)
           return (
-            <p key={diary.side} className="feed-collapsed">
+            <p
+              key={diary.side}
+              className="feed-collapsed"
+              data-unread={listTrusted && diary.unread ? 'collapsed' : undefined}
+            >
               {diaries.length > 1 && <span className="feed-diary-who">{person.name}</span>}
               <span>{collapseText[collapse]}</span>
               {collapse !== 'editing' && (
@@ -174,6 +179,7 @@ function DateSection({
             name={diaries.length > 1 ? person.name : null}
             readerId={me.id}
             near={near}
+            listUnread={listTrusted && diary.unread}
             authorClass={authorClass}
             clip={clip}
             onUnread={onUnread}
@@ -191,6 +197,7 @@ function DateSection({
  * for dates near the viewport. `editingDate` names the date whose own diary the left page
  * has open; that diary shows only "正在左页编辑". `chosenDate`, the left page's date, is
  * marked "在左页". The line being read keeps its place when text above it changes height.
+ * Round ↑ / ↓ buttons over the box go to the nearest unread newer / older, loaded or not.
  *
  * `position` says where to show: a reported position, a date at the top, or the newest
  * (null). The list goes there on mount and when it changes to anything but what the list
@@ -307,6 +314,25 @@ export function DayFeed({
     anchor.current = captureAnchor(root);
   }, []);
   useLayoutEffect(hold);
+  /** Puts `el` a third down the box, as the diary's own unread jump does. */
+  const show = useCallback(
+    (el: HTMLElement) => {
+      const root = scroller.current;
+      if (!root) return;
+      const seen = clip();
+      root.scrollTop += el.getBoundingClientRect().top - seen.top - (seen.bottom - seen.top) / 3;
+      pending.current = null;
+      anchor.current = captureAnchor(root);
+    },
+    [clip],
+  );
+  const unreadArrows = useUnreadArrows({
+    scroller,
+    clip,
+    feedWindow,
+    jump: feed.jump,
+    show,
+  });
   useEffect(() => {
     const root = scroller.current;
     if (!root || typeof ResizeObserver === 'undefined') return;
@@ -371,6 +397,7 @@ export function DayFeed({
   }, []);
   const stopPending = () => {
     pending.current = null;
+    unreadArrows.cancel();
   };
 
   const nearDate = (date: string) => !near || near.has(date);
@@ -381,7 +408,9 @@ export function DayFeed({
         className="feed-jump"
         onSubmit={(event) => {
           event.preventDefault();
-          if (jumpDate) jump(jumpDate);
+          if (!jumpDate) return;
+          unreadArrows.cancel();
+          jump(jumpDate);
         }}
       >
         <label>
@@ -397,66 +426,74 @@ export function DayFeed({
           跳转
         </button>
       </form>
-      <div
-        className="day-feed-scroll"
-        ref={scroller}
-        onScroll={() => {
-          if (scroller.current) anchor.current = captureAnchor(scroller.current);
-          reportLater();
-        }}
-        onWheel={stopPending}
-        onTouchStart={stopPending}
-        onKeyDown={stopPending}
-        onPointerDown={stopPending}
-      >
-        {busy && <p className="list-note">正在读取…</p>}
-        {feedWindow?.nextAfter && (
-          <div className="feed-edge" data-edge="newer">
-            {loading === 'newer' ? (
-              <p className="list-note">正在读取…</p>
-            ) : (
-              <button type="button" disabled={!!loading} onClick={newer}>
-                加载更新的日记
+      <div className="feed-body">
+        <div
+          className="day-feed-scroll"
+          ref={scroller}
+          onScroll={() => {
+            if (scroller.current) anchor.current = captureAnchor(scroller.current);
+            reportLater();
+          }}
+          onWheel={stopPending}
+          onTouchStart={stopPending}
+          onKeyDown={stopPending}
+          onPointerDown={stopPending}
+        >
+          {busy && <p className="list-note">正在读取…</p>}
+          {feedWindow?.nextAfter && (
+            <div className="feed-edge" data-edge="newer">
+              {loading === 'newer' ? (
+                <p className="list-note">正在读取…</p>
+              ) : (
+                <button type="button" disabled={!!loading} onClick={newer}>
+                  加载更新的日记
+                </button>
+              )}
+            </div>
+          )}
+          {entries?.map((entry) => (
+            <DateSection
+              key={entry.date}
+              entry={entry}
+              me={me}
+              partner={partner}
+              editingDate={editingDate}
+              near={nearDate(entry.date)}
+              listTrusted={!failure}
+              authorClass={authorClass}
+              clip={clip}
+              chosen={entry.date === chosenDate}
+              onOpen={onOpen && open}
+            />
+          ))}
+          {entries?.length === 0 && <p className="list-note">还没有日记，从今天开始写吧</p>}
+          {feedWindow?.nextBefore ? (
+            <div className="feed-edge" data-edge="older">
+              {loading === 'older' ? (
+                <p className="list-note">正在读取…</p>
+              ) : (
+                <button type="button" disabled={!!loading} onClick={older}>
+                  加载更早的日记
+                </button>
+              )}
+            </div>
+          ) : (
+            !!entries?.length && <p className="feed-end">已经是最早的一天</p>
+          )}
+          {failure && (
+            <div className="notice feed-failure">
+              <p role="alert">{failureText[failure.kind]}</p>
+              <button type="button" onClick={failure.retry}>
+                重试
               </button>
-            )}
-          </div>
-        )}
-        {entries?.map((entry) => (
-          <DateSection
-            key={entry.date}
-            entry={entry}
-            me={me}
-            partner={partner}
-            editingDate={editingDate}
-            near={nearDate(entry.date)}
-            listTrusted={!failure}
-            authorClass={authorClass}
-            clip={clip}
-            chosen={entry.date === chosenDate}
-            onOpen={onOpen && open}
-          />
-        ))}
-        {entries?.length === 0 && <p className="list-note">还没有日记，从今天开始写吧</p>}
-        {feedWindow?.nextBefore ? (
-          <div className="feed-edge" data-edge="older">
-            {loading === 'older' ? (
-              <p className="list-note">正在读取…</p>
-            ) : (
-              <button type="button" disabled={!!loading} onClick={older}>
-                加载更早的日记
-              </button>
-            )}
-          </div>
-        ) : (
-          !!entries?.length && <p className="feed-end">已经是最早的一天</p>
-        )}
-        {failure && (
-          <div className="notice feed-failure">
-            <p role="alert">{failureText[failure.kind]}</p>
-            <button type="button" onClick={failure.retry}>
-              重试
-            </button>
-          </div>
+            </div>
+          )}
+        </div>
+        {(['newer', 'older'] as const).map(
+          (direction) =>
+            unreadArrows.shown[direction] && (
+              <UnreadArrow key={direction} direction={direction} onGo={unreadArrows.go} />
+            ),
         )}
       </div>
     </section>
