@@ -184,8 +184,8 @@ test('SYNC-04 two devices of one account edit together without overwriting', asy
   const a1 = await signedInPage(browser, name);
   const diaryId = await writeToday(a1);
   const a2 = await signedInPage(browser, name);
-  // An old link to the diary keeps working beside the workspace (book-frontend-workspace D3).
-  await a2.goto(`/diaries/${diaryId}`);
+  // The second device opens the same date in the workspace (drop-single-diary-page D1).
+  await a2.goto(new URL(a1.url()).pathname);
   await expect(editor(a2)).toBeVisible();
 
   for (const [i, ch] of [...'甲乙丙'].entries()) {

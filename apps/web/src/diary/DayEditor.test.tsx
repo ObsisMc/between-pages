@@ -295,32 +295,3 @@ describe('DayEditor', () => {
     expect(screen.queryByRole('button', { name: '写这天' })).toBeNull();
   });
 });
-
-describe('the own diary page', () => {
-  it('[adr:unread-and-day-page#13] offers the day page once the partner shares the day, without changing the page', async () => {
-    let shared = false;
-    vi.stubGlobal('WebSocket', FakeSocket);
-    vi.stubGlobal('navigator', { locks: stubLocks() });
-    stubApi({
-      'GET /api/me': signedIn('alice'),
-      'GET /api/spaces': spaces,
-      [`GET /api/diaries/${DIARY}`]: ownDiary('我的'),
-      [`GET /api/diaries/${DIARY}/read`]: () => Response.json({ ranges: [] }),
-      [`GET /api/days/${DATE}`]: () =>
-        Response.json({ day: dayOf('我的', shared ? '他的' : null), google: NO_COPY }),
-    });
-    const { router } = renderAt(`/diaries/${DIARY}`);
-    const editor = await screen.findByRole('textbox');
-    await waitFor(() => expect(editor.textContent).toBe('我的'));
-    expect(screen.queryByText(/TA 也写了这天/)).toBeNull();
-
-    shared = true;
-    fireEvent(window, new Event('focus'));
-    const offer = await screen.findByText(/TA 也写了这天/);
-    expect(within(offer).getByRole('link', { name: '切到双人页' }).getAttribute('href')).toBe(
-      `/days/${DATE}`,
-    );
-    expect(router.state.location.pathname).toBe(`/diaries/${DIARY}`);
-    expect(screen.getAllByRole('textbox')).toHaveLength(1);
-  });
-});

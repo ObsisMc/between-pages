@@ -6,7 +6,7 @@ import { useMe } from '../auth/me.ts';
 import { DateIndex, DayFeed, type FeedPerson, type FeedPosition } from '../day-feed/index.ts';
 import { Button, cn, Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/index.ts';
 import { DayEditor, timezone, todayHere } from './DayEditor.tsx';
-import { usePeople } from './DiaryPage.tsx';
+import { usePeople } from './people.tsx';
 import { ScrollBox } from './scroll-box.ts';
 import './workspace.css';
 

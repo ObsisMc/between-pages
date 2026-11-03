@@ -2,13 +2,64 @@ import 'fake-indexeddb/auto';
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BODY, createDiaryDoc } from '@between-pages/collab';
-import { PROTOCOL_VERSION } from '@between-pages/contracts';
+import { PROTOCOL_VERSION, type Day } from '@between-pages/contracts';
 import * as Y from 'yjs';
 import { DIARY, FakeSocket, GENERATION, USER, diaryResponse, stubLocks } from '../../test/diary.ts';
 import { DWELL_MS } from '../read-tracker/index.ts';
 import { renderAt, signedIn, stubApi } from '../../test/render.tsx';
 
+// One diary's session inside the diary page's 「这一天」, where every diary opens since the
+// single-diary page was dropped (drop-single-diary-page): the save line, drafts, refusals,
+// history, a partner's share, author colors, the own-text filter and unread.
+
 const clipboard = { writeText: vi.fn<(text: string) => Promise<void>>(async () => undefined) };
+const DATE = '2026-10-27';
+const EPOCH = 'e1e1e1e1-0000-4000-8000-000000000001';
+const PARTNER = '6f1c1d0e-0000-4000-8000-000000000002';
+const NO_COPY = { connected: false, docUrl: null, mine: null, partner: null, problem: null };
+const card = {
+  excerpt: '',
+  updatedAt: '2026-10-27T08:00:00Z',
+  hasText: true,
+  unread: false,
+  writing: false,
+};
+const spaces = () =>
+  Response.json({
+    spaces: [
+      {
+        id: '2b0c1a9e-1111-4a2b-8c3d-4e5f6a7b8c9d',
+        createdAt: '2026-10-01T08:00:00.000Z',
+        state: 'active',
+        participants: [
+          { user: { id: USER, displayName: 'alice' }, authorSlot: 1 },
+          { user: { id: PARTNER, displayName: 'bob' }, authorSlot: 2 },
+        ],
+      },
+    ],
+  });
+/** The feed beside the day, empty: these tests are about the day's diary. */
+const EMPTY_FEED = {
+  'GET /api/days?before=2026-10-28': () =>
+    Response.json({ days: [], nextBefore: null, nextAfter: null }),
+  'GET /api/days?after=2026-10-27': () =>
+    Response.json({ days: [], nextBefore: null, nextAfter: null }),
+};
+
+/** Opens 「这一天」 of `day` at `/days/:date`, with the given answers on top. */
+function openDay(day: Day, more: Parameters<typeof stubApi>[0]) {
+  vi.stubGlobal('WebSocket', FakeSocket);
+  vi.stubGlobal('navigator', { locks: stubLocks(), clipboard });
+  const api = stubApi({
+    'GET /api/me': signedIn('alice'),
+    'GET /api/spaces': spaces,
+    [`GET /api/days/${DATE}`]: () => Response.json({ day, google: NO_COPY }),
+    [`GET /api/diaries/${DIARY}/read`]: () => Response.json({ ranges: [] }),
+    ...EMPTY_FEED,
+    ...more,
+  });
+  return { api, ...renderAt(`/days/${DATE}`) };
+}
 
 afterEach(async () => {
   cleanup();
@@ -21,14 +72,15 @@ afterEach(async () => {
   });
 });
 
+/** The caller's own diary of the day, alone on it. */
 function openDiary(
   diary: () => Response = diaryResponse,
-  more: Record<string, () => Response> = {},
+  more: Record<string, (init?: RequestInit) => Response> = {},
 ) {
-  vi.stubGlobal('WebSocket', FakeSocket);
-  vi.stubGlobal('navigator', { locks: stubLocks(), clipboard });
-  stubApi({ 'GET /api/me': signedIn('alice'), [`GET /api/diaries/${DIARY}`]: diary, ...more });
-  renderAt(`/diaries/${DIARY}`);
+  return openDay(
+    { diaryDate: DATE, mine: { diaryId: DIARY, sharedWithPartner: false, ...card }, partner: null },
+    { [`GET /api/diaries/${DIARY}`]: diary, ...more },
+  );
 }
 
 async function paste(content: string) {
@@ -40,10 +92,27 @@ async function paste(content: string) {
   editor.dispatchEvent(event);
 }
 
-const status = () => screen.findByRole('status');
+/** The diary's save line: the status that says where the text is. */
+const status = () =>
+  screen.findByText(
+    /^(已保存到服务器|正在同步|已同步 · 对方可以看到|正在保存到本机|正在确认保存结果|暂时无法同步，已保存在本机)$/,
+  );
 
-describe('DiaryPage', () => {
-  it('says saved to the server only once the batch is acknowledged', async () => {
+describe('the single-diary page', () => {
+  it('[adr:drop-single-diary-page#1] is gone: its addresses go home and open no diary', async () => {
+    vi.stubGlobal('WebSocket', FakeSocket);
+    const api = stubApi({ 'GET /api/me': signedIn('alice') });
+    const { router } = renderAt(`/diaries/${DIARY}/shares/${EPOCH}`);
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    expect(
+      api.mock.calls.map(([url]) => String(url)).filter((url) => url.includes('/api/diaries')),
+    ).toEqual([]);
+    expect(FakeSocket.all).toHaveLength(0);
+  });
+});
+
+describe('a diary in 这一天', () => {
+  it('[adr:drop-single-diary-page#2] says saved to the server only once the batch is acknowledged', async () => {
     openDiary();
     await waitFor(async () => expect((await status()).textContent).toBe('已保存到服务器'));
     FakeSocket.answer = () => 'hold';
@@ -94,13 +163,6 @@ describe('DiaryPage', () => {
     expect((await screen.findByRole('alert')).textContent).toBe(
       '粘贴内容超过约 26 万字，请分段粘贴',
     );
-  });
-
-  it('says so when the diary does not exist for this user', async () => {
-    openDiary(() =>
-      Response.json({ error: { code: 'NOT_FOUND', message: 'No such diary' } }, { status: 404 }),
-    );
-    expect((await screen.findByRole('alert')).textContent).toBe('找不到这篇日记');
   });
 
   it('[adr:diary-collaboration-kernel#4] previews history read-only and returns to the untouched current text', async () => {
@@ -154,8 +216,6 @@ describe('DiaryPage', () => {
 });
 
 describe('a shared diary', () => {
-  const EPOCH = 'e1e1e1e1-0000-4000-8000-000000000001';
-  const PARTNER = '6f1c1d0e-0000-4000-8000-000000000002';
   const BOB_CLIENT = 77;
 
   /** The partner Bob's diary as Alice may read it, in the given share state. */
@@ -179,31 +239,61 @@ describe('a shared diary', () => {
       });
   }
 
+  /** Bob's diary of the day, shared with Alice, alone on it (she has none). */
   function openShared(share: 'live' | 'frozen', more: Parameters<typeof stubApi>[0] = {}) {
-    vi.stubGlobal('WebSocket', FakeSocket);
-    vi.stubGlobal('navigator', { locks: stubLocks(), clipboard });
-    stubApi({
-      'GET /api/me': signedIn('alice'),
-      'GET /api/spaces': () =>
-        Response.json({
-          spaces: [
-            {
-              id: '2b0c1a9e-1111-4a2b-8c3d-4e5f6a7b8c9d',
-              createdAt: '2026-10-01T08:00:00.000Z',
-              state: 'active',
-              participants: [
-                { user: { id: USER, displayName: 'alice' }, authorSlot: 1 },
-                { user: { id: PARTNER, displayName: 'bob' }, authorSlot: 2 },
-              ],
-            },
-          ],
-        }),
-      [`GET /api/diaries/${DIARY}/shares/${EPOCH}`]: sharedResponse(share),
-      [`GET /api/diaries/${DIARY}/read`]: () => Response.json({ ranges: [] }),
-      ...more,
-    });
-    renderAt(`/diaries/${DIARY}/shares/${EPOCH}`);
+    return openDay(
+      {
+        diaryDate: DATE,
+        mine: null,
+        partner: { diaryId: DIARY, epochId: EPOCH, share, ...card },
+      },
+      { [`GET /api/diaries/${DIARY}/shares/${EPOCH}`]: sharedResponse(share), ...more },
+    );
   }
+
+  it('[adr:drop-single-diary-page#3] opens a share reopened while shown in place, as a new session of the new epoch', async () => {
+    const REOPENED = 'e1e1e1e1-0000-4000-8000-000000000002';
+    let epoch = EPOCH;
+    const days = vi.fn(() =>
+      Response.json({
+        day: {
+          diaryDate: DATE,
+          mine: null,
+          partner: { diaryId: DIARY, epochId: epoch, share: 'live', ...card },
+        },
+        google: NO_COPY,
+      }),
+    );
+    const { router } = openShared('live', {
+      [`GET /api/days/${DATE}`]: days,
+      [`GET /api/diaries/${DIARY}/shares/${REOPENED}`]: sharedResponse('live'),
+    });
+    const editor = await screen.findByRole('textbox');
+    await waitFor(() => expect(editor.textContent).toBe('鲍勃的字'));
+    const first = FakeSocket.all.at(-1)!;
+    first.push({
+      v: PROTOCOL_VERSION,
+      type: 'context',
+      diaryId: DIARY,
+      change: 'opened',
+      generationId: GENERATION,
+      epochId: REOPENED,
+    });
+    const open = await screen.findByRole('button', { name: '打开最新的版本' });
+    expect(screen.queryByRole('link', { name: '打开最新的版本' })).toBeNull();
+    const asked = days.mock.calls.length;
+    epoch = REOPENED;
+    fireEvent.click(open);
+    await waitFor(() => expect(days.mock.calls.length).toBe(asked + 1));
+    await waitFor(() =>
+      expect(FakeSocket.all.at(-1)!.sent[0]).toMatchObject({
+        type: 'subscribe',
+        epochId: REOPENED,
+      }),
+    );
+    expect(FakeSocket.all.at(-1)).not.toBe(first);
+    expect(router.state.location.pathname).toBe(`/days/${DATE}`);
+  });
 
   it('[adr:diary-collaboration-kernel#11] shows a frozen share read-only, says it no longer updates, and opens no socket', async () => {
     openShared('frozen');
@@ -259,12 +349,11 @@ describe('a shared diary', () => {
     try {
       const editor = await screen.findByRole('textbox');
       await waitFor(() => expect(editor.textContent).toBe('鲍勃的字'));
-      vi.spyOn(editor.parentElement!, 'getBoundingClientRect').mockReturnValue({
-        top: 0,
-        bottom: 400,
-        left: 0,
-        right: 600,
-      } as DOMRect);
+      // The editor and, on a wide page, the day's own scrolling box both span the window.
+      const window400 = { top: 0, bottom: 400, left: 0, right: 600 } as DOMRect;
+      vi.spyOn(editor.parentElement!, 'getBoundingClientRect').mockReturnValue(window400);
+      const box = document.querySelector<HTMLElement>('.day-scroll');
+      if (box) vi.spyOn(box, 'getBoundingClientRect').mockReturnValue(window400);
 
       fireEvent.click(screen.getByLabelText('只看我的文字'));
       await waitFor(() => expect(editor.querySelector('.author-hidden')).not.toBeNull());

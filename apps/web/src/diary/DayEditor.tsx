@@ -6,7 +6,8 @@ import { useMe } from '../auth/me.ts';
 import { Avatar } from '../avatar/index.ts';
 import { Button, cn } from '../ui/index.ts';
 import { DiaryBlock, copyOf, type BlockReport } from './DiaryBlock.tsx';
-import { AuthorLegend, UnreadNotices, usePeople } from './DiaryPage.tsx';
+import { AuthorLegend, usePeople } from './people.tsx';
+import { UnreadNotices } from './UnreadNotices.tsx';
 import type { DiarySession, ReadingPosition, Unread } from './session.ts';
 
 type Side = 'mine' | 'theirs';
@@ -330,9 +331,12 @@ function DayView({ date, focus }: { date: string; focus: string | null }) {
             >
               {side === 'theirs' && theirs ? (
                 <DiaryBlock
+                  // A share reopened while shown comes back as a new epoch: a new session.
+                  key={`${theirs.diaryId}:${theirs.epochId}`}
                   userId={user.id}
                   diaryId={theirs.diaryId}
                   epochId={theirs.epochId}
+                  onReopen={() => void load()}
                   people={people}
                   title={titleOf('theirs')}
                   googleCopy={google ? copyOf(google, 'partner') : undefined}
