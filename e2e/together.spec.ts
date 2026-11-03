@@ -1,10 +1,11 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
 // The redrawn 「一起」 pages through the real stack (digital-paper-interface D3, 落地顺序 4
-// and 5): the clocks page, the anniversaries and one anniversary at a wide and two narrow
-// widths keep every text and control inside the page and the window, long names included;
-// a day is recorded through its dialog, the together day leads the list, and the shared
-// changes open under "修改". Names carry the width, the browser and a per-run suffix.
+// and 5): the clocks page, the anniversaries, one anniversary and the wishes page at a wide
+// and two narrow widths keep every text and control inside the page and the window, long
+// names included; days and wishes are added through their dialogs, the together day leads
+// the list, and the shared changes open under "修改". Names carry the width, the browser
+// and a per-run suffix.
 const run = Date.now().toString(36);
 
 // Contexts opened with browser.newContext() outlive the test on the worker's browser, and
@@ -135,5 +136,40 @@ for (const viewport of VIEWPORTS) {
     await expect(a.getByRole('heading', { level: 1 })).toHaveText('在一起的日子');
     await expect(a.getByRole('link', { name: '2025 年 1 月 1 日' })).toBeVisible();
     expect(await outside(a), 'one anniversary').toEqual([]);
+  });
+}
+
+for (const viewport of VIEWPORTS) {
+  test(`${viewport.width}px: the wishes page keeps its tabs, dialog and records inside`, async ({
+    browser,
+    browserName,
+  }) => {
+    test.setTimeout(120_000);
+    const a = await pair(browser, `tw${viewport.width}${browserName}${run}`, viewport);
+    a.on('dialog', (dialog) => void dialog.accept());
+
+    await a.goto('/wishes');
+    await expect(a.getByRole('heading', { level: 1, name: '心愿与礼物' })).toBeVisible();
+    expect(await outside(a), 'the tabs').toEqual([]);
+    await a.getByRole('button', { name: '许个愿' }).click();
+    const form = a.getByRole('dialog', { name: '许个愿' });
+    await form.getByLabel('名称').fill('c'.repeat(100));
+    await form.getByLabel('链接').fill(`https://example.com/${'path/'.repeat(20)}end`);
+    await form.getByLabel('备注').fill('d'.repeat(500));
+    expect(await outside(a), 'the dialog').toEqual([]);
+    await form.getByRole('button', { name: '许个愿' }).click();
+    await expect(form).toHaveCount(0);
+    const wish = a.locator('li.wish');
+    await expect(wish).toBeVisible();
+    expect(await outside(a), 'my wishes').toEqual([]);
+
+    // Received: the wish goes to the wall, where its changes fold under "修改".
+    await wish.getByRole('button', { name: '收到了' }).click();
+    await a.getByRole('tab', { name: /礼物墙/ }).click();
+    const gift = a.locator('li.gift');
+    await expect(gift).toBeVisible();
+    await gift.getByRole('button', { name: '修改' }).click();
+    await expect(gift.getByLabel('场合')).toBeVisible();
+    expect(await outside(a), 'the wall').toEqual([]);
   });
 }
