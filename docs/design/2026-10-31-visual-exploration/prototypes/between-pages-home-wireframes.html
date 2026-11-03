@@ -1,0 +1,84 @@
+<style>
+  #bp-home-wireframes { --bp-paper: light-dark(#f7f7f5, #252523); --bp-page: light-dark(#fff, #302f2c); --bp-ink: light-dark(#262626, #eeeae4); --bp-muted: light-dark(#6f6f6b, #b8b4ae); --bp-line: light-dark(#d9d9d5, #54524d); --bp-wash: light-dark(#ededeb, #393834); color: var(--bp-ink); font-family: system-ui, "PingFang SC", sans-serif; }
+  #bp-home-wireframes * { box-sizing: border-box; }
+  #bp-home-wireframes .stage { display: flex; align-items: flex-start; justify-content: center; gap: 18px; min-height: 570px; }
+  #bp-home-wireframes .desktop { width: 680px; height: 555px; overflow: hidden; background: var(--bp-paper); border: 1px solid var(--bp-line); border-radius: 9px; }
+  #bp-home-wireframes .phone { width: 240px; height: 555px; overflow: hidden; background: var(--bp-page); border: 1px solid var(--bp-line); border-radius: 25px; padding: 16px 12px; }
+  #bp-home-wireframes .product-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 18px; border-bottom: 1px solid var(--bp-line); font-size: 12px; }
+  #bp-home-wireframes .brand { font-family: Georgia, "Songti SC", serif; font-size: 17px; }
+  #bp-home-wireframes .product-nav { display: flex; gap: 14px; color: var(--bp-muted); }
+  #bp-home-wireframes .product-nav b { color: var(--bp-ink); font-weight: 500; }
+  #bp-home-wireframes .time-strip { color: var(--bp-muted); font-size: 11px; border-bottom: 1px solid var(--bp-line); padding: 7px 18px; }
+  #bp-home-wireframes .desk-grid { display: grid; grid-template-columns: 150px 1fr; height: 478px; }
+  #bp-home-wireframes .spine { padding: 18px 12px; border-right: 1px solid var(--bp-line); font-size: 11px; color: var(--bp-muted); }
+  #bp-home-wireframes .spine-label { text-transform: uppercase; letter-spacing: .1em; margin-bottom: 16px; }
+  #bp-home-wireframes .index-row { padding: 10px 5px; border-bottom: 1px solid var(--bp-line); }
+  #bp-home-wireframes .index-row.selected { color: var(--bp-ink); font-weight: 500; border-left: 3px solid currentColor; padding-left: 8px; }
+  #bp-home-wireframes .page { margin: 18px 26px; padding: 23px 38px; min-height: 405px; background: var(--bp-page); box-shadow: 0 1px 4px light-dark(#00000013, #00000038); }
+  #bp-home-wireframes .eyebrow { color: var(--bp-muted); font-size: 11px; letter-spacing: .08em; }
+  #bp-home-wireframes .page h2, #bp-home-wireframes .index-focus h2 { font-family: Georgia, "Songti SC", serif; font-size: 26px; font-weight: 400; margin: 8px 0 15px; }
+  #bp-home-wireframes .rule { height: 1px; background: var(--bp-line); margin: 15px 0; }
+  #bp-home-wireframes .author { font-size: 11px; font-weight: 500; margin: 14px 0 7px; }
+  #bp-home-wireframes .author span { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; background: var(--bp-ink); }
+  #bp-home-wireframes .line { height: 8px; background: var(--bp-wash); margin: 7px 0; border-radius: 1px; }
+  #bp-home-wireframes .w92 { width: 92%; } #bp-home-wireframes .w76 { width: 76%; } #bp-home-wireframes .w62 { width: 62%; } #bp-home-wireframes .w44 { width: 44%; }
+  #bp-home-wireframes .quiet-action { margin-top: 20px; border: 1px solid var(--bp-ink); color: var(--bp-ink); background: transparent; padding: 7px 13px; font: inherit; font-size: 11px; border-radius: 4px; }
+  #bp-home-wireframes .page-foot { display: flex; justify-content: space-between; color: var(--bp-muted); font-size: 10px; margin-top: 15px; }
+  #bp-home-wireframes .phone-head { display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin-bottom: 12px; }
+  #bp-home-wireframes .phone-head .brand { font-size: 14px; }
+  #bp-home-wireframes .phone .time-strip { padding: 6px 0; font-size: 10px; }
+  #bp-home-wireframes .phone-page { padding: 17px 4px; }
+  #bp-home-wireframes .phone-page h2 { font-family: Georgia, "Songti SC", serif; font-size: 21px; font-weight: 400; margin: 5px 0 13px; }
+  #bp-home-wireframes .phone .author { margin-top: 20px; }
+  #bp-home-wireframes .phone-bottom { margin-top: 28px; padding-top: 11px; border-top: 1px solid var(--bp-line); display: flex; justify-content: space-between; font-size: 11px; }
+  #bp-home-wireframes .index-focus { padding: 30px 34px; }
+  #bp-home-wireframes .index-focus h2 { font-size: 29px; margin-bottom: 4px; }
+  #bp-home-wireframes .index-sub { font-size: 11px; color: var(--bp-muted); margin-bottom: 24px; }
+  #bp-home-wireframes .index-layout { display: grid; grid-template-columns: 180px 1fr; gap: 30px; }
+  #bp-home-wireframes .dated-row { border-bottom: 1px solid var(--bp-line); padding: 13px 0; font-size: 11px; }
+  #bp-home-wireframes .dated-row strong { display: block; font-size: 15px; font-weight: 500; }
+  #bp-home-wireframes .dated-row small { color: var(--bp-muted); }
+  #bp-home-wireframes .index-preview { border-left: 1px solid var(--bp-line); padding-left: 27px; }
+  #bp-home-wireframes .index-preview h3 { font-family: Georgia, "Songti SC", serif; font-size: 20px; font-weight: 400; margin: 7px 0 18px; }
+  #bp-home-wireframes .phone-index h2 { font-size: 21px; font-family: Georgia, "Songti SC", serif; font-weight: 400; margin: 20px 0 4px; }
+  #bp-home-wireframes .phone-index .dated-row { padding: 14px 0; }
+  #bp-home-wireframes .phone-index .quiet-action { margin-top: 14px; }
+  @media (max-width: 900px) { #bp-home-wireframes .stage { flex-direction: column; align-items: center; min-height: 0; } #bp-home-wireframes .desktop { width: min(100%, 680px); } }
+  @media (max-width: 560px) { #bp-home-wireframes .desktop { height: 490px; } #bp-home-wireframes .desk-grid { grid-template-columns: 95px 1fr; } #bp-home-wireframes .spine { padding: 11px 6px; } #bp-home-wireframes .page { margin: 10px; padding: 16px; min-height: 380px; } #bp-home-wireframes .index-focus { padding: 16px; } #bp-home-wireframes .index-layout { grid-template-columns: 105px 1fr; gap: 10px; } #bp-home-wireframes .index-preview { padding-left: 10px; } #bp-home-wireframes .product-nav { gap: 5px; } }
+</style>
+<div id="bp-home-wireframes">
+  <div class="viz-carousel" aria-label="Between Pages 首页线框方案" data-previous-label="上一个方案" data-next-label="下一个方案">
+    <section data-variant="打开今天" aria-label="打开今天：桌面与手机首页线框">
+      <div class="stage">
+        <div class="desktop" aria-label="打开今天桌面版">
+          <div class="product-head"><span class="brand">Between Pages</span><span class="product-nav"><b>日记</b><span>心愿</span><span>见面</span><span>更多</span></span></div>
+          <div class="time-strip">我这边 20:30　·　TA 那边 08:30　清晨</div>
+          <div class="desk-grid">
+            <aside class="spine"><div class="spine-label">日期索引</div><div class="index-row selected">10月30日　今天</div><div class="index-row">10月28日　有新内容</div><div class="index-row">10月26日</div><div class="index-row">查看更早日期 ↓</div></aside>
+            <div class="page"><span class="eyebrow">我们的日子 · 第 30 页</span><h2>十月三十日</h2><div class="rule"></div><div class="author"><span></span>我写下的</div><div class="line w92"></div><div class="line w76"></div><div class="line w44"></div><div class="author"><span></span>TA 留下的 · 有新内容</div><div class="line w92"></div><div class="line w62"></div><button class="quiet-action" type="button">继续写这一天</button><div class="page-foot"><span>已保存到服务器</span><span>下一处未读 →</span></div></div>
+          </div>
+        </div>
+        <div class="phone" aria-label="打开今天手机版">
+          <div class="phone-head"><span class="brand">Between Pages</span><span>目录 ☰</span></div><div class="time-strip">TA 那边 08:30 · 清晨</div>
+          <div class="phone-page"><span class="eyebrow">我们的日子</span><h2>十月三十日</h2><div class="rule"></div><div class="author"><span></span>我写下的</div><div class="line w92"></div><div class="line w76"></div><div class="line w62"></div><div class="author"><span></span>TA 留下的 · 有新内容</div><div class="line w92"></div><div class="line w76"></div><div class="line w44"></div><button class="quiet-action" type="button">继续写这一天</button><div class="phone-bottom"><span>日期</span><span>下一处未读</span><span>写今天</span></div></div>
+        </div>
+      </div>
+    </section>
+    <section data-variant="先翻目录" aria-label="先翻目录：桌面与手机首页线框" hidden>
+      <div class="stage">
+        <div class="desktop" aria-label="先翻目录桌面版">
+          <div class="product-head"><span class="brand">Between Pages</span><span class="product-nav"><b>日记</b><span>心愿</span><span>见面</span><span>更多</span></span></div><div class="time-strip">我这边 20:30　·　TA 那边 08:30　清晨</div>
+          <div class="index-focus"><span class="eyebrow">共同日记</span><h2>我们的日子</h2><div class="index-sub">从最近的一页继续读，或翻到过去的一天</div><div class="index-layout"><div><div class="dated-row"><strong>10月30日</strong><small>今天 · 我写过</small></div><div class="dated-row"><strong>10月28日</strong><small>TA 有新内容</small></div><div class="dated-row"><strong>10月26日</strong><small>两个人都写过</small></div><div class="dated-row">查看更早日期 ↓</div></div><div class="index-preview"><span class="eyebrow">当前选中 · 10月28日</span><h3>这一页的新文字</h3><div class="author"><span></span>TA 留下的</div><div class="line w92"></div><div class="line w76"></div><div class="line w44"></div><button class="quiet-action" type="button">打开这一页 →</button><div class="rule"></div><span class="eyebrow">今天想写点什么？</span><br><button class="quiet-action" type="button">写今天</button></div></div></div>
+        </div>
+        <div class="phone" aria-label="先翻目录手机版"><div class="phone-head"><span class="brand">Between Pages</span><span>更多 ☰</span></div><div class="time-strip">TA 那边 08:30 · 清晨</div><div class="phone-index"><span class="eyebrow">共同日记</span><h2>我们的日子</h2><div class="index-sub">从最近的一页继续读</div><div class="dated-row"><strong>10月30日</strong><small>今天 · 我写过</small></div><div class="dated-row"><strong>10月28日</strong><small>TA 有新内容</small></div><div class="dated-row"><strong>10月26日</strong><small>两个人都写过</small></div><div class="dated-row">查看更早日期 ↓</div><button class="quiet-action" type="button">写今天</button><div class="phone-bottom"><span>日记</span><span>心愿</span><span>见面</span></div></div></div>
+      </div>
+    </section>
+  </div>
+</div>
+<script>
+  const bpRoot = document.getElementById('bp-home-wireframes');
+  const bpSettings = { showTime: true };
+  function renderBpSettings() { bpRoot.querySelectorAll('.time-strip').forEach(el => { el.hidden = !bpSettings.showTime; }); }
+  renderBpSettings();
+  if (globalThis.Tweak) { const tweak = new Tweak({ container: bpRoot, onChange: renderBpSettings }); tweak.addToggle(bpSettings, 'showTime', { label: '显示两地时间' }); }
+</script>

@@ -1,0 +1,203 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap');
+  #bp-editorial-prototype { --p-bg:light-dark(#f5f0e9,#211f1d); --p-paper:light-dark(#fcf9f4,#302b28); --p-ink:light-dark(#362d29,#eee5dd); --p-muted:light-dark(#786e68,#bbafa7); --p-line:light-dark(#e6dcd1,#5b514a); --p-rust:light-dark(#b9684f,#dd9275); --p-blue:light-dark(#60838c,#8bb4bb); --p-mist:light-dark(#dce8e5,#526766); --p-sand:light-dark(#e9d1bd,#796455); --p-honey:light-dark(#f2ddb5,#a48b62); color:var(--p-ink); font-family:system-ui,'PingFang SC',sans-serif; }
+  #bp-editorial-prototype *, #bp-editorial-prototype *::before, #bp-editorial-prototype *::after { box-sizing:border-box; }
+  #bp-editorial-prototype [hidden] { display:none!important; }
+  #bp-editorial-prototype button, #bp-editorial-prototype select, #bp-editorial-prototype textarea { font:inherit; }
+  #bp-editorial-prototype .stage { display:flex; align-items:flex-start; justify-content:center; gap:17px; min-height:730px; }
+  #bp-editorial-prototype .desktop { width:690px; min-height:690px; position:relative; overflow:hidden; background:var(--p-paper); border:1px solid var(--p-line); border-radius:15px; box-shadow:0 18px 45px light-dark(#55402b22,#0005); }
+  #bp-editorial-prototype .phone { width:250px; height:690px; position:relative; overflow:hidden; display:flex; flex-direction:column; background:var(--p-paper); border:1px solid var(--p-line); border-radius:29px; box-shadow:0 18px 45px light-dark(#55402b22,#0005); }
+  #bp-editorial-prototype .serif { font-family:'Fraunces','Songti SC','Noto Serif SC',Georgia,serif; font-weight:400; }
+  #bp-editorial-prototype .wordmark { display:flex; align-items:center; gap:8px; white-space:nowrap; font-family:'Fraunces',Georgia,serif; font-size:18px; letter-spacing:-.03em; }
+  #bp-editorial-prototype .mark { width:22px; height:22px; display:grid; place-items:center; color:var(--p-paper); background:var(--p-rust); border-radius:8px 8px 3px 8px; font-size:13px; transform:rotate(-6deg); }
+  #bp-editorial-prototype .topbar { padding:21px 28px 15px; display:flex; align-items:center; justify-content:space-between; gap:12px; border-bottom:1px solid var(--p-line); }
+  #bp-editorial-prototype .nav { display:flex; align-items:center; gap:16px; }
+  #bp-editorial-prototype .nav button, #bp-editorial-prototype .phone-nav button { border:0; background:transparent; color:var(--p-muted); padding:5px 2px; font-size:11px; }
+  #bp-editorial-prototype .nav button.active, #bp-editorial-prototype .phone-nav button.active { color:var(--p-ink); border-bottom:2px solid var(--p-rust); }
+  #bp-editorial-prototype .nav button .dot { display:inline-block; width:5px; height:5px; margin-left:4px; vertical-align:middle; border-radius:50%; background:var(--p-rust); }
+  #bp-editorial-prototype .phone .topbar { padding:18px 16px 13px; }
+  #bp-editorial-prototype .phone .wordmark { font-size:16px; }
+  #bp-editorial-prototype .phone .mark { width:18px; height:18px; font-size:11px; }
+  #bp-editorial-prototype .phone .topbar .profile { width:26px; height:26px; border-radius:50%; display:grid; place-items:center; font-size:11px; color:var(--p-rust); background:light-dark(#f1ddd2,#574038); }
+  #bp-editorial-prototype .view { padding:0 29px 20px; }
+  #bp-editorial-prototype .phone .view { padding:0 16px 15px; flex:1; overflow:auto; scrollbar-width:none; }
+  #bp-editorial-prototype .phone .view::-webkit-scrollbar { display:none; }
+  #bp-editorial-prototype .eyebrow { font-size:10px; letter-spacing:.14em; color:var(--p-muted); text-transform:uppercase; }
+  #bp-editorial-prototype .hero { display:flex; align-items:end; justify-content:space-between; gap:10px; margin:24px 0 19px; }
+  #bp-editorial-prototype .hero h1 { font-size:34px; line-height:1.15; margin:7px 0 0; }
+  #bp-editorial-prototype .hero .small-note { font-size:11px; line-height:1.6; color:var(--p-muted); max-width:155px; text-align:right; padding-bottom:5px; }
+  #bp-editorial-prototype .phone .hero { margin:21px 0 14px; }
+  #bp-editorial-prototype .phone .hero h1 { font-size:25px; }
+  #bp-editorial-prototype .time-ribbon { width:100%; border:0; border-top:1px solid var(--p-line); border-bottom:1px solid var(--p-line); background:transparent; padding:11px 0; display:flex; align-items:center; gap:10px; text-align:left; color:var(--p-ink); }
+  #bp-editorial-prototype .time-ribbon .moon { width:27px; height:27px; display:grid; place-items:center; border-radius:50%; background:var(--p-mist); color:var(--p-blue); flex:0 0 auto; font-size:15px; }
+  #bp-editorial-prototype .time-ribbon .time-copy { flex:1; font-size:11px; line-height:1.55; }
+  #bp-editorial-prototype .time-ribbon .time-copy strong { font-weight:500; }
+  #bp-editorial-prototype .time-ribbon .time-copy small { display:block; font-size:10px; color:var(--p-muted); }
+  #bp-editorial-prototype .time-ribbon .arrow { font-size:17px; color:var(--p-rust); }
+  #bp-editorial-prototype .phone .time-ribbon { gap:7px; }
+  #bp-editorial-prototype .phone .time-ribbon .moon { width:24px; height:24px; }
+  #bp-editorial-prototype .journal-layout { display:grid; grid-template-columns:1.05fr .95fr; gap:25px; padding:25px 0 0; }
+  #bp-editorial-prototype .journal-copy { padding-top:4px; }
+  #bp-editorial-prototype .date-number { font-size:51px; line-height:1.06; margin:7px 0 17px; }
+  #bp-editorial-prototype .author { display:flex; align-items:center; gap:7px; font-size:11px; margin:13px 0 8px; color:var(--p-muted); }
+  #bp-editorial-prototype .author i { width:8px; height:8px; border-radius:50%; background:var(--p-rust); flex:0 0 auto; }
+  #bp-editorial-prototype .author.other i { background:var(--p-blue); }
+  #bp-editorial-prototype .journal-copy p, #bp-editorial-prototype .mobile-text p { font-size:12px; line-height:1.8; margin:0 0 10px; }
+  #bp-editorial-prototype .text-link { border:0; padding:3px 0; color:var(--p-rust); background:transparent; font-size:11px; }
+  #bp-editorial-prototype .picture-wrap { padding-top:4px; }
+  #bp-editorial-prototype .scene { position:relative; height:248px; width:100%; overflow:hidden; background:linear-gradient(180deg,var(--p-mist) 0%,light-dark(#e9eeea,#596e6d) 56%,var(--p-sand) 57%,light-dark(#d7b99d,#725b4d) 100%); border-radius:110px 110px 8px 8px; }
+  #bp-editorial-prototype .scene .sun { position:absolute; width:70px; height:70px; top:43px; right:40px; border-radius:50%; background:var(--p-honey); }
+  #bp-editorial-prototype .scene .hill { position:absolute; left:-10%; bottom:35px; width:120%; height:53px; border-radius:50% 50% 0 0; background:light-dark(#a7bcb0,#718979); }
+  #bp-editorial-prototype .scene .home-a, #bp-editorial-prototype .scene .home-b { position:absolute; bottom:0; width:75px; height:87px; background:light-dark(#d9a589,#986e5b); box-shadow:inset 8px 0 light-dark(#e8b69c,#a77b68); }
+  #bp-editorial-prototype .scene .home-a { left:33px; }
+  #bp-editorial-prototype .scene .home-b { left:142px; width:68px; height:124px; background:light-dark(#f0d9bd,#ab8a71); }
+  #bp-editorial-prototype .scene .roof { position:absolute; left:27px; bottom:87px; width:87px; height:35px; background:light-dark(#aa715c,#795448); clip-path:polygon(50% 0,100% 100%,0 100%); }
+  #bp-editorial-prototype .scene .window-a, #bp-editorial-prototype .scene .window-b { position:absolute; width:13px; height:22px; bottom:41px; left:60px; background:light-dark(#597780,#50646a); box-shadow:0 0 0 3px light-dark(#c88e76,#79544b); }
+  #bp-editorial-prototype .scene .window-b { left:171px; bottom:61px; }
+  #bp-editorial-prototype .scene .plant { position:absolute; right:19px; bottom:0; width:5px; height:63px; background:light-dark(#718e72,#8ca58a); transform:rotate(8deg); }
+  #bp-editorial-prototype .scene .plant::before, #bp-editorial-prototype .scene .plant::after { content:''; position:absolute; width:19px; height:9px; border-radius:100% 0 100% 0; background:light-dark(#719777,#9cb898); left:-17px; top:19px; transform:rotate(20deg); }
+  #bp-editorial-prototype .scene .plant::after { left:3px; top:32px; transform:rotate(108deg); }
+  #bp-editorial-prototype .picture-caption { display:flex; justify-content:space-between; color:var(--p-muted); font-size:10px; padding:10px 1px 0; }
+  #bp-editorial-prototype .page-bottom { display:flex; justify-content:space-between; align-items:center; gap:12px; border-top:1px solid var(--p-line); padding-top:15px; margin-top:20px; }
+  #bp-editorial-prototype .days { display:flex; gap:7px; }
+  #bp-editorial-prototype .days button { min-width:44px; border:0; background:transparent; border-radius:8px; padding:6px 4px; color:var(--p-muted); font-size:10px; text-align:center; }
+  #bp-editorial-prototype .days button b { display:block; font-size:15px; color:var(--p-ink); font-weight:500; }
+  #bp-editorial-prototype .days button.current { background:light-dark(#f2ddd2,#5b4036); }
+  #bp-editorial-prototype .primary { border:0; border-radius:99px; background:var(--p-rust); color:light-dark(#fffaf5,#2d201c); padding:11px 17px; white-space:nowrap; font-size:12px; font-weight:500; }
+  #bp-editorial-prototype .secondary { border:1px solid var(--p-line); border-radius:99px; color:var(--p-ink); background:transparent; padding:9px 13px; font-size:11px; }
+  #bp-editorial-prototype .phone-journal .scene { height:186px; margin-top:15px; border-radius:95px 95px 8px 8px; }
+  #bp-editorial-prototype .phone-journal .scene .home-a { left:18px; }
+  #bp-editorial-prototype .phone-journal .scene .home-b { left:102px; }
+  #bp-editorial-prototype .phone-journal .scene .roof { left:12px; }
+  #bp-editorial-prototype .phone-journal .scene .window-a { left:44px; }
+  #bp-editorial-prototype .phone-journal .scene .window-b { left:130px; }
+  #bp-editorial-prototype .phone-journal .scene .sun { top:35px; right:22px; }
+  #bp-editorial-prototype .phone-journal .scene .plant { right:12px; }
+  #bp-editorial-prototype .phone-journal .picture-caption { padding-top:6px; }
+  #bp-editorial-prototype .mobile-text { padding-top:5px; }
+  #bp-editorial-prototype .mobile-text p { font-size:11px; line-height:1.7; }
+  #bp-editorial-prototype .phone-journal .primary { width:100%; margin-top:8px; }
+  #bp-editorial-prototype .phone-nav { display:flex; justify-content:space-around; border-top:1px solid var(--p-line); padding:10px 7px 14px; background:var(--p-paper); }
+  #bp-editorial-prototype .section-title { margin:26px 0 10px; font-size:33px; line-height:1.15; }
+  #bp-editorial-prototype .section-lead { margin:0 0 24px; max-width:510px; color:var(--p-muted); font-size:12px; line-height:1.7; }
+  #bp-editorial-prototype .clock-pair { display:grid; grid-template-columns:1fr 1fr; border-top:1px solid var(--p-line); border-bottom:1px solid var(--p-line); }
+  #bp-editorial-prototype .clock-side { padding:21px 0; }
+  #bp-editorial-prototype .clock-side + .clock-side { border-left:1px solid var(--p-line); padding-left:28px; }
+  #bp-editorial-prototype .clock-face { font-family:'Fraunces',Georgia,serif; font-size:42px; line-height:1.2; margin:10px 0 5px; }
+  #bp-editorial-prototype .clock-side p { margin:0; color:var(--p-muted); font-size:11px; }
+  #bp-editorial-prototype .clock-side .period { color:var(--p-rust); }
+  #bp-editorial-prototype .overlap { padding-top:27px; }
+  #bp-editorial-prototype .overlap h2 { margin:6px 0 10px; font-size:24px; }
+  #bp-editorial-prototype .overlap p { margin:0 0 13px; font-size:11px; color:var(--p-muted); }
+  #bp-editorial-prototype .overlap-result { display:flex; align-items:center; gap:17px; flex-wrap:wrap; padding:14px 0; border-top:1px solid var(--p-line); border-bottom:1px solid var(--p-line); }
+  #bp-editorial-prototype .overlap-result strong { font-size:14px; font-weight:500; }
+  #bp-editorial-prototype .overlap-result span { font-size:12px; color:var(--p-muted); }
+  #bp-editorial-prototype .time-track { position:relative; height:12px; background:light-dark(#e9e4de,#514c46); border-radius:99px; overflow:hidden; margin-top:19px; }
+  #bp-editorial-prototype .time-track .awake { position:absolute; top:0; height:100%; background:var(--p-blue); }
+  #bp-editorial-prototype .track-labels { display:flex; justify-content:space-between; margin-top:5px; color:var(--p-muted); font-size:10px; }
+  #bp-editorial-prototype .schedule-row { margin-top:20px; display:flex; justify-content:space-between; gap:12px; color:var(--p-muted); font-size:11px; }
+  #bp-editorial-prototype .schedule-row button { border:0; background:transparent; color:var(--p-rust); padding:0; font-size:11px; }
+  #bp-editorial-prototype .schedule-editor { display:flex; align-items:end; gap:10px; flex-wrap:wrap; margin-top:13px; padding:13px; background:light-dark(#f2ece3,#3c3530); border-radius:9px; }
+  #bp-editorial-prototype .schedule-editor label { display:grid; gap:5px; font-size:10px; color:var(--p-muted); }
+  #bp-editorial-prototype .schedule-editor select { min-height:33px; min-width:88px; border:1px solid var(--p-line); color:var(--p-ink); background:var(--p-paper); border-radius:5px; padding:4px; font-size:11px; }
+  #bp-editorial-prototype .schedule-editor button { border:0; border-radius:99px; background:var(--p-rust); color:light-dark(#fffaf5,#2d201c); padding:8px 12px; font-size:11px; }
+  #bp-editorial-prototype .back { border:0; background:transparent; padding:18px 0 0; color:var(--p-rust); font-size:11px; }
+  #bp-editorial-prototype .phone .section-title { font-size:25px; margin:17px 0 7px; }
+  #bp-editorial-prototype .phone .section-lead { font-size:11px; margin-bottom:16px; }
+  #bp-editorial-prototype .phone .clock-pair { grid-template-columns:1fr 1fr; }
+  #bp-editorial-prototype .phone .clock-side { padding:13px 0; }
+  #bp-editorial-prototype .phone .clock-side + .clock-side { padding-left:12px; }
+  #bp-editorial-prototype .phone .clock-face { font-size:26px; }
+  #bp-editorial-prototype .phone .clock-side p { font-size:9px; }
+  #bp-editorial-prototype .phone .overlap { padding-top:16px; }
+  #bp-editorial-prototype .phone .overlap h2 { font-size:19px; }
+  #bp-editorial-prototype .phone .overlap-result { display:block; }
+  #bp-editorial-prototype .phone .overlap-result span { display:block; margin-top:4px; }
+  #bp-editorial-prototype .phone .schedule-row { display:block; line-height:1.8; margin-top:13px; }
+  #bp-editorial-prototype .phone .schedule-row span { display:block; }
+  #bp-editorial-prototype .phone .schedule-editor select { min-width:70px; }
+  #bp-editorial-prototype .simple-section { padding-top:28px; }
+  #bp-editorial-prototype .simple-section .section-title { margin-top:9px; }
+  #bp-editorial-prototype .meeting-intro { display:flex; align-items:end; justify-content:space-between; gap:15px; padding-bottom:20px; border-bottom:1px solid var(--p-line); }
+  #bp-editorial-prototype .meeting-date { font-family:'Fraunces','Songti SC',serif; font-size:39px; line-height:1.15; }
+  #bp-editorial-prototype .meeting-note { color:var(--p-muted); font-size:11px; line-height:1.7; }
+  #bp-editorial-prototype .list-columns { display:grid; grid-template-columns:1fr 1fr; gap:26px; margin-top:23px; }
+  #bp-editorial-prototype .list-columns h2 { font-size:18px; margin:0 0 9px; }
+  #bp-editorial-prototype .list-columns label { display:block; padding:11px 0; border-bottom:1px solid var(--p-line); font-size:12px; }
+  #bp-editorial-prototype .list-columns input { accent-color:var(--p-rust); margin-right:7px; }
+  #bp-editorial-prototype .wish-line { display:flex; align-items:center; justify-content:space-between; gap:13px; border-top:1px solid var(--p-line); padding:18px 0; }
+  #bp-editorial-prototype .wish-line h2 { font-size:17px; margin:0 0 5px; }
+  #bp-editorial-prototype .wish-line p { font-size:11px; color:var(--p-muted); margin:0; }
+  #bp-editorial-prototype .hearts { color:var(--p-rust); white-space:nowrap; font-size:15px; letter-spacing:2px; }
+  #bp-editorial-prototype .private-note { border-top:1px solid var(--p-line); padding-top:15px; color:var(--p-muted); font-size:11px; }
+  #bp-editorial-prototype .phone .list-columns { display:block; margin-top:12px; }
+  #bp-editorial-prototype .phone .list-columns h2 { margin-top:18px; }
+  #bp-editorial-prototype .phone .meeting-date { font-size:25px; }
+  #bp-editorial-prototype .phone .wish-line h2 { font-size:14px; }
+  #bp-editorial-prototype .phone-journal .mobile-text .primary { display:none; }
+  #bp-editorial-prototype .phone-write { padding:9px 15px 8px; border-top:1px solid var(--p-line); background:var(--p-paper); }
+  #bp-editorial-prototype .phone-write .primary { width:100%; }
+  #bp-editorial-prototype .editor { position:absolute; inset:0; z-index:4; background:var(--p-paper); padding:24px 29px; }
+  #bp-editorial-prototype .editor h2 { font-size:28px; margin:20px 0 6px; }
+  #bp-editorial-prototype .editor p { font-size:11px; color:var(--p-muted); }
+  #bp-editorial-prototype .editor textarea { display:block; width:100%; min-height:270px; resize:vertical; margin:20px 0; padding:15px; border:1px solid var(--p-line); border-radius:8px; background:var(--p-paper); color:var(--p-ink); font-size:14px; line-height:1.7; }
+  #bp-editorial-prototype .phone .editor { padding:20px 17px; }
+  #bp-editorial-prototype .phone .editor textarea { min-height:370px; }
+  @media (max-width:990px) { #bp-editorial-prototype .stage { flex-direction:column; align-items:center; } }
+  @media (max-width:710px) { #bp-editorial-prototype .desktop { display:none; } #bp-editorial-prototype .stage { min-height:710px; } }
+</style>
+<div id="bp-editorial-prototype">
+  <div class="stage">
+    <div class="desktop" aria-label="Between Pages 桌面首页原型">
+      <header class="topbar"><div class="wordmark"><span class="mark">✦</span>Between Pages</div><nav class="nav" aria-label="主导航"><button type="button" data-go="journal">日记</button><button type="button" data-go="wishes">心愿<span class="dot"></span></button><button type="button" data-go="meeting">见面</button><button type="button" data-go="clocks">两地时间</button></nav></header>
+      <section class="view" data-screen="journal"><div class="hero"><div><span class="eyebrow">FRIDAY · OCTOBER 30</span><h1 class="serif">今天也有一页，<br>留给我们。</h1></div><span class="small-note">不必同时在线，<br>也能在这里接着写。</span></div><button class="time-ribbon" type="button" data-go="clocks"><span class="moon">◐</span><span class="time-copy"><strong>TA 那边 12:30 · 白天 · 英国时间</strong><small data-meeting-line>下次见面：大概 2027 年 3 月</small></span><span class="arrow">↗</span></button><div class="journal-layout"><div class="journal-copy"><span class="eyebrow">OUR JOURNAL / 2026</span><div class="date-number serif">10.30</div><div class="author other"><i></i>TA 留下的新文字</div><p>我这里刚下过雨。等你醒来，想给你讲讲路上遇见的那只猫。</p><div class="author"><i></i>我写下的</div><p>今天的风终于凉了下来。路过面包店时，想起你说过喜欢橙皮的味道。</p><button class="text-link" type="button" data-go="write">继续写这一天　→</button></div><div class="picture-wrap"><div class="scene" role="img" aria-label="暖色街道插画"><span class="sun"></span><span class="hill"></span><span class="home-a"></span><span class="home-b"></span><span class="roof"></span><span class="window-a"></span><span class="window-b"></span><span class="plant"></span></div><div class="picture-caption"><span>这一天的插画</span><span>↗</span></div></div></div><div class="page-bottom"><div class="days"><button type="button"><b>27</b>周二</button><button type="button"><b>28</b>周三</button><button type="button"><b>29</b>周四</button><button class="current" type="button"><b>30</b>今天</button></div><button class="primary" type="button" data-go="write">写下今天　↗</button></div></section>
+      <section class="view" data-screen="clocks" hidden><button class="back" type="button" data-go="journal">← 返回日记</button><div class="eyebrow" style="margin-top:22px">BETWEEN OUR HOURS</div><h1 class="section-title serif">此刻，两边的时间。</h1><p class="section-lead">时区随各自设备更新；作息是平时的安排，所以这里只估算什么时候两个人都醒着。</p><div class="clock-pair"><div class="clock-side"><span class="eyebrow">你这边 · 中国标准时间</span><div class="clock-face">20:30</div><p>夜里 · 你的今天</p></div><div class="clock-side"><span class="eyebrow">TA 那边 · 英国时间</span><div class="clock-face">12:30</div><p>白天 · TA 的今天</p></div></div><div class="overlap"><span class="eyebrow">A QUIET WINDOW</span><h2 class="serif">今天，你们都醒着的时间</h2><p>用两个人各自的当地时间表示；这不是在线状态。</p><div class="overlap-result"><strong data-overlap-own>你 16:00–23:00</strong><span data-overlap-partner>TA 08:00–15:00</span></div><div class="time-track" aria-label="今天两人共同清醒时段"><span class="awake" data-track></span></div><div class="track-labels"><span>你 00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div><div class="schedule-row"><span>你平时 <span data-own-sleep>23:00–07:00</span> 睡 · <button type="button" data-edit-sleep>调整我的作息</button></span><span>TA 平时 00:00–08:00 睡</span></div><div class="schedule-editor" hidden><label>入睡<select data-sleep-start></select></label><label>起床<select data-sleep-end></select></label><button type="button" data-save-sleep>保存示例作息</button></div></div></section>
+      <section class="view simple-section" data-screen="meeting" hidden><span class="eyebrow">THE NEXT TIME TOGETHER</span><h1 class="section-title serif">下一次见面</h1><p class="section-lead">日期还没定下来，也可以先把想一起做的事写在这里。</p><div class="meeting-intro"><div class="meeting-date">大概 2027 年 3 月</div><div class="meeting-note">日期确定后，这里会显示倒数。<br>见面日历留在见面页。</div></div><div class="list-columns"><div><h2 class="serif">要准备的</h2><label><input type="checkbox">确认假期</label><label><input type="checkbox">看看车票</label></div><div><h2 class="serif">想一起做的</h2><label><input type="checkbox">去海边散步</label><label><input type="checkbox">吃那家说过很多次的店</label></div></div></section>
+      <section class="view simple-section" data-screen="wishes" hidden><span class="eyebrow">THINGS WE REMEMBER</span><h1 class="section-title serif">心愿与小小惊喜</h1><p class="section-lead">心愿可以被两个人看见；准备礼物时的备注和卡片，只留给准备的人。</p><div class="wish-line"><div><h2 class="serif">一本可以带去旅行的素描本</h2><p>TA 的心愿 · 新加入</p></div><span class="hearts">♥ ♥ ♥ ♥</span></div><div class="wish-line"><div><h2 class="serif">橙皮味的香氛蜡烛</h2><p>我的心愿 · 附有参考链接</p></div><span class="hearts">♥ ♥ ♥</span></div><div class="private-note">✦　悄悄准备的礼物只在自己的页面出现，不会让对方看到提示或未读圆点。</div></section>
+      <div class="editor" data-editor hidden><button class="back" type="button" data-close-editor>← 返回</button><div class="eyebrow" style="margin-top:25px">OCTOBER 30 · MY WORDS</div><h2 class="serif">写下今天</h2><p>这里仅演示输入体验；原型中的文字不会保存。</p><textarea aria-label="演示日记输入" placeholder="从一件小事写起……"></textarea><button class="secondary" type="button" data-close-editor>返回日记</button></div>
+    </div>
+    <div class="phone" aria-label="Between Pages 手机首页原型"><header class="topbar"><div class="wordmark"><span class="mark">✦</span>Between Pages</div><span class="profile">我</span></header>
+      <section class="view phone-journal" data-screen="journal"><div class="hero"><div><span class="eyebrow">FRIDAY · OCTOBER 30</span><h1 class="serif">今天也有一页，<br>留给我们。</h1></div></div><button class="time-ribbon" type="button" data-go="clocks"><span class="moon">◐</span><span class="time-copy"><strong>TA 那边 12:30 · 白天</strong><small data-meeting-line>下次见面：大概 2027 年 3 月</small></span><span class="arrow">↗</span></button><div class="scene" role="img" aria-label="暖色街道插画"><span class="sun"></span><span class="hill"></span><span class="home-a"></span><span class="home-b"></span><span class="roof"></span><span class="window-a"></span><span class="window-b"></span><span class="plant"></span></div><div class="picture-caption"><span>这一天的插画</span><span>10.30</span></div><div class="mobile-text"><div class="author other"><i></i>TA 留下的新文字</div><p>我这里刚下过雨。等你醒来，想给你讲讲路上遇见的那只猫。</p><div class="author"><i></i>我写下的</div><p>路过面包店时，想起你喜欢橙皮的味道。</p><button class="primary" type="button" data-go="write">写下今天　↗</button></div></section>
+      <section class="view" data-screen="clocks" hidden><button class="back" type="button" data-go="journal">← 返回日记</button><div class="eyebrow" style="margin-top:12px">BETWEEN OUR HOURS</div><h1 class="section-title serif">此刻，两边的时间。</h1><p class="section-lead">按平时作息估算，不代表谁正在在线。</p><div class="clock-pair"><div class="clock-side"><span class="eyebrow">你这边</span><div class="clock-face">20:30</div><p>中国标准时间</p></div><div class="clock-side"><span class="eyebrow">TA 那边</span><div class="clock-face">12:30</div><p>英国时间</p></div></div><div class="overlap"><span class="eyebrow">A QUIET WINDOW</span><h2 class="serif">今天都醒着的时间</h2><div class="overlap-result"><strong data-overlap-own>你 16:00–23:00</strong><span data-overlap-partner>TA 08:00–15:00</span></div><div class="time-track" aria-label="今天两人共同清醒时段"><span class="awake" data-track></span></div><div class="track-labels"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div><div class="schedule-row"><span>你 <span data-own-sleep>23:00–07:00</span> 睡 · <button type="button" data-edit-sleep>调整</button></span><span>TA 00:00–08:00 睡</span></div><div class="schedule-editor" hidden><label>入睡<select data-sleep-start></select></label><label>起床<select data-sleep-end></select></label><button type="button" data-save-sleep>保存示例</button></div></div></section>
+      <section class="view simple-section" data-screen="meeting" hidden><span class="eyebrow">THE NEXT TIME TOGETHER</span><h1 class="section-title serif">下一次见面</h1><p class="section-lead">日期没定，也能先记下想一起做的事。</p><div class="meeting-date">大概 2027 年 3 月</div><div class="list-columns"><div><h2 class="serif">要准备的</h2><label><input type="checkbox">确认假期</label><label><input type="checkbox">看看车票</label></div><div><h2 class="serif">想一起做的</h2><label><input type="checkbox">去海边散步</label><label><input type="checkbox">一起去吃那家店</label></div></div></section>
+      <section class="view simple-section" data-screen="wishes" hidden><span class="eyebrow">THINGS WE REMEMBER</span><h1 class="section-title serif">心愿与小小惊喜</h1><p class="section-lead">记住对方想要的东西，也保留准备礼物时的秘密。</p><div class="wish-line"><div><h2 class="serif">旅行素描本</h2><p>TA 的心愿 · 新加入</p></div><span class="hearts">♥ ♥ ♥ ♥</span></div><div class="wish-line"><div><h2 class="serif">橙皮味蜡烛</h2><p>我的心愿</p></div><span class="hearts">♥ ♥ ♥</span></div><div class="private-note">准备中的礼物只给准备的人看。</div></section>
+      <div class="editor" data-editor hidden><button class="back" type="button" data-close-editor>← 返回</button><div class="eyebrow" style="margin-top:25px">OCTOBER 30 · MY WORDS</div><h2 class="serif">写下今天</h2><p>演示输入，文字不会保存。</p><textarea aria-label="演示日记输入" placeholder="从一件小事写起……"></textarea><button class="secondary" type="button" data-close-editor>返回日记</button></div>
+      <div class="phone-write" data-phone-write><button class="primary" type="button" data-go="write">写下今天　↗</button></div><nav class="phone-nav" aria-label="手机主导航"><button type="button" data-go="journal">日记</button><button type="button" data-go="wishes">心愿</button><button type="button" data-go="meeting">见面</button><button type="button" data-go="clocks">时间</button></nav>
+    </div>
+  </div>
+</div>
+<script>
+  const protoRoot = document.getElementById('bp-editorial-prototype');
+  const protoState = { screen:'journal', editing:false, sleepStart:1380, sleepEnd:420, showMeeting:true };
+  const pad2 = n => String(n).padStart(2,'0');
+  const fmt = n => `${pad2(Math.floor(n/60)%24)}:${pad2(n%60)}`;
+  const asleep = (minute,start,end) => start<end ? minute>=start&&minute<end : minute>=start||minute<end;
+  function windows() { const result=[]; let from=-1; for(let t=0;t<=1440;t+=15) { const own=t<1440&&!asleep(t,protoState.sleepStart,protoState.sleepEnd); const partner=t<1440&&!asleep((t-480+1440)%1440,0,480); const yes=own&&partner; if(yes&&from<0) from=t; if(!yes&&from>=0) { result.push([from,t]); from=-1; } } return result; }
+  function renderProto() {
+    protoRoot.querySelectorAll('[data-screen]').forEach(el=>{ el.hidden=el.dataset.screen!==protoState.screen; });
+    protoRoot.querySelectorAll('[data-go]').forEach(el=>{ el.classList.toggle('active',el.dataset.go===protoState.screen); });
+    protoRoot.querySelectorAll('[data-editor]').forEach(el=>{ el.hidden=!protoState.editing; });
+    protoRoot.querySelectorAll('[data-own-sleep]').forEach(el=>{ el.textContent=`${fmt(protoState.sleepStart)}–${fmt(protoState.sleepEnd)}`; });
+    const spans=windows();
+    const own=spans.length?spans.map(([a,b])=>`${fmt(a)}–${b===1440?'24:00':fmt(b)}`).join('、'):'今天没有重叠时段';
+    const partner=spans.length?spans.map(([a,b])=>`${fmt((a-480+1440)%1440)}–${fmt((b-480+1440)%1440)}`).join('、'):'';
+    protoRoot.querySelectorAll('[data-overlap-own]').forEach(el=>{ el.textContent=spans.length?`你 ${own}`:own; });
+    protoRoot.querySelectorAll('[data-overlap-partner]').forEach(el=>{ el.textContent=spans.length?`TA ${partner}`:''; });
+    protoRoot.querySelectorAll('.time-track').forEach(bar=>{ bar.replaceChildren(...spans.map(([a,b])=>{ const mark=document.createElement('span'); mark.className='awake'; mark.style.left=`${a/1440*100}%`; mark.style.width=`${(b-a)/1440*100}%`; return mark; })); });
+    protoRoot.querySelectorAll('[data-meeting-line]').forEach(el=>{ el.hidden=!protoState.showMeeting; });
+    protoRoot.querySelectorAll('[data-phone-write]').forEach(el=>{ el.hidden=protoState.screen!=='journal'||protoState.editing; });
+  }
+  const options=Array.from({length:96},(_,i)=>i*15);
+  protoRoot.querySelectorAll('[data-sleep-start],[data-sleep-end]').forEach(select=>{ select.innerHTML=options.map(n=>`<option value="${n}">${fmt(n)}</option>`).join(''); select.value=String(select.hasAttribute('data-sleep-start')?protoState.sleepStart:protoState.sleepEnd); });
+  protoRoot.addEventListener('click',event=>{
+    const go=event.target.closest('[data-go]');
+    if(go){ if(go.dataset.go==='write'){protoState.editing=true;} else {protoState.screen=go.dataset.go;protoState.editing=false;} renderProto(); return; }
+    if(event.target.closest('[data-close-editor]')) { protoState.editing=false; renderProto(); return; }
+    const edit=event.target.closest('[data-edit-sleep]');
+    if(edit){ edit.closest('.overlap').querySelector('.schedule-editor').hidden=false; return; }
+    const save=event.target.closest('[data-save-sleep]');
+    if(save){ const form=save.closest('.schedule-editor'); const start=Number(form.querySelector('[data-sleep-start]').value); const end=Number(form.querySelector('[data-sleep-end]').value); if(start!==end){protoState.sleepStart=start;protoState.sleepEnd=end; protoRoot.querySelectorAll('[data-sleep-start]').forEach(s=>s.value=String(start)); protoRoot.querySelectorAll('[data-sleep-end]').forEach(s=>s.value=String(end)); protoRoot.querySelectorAll('.schedule-editor').forEach(f=>f.hidden=true); renderProto();} }
+  });
+  renderProto();
+  if(globalThis.Tweak){ const tweak=new Tweak({container:protoRoot,onChange:renderProto}); tweak.addToggle(protoState,'showMeeting',{label:'显示下次见面信息'}); }
+</script>
