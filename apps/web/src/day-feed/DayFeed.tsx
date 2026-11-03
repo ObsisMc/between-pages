@@ -423,7 +423,7 @@ export function DayFeed({
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-3" aria-label="所有日记">
       <form
-        className="flex flex-wrap items-center gap-2 text-sm text-ink-soft"
+        className="mx-auto flex w-full max-w-(--measure) flex-wrap items-center gap-2 text-sm text-ink-soft px-(--measure-pad)"
         onSubmit={(event) => {
           event.preventDefault();
           if (!jumpDate) return;
@@ -453,7 +453,7 @@ export function DayFeed({
         {/* The feed keeps the reading position itself (D8, `anchor.ts`); the bottom padding
             keeps the last line and action clear of the ↓ button. */}
         <div
-          className="day-feed-scroll min-h-0 flex-1 overflow-y-auto pb-14 [overflow-anchor:none]"
+          className="day-feed-scroll scroll-quiet min-h-0 flex-1 overflow-y-auto pb-14 [overflow-anchor:none]"
           ref={scroller}
           onScroll={() => {
             if (scroller.current) anchor.current = captureAnchor(scroller.current);
@@ -464,56 +464,60 @@ export function DayFeed({
           onKeyDown={stopPending}
           onPointerDown={stopPending}
         >
-          {busy && <p className="py-3 text-sm text-ink-soft">正在读取…</p>}
-          {feedWindow?.nextAfter && (
-            // Below the ↑ button.
-            <div className="pt-14 pb-3 text-center" data-edge="newer">
-              <EdgeButton busy={loading} end="newer" onLoad={newer}>
-                加载更新的日记
-              </EdgeButton>
-            </div>
-          )}
-          {entries?.map((entry) => (
-            <DateSection
-              key={entry.date}
-              entry={entry}
-              me={me}
-              partner={partner}
-              near={nearDate(entry.date)}
-              listTrusted={!failure}
-              authorClass={authorClass}
-              clip={clip}
-              onOpen={onOpen && open}
-            />
-          ))}
-          {entries?.length === 0 && (
-            <p className="py-3 text-ink-soft">还没有日记，从今天开始写吧</p>
-          )}
-          {feedWindow?.nextBefore ? (
-            <div className="py-3 text-center" data-edge="older">
-              <EdgeButton busy={loading} end="older" onLoad={older}>
-                加载更早的日记
-              </EdgeButton>
-            </div>
-          ) : (
-            !!entries?.length && (
-              <p className="py-3 text-center text-sm text-ink-soft">已经是最早的一天</p>
-            )
-          )}
-          {failure && (
-            <div className="flex items-center gap-3 rounded-xl bg-notice px-4 py-3">
-              <p role="alert" className="flex-1">
-                {failureText[failure.kind]}
-              </p>
-              <button
-                type="button"
-                className="h-9 min-h-0 rounded-lg border border-line bg-transparent px-3 text-sm text-ink hover:bg-paper"
-                onClick={failure.retry}
-              >
-                重试
-              </button>
-            </div>
-          )}
+          {/* The box spans its area, so its scrollbar keeps away from the text; the text
+              keeps the page's reading width (`--measure`, none when unset). */}
+          <div className="mx-auto w-full max-w-(--measure) px-(--measure-pad)">
+            {busy && <p className="py-3 text-sm text-ink-soft">正在读取…</p>}
+            {feedWindow?.nextAfter && (
+              // Below the ↑ button.
+              <div className="pt-14 pb-3 text-center" data-edge="newer">
+                <EdgeButton busy={loading} end="newer" onLoad={newer}>
+                  加载更新的日记
+                </EdgeButton>
+              </div>
+            )}
+            {entries?.map((entry) => (
+              <DateSection
+                key={entry.date}
+                entry={entry}
+                me={me}
+                partner={partner}
+                near={nearDate(entry.date)}
+                listTrusted={!failure}
+                authorClass={authorClass}
+                clip={clip}
+                onOpen={onOpen && open}
+              />
+            ))}
+            {entries?.length === 0 && (
+              <p className="py-3 text-ink-soft">还没有日记，从今天开始写吧</p>
+            )}
+            {feedWindow?.nextBefore ? (
+              <div className="py-3 text-center" data-edge="older">
+                <EdgeButton busy={loading} end="older" onLoad={older}>
+                  加载更早的日记
+                </EdgeButton>
+              </div>
+            ) : (
+              !!entries?.length && (
+                <p className="py-3 text-center text-sm text-ink-soft">已经是最早的一天</p>
+              )
+            )}
+            {failure && (
+              <div className="flex items-center gap-3 rounded-xl bg-notice px-4 py-3">
+                <p role="alert" className="flex-1">
+                  {failureText[failure.kind]}
+                </p>
+                <button
+                  type="button"
+                  className="h-9 min-h-0 rounded-lg border border-line bg-transparent px-3 text-sm text-ink hover:bg-paper"
+                  onClick={failure.retry}
+                >
+                  重试
+                </button>
+              </div>
+            )}
+          </div>
         </div>
         {(['newer', 'older'] as const).map(
           (direction) =>

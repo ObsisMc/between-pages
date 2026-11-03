@@ -72,3 +72,32 @@
   --font-serif: var(--font-title);
   --font-sans: var(--font-body);
 }
+
+/* A quiet scrollbar for the boxes that scroll inside a page (the diary page's index, feed
+   and day): a thin rounded thumb in the soft ink, no track and no arrow buttons. Chromium
+   and WebKit take the pseudo-elements; Firefox, which has none, the standard properties. */
+@utility scroll-quiet {
+  &::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  &::-webkit-scrollbar-track,
+  &::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-button {
+    display: none;
+  }
+  &::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--ink-soft) 30%, transparent) padding-box;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in srgb, var(--ink-soft) 55%, transparent);
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--ink-soft) 35%, transparent) transparent;
+  }
+}
