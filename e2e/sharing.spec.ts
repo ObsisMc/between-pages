@@ -8,6 +8,15 @@ import * as Y from 'yjs';
 // IndexedDB; B is the partner. Failures are made at A1's socket; everything behind is real.
 const run = Date.now().toString(36);
 
+/** The space page is under the site header's 「设置」 (digital-paper-interface D1). */
+async function openSpace(page: Page) {
+  await page
+    .getByRole('navigation', { name: '主要' })
+    .getByRole('button', { name: /^设置/ })
+    .click();
+  await page.getByRole('menuitem', { name: '双人空间' }).click();
+}
+
 // Contexts opened with browser.newContext() outlive the test on the worker's browser, and
 // their pages keep polling into every later test; each test closes the ones it opened.
 test.afterEach(async ({ browser }) => {
@@ -138,7 +147,7 @@ test('K8 K7 opening while another device is offline: committed input stays text,
 
   // A2 opens the range from the space page without waiting for A1.
   await a2.goto('/');
-  await a2.getByRole('link', { name: `与 ${name('b')} 的空间` }).click();
+  await openSpace(a2);
   await a2.getByLabel('全部历史与以后的日期').check();
   await a2.getByRole('button', { name: '保存范围' }).click();
   await expect(a2.getByText(/^将开放：全部历史与以后。/)).toBeVisible();
@@ -239,7 +248,7 @@ test('EDIT-13 EDIT-14 TIME-03 K11 the partner reads and writes a shared diary in
 
   // A stops sharing: B keeps the frozen text read-only and hears nothing private after it.
   await a.goto('/');
-  await a.getByRole('link', { name: `与 ${name('pb')} 的空间` }).click();
+  await openSpace(a);
   await a.getByLabel('自选日期').check();
   await a.getByRole('button', { name: '保存范围' }).click();
   await expect(a.getByText(/^将停止更新：/)).toBeVisible();

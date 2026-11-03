@@ -23,11 +23,12 @@ async function signedIn(browser: Browser, name: string): Promise<Page> {
 }
 
 /** The space features are listed under 「一起」 in the site header (digital-paper-interface D1). */
+const together = (page: Page) =>
+  page.getByRole('navigation', { name: '主要' }).getByRole('button', { name: /^一起/ });
+
 async function openContents(page: Page) {
-  const together = page
-    .getByRole('navigation', { name: '主要' })
-    .getByRole('button', { name: /^一起/ });
-  if ((await together.getAttribute('aria-expanded')) !== 'true') await together.click();
+  await expect(together(page)).toBeVisible();
+  if ((await together(page).getAttribute('aria-expanded')) !== 'true') await together(page).click();
   await expect(page.getByRole('menu')).toBeVisible();
 }
 
@@ -42,9 +43,12 @@ test('[adr:wishes-and-gifts#2] [adr:wishes-and-gifts#4] [adr:wishes-and-gifts#5]
   test.setTimeout(60_000);
   const name = (who: string) => `${who}${browserName}${run}wish`;
   const a = await signedIn(browser, name('a'));
-  // Never bound: no space features at all.
-  await openContents(a);
-  await expect(entry(a)).toHaveCount(0);
+  // Without a space the header has no 「一起」, so nothing lists the space features.
+  await expect(a.getByRole('button', { name: '生成邀请链接' })).toBeVisible();
+  await expect(
+    a.getByRole('navigation', { name: '主要' }).getByRole('button', { name: /^设置/ }),
+  ).toBeVisible();
+  await expect(together(a)).toHaveCount(0);
   await a.keyboard.press('Escape');
   await a.getByRole('button', { name: '生成邀请链接' }).click();
   const link = await a.getByLabel('邀请链接').inputValue();
