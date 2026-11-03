@@ -128,11 +128,7 @@ export function HomePage() {
         <RecentDays me={self} partner={partner} />
         <div className="space-y-10">
           <HomeClocks />
-          {!bound && (
-            <div className="legacy">
-              <RelationshipPanel userId={user.id} />
-            </div>
-          )}
+          {!bound && <RelationshipPanel userId={user.id} />}
         </div>
       </div>
     </main>

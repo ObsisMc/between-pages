@@ -55,7 +55,7 @@ function RowEditor({
   onRemove: () => void;
 }) {
   return (
-    <fieldset className="grid gap-3 rounded-xl border border-line px-4 pt-2 pb-4 sm:grid-cols-2">
+    <fieldset className="grid gap-3 rounded-xl border border-line px-4 pt-2 pb-4 @md:grid-cols-2">
       <legend className="px-1 text-sm text-ink-soft">{label}</legend>
       <div className="grid gap-2">
         <Label>
@@ -152,7 +152,7 @@ export function RangeEditor({
   };
 
   return (
-    <div className="grid gap-4 font-sans text-ink">
+    <div className="@container grid gap-4 font-sans text-ink">
       <div role="radiogroup" aria-label="共享日期" className="grid gap-2">
         <CheckboxLabel>
           <input type="radio" checked={mode === 'all'} onChange={() => update({ mode: 'all' })} />

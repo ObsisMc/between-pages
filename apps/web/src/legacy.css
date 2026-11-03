@@ -40,11 +40,6 @@ h1 {
   margin: 0;
 }
 
-.tagline {
-  color: var(--ink-soft);
-  margin: 0.25rem 0 2.5rem;
-}
-
 button {
   font: inherit;
   min-height: 2.75rem;
@@ -72,29 +67,6 @@ button.primary {
   background: var(--notice);
   border-radius: 0.75rem;
   padding: 0.75rem 1rem;
-}
-
-.dev-login {
-  margin-top: 2.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px dashed var(--line);
-  display: grid;
-  gap: 0.5rem;
-}
-
-.dev-login label {
-  color: var(--ink-soft);
-  font-size: 0.875rem;
-}
-
-.dev-login input {
-  font: inherit;
-  min-height: 2.75rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.75rem;
-  border: 1px solid var(--line);
-  background: transparent;
-  color: var(--ink);
 }
 
 .status {
@@ -258,38 +230,6 @@ button.primary {
 .list-note {
   color: var(--ink-soft);
   font-size: 0.875rem;
-}
-
-/* Relationship and sharing range (spaces-and-invitations D12). */
-.relationship {
-  margin-top: 2rem;
-  border-top: 1px dashed var(--line);
-  padding-top: 1.25rem;
-}
-
-.relationship h2,
-.relationship h3 {
-  font-family: var(--font-title);
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin: 0 0 0.75rem;
-}
-
-.relationship-note,
-.range-help {
-  color: var(--ink-soft);
-  font-size: 0.875rem;
-}
-
-.invitation input[readonly] {
-  width: 100%;
-  font: inherit;
-  padding: 0.5rem;
-  border: 1px solid var(--line);
-  border-radius: 0.5rem;
-  background: transparent;
-  color: var(--ink);
-  margin-bottom: 0.5rem;
 }
 
 .author-slot-1 {

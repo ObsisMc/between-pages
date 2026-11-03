@@ -6,6 +6,8 @@ import { callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
 import { isFinalRefusal, refreshRelationships, refusalText } from '../relationship/index.ts';
 import { ALL_DAYS, RangeEditor, type RangeChoice } from '../sharing-range/index.ts';
+import { Button } from '../ui/index.ts';
+import { WelcomeLayout } from '../windows/index.ts';
 import {
   canKeepAcrossLogin,
   clearPendingInvite,
@@ -75,19 +77,22 @@ export function JoinPage() {
     };
   }, [signedIn, token, attempt]);
 
-  if (me.isPending) return <p className="status">正在打开…</p>;
+  if (me.isPending) return <p className="px-5 py-16 text-center text-ink-soft">正在打开…</p>;
   if (me.signedOut)
     return (
-      <main className="page join">
-        <h1>双人空间邀请</h1>
+      <WelcomeLayout>
+        <h1 className="font-serif text-3xl font-medium">双人空间邀请</h1>
         {token && canKeepAcrossLogin() ? (
-          <p>
-            登录后回到这条邀请。<Link to="/login">去登录</Link>
+          <p className="mt-4 text-ink-soft">
+            登录后回到这条邀请。
+            <Link to="/login" className="text-warm underline underline-offset-4">
+              去登录
+            </Link>
           </p>
         ) : (
-          <p>请先登录，再重新打开对方发来的链接。</p>
+          <p className="mt-4 text-ink-soft">请先登录，再重新打开对方发来的链接。</p>
         )}
-      </main>
+      </WelcomeLayout>
     );
 
   const accept = async () => {
@@ -117,56 +122,62 @@ export function JoinPage() {
   };
 
   return (
-    <main className="page join">
-      <h1>双人空间邀请</h1>
-      {!token && !error && <p>没有可用的邀请链接。</p>}
+    <WelcomeLayout>
+      <h1 className="font-serif text-3xl font-medium">双人空间邀请</h1>
+      {!token && !error && <p className="mt-4 text-ink-soft">没有可用的邀请链接。</p>}
       {preview && token && (
-        <>
-          <p>
-            当前账号：<strong>{me.data?.user.displayName}</strong>
-          </p>
-          <p>
-            邀请者：<strong>{preview.inviter.displayName}</strong>
-          </p>
-          <p>
+        <div className="mt-5 grid gap-4">
+          <div className="grid gap-1 border-y border-line py-4 text-sm">
+            <p>
+              当前账号：<strong className="font-medium">{me.data?.user.displayName}</strong>
+            </p>
+            <p>
+              邀请者：<strong className="font-medium">{preview.inviter.displayName}</strong>
+            </p>
+          </div>
+          <p className="leading-relaxed">
             {preview.mode === 'restore'
               ? `接受后恢复你和 ${preview.inviter.displayName} 原来的双人空间。`
               : '接受后你们将建立双人空间。首版绑定后搭档固定，不支持更换或纠正，请先核对两边的账号。'}
           </p>
-          <p className="range-help">
+          <p className="text-sm leading-relaxed text-ink-soft">
             邀请 {timeText.format(new Date(preview.expiresAt))} 前有效。选择你以后愿意共享的日期，
             对方看不到这个设置；接受后，你选择的日期里的日记会共享给对方并持续更新。
           </p>
           <RangeEditor initial={ALL_DAYS} allowUnset onChange={setChoice} />
-          <button
+          <Button
             type="button"
-            className="primary"
+            className="w-full"
             disabled={busy || choice.kind === 'invalid'}
             onClick={() => void accept()}
           >
             接受邀请
-          </button>
-        </>
+          </Button>
+        </div>
       )}
       {error && (
-        <p className="notice" role="alert">
+        <p className="mt-4 rounded-xl bg-notice px-4 py-3 text-sm" role="alert">
           {error}
         </p>
       )}
       {error && token && !preview && (
-        <button
+        <Button
           type="button"
+          variant="outline"
+          className="mt-3"
           onClick={() => {
             setError(null);
             setAttempt((n) => n + 1);
           }}
         >
           重试
-        </button>
+        </Button>
       )}
-      <p>
-        <Link to="/">回到首页</Link>
+      <p className="mt-5 text-sm">
+        <Link to="/" className="text-ink-soft underline underline-offset-4 hover:text-ink">
+          回到首页
+        </Link>
       </p>
-    </main>
+    </WelcomeLayout>
   );
 }
