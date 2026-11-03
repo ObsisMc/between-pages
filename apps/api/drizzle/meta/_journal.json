@@ -71,6 +71,13 @@
       "when": 1793340621575,
       "tag": "0009_anniversaries",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793725192082,
+      "tag": "0010_mascot_pokes",
+      "breakpoints": true
     }
   ]
 }

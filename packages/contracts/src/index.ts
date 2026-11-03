@@ -21,6 +21,7 @@ export {
   SaveSleepRequest,
   SleepSchedule,
 } from './clocks.ts';
+export { PokeKind, PokesResponse, SeenPokesRequest, SendPokeRequest } from './pokes.ts';
 export { UserSummary } from './users.ts';
 export type {
   BodyOf,

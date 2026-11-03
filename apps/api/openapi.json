@@ -1108,6 +1108,85 @@
         ],
         "additionalProperties": false
       },
+      "PokeKindInput": {
+        "type": "string",
+        "enum": [
+          "poke",
+          "pet"
+        ]
+      },
+      "SendPokeRequestInput": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/PokeKindInput"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "additionalProperties": false
+      },
+      "SeenPokesRequestInput": {
+        "type": "object",
+        "properties": {
+          "pokes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "pets": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000
+          }
+        },
+        "required": [
+          "pokes",
+          "pets"
+        ],
+        "additionalProperties": false
+      },
+      "PokesResponseInput": {
+        "type": "object",
+        "properties": {
+          "received": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "pokes": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "pets": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "lastAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  }
+                },
+                "required": [
+                  "pokes",
+                  "pets",
+                  "lastAt"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "received"
+        ]
+      },
       "OwnDayInput": {
         "type": "object",
         "properties": {
@@ -4611,6 +4690,87 @@
         },
         "required": [
           "sleep"
+        ],
+        "additionalProperties": false
+      },
+      "PokeKind": {
+        "type": "string",
+        "enum": [
+          "poke",
+          "pet"
+        ]
+      },
+      "SendPokeRequest": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/PokeKind"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "additionalProperties": false
+      },
+      "SeenPokesRequest": {
+        "type": "object",
+        "properties": {
+          "pokes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "pets": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000
+          }
+        },
+        "required": [
+          "pokes",
+          "pets"
+        ],
+        "additionalProperties": false
+      },
+      "PokesResponse": {
+        "type": "object",
+        "properties": {
+          "received": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "pokes": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "pets": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "lastAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  }
+                },
+                "required": [
+                  "pokes",
+                  "pets",
+                  "lastAt"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "received"
         ],
         "additionalProperties": false
       },
@@ -8211,6 +8371,105 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ClockSettings"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pokes": {
+      "get": {
+        "summary": "The partner's pokes and pets the caller has not seen yet, while the two are bound (window-mascots D4).",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PokesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Pokes or pets the current partner's mascot, counted at most once a second per kind; the answer is the caller's own waiting pokes.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendPokeRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PokesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pokes/seen": {
+      "post": {
+        "summary": "Takes the pokes and pets the caller has shown off what is waiting for them.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeenPokesRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PokesResponse"
                 }
               }
             }

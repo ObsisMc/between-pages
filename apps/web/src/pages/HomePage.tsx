@@ -7,7 +7,15 @@ import { useMe } from '../auth/me.ts';
 import { BackupBanner } from '../backup/index.ts';
 import { pendingInvite } from '../join/index.ts';
 import { RelationshipPanel, useBinding, useSpaces } from '../relationship/index.ts';
-import { browserZone, dayPeriod, HomeClocks, useClocks, useNow } from '../two-clocks/index.ts';
+import { usePokes, receivedText } from '../pokes/index.ts';
+import {
+  asleepAt,
+  browserZone,
+  dayPeriod,
+  HomeClocks,
+  useClocks,
+  useNow,
+} from '../two-clocks/index.ts';
 import { Button } from '../ui/index.ts';
 import { PairedWindows } from '../windows/index.ts';
 import { RecentDays, type HomePerson } from './RecentDays.tsx';
@@ -31,6 +39,9 @@ const dateLine = (now: number) => {
   ) as Record<'year' | 'month' | 'day' | 'weekday', string>;
   return `${part.year} 年 ${part.month} 月 ${part.day} 日 · ${part.weekday}`;
 };
+
+const timeOf = (iso: string) =>
+  new Date(iso).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 
 const greeting = (hour: number) =>
   hour >= 5 && hour < 11
@@ -56,6 +67,16 @@ export function HomePage() {
     queryFn: () => callApi('nextUnread', { query: {} }),
   });
 
+  const bound = !!binding.data?.binding;
+  const partnerClock = clocks.data?.partner;
+  // The partner's sky only while bound, from the zone their browser reported (null: unknown).
+  const partnerZone = partnerClock?.timezone ?? null;
+  // Their mascot sleeps inside their usual sleep, as "大概在睡" says, never from whether they
+  // are online (window-mascots D6).
+  const partnerAsleep =
+    !!partnerZone && !!partnerClock?.sleep && asleepAt(now, partnerZone, partnerClock.sleep);
+  const pokes = usePokes(bound, partnerAsleep);
+
   // Login always lands here; an invitation opened before signing in continues at /join.
   useEffect(() => {
     if (pendingInvite()) void navigate('/join', { replace: true });
@@ -63,7 +84,6 @@ export function HomePage() {
 
   if (!me.data) return null;
   const user = me.data.user;
-  const bound = !!binding.data?.binding;
   // One fixed partner in the first release: the current space, else the archived one.
   const space = binding.data?.binding?.space ?? spaces.data?.spaces[0];
   const slotOf = (id: string) => space?.participants.find((p) => p.user.id === id)?.authorSlot;
@@ -73,8 +93,6 @@ export function HomePage() {
     name: partnerUser?.displayName ?? 'TA',
     tone: partnerUser ? (slotOf(partnerUser.id) ?? null) : null,
   };
-  // The partner's sky only while bound, from the zone their browser reported (null: unknown).
-  const partnerZone = clocks.data?.partner?.timezone ?? null;
   const unreadDate = unread.data?.date;
 
   return (
@@ -112,13 +130,33 @@ export function HomePage() {
         </div>
         <div className="mx-auto w-full max-w-md">
           <PairedWindows
-            left={{ tone: self.tone ?? 1, sky: dayPeriod(now, browserZone()) }}
+            left={{
+              tone: self.tone ?? 1,
+              sky: dayPeriod(now, browserZone()),
+              ...pokes.mine,
+              poke: { label: '戳戳或摸摸自己的团子', onPoke: pokes.pokeSelf, onPet: pokes.petSelf },
+            }}
             right={
               bound
-                ? { tone: partner.tone ?? 2, sky: partnerZone ? dayPeriod(now, partnerZone) : null }
+                ? {
+                    tone: partner.tone ?? 2,
+                    sky: partnerZone ? dayPeriod(now, partnerZone) : null,
+                    ...pokes.theirs,
+                    mood: pokes.theirs.mood ?? (partnerAsleep ? 'asleep' : 'idle'),
+                    poke: {
+                      label: `戳戳或摸摸${partner.name}`,
+                      onPoke: () => pokes.pokePartner(partner.name),
+                      onPet: () => pokes.petPartner(partner.name),
+                    },
+                  }
                 : { tone: partner.tone ?? 2, sky: null, empty: true }
             }
           />
+          {/* What the partner sent during this visit, added up (window-mascots D5). */}
+          <p role="status" className="mt-4 min-h-6 text-center text-sm text-ink-soft">
+            {pokes.received &&
+              `${partner.name} 在 ${timeOf(pokes.received.lastAt)} ${receivedText(pokes.received)}`}
+          </p>
         </div>
       </section>
 
