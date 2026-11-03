@@ -1,4 +1,4 @@
-import { useRef, useState, useSyncExternalStore, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type MouseEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router';
 import { CalendarDays, ChevronDown, PenLine } from 'lucide-react';
 import { ApiError, callApi } from '../api/client.ts';
@@ -65,6 +65,16 @@ export function DaysWorkspace() {
   const { people } = usePeople();
   const dayBox = useRef<HTMLDivElement>(null);
   const [picking, setPicking] = useState(false);
+  /**
+   * Set once a day is being opened from the feed's entry. The feed reports its place a moment
+   * after scrolling stops, by replacing the feed's entry; a report that comes after the day's
+   * entry was pushed, before the feed unmounts, would replace the day's entry with the feed's
+   * address instead, so it is dropped (the known limitation: the place before the last scroll).
+   */
+  const leaving = useRef(false);
+  useEffect(() => {
+    if (date === undefined) leaving.current = false;
+  }, [date, location.key]);
   if (date !== undefined && !DATE.test(date)) return <Navigate to="/days" replace />;
   if (!user) return null;
 
@@ -86,10 +96,12 @@ export function DaysWorkspace() {
       : { id: '', name: 'TA', slot: null };
 
   /** Opens a date's day; from the feed, the feed's entry is the one to go back to. */
-  const openDay = (to: string, edit = false) =>
+  const openDay = (to: string, edit = false) => {
+    if (!date) leaving.current = true;
     void navigate(`/days/${to}`, {
       state: { feed: state.feed, edit, ...(date ? {} : { back: true }) },
     });
+  };
   const choose = (to: string) => {
     setPicking(false);
     if (to !== date) openDay(to);
@@ -135,13 +147,15 @@ export function DaysWorkspace() {
       me={me}
       partner={partner}
       position={state.feed ?? null}
-      onPosition={(at) =>
+      onPosition={(at) => {
+        if (leaving.current) return;
         void navigate(here, {
           replace: true,
           state: { ...(location.state as object | null), feed: at, edit: false },
-        })
-      }
+        });
+      }}
       onOpen={(to, edit, at) => {
+        leaving.current = true;
         // The entry being left remembers the list as it is, for back.
         if (at) void navigate(here, { replace: true, state: { feed: at } });
         void navigate(`/days/${to}`, { state: { feed: at ?? state.feed, edit, back: true } });
