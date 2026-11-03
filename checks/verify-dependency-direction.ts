@@ -129,19 +129,23 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       pages: [
         'api',
         'auth',
+        'avatar',
         'backup',
-        'book',
         'join',
         'relationship',
         'shared-diaries',
         'space-common',
         'two-clocks',
+        'ui',
+        'windows',
       ],
       // book-frontend-workspace D1: the spread is layout only, until digital-paper-interface
       // replaces it.
       book: [],
       // digital-paper-interface 落地顺序 2: the shadcn components know no other module.
       ui: [],
+      // digital-paper-interface D4: the paired windows draw the mascots and know no data.
+      windows: ['avatar'],
       // digital-paper-interface D1: the site header and which pages it lists; the account menu
       // signs out and forgets a kept invitation.
       shell: ['ui', 'api', 'auth', 'avatar', 'join', 'relationship', 'space-common'],
