@@ -317,8 +317,8 @@ describe('a shared diary', () => {
       expect(editor.querySelector('.author-slot-2')?.textContent).toBe('鲍勃的字'),
     );
     const legend = screen.getByLabelText('作者');
-    expect(within(legend).getByText('alice').className).toBe('author-slot-1');
-    expect(within(legend).getByText('bob').className).toBe('author-slot-2');
+    expect(within(legend).getByText('alice').classList.contains('author-slot-1')).toBe(true);
+    expect(within(legend).getByText('bob').classList.contains('author-slot-2')).toBe(true);
     expect(FakeSocket.all.at(-1)?.sent[0]).toMatchObject({ type: 'subscribe', epochId: EPOCH });
 
     fireEvent.click(screen.getByLabelText('只看我的文字'));

@@ -4,8 +4,7 @@ import { X } from 'lucide-react';
 import { cn } from './cn.ts';
 
 // shadcn's dialog on the paper tokens: Radix gives it the focus trap, Escape, the outside
-// click and the focus back on the trigger; only the look is ours. The close button sets what
-// the old global `button` rule (legacy.css) sets, as `Button` does.
+// click and the focus back on the trigger; only the look is ours.
 export const Dialog = Primitive.Root;
 export const DialogTrigger = Primitive.Trigger;
 export const DialogClose = Primitive.Close;
@@ -28,7 +27,7 @@ export function DialogContent({
         {children}
         <Primitive.Close
           aria-label="关闭"
-          className="absolute top-4 right-4 min-h-0 cursor-pointer rounded-lg border-0 bg-transparent p-1 text-ink-soft outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-ring [&_svg]:size-4"
+          className="absolute top-4 right-4 cursor-pointer rounded-lg p-1 text-ink-soft outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-ring [&_svg]:size-4"
         >
           <X aria-hidden="true" />
         </Primitive.Close>

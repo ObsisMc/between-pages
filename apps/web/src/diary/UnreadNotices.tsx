@@ -1,3 +1,8 @@
+import { ArrowDown } from 'lucide-react';
+import { Button, cn } from '../ui/index.ts';
+
+const directionClass =
+  'unread-direction fixed left-1/2 z-20 -translate-x-1/2 rounded-full bg-notice px-3 py-1 text-sm text-ink shadow-sm';
 import type { Unread } from './session.ts';
 
 /**
@@ -20,31 +25,42 @@ export function UnreadNotices({
   const offer = !!unread && left > 0 && unread.atOpen > 0 && !jumped;
   return (
     <>
-      <p className={offer ? 'unread-banner' : 'unread-banner idle'} aria-hidden={!offer}>
+      {/* As tall as its button whether offered or idle, so the text below never moves. */}
+      <p
+        className="unread-banner my-2 flex min-h-11 items-center gap-1 text-sm"
+        aria-hidden={!offer}
+      >
         {offer && (
           <>
             有 {unread.atOpen} 处新内容 ·{' '}
-            <button type="button" className="link" onClick={() => onJump('first')}>
+            <Button
+              type="button"
+              variant="link"
+              className="text-warm underline"
+              onClick={() => onJump('first')}
+            >
               跳到第一处
-            </button>
+            </Button>
           </>
         )}
       </p>
       {left > 0 && (
-        <div className="unread-tools">
+        // Fixed to the window; the wide page places them over the day's box (workspace.css).
+        <div className="unread-tools fixed right-4 bottom-4 z-20">
           {unread?.above && (
-            <p className="unread-direction above" role="status">
+            <p className={cn(directionClass, 'above top-2')} role="status">
               ↑ 上面有新内容
             </p>
           )}
           {unread?.below && (
-            <p className="unread-direction below" role="status">
+            <p className={cn(directionClass, 'below bottom-2')} role="status">
               ↓ 下面有新内容
             </p>
           )}
-          <button type="button" onClick={() => onJump('next')}>
+          <Button type="button" className="rounded-full shadow-md" onClick={() => onJump('next')}>
+            <ArrowDown aria-hidden="true" />
             下一处未读
-          </button>
+          </Button>
         </div>
       )}
     </>

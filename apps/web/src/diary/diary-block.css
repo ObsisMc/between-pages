@@ -1,0 +1,17 @@
+/* One diary's text as it is written (EDIT-13): the editor ProseMirror draws, in the reading
+   type of the page. Its own focus ring would frame the whole text, so the caret alone shows
+   where one writes. */
+.diary-editor .ProseMirror {
+  min-height: 8rem;
+  padding: 1rem 0;
+  font-size: 1.0625rem;
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+  outline: none;
+}
+
+/* A mark for the eye only on "已保存到服务器": the status text alone is what is announced. */
+.save-status.calm::before {
+  content: '✓ ';
+  content: '✓ ' / '';
+}

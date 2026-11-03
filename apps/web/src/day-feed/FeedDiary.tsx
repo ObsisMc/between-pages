@@ -113,7 +113,7 @@ export function FeedDiary({
       {(name || diary.frozen) && (
         <p className="feed-diary-who mb-1 flex gap-2 text-sm text-ink-soft">
           {name}
-          {diary.frozen && <span className="share-state">已停止共享</span>}
+          {diary.frozen && <span className="text-xs">已停止共享</span>}
         </p>
       )}
       {text &&
@@ -126,13 +126,17 @@ export function FeedDiary({
             rootRef={root}
           />
         ) : (
-          <p className="list-note">还没有写字</p>
+          <p className="text-sm text-ink-soft">还没有写字</p>
         ))}
-      {!text && !failed && <p className="list-note">正在读取…</p>}
+      {!text && !failed && <p className="text-sm text-ink-soft">正在读取…</p>}
       {failed && (
-        <p className="notice" role="alert">
-          这篇暂时无法读取{' '}
-          <button type="button" onClick={() => setFailed(false)}>
+        <p className="flex items-center gap-3 rounded-xl bg-notice px-4 py-3 text-sm" role="alert">
+          这篇暂时无法读取
+          <button
+            type="button"
+            className="h-8 cursor-pointer rounded-lg border border-line px-3 text-ink hover:bg-paper"
+            onClick={() => setFailed(false)}
+          >
             重试
           </button>
         </p>

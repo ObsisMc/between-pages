@@ -1,11 +1,14 @@
 import { useContext, useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import { History } from 'lucide-react';
 import type { ResponseOf } from '@between-pages/contracts';
 import { callApi } from '../api/client.ts';
 import { HistoryPanel, HistoryPreview, type HistoryPointView } from '../history/index.ts';
+import { Button, cn } from '../ui/index.ts';
 import { DraftList } from './DraftList.tsx';
 import { ScrollBox } from './scroll-box.ts';
 import { createDiarySession, type DiarySession, type DiaryState } from './session.ts';
 import { failureText, refusalText, statusLine } from './status.ts';
+import './diary-block.css';
 
 const REFUSAL_SHOWN_MS = 4_000;
 
@@ -25,9 +28,9 @@ const writtenText = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', ti
  * One diary session and everything that belongs to it alone (kernel D5, D6, D10; EDIT-13,
  * TIME-03): the editor in each author's color, the save status, its own history, the
  * frozen and reopened notices, a click on a character for its author and time, refusals,
- * the copy when it cannot be stored, and the recovery drafts. The single diary page shows
- * one; the day page two, each with its own session, so nothing of one reaches the other
- * (unread-and-day-page D6, invariant 9). `title` heads it; `onSession` hands the session to
+ * the copy when it cannot be stored, and the recovery drafts. The day holds one per diary,
+ * each with its own session, so nothing of one reaches the other (unread-and-day-page D6,
+ * invariant 9). `title` heads it; `onSession` hands the session to
  * the page for the filter, unread jumps and the reading position.
  */
 /** This diary in the caller's own Google Drive (server-backup-and-google-docs D9). */
@@ -58,14 +61,19 @@ const PROBLEM_TEXT: Record<NonNullable<GoogleCopy['problem']>, string> = {
 };
 
 function GoogleCopyLine({ copy }: { copy: GoogleCopy }) {
-  if (!copy.connected) return <p className="google-copy">未开启 Google 备份</p>;
+  if (!copy.connected) return <p className="text-sm text-ink-soft">未开启 Google 备份</p>;
   const backedUp = copy.backedUpAt && (
     <>
       已备份到 Google {writtenText.format(new Date(copy.backedUpAt))}
       {copy.docUrl && (
         <>
           {' · '}
-          <a href={copy.docUrl} target="_blank" rel="noreferrer">
+          <a
+            href={copy.docUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="underline underline-offset-4 hover:text-ink"
+          >
             在 Google Docs 打开
           </a>
         </>
@@ -74,13 +82,20 @@ function GoogleCopyLine({ copy }: { copy: GoogleCopy }) {
   );
   if (copy.problem)
     return (
-      <p className="google-copy warn" role="status">
+      <p className="text-sm text-warm" role="status">
         {PROBLEM_TEXT[copy.problem]}
         {backedUp && <> · {backedUp}</>}
       </p>
     );
-  return <p className="google-copy">{backedUp || '等待备份到 Google'}</p>;
+  return <p className="text-sm text-ink-soft">{backedUp || '等待备份到 Google'}</p>;
 }
+
+const noticeClass = 'mt-3 rounded-xl bg-notice px-4 py-3 text-sm text-ink';
+const TONE: Record<'calm' | 'busy' | 'warn', string> = {
+  calm: 'font-medium text-done',
+  busy: 'text-ink-soft',
+  warn: 'text-warm',
+};
 
 export function DiaryBlock({
   userId,
@@ -224,102 +239,107 @@ export function DiaryBlock({
   const status = state ? statusLine(state) : null;
   const open = state?.phase === 'open';
   return (
-    <div className="diary-block">
-      <div className="diary-block-head">
+    <div>
+      <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
         {title}
         {open && status && (
-          <p className={`save-status ${status.tone}`} role="status">
+          // `save-status` and its tone name the line for its check mark (diary-block.css).
+          <p className={cn('save-status text-sm', status.tone, TONE[status.tone])} role="status">
             {status.text}
           </p>
         )}
         {open && googleCopy && <GoogleCopyLine copy={googleCopy} />}
         {open && (
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             aria-expanded={historyOpen}
             onClick={() => {
               if (historyOpen) closePreview();
               setHistoryOpen(!historyOpen);
             }}
           >
+            <History aria-hidden="true" />
             {historyOpen ? '收起历史' : '历史'}
-          </button>
+          </Button>
         )}
       </div>
       {state?.share === 'frozen' && (
-        <p className="notice" role="status">
+        <p className={noticeClass} role="status">
           已停止共享，内容不再更新
         </p>
       )}
       {state?.reopened && onReopen && (
-        <p className="notice">
+        <p className={noticeClass}>
           对方重新共享了这篇日记。
-          <button type="button" className="link" onClick={onReopen}>
+          <Button type="button" variant="link" className="text-warm underline" onClick={onReopen}>
             打开最新的版本
-          </button>
+          </Button>
         </p>
       )}
       {origin && (
-        <p className="author-info" role="status">
+        <p className="author-info mt-3 text-sm text-ink-soft" role="status">
           {origin.name} 写于 {origin.at}
           {origin.adjusted && '（设备时间不准，按服务器收到的时间）'}
         </p>
       )}
-      {(!state || state.phase === 'opening') && <p className="status">正在打开…</p>}
+      {(!state || state.phase === 'opening') && (
+        <p className="py-8 text-center text-ink-soft">正在打开…</p>
+      )}
       {state?.phase === 'failed' && (
-        <p className="notice" role="alert">
+        <p className={noticeClass} role="alert">
           {failureText(state.failure)}
         </p>
       )}
       {state?.storeFailed && (
-        <div className="notice" role="alert">
+        <div className={cn(noticeClass, 'grid gap-3')} role="alert">
           <p>这台设备暂时无法保存，刚写的字还没有存下。请先不要关闭页面。</p>
-          <button type="button" onClick={copyText}>
-            复制正文
-          </button>
-          <button type="button" onClick={downloadText}>
-            下载正文
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={copyText}>
+              复制正文
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={downloadText}>
+              下载正文
+            </Button>
+          </div>
         </div>
       )}
       {refusal && (
-        <p className="notice refusal" role="alert">
+        <p className={cn('refusal', noticeClass)} role="alert">
           {refusal}
         </p>
       )}
-      <div className={historyOpen ? 'diary-body with-history' : 'diary-body'}>
-        <div className="diary-main">
-          {preview && (
-            <HistoryPreview
-              diaryId={diaryId}
-              publicId={preview.point.publicId}
-              userId={userId}
-              currentChanged={(state?.remoteChanges ?? 0) !== preview.remoteChanges}
-              onClose={closePreview}
-            />
-          )}
-          <div
-            ref={place}
-            className="diary-editor"
-            hidden={!open || preview !== null}
-            onClick={(event) => void showOrigin(event)}
-          />
-          {state && (
-            <DraftList
-              drafts={state.drafts}
-              onDelete={(draftIds) => void session.current?.deleteDrafts(draftIds)}
-            />
-          )}
-        </div>
-        {open && historyOpen && (
-          <HistoryPanel
-            diaryId={diaryId}
-            commits={state.remoteChanges}
-            selected={preview?.point.publicId ?? null}
-            onSelect={showVersion}
-          />
-        )}
-      </div>
+      {preview && (
+        <HistoryPreview
+          diaryId={diaryId}
+          publicId={preview.point.publicId}
+          userId={userId}
+          currentChanged={(state?.remoteChanges ?? 0) !== preview.remoteChanges}
+          onClose={closePreview}
+        />
+      )}
+      <div
+        ref={place}
+        className="diary-editor mt-2"
+        hidden={!open || preview !== null}
+        onClick={(event) => void showOrigin(event)}
+      />
+      {state && (
+        <DraftList
+          drafts={state.drafts}
+          onDelete={(draftIds) => void session.current?.deleteDrafts(draftIds)}
+        />
+      )}
+      {/* Below the text at every width: the main area holds one reading column. */}
+      {open && historyOpen && (
+        <HistoryPanel
+          diaryId={diaryId}
+          commits={state.remoteChanges}
+          selected={preview?.point.publicId ?? null}
+          onSelect={showVersion}
+        />
+      )}
     </div>
   );
 }

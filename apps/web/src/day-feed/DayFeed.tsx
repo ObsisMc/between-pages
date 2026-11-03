@@ -148,7 +148,9 @@ function DateSection({
               <Avatar key={diary.side} person={person} hollow={!diary.hasText} />
             ))}
           </span>
-          {unread && <span className="unread-dot" role="img" aria-label="有新内容" />}
+          {unread && (
+            <span className="size-2 rounded-full bg-warm" role="img" aria-label="有新内容" />
+          )}
         </>,
       )}
       {diaries.map(({ diary, person }) => {

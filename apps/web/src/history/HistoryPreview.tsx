@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ResponseOf } from '@between-pages/contracts';
 import { ApiError, callApi } from '../api/client.ts';
+import { Button } from '../ui/index.ts';
 import { fullLabel } from './format.ts';
 
 type Version = ResponseOf<'historyVersion'>;
@@ -47,28 +48,28 @@ export function HistoryPreview({
 
   const shown = loaded?.publicId === publicId ? loaded : undefined;
   return (
-    <section className="history-preview" aria-label="历史版本预览">
-      <header>
-        <p className="history-badge">
+    <section className="mt-3" aria-label="历史版本预览">
+      <header className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-accent px-4 py-2">
+        <p className="text-sm text-ink-soft">
           历史版本{shown?.version ? ` · ${fullLabel(shown.version.committedAt)}` : ''}，只读
         </p>
-        <button type="button" onClick={onClose}>
+        <Button type="button" variant="outline" size="sm" onClick={onClose}>
           返回当前正文
-        </button>
+        </Button>
       </header>
       {currentChanged && (
-        <p className="notice" role="status">
+        <p className="mt-3 rounded-xl bg-notice px-4 py-3 text-sm" role="status">
           当前正文有更新
         </p>
       )}
-      {!shown && <p className="history-note">正在读取…</p>}
+      {!shown && <p className="mt-3 text-sm text-ink-soft">正在读取…</p>}
       {shown?.failed && (
-        <p className="notice" role="alert">
+        <p className="mt-3 rounded-xl bg-notice px-4 py-3 text-sm" role="alert">
           {shown.failed}
         </p>
       )}
       {shown?.version && (
-        <div className="history-text">
+        <div className="history-text py-4 text-[1.0625rem] leading-[1.9] whitespace-pre-wrap text-ink">
           {shown.version.runs.map((run, i) => (
             <span key={i} className={run.author === userId ? 'author-self' : 'author-other'}>
               {run.text}
