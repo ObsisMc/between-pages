@@ -138,14 +138,13 @@ describe('a diary on the list', () => {
     },
   });
 
-  it('[adr:book-frontend-workspace#9] collapses the own diary open in the left page and any diary being written', () => {
+  it('[adr:book-frontend-workspace#9] collapses any diary being written', () => {
     const [mine, theirs] = diariesOf(partnerDay(false));
-    expect(collapseOf('2026-10-27', mine!, '2026-10-27')).toBe('editing');
-    expect(collapseOf('2026-10-27', theirs!, '2026-10-27')).toBeNull();
-    expect(collapseOf('2026-10-27', mine!, null)).toBeNull();
+    expect(collapseOf(mine!)).toBeNull();
+    expect(collapseOf(theirs!)).toBeNull();
     const [mineWriting, theirsWriting] = diariesOf(partnerDay(true));
-    expect(collapseOf('2026-10-27', mineWriting!, null)).toBe('writing-self');
-    expect(collapseOf('2026-10-27', theirsWriting!, null)).toBe('writing-partner');
+    expect(collapseOf(mineWriting!)).toBe('writing-self');
+    expect(collapseOf(theirsWriting!)).toBe('writing-partner');
   });
 
   it('reads text again when the list says it changed, except a share read once frozen', () => {

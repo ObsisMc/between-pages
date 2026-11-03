@@ -1,5 +1,6 @@
 export { cn } from './cn.ts';
 export { Button, buttonVariants } from './button.tsx';
+export { Collapsible, CollapsibleContent, CollapsibleTrigger } from './collapsible.tsx';
 export {
   DropdownMenu,
   DropdownMenuContent,

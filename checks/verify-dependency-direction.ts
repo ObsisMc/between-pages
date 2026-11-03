@@ -139,9 +139,6 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'ui',
         'windows',
       ],
-      // book-frontend-workspace D1: the spread is layout only, until digital-paper-interface
-      // replaces it.
-      book: [],
       // digital-paper-interface 落地顺序 2: the shadcn components know no other module.
       ui: [],
       // digital-paper-interface D4: the paired windows draw the mascots and know no data.
@@ -171,14 +168,13 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       wishes: ['api', 'space-common'],
       anniversaries: ['api', 'space-common'],
       // book-frontend-workspace: `day-text` renders one diary's text read-only and knows no
-      // other module; `day-feed` is the right page's list of them, which `diary` mounts
-      // beside the day editor in a `book` spread (D3).
+      // other module; `day-feed` is the continuous list of them and the date index, which
+      // `diary` mounts beside the day editor (digital-paper-interface D2, 落地顺序 2).
       'day-text': [],
       'day-feed': ['api', 'avatar', 'day-text', 'read-tracker'],
       diary: [
         'api',
         'auth',
-        'book',
         'day-feed',
         'editor-binding',
         'journal',
@@ -187,6 +183,8 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'history',
         'read-tracker',
         'avatar',
+        'ui',
+        'shell',
       ],
       'read-tracker': ['api'],
     },

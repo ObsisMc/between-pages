@@ -1,7 +1,7 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
-// The day page through the real stack (unread-and-day-page D6, D7), as the workspace's left
-// page (book-frontend-workspace D3): both diaries of a date stacked, each its own session, the view switch, "写这天", and author protection between
+// The day page through the real stack (unread-and-day-page D6, D7), as the diary page's
+// "这一天" view (digital-paper-interface D2): both diaries of a date stacked, each its own session, the view switch, "写这天", and author protection between
 // the two editors. A shares every date with B; B shares nothing.
 const run = Date.now().toString(36);
 
@@ -40,7 +40,7 @@ async function writeToday(page: Page) {
   return page.url().split('/').at(-1)!;
 }
 
-/** Chooses `date` in the feed of all diaries; the left page opens it. */
+/** Chooses `date` in the feed of all diaries; the main area opens it. */
 async function chooseInFeed(page: Page, date: string) {
   await page.goto('/days');
   await page
@@ -161,8 +161,9 @@ test('[adr:unread-and-day-page#7] [adr:unread-and-day-page#9] D7 the two editors
       return { x: rect.left, y: rect.top + rect.height / 2 };
     });
   const fromHeading = async () => {
-    await b.locator('.day-date').scrollIntoViewIfNeeded();
-    const box = (await b.locator('.day-date').boundingBox())!;
+    const heading = b.getByRole('heading', { level: 1 });
+    await heading.scrollIntoViewIfNeeded();
+    const box = (await heading.boundingBox())!;
     return { x: box.x + 2, y: box.y + box.height / 2 };
   };
   for (const from of [fromTheirs, fromHeading])

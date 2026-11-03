@@ -4,6 +4,7 @@ import type { Day, ResponseOf } from '@between-pages/contracts';
 import { ApiError, callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
 import { Avatar } from '../avatar/index.ts';
+import { Button, cn } from '../ui/index.ts';
 import { DiaryBlock, copyOf, type BlockReport } from './DiaryBlock.tsx';
 import { AuthorLegend, UnreadNotices, usePeople } from './DiaryPage.tsx';
 import type { DiarySession, ReadingPosition, Unread } from './session.ts';
@@ -34,7 +35,8 @@ function storeSwap(swapped: boolean) {
 
 /** The device's IANA zone decides which date "today" is (spec §4); the server checks it. */
 export const timezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
-const todayHere = () =>
+/** Today's date in the device's zone, as the server would decide it. */
+export const todayHere = () =>
   new Intl.DateTimeFormat('en-CA', { timeZone: timezone() }).format(new Date());
 
 // A diary date is a calendar day, not an instant: shown as written, in no time zone.
@@ -65,8 +67,8 @@ function combined(reports: (BlockReport | undefined)[]): Unread | undefined {
 }
 
 /**
- * One date's day editor, the workspace's left page or the narrow single page
- * (book-frontend-workspace D3, D6); a new date is a new editor. `focus` asks ("编辑" in the
+ * One date's day editor, the diary page's "这一天" view (digital-paper-interface D2); a new
+ * date is a new editor. `focus` asks ("编辑" in the
  * feed, "写今天") for the caller's diary to take the focus once open, or "写这天" without
  * one; a new value asks again.
  */
@@ -227,7 +229,7 @@ function DayView({ date, focus }: { date: string; focus: string | null }) {
     const person = side === 'mine' ? me : partner;
     const name = side === 'mine' ? (user?.displayName ?? '我') : (partner?.name ?? 'TA');
     return (
-      <h2 className="day-diary-title">
+      <h2 className="mr-auto inline-flex items-center gap-2 text-base font-semibold">
         <Avatar person={{ name, slot: person?.slot ?? null }} />
         <span>{side === 'mine' ? `${name}（我）` : name}</span>
         {side === 'mine' && mineId && !sharedNow && <span className="share-state">仅自己可见</span>}
@@ -235,9 +237,10 @@ function DayView({ date, focus }: { date: string; focus: string | null }) {
     );
   };
 
+  // The diaries keep the single-diary page's look (`legacy`) until it is redrawn.
   return (
-    <article className="diary day" aria-labelledby={titleId}>
-      <h1 id={titleId} className="day-date">
+    <article className="legacy diary day" aria-labelledby={titleId}>
+      <h1 id={titleId} className="m-0 font-serif text-3xl font-normal text-ink">
         {dayLabel(date)}
       </h1>
       {failed && (
@@ -256,30 +259,9 @@ function DayView({ date, focus }: { date: string; focus: string | null }) {
       )}
       {ready && (
         <>
-          <div className="day-tools">
-            {view === 'both' && theirs && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => blocks.current.theirs?.scrollIntoView({ block: 'start' })}
-                >
-                  跳到 TA 的
-                </button>
-                <button
-                  type="button"
-                  onClick={() => blocks.current.mine?.scrollIntoView({ block: 'start' })}
-                >
-                  跳到我的
-                </button>
-              </>
-            )}
-            {theirs && (
-              <button type="button" onClick={swap}>
-                交换顺序
-              </button>
-            )}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
             {bothWrote && (
-              <div className="view-switch" role="group" aria-label="视图">
+              <div className="inline-flex rounded-xl bg-accent p-1" role="group" aria-label="视图">
                 {(
                   [
                     ['both', '双人'],
@@ -287,16 +269,44 @@ function DayView({ date, focus }: { date: string; focus: string | null }) {
                     ['theirs', 'TA 的'],
                   ] as const
                 ).map(([value, label]) => (
-                  <button
+                  <Button
                     key={value}
-                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      'h-8 rounded-lg text-ink-soft hover:bg-paper/60',
+                      view === value && 'bg-paper text-ink shadow-sm',
+                    )}
                     aria-pressed={view === value}
                     onClick={() => switchView(value)}
                   >
                     {label}
-                  </button>
+                  </Button>
                 ))}
               </div>
+            )}
+            {view === 'both' && theirs && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => blocks.current.theirs?.scrollIntoView({ block: 'start' })}
+                >
+                  跳到 TA 的
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => blocks.current.mine?.scrollIntoView({ block: 'start' })}
+                >
+                  跳到我的
+                </Button>
+              </>
+            )}
+            {theirs && (
+              <Button variant="outline" size="sm" onClick={swap}>
+                交换顺序
+              </Button>
             )}
           </div>
           <AuthorLegend people={people} ownOnly={ownOnly} onOwnOnly={switchOwnOnly} />
@@ -314,7 +324,7 @@ function DayView({ date, focus }: { date: string; focus: string | null }) {
               ref={(element) => {
                 blocks.current[side] = element;
               }}
-              className="day-diary"
+              className="mt-6 border-t border-line pt-4"
               aria-label={side === 'mine' ? '我的日记' : 'TA 的日记'}
               hidden={!shown.includes(side)}
             >

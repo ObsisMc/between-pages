@@ -2,7 +2,7 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 
 // The feed's round unread buttons through the real stack (book-frontend-workspace D5,
 // invariant 5): ↓ and ↑ each reach an unread date the feed has not loaded, by
-// `GET /api/days/next-unread`, show its passage and leave the left page's editor focused;
+// `GET /api/days/next-unread`, show its passage and leave the focus where it was;
 // once it is read and nothing is left in a direction, that button goes. The API runs with
 // HISTORY_IDLE_MS=3000, so the list's unread closes seconds after the last commit.
 const run = Date.now().toString(36);
@@ -84,7 +84,7 @@ const inFeedBox = (page: Page, selector: string) =>
     return top !== undefined && top >= box.top && top < box.bottom;
   }, selector);
 
-test('[adr:book-frontend-workspace#5] ↓ and ↑ reach unread dates not loaded, keep the editor’s focus, and go when nothing is left', async ({
+test('[adr:book-frontend-workspace#5] ↓ and ↑ reach unread dates not loaded, keep the focus where it was, and go when nothing is left', async ({
   browser,
   browserName,
 }) => {
@@ -98,26 +98,29 @@ test('[adr:book-frontend-workspace#5] ↓ and ↑ reach unread dates not loaded,
 
   const down = feed(b).getByRole('button', { name: '下一处未读' });
   const up = feed(b).getByRole('button', { name: '上一处未读' });
-  // The buttons show once A's history points close and the feed looks again.
-  await b.goto(`/days/${MIDDLE}`);
+  // The buttons show once A's history points close and the feed, jumped to the middle,
+  // looks again.
+  const jumpDate = b.getByLabel('跳到日期');
   await expect(async () => {
-    await b.reload();
+    await b.goto('/days');
+    await jumpDate.fill(MIDDLE);
+    await b.getByRole('button', { name: '跳转' }).click();
+    await expect(dateIn(b, MIDDLE)).toBeVisible({ timeout: 2_000 });
     await expect(down).toBeVisible({ timeout: 2_000 });
     await expect(up).toBeVisible({ timeout: 2_000 });
-  }).toPass({ timeout: 30_000 });
+  }).toPass({ timeout: 40_000 });
   await expect(dateIn(b, OLDEST)).toHaveCount(0);
   await expect(dateIn(b, NEWEST)).toHaveCount(0);
 
-  // B is writing in the left page; the buttons never take that focus.
-  const own = b.locator('.workspace-left .diary-editor').getByRole('textbox');
-  await own.click();
-  await expect(own).toBeFocused();
+  // The focus is in the date input; the buttons never take it.
+  await jumpDate.focus();
+  await expect(jumpDate).toBeFocused();
 
   await down.click();
   await expect(dateIn(b, OLDEST)).toContainText('A的旧日记');
   await expect(feed(b).locator('.unread-flash')).toHaveText('A的旧日记');
   expect(await inFeedBox(b, '.unread-flash')).toBe(true);
-  await expect(own).toBeFocused();
+  await expect(jumpDate).toBeFocused();
   // Read there after about a second; nothing older is left.
   await expect(dateIn(b, OLDEST).getByLabel('有新内容')).toHaveCount(0, { timeout: 10_000 });
   await expect(down).toHaveCount(0);
@@ -127,7 +130,7 @@ test('[adr:book-frontend-workspace#5] ↓ and ↑ reach unread dates not loaded,
   await expect(dateIn(b, NEWEST)).toContainText('A的新日记');
   await expect(feed(b).locator('.unread-flash')).toHaveText('A的新日记');
   expect(await inFeedBox(b, '.unread-flash')).toBe(true);
-  await expect(own).toBeFocused();
+  await expect(jumpDate).toBeFocused();
   await expect(dateIn(b, NEWEST).getByLabel('有新内容')).toHaveCount(0, { timeout: 10_000 });
   await expect(up).toHaveCount(0);
   await expect(down).toHaveCount(0);

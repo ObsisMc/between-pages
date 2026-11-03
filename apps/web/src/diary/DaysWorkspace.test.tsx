@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Day } from '@between-pages/contracts';
-import { FakeSocket, GENERATION, stubLocks } from '../../test/diary.ts';
+import { FakeSocket, GENERATION } from '../../test/diary.ts';
 import { stateOf, type Turn } from '../../test/day-text.ts';
 import { renderAt, signedIn, stubApi } from '../../test/render.tsx';
 import { ME, space } from '../../test/relationship.ts';
@@ -29,7 +29,7 @@ const page =
   (days: Day[], more: { nextBefore?: string; nextAfter?: string } = {}) =>
   () =>
     Response.json({ days, nextBefore: more.nextBefore ?? null, nextAfter: more.nextAfter ?? null });
-/** The caller's diary `n` as the feed and the left page read it. */
+/** The caller's diary `n` as the feed and the day read it. */
 const ownDiary = (n: number, diaryDate: string, turns: Turn[] = []) => ({
   [`GET /api/diaries/${id(n)}`]: () =>
     Response.json({
@@ -44,7 +44,7 @@ const ownDiary = (n: number, diaryDate: string, turns: Turn[] = []) => ({
     }),
   [`GET /api/diaries/${id(n)}/read`]: () => Response.json({ ranges: [] }),
 });
-/** The left page's answer for a date without diaries of its own here. */
+/** The day's answer for a date without diaries of its own here. */
 const emptyDay = (diaryDate: string) => ({
   [`GET /api/days/${diaryDate}`]: () =>
     Response.json({ day: { diaryDate, mine: null, partner: null }, google: NO_COPY }),
@@ -119,47 +119,98 @@ async function scrollTo(scroller: HTMLElement, top: number) {
   fireEvent.scroll(scroller);
   await act(() => new Promise((resolve) => setTimeout(resolve, POSITION_MS + 50)));
 }
+const index = () => screen.findByRole('navigation', { name: '日期索引' });
+/** The feed's two answers around 2026-10-25, where it starts again when brought back there. */
+const aroundOct25 = {
+  'GET /api/days?before=2026-10-26': page([dated('2026-10-25', 3), dated('2026-10-24', 4)]),
+  'GET /api/days?after=2026-10-25': page([dated('2026-10-27', 1), dated('2026-10-26', 2)]),
+};
 /** Chooses a date in the feed by its date link, as the reader would. */
 const choose = (region: HTMLElement, date: string) =>
   fireEvent.click(within(dateOf(region, date)).getAllByRole('link')[0]!);
 
 describe('DaysWorkspace', () => {
-  it('[adr:book-frontend-workspace#3] edits a chosen date in the left page while the feed keeps its place, and back brings both again', async () => {
+  it('[adr:digital-paper-interface#10] opens a date from the feed in the one main area, and 连续读 brings the feed back where it was', async () => {
     layOut();
-    const fetchMock = stubApi(fourDates);
+    stubApi({ ...fourDates, ...aroundOct25 });
     const { router } = renderAt('/days');
-    expect(await screen.findByText('从右页选一天')).toBeDefined();
-    expect(screen.getByRole('button', { name: '写今天' })).toBeDefined();
     const region = await feed();
     await waitFor(() => expect(dateOf(region, '2026-10-24')).not.toBeNull());
-    const scroller = scrollerOf(region);
-
-    await scrollTo(scroller, 800);
+    expect(await index()).toBeDefined();
+    await scrollTo(scrollerOf(region), 800);
     expect(router.state.location.state).toMatchObject({ feed: { date: '2026-10-25', offset: 0 } });
 
     choose(region, '2026-10-24');
     await waitFor(() => expect(router.state.location.pathname).toBe('/days/2026-10-24'));
     expect(router.state.historyAction).toBe('PUSH');
     expect(await screen.findByRole('button', { name: '写这天' })).toBeDefined();
-    expect(screen.queryByText('从右页选一天')).toBeNull();
-    // The same list, where it was, and the chosen date said in words.
-    expect(scrollerOf(await feed())).toBe(scroller);
-    expect(scroller.scrollTop).toBe(800);
-    const chosen = dateOf(region, '2026-10-24');
-    expect(within(chosen).getByText('在左页')).toBeDefined();
-    expect(within(chosen).getAllByRole('link')[0]!.getAttribute('aria-current')).toBe('true');
-    expect(requested(fetchMock).filter((r) => r.startsWith('GET /api/days?'))).toEqual([]);
-    expect(requested(fetchMock).filter((r) => r === 'GET /api/days')).toHaveLength(1);
+    // One main area: the day replaces the feed, the index stays, and the position is in the
+    // history entry, never in the address.
+    expect(screen.queryByRole('region', { name: '所有日记' })).toBeNull();
+    const nav = await index();
+    await waitFor(() =>
+      expect(within(nav).getByRole('link', { current: 'page' }).getAttribute('href')).toBe(
+        '/days/2026-10-24',
+      ),
+    );
+    expect(router.state.location.search).toBe('');
+    expect(screen.getByRole('link', { name: '这一天' }).getAttribute('aria-current')).toBe('page');
 
-    await scrollTo(scroller, 0);
-    act(() => void router.navigate(-1));
+    fireEvent.click(screen.getByRole('link', { name: '连续读' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/days'));
-    expect(await screen.findByText('从右页选一天')).toBeDefined();
-    await waitFor(() => expect(scroller.scrollTop).toBe(800));
-    expect(dateOf(region, '2026-10-24').classList.contains('chosen')).toBe(false);
+    expect(router.state.historyAction).toBe('POP');
+    const again = await feed();
+    await waitFor(() => expect(scrollerOf(again).scrollTop).toBe(800));
+    expect(dateOf(again, '2026-10-25').getBoundingClientRect().top).toBe(0);
   });
 
-  it('[adr:book-frontend-workspace#4] opens a deep link to an empty date in the left page at once and never creates its diary', async () => {
+  it('[adr:digital-paper-interface#10] opens a date from the index or 这一天, and back brings the feed where it was', async () => {
+    layOut();
+    stubApi({ ...fourDates, ...aroundOct25 });
+    const { router } = renderAt('/days');
+    const region = await feed();
+    await waitFor(() => expect(dateOf(region, '2026-10-24')).not.toBeNull());
+    await scrollTo(scrollerOf(region), 800);
+
+    fireEvent.click(await within(await index()).findByRole('link', { name: /^10 月 26 日/ }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/days/2026-10-26'));
+    expect(router.state.historyAction).toBe('PUSH');
+    expect(await screen.findByRole('button', { name: '写这天' })).toBeDefined();
+    act(() => void router.navigate(-1));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/days'));
+    await waitFor(() =>
+      expect(scrollerOf(screen.getByRole('region', { name: '所有日记' })).scrollTop).toBe(800),
+    );
+
+    // "这一天" opens the date the feed is read at.
+    fireEvent.click(screen.getByRole('link', { name: '这一天' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/days/2026-10-25'));
+    fireEvent.click(await screen.findByRole('link', { name: '连续读' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/days'));
+    const again = await feed();
+    await waitFor(() => expect(scrollerOf(again).scrollTop).toBe(800));
+  });
+
+  it('[adr:digital-paper-interface#10] goes from one date to another in the index and still returns to the feed’s place', async () => {
+    layOut();
+    stubApi({ ...fourDates, ...aroundOct25 });
+    const { router } = renderAt('/days');
+    const region = await feed();
+    await waitFor(() => expect(dateOf(region, '2026-10-24')).not.toBeNull());
+    await scrollTo(scrollerOf(region), 800);
+    choose(region, '2026-10-24');
+    await waitFor(() => expect(router.state.location.pathname).toBe('/days/2026-10-24'));
+
+    fireEvent.click(await within(await index()).findByRole('link', { name: /^10 月 26 日/ }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/days/2026-10-26'));
+    fireEvent.click(screen.getByRole('link', { name: '连续读' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/days'));
+    expect(router.state.historyAction).toBe('PUSH');
+    const again = await feed();
+    await waitFor(() => expect(scrollerOf(again).scrollTop).toBe(800));
+  });
+
+  it('[adr:book-frontend-workspace#4] opens a deep link to an empty date at once and never creates its diary', async () => {
     let answer!: () => void;
     const answered = new Promise<void>((resolve) => (answer = resolve));
     const later = (days: Day[]) => () => answered.then(page(days));
@@ -168,119 +219,86 @@ describe('DaysWorkspace', () => {
       ...emptyDay('2026-10-05'),
       'GET /api/days?before=2026-10-06': later([dated('2026-10-03', 5)]),
       'GET /api/days?after=2026-10-05': later([dated('2026-10-08', 6)]),
-      ...ownDiary(5, '2026-10-03'),
-      ...ownDiary(6, '2026-10-08'),
     });
     renderAt('/days/2026-10-05');
 
-    // The left page does not wait for the list.
+    // The day does not wait for the index.
     expect(await screen.findByRole('button', { name: '写这天' })).toBeDefined();
-    const region = await feed();
-    expect(within(region).getByText('正在读取…')).toBeDefined();
+    const nav = await index();
+    expect(within(nav).getByText('正在读取…')).toBeDefined();
 
     answer();
-    await waitFor(() => expect(dateOf(region, '2026-10-05')).not.toBeNull());
-    expect(within(dateOf(region, '2026-10-05')).getByText('这一天没有可以读的日记')).toBeDefined();
-    expect(within(dateOf(region, '2026-10-05')).getByText('在左页')).toBeDefined();
-    expect(
-      [...region.querySelectorAll<HTMLElement>('[data-date]')].map((e) => e.dataset.date),
-    ).toEqual(['2026-10-08', '2026-10-05', '2026-10-03']);
+    await waitFor(() =>
+      expect(
+        [...nav.querySelectorAll<HTMLElement>('[data-date]')].map((e) => e.dataset.date),
+      ).toEqual(['2026-10-08', '2026-10-05', '2026-10-03']),
+    );
+    expect(within(nav).getByRole('link', { current: 'page' }).textContent).toContain(
+      '没有可以读的日记',
+    );
     const calls = requested(fetchMock);
     expect(calls).not.toContain('GET /api/days');
     expect(calls.filter((r) => r.startsWith('POST'))).toEqual([]);
   });
 
-  it('[adr:book-frontend-workspace#4] loads a deep link’s feed through StrictMode’s second mount, as in development', async () => {
+  it('[adr:book-frontend-workspace#4] loads a deep link’s index through StrictMode’s second mount, as in development', async () => {
     stubApi({
       ...fourDates,
       'GET /api/days?before=2026-10-26': page([dated('2026-10-25', 3)]),
       'GET /api/days?after=2026-10-25': page([dated('2026-10-27', 1)]),
     });
     renderAt('/days/2026-10-25', undefined, { strict: true });
-    const region = await feed();
-    await waitFor(() => expect(dateOf(region, '2026-10-27')).not.toBeNull());
-    expect(within(region).queryByText('正在读取…')).toBeNull();
+    const nav = await index();
+    await waitFor(() => expect(nav.querySelector('[data-date="2026-10-27"]')).not.toBeNull());
+    expect(within(nav).queryByText('正在读取…')).toBeNull();
   });
 
-  it('[adr:book-frontend-workspace#9] collapses the own diary open in the left page and reads it afresh once the left page moves on', async () => {
-    vi.stubGlobal('WebSocket', FakeSocket);
-    vi.stubGlobal('navigator', { locks: stubLocks() });
-    const today = dated('2026-10-27', 1);
-    stubApi({
-      ...fourDates,
-      ...ownDiary(1, '2026-10-27', [[1, ME, '左页写的字']]),
-      'GET /api/days/2026-10-27': () => Response.json({ day: today, google: NO_COPY }),
-      'GET /api/days?before=2026-10-28': page([today, dated('2026-10-26', 2)]),
-      'GET /api/days?after=2026-10-27': page([]),
-    });
-    renderAt('/days/2026-10-27');
-
-    const own = await screen.findByRole('region', { name: '我的日记' });
-    const editor = await within(own).findByRole('textbox');
-    await waitFor(() => expect(editor.textContent).toBe('左页写的字'));
-    const region = await feed();
-    const day = await waitFor(() => {
-      const section = dateOf(region, '2026-10-27');
-      expect(section).not.toBeNull();
-      return section;
-    });
-    expect(within(day).getByText('正在左页编辑')).toBeDefined();
-    expect(day.textContent).not.toContain('左页写的字');
-
-    choose(region, '2026-10-26');
-    await waitFor(() => expect(dateOf(region, '2026-10-27').textContent).toContain('左页写的字'));
-    expect(within(dateOf(region, '2026-10-27')).queryByText('正在左页编辑')).toBeNull();
-  });
-
-  it('[adr:book-frontend-workspace#3] hands the focus to the left page’s diary only on 编辑', async () => {
+  it('[adr:book-frontend-workspace#3] gives the day’s diary the focus on 编辑 only', async () => {
     stubApi(fourDates);
     const { router } = renderAt('/days');
     const region = await feed();
-    await waitFor(() => expect(dateOf(region, '2026-10-26')).not.toBeNull());
-
-    choose(region, '2026-10-26');
-    const write = await screen.findByRole('button', { name: '写这天' });
-    expect(document.activeElement).not.toBe(write);
+    await waitFor(() => expect(dateOf(region, '2026-10-25')).not.toBeNull());
 
     fireEvent.click(within(dateOf(region, '2026-10-25')).getByRole('link', { name: '编辑' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/days/2026-10-25'));
     await waitFor(() =>
       expect(document.activeElement).toBe(screen.getByRole('button', { name: '写这天' })),
     );
+
+    fireEvent.click(await within(await index()).findByRole('link', { name: /^10 月 26 日/ }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/days/2026-10-26'));
+    const write = await screen.findByRole('button', { name: '写这天' });
+    expect(document.activeElement).not.toBe(write);
   });
 
-  it('[adr:book-frontend-workspace#6] narrow: goes from the feed to one page for the date and back to the same place', async () => {
+  it('[adr:book-frontend-workspace#6] [adr:digital-paper-interface#10] narrow: folds the index into a date picker, and back from a date shows the feed where it was', async () => {
     narrowWindow();
     layOut();
-    stubApi({
-      ...fourDates,
-      // Back on the feed, it starts again around the date it was read at.
-      'GET /api/days?before=2026-10-26': page([dated('2026-10-25', 3), dated('2026-10-24', 4)]),
-      'GET /api/days?after=2026-10-25': page([dated('2026-10-27', 1), dated('2026-10-26', 2)]),
-    });
+    stubApi({ ...fourDates, ...aroundOct25 });
     const { router } = renderAt('/days');
     const region = await feed();
     await waitFor(() => expect(dateOf(region, '2026-10-24')).not.toBeNull());
-    expect(screen.getByRole('navigation', { name: '主要' })).toBeDefined();
+    expect(screen.queryByRole('navigation', { name: '日期索引' })).toBeNull();
     expect(screen.getByRole('button', { name: '写今天' })).toBeDefined();
-    expect(screen.queryByText('从右页选一天')).toBeNull();
     await scrollTo(scrollerOf(region), 800);
 
-    fireEvent.click(within(dateOf(region, '2026-10-24')).getByRole('link', { name: '编辑' }));
+    const picker = screen.getByRole('button', { name: '日期' });
+    expect(picker.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(picker);
+    fireEvent.click(await within(await index()).findByRole('link', { name: /^10 月 24 日/ }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/days/2026-10-24'));
-    const write = await screen.findByRole('button', { name: '写这天' });
-    await waitFor(() => expect(document.activeElement).toBe(write));
+    expect(await screen.findByRole('button', { name: '写这天' })).toBeDefined();
     expect(screen.queryByRole('region', { name: '所有日记' })).toBeNull();
-    expect(screen.getByRole('navigation', { name: '主要' })).toBeDefined();
+    expect(screen.queryByRole('navigation', { name: '日期索引' })).toBeNull();
 
-    fireEvent.click(screen.getByRole('link', { name: '← 所有日记' }));
+    fireEvent.click(screen.getByRole('link', { name: '连续读' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/days'));
     const again = await feed();
     await waitFor(() => expect(scrollerOf(again).scrollTop).toBe(800));
     expect(dateOf(again, '2026-10-25').getBoundingClientRect().top).toBe(0);
   });
 
-  it('narrow: "← 所有日记" from a deep link opens the feed at that date', async () => {
+  it('narrow: 连续读 from a deep link opens the feed at that date', async () => {
     narrowWindow();
     stubApi({
       ...fourDates,
@@ -291,7 +309,7 @@ describe('DaysWorkspace', () => {
     expect(await screen.findByRole('button', { name: '写这天' })).toBeDefined();
     expect(screen.queryByRole('region', { name: '所有日记' })).toBeNull();
 
-    fireEvent.click(screen.getByRole('link', { name: '← 所有日记' }));
+    fireEvent.click(screen.getByRole('link', { name: '连续读' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/days'));
     expect(router.state.historyAction).toBe('PUSH');
     const region = await feed();
@@ -340,6 +358,6 @@ describe('DaysWorkspace', () => {
     stubApi(fourDates);
     const { router } = renderAt('/days/yesterday');
     await waitFor(() => expect(router.state.location.pathname).toBe('/days'));
-    expect(await screen.findByText('从右页选一天')).toBeDefined();
+    expect(await feed()).toBeDefined();
   });
 });

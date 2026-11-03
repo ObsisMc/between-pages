@@ -180,8 +180,8 @@ export function useUnreadArrows({
 
 /**
  * A round arrow over the feed's box, named "上一处未读" (↑) / "下一处未读" (↓), the name also
- * showing on hover and focus. Pressing it leaves the focus where it was, so the left page's
- * editor keeps it (D5).
+ * showing on hover and focus. Pressing it leaves the focus where it was, so an editor or
+ * input keeps it (D5).
  */
 export function UnreadArrow({
   direction,
@@ -193,13 +193,16 @@ export function UnreadArrow({
   return (
     <button
       type="button"
-      className={`feed-arrow ${direction}`}
+      className={`group absolute left-1/2 z-10 size-11 min-h-0 -translate-x-1/2 rounded-full border border-line bg-paper p-0 text-xl leading-none text-warm shadow-md ${direction === 'newer' ? 'top-2' : 'bottom-2'}`}
       aria-label={names[direction]}
       onMouseDown={(event) => event.preventDefault()}
       onClick={() => onGo(direction)}
     >
       <span aria-hidden="true">{arrows[direction]}</span>
-      <span className="feed-arrow-tip" aria-hidden="true">
+      <span
+        className={`pointer-events-none absolute left-1/2 -translate-x-1/2 rounded bg-ink px-2 py-0.5 text-xs whitespace-nowrap text-paper opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 ${direction === 'newer' ? 'top-[calc(100%+0.25rem)]' : 'bottom-[calc(100%+0.25rem)]'}`}
+        aria-hidden="true"
+      >
         {names[direction]}
       </span>
     </button>

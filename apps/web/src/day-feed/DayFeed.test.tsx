@@ -95,10 +95,8 @@ const people = {
   me: { id: ME, name: 'alice', slot: 1 as const },
   partner: { id: PARTNER, name: 'bob', slot: 2 as const },
 };
-/** The feed alone, as the two-page workspace will mount it. */
-const feedAlone = (editingDate: string | null = null) => [
-  { path: '/', element: <DayFeed {...people} editingDate={editingDate} /> },
-];
+/** The feed alone, without the diary page around it. */
+const feedAlone = () => [{ path: '/', element: <DayFeed {...people} /> }];
 
 describe('DayFeed', () => {
   it('shows each date’s diaries in full, in author colors, and loads older dates to the end', async () => {
@@ -228,8 +226,10 @@ describe('DayFeed', () => {
       '2026-06-08',
       '2026-06-01',
     ]);
-    // Paging never walked from the newest to the date, and nothing was created.
+    // Paging never walked from the newest to the date, and nothing was created. The date
+    // index beside the feed reads the newest page once for itself.
     expect(requested(fetchMock).filter((r) => /^GET \/api\/days(\?|$)/.test(r))).toEqual([
+      'GET /api/days',
       'GET /api/days',
       'GET /api/days?before=2026-06-11',
       'GET /api/days?after=2026-06-10',
@@ -278,7 +278,7 @@ describe('DayFeed', () => {
     expect(requested(fetchMock).some((r) => r.includes(id(5)))).toBe(false);
   });
 
-  it('[adr:book-frontend-workspace#9] collapses the diary open on the left and the ones being written, then opens them when written', async () => {
+  it('[adr:book-frontend-workspace#9] collapses the diaries being written, then opens them when written', async () => {
     let writing = true;
     const fetchMock = stubApi({
       ...signedInWithSpace,
@@ -286,21 +286,20 @@ describe('DayFeed', () => {
         page([
           {
             diaryDate: '2026-10-27',
-            mine: own(1),
+            mine: null,
             partner: shared(2, writing ? { writing } : { updatedAt: '2026-10-27T09:05:00Z' }),
           },
           { diaryDate: '2026-10-26', mine: own(3, { writing: true }), partner: null },
         ])(),
       ...sharedDiary(2, [theySay('写完了')]),
     });
-    renderAt('/', feedAlone('2026-10-27'));
+    renderAt('/', feedAlone());
     const region = await feed();
-    expect(await within(region).findByText('正在左页编辑')).toBeDefined();
-    expect(within(region).getByText('TA 正在写')).toBeDefined();
+    expect(await within(region).findByText('TA 正在写')).toBeDefined();
     expect(within(region).getByText('你在别处正在写')).toBeDefined();
     expect(
       within(region)
-        .getAllByRole('link', { name: '在左页打开' })
+        .getAllByRole('link', { name: '打开这一天' })
         .map((a) => a.getAttribute('href')),
     ).toEqual(['/days/2026-10-27', '/days/2026-10-26']);
     // No collapsed text is read, so none can be shown or counted.
@@ -311,7 +310,7 @@ describe('DayFeed', () => {
     act(() => void window.dispatchEvent(new Event('focus')));
     await within(region).findByText('写完了');
     expect(within(region).queryByText('TA 正在写')).toBeNull();
-    expect(within(region).getByText('正在左页编辑')).toBeDefined();
+    expect(within(region).getByText('你在别处正在写')).toBeDefined();
   });
 
   it('[adr:unread-and-day-page#2] lights a date’s dot from the loaded text and coverage, not the list, once both are known', async () => {
@@ -486,7 +485,7 @@ describe('DayFeed unread buttons', () => {
     expect(requested(fetchMock).filter((r) => r.startsWith('POST'))).toEqual([]);
   });
 
-  it('[adr:book-frontend-workspace#5] jumps to an unread date not loaded and its first unread passage, leaving the focus in the left page', async () => {
+  it('[adr:book-frontend-workspace#5] jumps to an unread date not loaded and its first unread passage, leaving the focus where it was', async () => {
     layout();
     stubApi({
       ...signedInWithSpace,
@@ -510,14 +509,14 @@ describe('DayFeed unread buttons', () => {
         path: '/',
         element: (
           <>
-            <textarea aria-label="左页" />
+            <textarea aria-label="别处" />
             <DayFeed {...people} />
           </>
         ),
       },
     ]);
     const region = await feed();
-    const editor = screen.getByLabelText('左页');
+    const editor = screen.getByLabelText('别处');
     editor.focus();
     const arrow = await within(region).findByRole('button', { name: '下一处未读' });
     // Pressing the button does not take the focus; the click jumps.

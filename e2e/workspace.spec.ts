@@ -1,8 +1,9 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
-// The diary workspace through the real stack (book-frontend-workspace D3, D6): choosing a
-// date in the feed edits it in the left page while the feed keeps its place, back brings
-// both again, a deep link opens its date at once, and the narrow window's single pages.
+// The diary page through the real stack (digital-paper-interface D2, invariant 10;
+// book-frontend-workspace D3, D6): the date index beside one main area, where a date chosen
+// in the feed or the index replaces the feed and going back finds the feed where it was; a
+// deep link opens its date at once; the narrow window folds the index into a date picker.
 const run = Date.now().toString(36);
 
 // Contexts opened with browser.newContext() outlive the test on the worker's browser, and
@@ -83,8 +84,10 @@ async function scrollFeedTo(page: Page, date: string) {
 
 const chooseDate = (page: Page, date: string) =>
   dateIn(page, date).getByRole('link').first().click();
+const dateIndex = (page: Page) => page.getByRole('navigation', { name: '日期索引' });
+const indexRow = (page: Page, date: string) => dateIndex(page).locator(`[data-date="${date}"]`);
 
-test('[adr:book-frontend-workspace#3] a chosen date opens in the left page while the feed keeps its place; back brings both again', async ({
+test('[adr:digital-paper-interface#10] a date opens in the one main area, and the feed comes back where it was', async ({
   browser,
   browserName,
 }) => {
@@ -92,46 +95,46 @@ test('[adr:book-frontend-workspace#3] a chosen date opens in the left page while
   const page = await signedIn(browser, `ws${browserName}${run}`);
   await createDiaries(page);
   await page.goto('/days');
-  await expect(page.getByText('从右页选一天')).toBeVisible();
   await expect(dateIn(page, DATES[14]!)).toBeVisible();
+  await expect(indexRow(page, DATES[0]!)).toBeVisible();
 
   await scrollFeedTo(page, DATES[4]!);
   const kept = await feedTop(page);
   expect(kept?.scrollTop).toBeGreaterThan(0);
 
-  // The left page edits the chosen date; the feed stays where it was, the date marked.
+  // From the feed: the day takes the main area, the index marks it, the address holds no place.
   await chooseDate(page, DATES[6]!);
   await expect(page).toHaveURL(new RegExp(`/days/${DATES[6]}$`));
   await expect(editor(page)).toBeVisible();
-  await expect(dateIn(page, DATES[6]!).getByText('在左页', { exact: true })).toBeVisible();
-  await expect(dateIn(page, DATES[6]!).getByText('正在左页编辑')).toBeVisible();
-  expect(await feedTop(page)).toEqual(kept);
-
-  await chooseDate(page, DATES[7]!);
-  await expect(page).toHaveURL(new RegExp(`/days/${DATES[7]}$`));
-  await expect(dateIn(page, DATES[7]!).getByText('在左页', { exact: true })).toBeVisible();
-  await expect(dateIn(page, DATES[6]!).getByText('在左页', { exact: true })).toHaveCount(0);
-  expect(await feedTop(page)).toEqual(kept);
-
-  // The left page scrolls on its own; the feed does not move with it.
-  await page.evaluate(() => {
-    document.querySelector('.workspace-left')!.scrollTop = 200;
-  });
-  expect(await feedTop(page)).toEqual(kept);
-
-  // Read elsewhere in the feed, then back: the previous date, and the feed where it was then.
-  await scrollFeedTo(page, DATES[0]!);
-  await page.goBack();
-  await expect(page).toHaveURL(new RegExp(`/days/${DATES[6]}$`));
-  await expect(dateIn(page, DATES[6]!).getByText('在左页', { exact: true })).toBeVisible();
+  await expect(feed(page)).toHaveCount(0);
+  await expect(indexRow(page, DATES[6]!).getByRole('link')).toHaveAttribute('aria-current', 'page');
+  await page.getByRole('link', { name: '连续读' }).click();
+  await expect(page).toHaveURL(/\/days$/);
   await expect.poll(() => feedTop(page)).toEqual(kept);
+
+  // From the index, and the browser's back.
+  await indexRow(page, DATES[8]!).getByRole('link').click();
+  await expect(page).toHaveURL(new RegExp(`/days/${DATES[8]}$`));
+  await expect(editor(page)).toBeVisible();
+  // The day scrolls inside the main area; the index stays beside it.
+  await page.getByRole('heading', { level: 1 }).evaluate((h) => {
+    h.closest<HTMLElement>('.day-scroll')!.scrollTop = 200;
+  });
+  await expect(indexRow(page, DATES[8]!)).toBeInViewport();
   await page.goBack();
   await expect(page).toHaveURL(/\/days$/);
-  await expect(page.getByText('从右页选一天')).toBeVisible();
+  await expect.poll(() => feedTop(page)).toEqual(kept);
+
+  // "这一天" opens the date the feed is read at, and 连续读 returns.
+  await page.getByRole('link', { name: '这一天' }).click();
+  await expect(page).toHaveURL(new RegExp(`/days/${DATES[4]}$`));
+  await expect(editor(page)).toBeVisible();
+  await page.getByRole('link', { name: '连续读' }).click();
+  await expect(page).toHaveURL(/\/days$/);
   await expect.poll(() => feedTop(page)).toEqual(kept);
 });
 
-test('[adr:book-frontend-workspace#4] a deep link opens its date in the left page and the feed beside it, newer and older dates still in reach', async ({
+test('[adr:book-frontend-workspace#4] a deep link opens its date at once with the index around it, newer and older dates still in reach', async ({
   browser,
   browserName,
 }) => {
@@ -140,27 +143,28 @@ test('[adr:book-frontend-workspace#4] a deep link opens its date in the left pag
   await createDiaries(page);
   await page.goto(`/days/${DATES[9]}`);
   await expect(editor(page)).toBeVisible();
-  await expect(dateIn(page, DATES[9]!).getByText('在左页', { exact: true })).toBeVisible();
-  await expect.poll(async () => (await feedTop(page))?.date).toBe(DATES[9]);
+  await expect(indexRow(page, DATES[9]!).getByRole('link')).toHaveAttribute('aria-current', 'page');
+  await expect(indexRow(page, DATES[9]!)).toBeInViewport();
 
   // Older dates follow below, newer ones load above.
-  await expect(dateIn(page, DATES[14]!)).toBeAttached();
-  await feed(page)
-    .locator('.day-feed-scroll')
-    .evaluate((box) => (box.scrollTop = 0));
-  await expect(dateIn(page, DATES[0]!)).toBeAttached({ timeout: 10_000 });
+  await expect(indexRow(page, DATES[14]!)).toBeAttached();
+  await dateIndex(page)
+    .locator('[data-date]')
+    .first()
+    .evaluate((row) => row.closest('nav > div')!.scrollTo(0, 0));
+  await expect(indexRow(page, DATES[0]!)).toBeAttached({ timeout: 10_000 });
 
   // A date nobody wrote opens empty and creates nothing.
   await page.goto('/days/2026-08-20');
   await expect(page.getByRole('button', { name: '写这天' })).toBeVisible();
-  await expect(dateIn(page, '2026-08-20')).toContainText('这一天没有可以读的日记');
+  await expect(indexRow(page, '2026-08-20')).toContainText('没有可以读的日记');
   const day = await page.evaluate(
     async () => ((await (await fetch('/api/days/2026-08-20')).json()) as { day: unknown }).day,
   );
   expect(day).toMatchObject({ mine: null });
 });
 
-test('[adr:book-frontend-workspace#6] narrow: the feed and the day are one page each, and back finds the feed where it was', async ({
+test('[adr:book-frontend-workspace#6] narrow: the index folds into a date picker, the feed and the day are one page each, and back finds the feed where it was', async ({
   browser,
   browserName,
 }) => {
@@ -180,7 +184,7 @@ test('[adr:book-frontend-workspace#6] narrow: the feed and the day are one page 
 
   await page.goto('/days');
   await expect(dateIn(page, DATES[14]!)).toBeAttached();
-  await expect(page.getByText('从右页选一天')).toHaveCount(0);
+  await expect(dateIndex(page)).toHaveCount(0);
   await expect(editor(page)).toHaveCount(0);
   await expect(page.getByLabel('跳到日期')).toBeInViewport();
   await navigationOnScreen();
@@ -196,9 +200,20 @@ test('[adr:book-frontend-workspace#6] narrow: the feed and the day are one page 
   await navigationOnScreen();
   await noSidewaysScroll();
 
-  await page.getByRole('link', { name: '← 所有日记' }).click();
+  await page.getByRole('link', { name: '连续读' }).click();
   await expect(page).toHaveURL(/\/days$/);
   await expect.poll(() => feedTop(page)).toEqual(kept);
   await expect(page.getByLabel('跳到日期')).toBeInViewport();
+
+  // The date picker: the index opens over the feed, and choosing a date closes it.
+  await page.getByRole('button', { name: '日期', exact: true }).click();
+  await indexRow(page, DATES[9]!).getByRole('link').click();
+  await expect(page).toHaveURL(new RegExp(`/days/${DATES[9]}$`));
+  await expect(dateIndex(page)).toHaveCount(0);
+  await expect(editor(page)).toBeVisible();
+  await noSidewaysScroll();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/days$/);
+  await expect.poll(() => feedTop(page)).toEqual(kept);
   await navigationOnScreen();
 });

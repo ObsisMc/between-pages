@@ -1,8 +1,10 @@
 /* The pages not yet redrawn for digital-paper-interface, imported into the base layer after
    Tailwind's reset. Inside those pages the first rule takes the reset back to the browser's
    own styles, so they look as they did; every rule below it, and every unlayered module
-   stylesheet, still applies on top. New components outside them start from the reset. */
-:where(.page, .days-workspace, .status, .legacy) :where(*, ::before, ::after) {
+   stylesheet, still applies on top. New components outside them start from the reset.
+   An editable element is left out: WebKit maps `contenteditable` to `-webkit-user-modify`
+   at the author level, which `revert` would undo, leaving the editor read-only. */
+:where(.page, .status, .legacy) :where(:not([contenteditable]), ::before, ::after) {
   all: revert;
 }
 
@@ -584,44 +586,6 @@ button.link {
 }
 
 /* The day page (unread-and-day-page D6): both diaries stacked at any width. */
-.day-date {
-  margin: 0;
-  font-family: var(--font-title);
-  font-size: 1.125rem;
-}
-
-.day-tools {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 0.75rem 0;
-}
-
-.view-switch {
-  display: inline-flex;
-  gap: 0.25rem;
-}
-
-.view-switch button[aria-pressed='true'] {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.day-diary {
-  margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px dashed var(--line);
-}
-
-.day-diary-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0 auto 0 0;
-  font-size: 1rem;
-  font-weight: 600;
-}
-
 .day .diary-editor .ProseMirror {
   min-height: 8rem;
 }
