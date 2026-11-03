@@ -99,6 +99,19 @@ async function write(page: Page, date: string, text: string, shared = true) {
   await own.getByRole('textbox').click();
   await page.keyboard.press('ControlOrMeta+End');
   await page.keyboard.type(text);
+  // A shared diary already says "已同步" before the last keystroke is sent, so the server's
+  // own text says when it is in (its excerpt holds these short texts whole).
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async (day) => {
+          const res = await fetch(`/api/days/${day}`);
+          return ((await res.json()) as { day: { mine: { excerpt: string } | null } }).day.mine
+            ?.excerpt;
+        }, date),
+      { timeout: 15_000 },
+    )
+    .toContain(text);
   await expect(page.locator('.save-status').first()).toHaveText(
     shared ? '已同步 · 对方可以看到' : '已保存到服务器',
     { timeout: 15_000 },
