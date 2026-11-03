@@ -1,28 +1,9 @@
-/* The pages not yet redrawn for digital-paper-interface. Imported into the base layer after
-   Tailwind's reset; the rules below give their text back the browser defaults the reset
-   removed, only inside those pages (.page, .book), so new components start from the reset. */
-:where(.page, .book) :where(h2, h3, h4, p, ul, ol, dl, figure, blockquote, fieldset) {
-  margin: revert;
-}
-
-:where(.page, .book) :where(h2, h3, h4) {
-  font-size: revert;
-  font-weight: revert;
-}
-
-:where(.page, .book) :where(ul, ol) {
-  list-style: revert;
-  padding: revert;
-}
-
-:where(.page, .book) :where(a) {
-  color: revert;
-  text-decoration: revert;
-}
-
-:where(.page, .book) :where(fieldset) {
-  border: revert;
-  padding: revert;
+/* The pages not yet redrawn for digital-paper-interface, imported into the base layer after
+   Tailwind's reset. Inside those pages the first rule takes the reset back to the browser's
+   own styles, so they look as they did; every rule below it, and every unlayered module
+   stylesheet, still applies on top. New components outside them start from the reset. */
+:where(.page, .days-workspace, .home, .status) :where(*, ::before, ::after) {
+  all: revert;
 }
 
 * {
