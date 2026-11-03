@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.ts';
 import { diaryReadRanges } from '../db/schema.ts';
 import type { Tx } from './store.ts';
@@ -38,6 +38,30 @@ export async function coverage(
     .where(and(eq(diaryReadRanges.userId, userId), eq(diaryReadRanges.diaryId, diaryId)))
     .orderBy(diaryReadRanges.clientId);
   return rows.flatMap((row) => parse(row.clientId, row.clocks));
+}
+
+/** As `coverage`, for many diaries in one query; a diary with none is absent. */
+export async function coverageIn(
+  tx: Db | Tx,
+  userId: string,
+  diaryIds: readonly string[],
+): Promise<Map<string, ClockRange[]>> {
+  const rows = await tx
+    .select({
+      diaryId: diaryReadRanges.diaryId,
+      clientId: diaryReadRanges.clientId,
+      clocks: sql<string>`${diaryReadRanges.clocks}::text`,
+    })
+    .from(diaryReadRanges)
+    .where(and(eq(diaryReadRanges.userId, userId), inArray(diaryReadRanges.diaryId, [...diaryIds])))
+    .orderBy(diaryReadRanges.diaryId, diaryReadRanges.clientId);
+  const out = new Map<string, ClockRange[]>();
+  for (const row of rows) {
+    const ranges = out.get(row.diaryId);
+    if (ranges) ranges.push(...parse(row.clientId, row.clocks));
+    else out.set(row.diaryId, parse(row.clientId, row.clocks));
+  }
+  return out;
 }
 
 export function createReadingStore(db: Db) {

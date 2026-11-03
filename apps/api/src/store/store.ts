@@ -1,11 +1,24 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { and, asc, desc, eq, gt, inArray, isNotNull, lt, lte, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  inArray,
+  isNotNull,
+  lt,
+  lte,
+  ne,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
 import * as Y from 'yjs';
 import { createDiaryDoc, type CharacterRange } from '@between-pages/collab';
 import type { DateSelection } from '@between-pages/contracts';
 import type { Db } from '../db/client.ts';
 import { EpochQueries, LockedBoundaries } from './boundaries.ts';
-import { coverage, type ClockRange } from './reading.ts';
+import { coverage, coverageIn, type ClockRange } from './reading.ts';
 import { VersionUnreadable } from '../errors.ts';
 import {
   backupOutbox,
@@ -127,11 +140,29 @@ export class DiaryQueries {
    * `limit`; `updatedAt` is the last written batch, or the creation time before any. An
    * opening's baseline commit writes no text, so it does not count.
    */
-  async ownedDiaries(
+  ownedDiaries(
     ownerId: string,
     before: string | null,
     limit: number,
   ): Promise<(DiaryRow & { updatedAt: Date })[]> {
+    return this.owned(
+      ownerId,
+      before === null ? undefined : lt(diaries.diaryDate, before),
+      desc(diaries.diaryDate),
+      limit,
+    );
+  }
+
+  /** As `ownedDiaries`, dated after `after`, nearest date first. */
+  ownedDiariesAfter(
+    ownerId: string,
+    after: string,
+    limit: number,
+  ): Promise<(DiaryRow & { updatedAt: Date })[]> {
+    return this.owned(ownerId, gt(diaries.diaryDate, after), asc(diaries.diaryDate), limit);
+  }
+
+  private owned(ownerId: string, dated: SQL | undefined, order: SQL, limit: number) {
     const lastCommit = sql`(select ${diaryCommits.committedAt} from ${diaryCommits}
       where ${diaryCommits.diaryId} = ${diaries.id} and ${isNotNull(diaryCommits.batchId)}
       order by ${diaryCommits.version} desc limit 1)`;
@@ -143,14 +174,22 @@ export class DiaryQueries {
         ),
       })
       .from(diaries)
-      .where(
-        and(
-          eq(diaries.ownerId, ownerId),
-          before === null ? undefined : lt(diaries.diaryDate, before),
-        ),
-      )
-      .orderBy(desc(diaries.diaryDate))
+      .where(and(eq(diaries.ownerId, ownerId), dated))
+      .orderBy(order)
       .limit(limit);
+  }
+
+  /**
+   * The owner's diaries someone else has an editor instance in: only these can hold text
+   * that is unread for the owner (unread-and-day-page D2).
+   */
+  async diariesWithOtherWriters(ownerId: string): Promise<Set<string>> {
+    const rows = await this.tx
+      .selectDistinct({ diaryId: diaryClientBindings.diaryId })
+      .from(diaryClientBindings)
+      .innerJoin(diaries, eq(diaries.id, diaryClientBindings.diaryId))
+      .where(and(eq(diaries.ownerId, ownerId), ne(diaryClientBindings.userId, ownerId)));
+    return new Set(rows.map((row) => row.diaryId));
   }
 
   async bindings(diaryId: string): Promise<Map<number, string>> {
@@ -318,6 +357,44 @@ export class DiaryQueries {
         ),
       );
     return rows.map((row) => row.operationId);
+  }
+
+  /** The diaries of `ids` that exist, by ID. */
+  async findDiaries(ids: readonly string[]): Promise<Map<string, DiaryRow>> {
+    const rows = await this.tx
+      .select(diaryColumns)
+      .from(diaries)
+      .where(inArray(diaries.id, [...ids]));
+    return new Map(rows.map((row) => [row.id, row]));
+  }
+
+  /** As `timeline`, for many diaries in one query; a diary with no commit is absent. */
+  async timelines(diaryIds: readonly string[]): Promise<Map<string, CommitPoint[]>> {
+    const rows = await this.tx
+      .select({
+        diaryId: diaryCommits.diaryId,
+        version: diaryCommits.version,
+        publicId: diaryCommits.publicId,
+        generationId: diaryCommits.generationId,
+        epochId: diaryCommits.epochId,
+        authorId: diaryCommits.authorId,
+        committedAt: diaryCommits.committedAt,
+      })
+      .from(diaryCommits)
+      .where(inArray(diaryCommits.diaryId, [...diaryIds]))
+      .orderBy(asc(diaryCommits.diaryId), asc(diaryCommits.version));
+    const out = new Map<string, CommitPoint[]>();
+    for (const { diaryId, ...point } of rows) {
+      const timeline = out.get(diaryId);
+      if (timeline) timeline.push(point);
+      else out.set(diaryId, [point]);
+    }
+    return out;
+  }
+
+  /** `userId`'s coverage of each of `diaryIds` in this snapshot, absent where none. */
+  readRangesIn(userId: string, diaryIds: readonly string[]): Promise<Map<string, ClockRange[]>> {
+    return coverageIn(this.tx, userId, diaryIds);
   }
 
   /** Every commit of the diary in version order, without content; history is computed from it. */

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import * as Y from 'yjs';
 import { BODY, authorRuns } from '@between-pages/collab';
 import { VersionUnreadable } from '../errors.ts';
@@ -64,6 +65,7 @@ export type OwnDayCard = {
   hasText: boolean;
   unread: boolean;
   sharedWithPartner: boolean;
+  writing: boolean;
 };
 
 /** The partner's diary on the day list, by its live share or else its last frozen one. */
@@ -75,6 +77,7 @@ export type PartnerDayCard = {
   updatedAt: Date;
   hasText: boolean;
   unread: boolean;
+  writing: boolean;
 };
 
 export type DayCard = {
@@ -82,6 +85,9 @@ export type DayCard = {
   mine: OwnDayCard | null;
   partner: PartnerDayCard | null;
 };
+
+/** Older than `before`, newer than `after`, or from the newest when neither. */
+export type DateDirection = { before?: string | undefined; after?: string | undefined };
 
 /** What `dayCopy` finds: the timelines are authorized for the viewer, as history uses them. */
 export type DayCopySource = {
@@ -149,12 +155,13 @@ async function listUnread(
   doc: Y.Doc,
   cutoff: number,
   bound: number,
+  read?: readonly ClockRange[],
 ): Promise<boolean> {
   const others = authorRuns(doc, await queries.bindings(diaryId)).filter(
     (run) => run.author !== viewer,
   );
   if (!others.length) return false;
-  const covered = await queries.readRanges(viewer, diaryId);
+  const covered = [...(read ?? (await queries.readRanges(viewer, diaryId)))];
   if (cutoff < bound) covered.push(...(await queries.insertedAfter(diaryId, cutoff)));
   const byClient = Map.groupBy(
     covered.sort((a, b) => a.from - b.from),
@@ -184,6 +191,22 @@ async function summarize(
 const dayAfter = (date: string) =>
   new Date(Date.parse(date) + 86_400_000).toISOString().slice(0, 10);
 
+/** No limit on a query that takes one: a search walks every date in its direction. */
+const ALL = Number.MAX_SAFE_INTEGER;
+
+const inDirection = (date: string, { before, after }: DateDirection) =>
+  after !== undefined ? date > after : before === undefined || date < before;
+
+/** Distinct dates nearest the starting point first: newest first, or oldest first going `up`. */
+const nearestFirst = (dates: string[], up: boolean) => (up ? dates.sort() : dates.sort().reverse());
+
+/**
+ * Someone wrote after the newest history point (book-frontend-workspace D8); an opening's
+ * baseline has no author, so a share that only just opened is not being written.
+ */
+const writtenAfter = (timeline: readonly CommitPoint[], point: CommitPoint | null) =>
+  timeline.some((c) => c.authorId !== null && c.version > (point?.version ?? -1));
+
 function clientsOf(deltas: readonly Uint8Array[], all: Map<number, string>) {
   const out = new Map<number, string>();
   for (const delta of deltas)
@@ -197,7 +220,22 @@ function clientsOf(deltas: readonly Uint8Array[], all: Map<number, string>) {
 /**
  * The commits `viewer` may see, in version order: all for the owner; for the partner,
  * each epoch's commits up to its bound, which excludes every private commit (D6).
+ * `received` are the epochs of this diary shared with `viewer`.
  */
+function authorize(
+  timeline: CommitPoint[],
+  diary: DiaryRow,
+  viewer: string,
+  received: readonly EpochRow[],
+): CommitPoint[] | null {
+  if (diary.ownerId === viewer) return timeline;
+  if (!received.length) return null;
+  const bounds = new Map(received.map((e) => [e.id, boundOf(e, diary)]));
+  return timeline.filter(
+    (c) => c.epochId !== null && bounds.has(c.epochId) && c.version <= bounds.get(c.epochId)!,
+  );
+}
+
 async function authorizedTimeline(
   queries: DiaryQueries,
   viewer: string,
@@ -205,12 +243,7 @@ async function authorizedTimeline(
 ): Promise<CommitPoint[] | null> {
   const timeline = await queries.timeline(diary.id);
   if (diary.ownerId === viewer) return timeline;
-  const epochs = await queries.epochs.recipientEpochs(diary.id, viewer);
-  if (!epochs.length) return null;
-  const bounds = new Map(epochs.map((e) => [e.id, boundOf(e, diary)]));
-  return timeline.filter(
-    (c) => c.epochId !== null && bounds.has(c.epochId) && c.version <= bounds.get(c.epochId)!,
-  );
+  return authorize(timeline, diary, viewer, await queries.epochs.recipientEpochs(diary.id, viewer));
 }
 
 /** The viewer's own diary on the day list; partner text counts once a history point holds it. */
@@ -221,14 +254,19 @@ async function ownCard(
   sharedWithPartner: boolean,
   settled: SettledPoint,
 ): Promise<OwnDayCard> {
+  const timeline = await queries.timeline(row.id);
+  const point = settled(timeline);
   const facts = await summarize(
     () => queries.state(row.id, row.generationId, row.version),
-    async (doc) => {
-      const point = settled(await queries.timeline(row.id));
-      return listUnread(queries, viewer, row.id, doc, point?.version ?? -1, row.version);
-    },
+    (doc) => listUnread(queries, viewer, row.id, doc, point?.version ?? -1, row.version),
   );
-  return { diaryId: row.id, updatedAt: row.updatedAt, sharedWithPartner, ...facts };
+  return {
+    diaryId: row.id,
+    updatedAt: row.updatedAt,
+    sharedWithPartner,
+    writing: writtenAfter(timeline, point),
+    ...facts,
+  };
 }
 
 /**
@@ -245,10 +283,11 @@ async function partnerCard(
   const diary = (await queries.findDiary(epoch.diaryId))!;
   const bound = boundOf(epoch, diary);
   const timeline = (await authorizedTimeline(queries, viewer, diary))!;
+  const point = settled(timeline);
   const facts = await summarize(
     () => queries.state(diary.id, epoch.generationId, bound),
     (doc) => {
-      const cutoff = epoch.closedAt ? bound : (settled(timeline)?.version ?? -1);
+      const cutoff = epoch.closedAt ? bound : (point?.version ?? -1);
       return listUnread(queries, viewer, diary.id, doc, cutoff, bound);
     },
   );
@@ -257,6 +296,7 @@ async function partnerCard(
     epochId: epoch.id,
     share: epoch.closedAt ? 'frozen' : 'live',
     updatedAt: timeline.filter((c) => c.epochId === epoch.id).at(-1)!.committedAt,
+    writing: !epoch.closedAt && writtenAfter(timeline, point),
     ...facts,
   };
 }
@@ -306,6 +346,33 @@ export function createReader(store: Store) {
       (c) => c.epochId === epoch.id && c.version <= version,
     ).length;
     return { doc, seq: seq - 1 };
+  }
+
+  // Each (viewer, diary)'s list unread with the inputs it was computed from, so
+  // `nextUnread` rebuilds a text only when one of them changed (book-frontend-workspace
+  // D5). A disposable copy of a computed answer, lost on restart; never a stored state.
+  const memo = new Map<string, { inputs: string; unread: boolean }>();
+
+  /** The list unread of one text the viewer may read, as on the day list, through the memo. */
+  async function unreadOf(
+    queries: DiaryQueries,
+    viewer: string,
+    text: { diaryId: string; generationId: string; bound: number; cutoff: number },
+    read: readonly ClockRange[],
+  ): Promise<boolean> {
+    const coverage = createHash('sha256')
+      .update(JSON.stringify(read.map((r) => [r.clientId, r.from, r.to]).sort()))
+      .digest('base64');
+    const inputs = [text.generationId, text.bound, text.cutoff, coverage].join(' ');
+    const key = `${viewer} ${text.diaryId}`;
+    const kept = memo.get(key);
+    if (kept?.inputs === inputs) return kept.unread;
+    const { unread } = await summarize(
+      () => queries.state(text.diaryId, text.generationId, text.bound),
+      (doc) => listUnread(queries, viewer, text.diaryId, doc, text.cutoff, text.bound, read),
+    );
+    memo.set(key, { inputs, unread });
+    return unread;
   }
 
   return {
@@ -466,27 +533,102 @@ export function createReader(store: Store) {
 
     /**
      * The dates with the viewer's own diary or one the partner shared with them, newest
-     * first, one page of DAYS_PAGE_SIZE before `before` (unread-and-day-page D3). A diary
-     * never shared with the viewer leaves no trace (invariant 10).
+     * first, one page of DAYS_PAGE_SIZE: before `before` (unread-and-day-page D3), or the
+     * nearest after `after` (book-frontend-workspace D4). A diary never shared with the
+     * viewer leaves no trace (invariant 10).
      */
     days(
       viewer: string,
-      before: string | undefined,
+      { before, after }: DateDirection,
       settled: SettledPoint,
-    ): Promise<{ days: DayCard[]; nextBefore: string | null }> {
+    ): Promise<{ days: DayCard[]; nextBefore: string | null; nextAfter: string | null }> {
       return store.read(async (queries) => {
-        // The newest DAYS_PAGE_SIZE + 1 own dates and every shared one hold the page's
+        // The nearest DAYS_PAGE_SIZE + 1 own dates and every shared one hold the page's
         // dates and whether another page follows.
-        const own = await queries.ownedDiaries(viewer, before ?? null, DAYS_PAGE_SIZE + 1);
-        const shared = (await queries.epochs.sharedWith(viewer, null)).filter(
-          (e) => before === undefined || e.diaryDate < before,
+        const own =
+          after === undefined
+            ? await queries.ownedDiaries(viewer, before ?? null, DAYS_PAGE_SIZE + 1)
+            : await queries.ownedDiariesAfter(viewer, after, DAYS_PAGE_SIZE + 1);
+        const shared = (await queries.epochs.sharedWith(viewer, null)).filter((e) =>
+          inDirection(e.diaryDate, { before, after }),
         );
-        const dates = [...new Set([...own, ...shared].map((d) => d.diaryDate))].sort().reverse();
+        const dates = nearestFirst(
+          [...new Set([...own, ...shared].map((d) => d.diaryDate))],
+          after !== undefined,
+        );
         const page = dates.slice(0, DAYS_PAGE_SIZE);
+        const more = dates.length > DAYS_PAGE_SIZE ? page.at(-1)! : null;
         return {
-          days: await dayCards(queries, viewer, page, own, shared, settled),
-          nextBefore: dates.length > DAYS_PAGE_SIZE ? page.at(-1)! : null,
+          days: await dayCards(queries, viewer, page.sort().reverse(), own, shared, settled),
+          nextBefore: after === undefined ? more : null,
+          nextAfter: after === undefined ? null : more,
         };
+      });
+    },
+
+    /**
+     * The nearest date in the direction asked whose own diary or partner's share has list
+     * unread for `viewer` (book-frontend-workspace D5), or null. Own diaries nobody else
+     * has written in cannot hold any and are skipped without reading their text.
+     */
+    nextUnread(
+      viewer: string,
+      direction: DateDirection,
+      settled: SettledPoint,
+    ): Promise<string | null> {
+      return store.read(async (queries) => {
+        const writers = await queries.diariesWithOtherWriters(viewer);
+        const own = (
+          direction.after === undefined
+            ? await queries.ownedDiaries(viewer, direction.before ?? null, ALL)
+            : await queries.ownedDiariesAfter(viewer, direction.after, ALL)
+        ).filter((row) => writers.has(row.id));
+        const shared = (await queries.epochs.sharedWith(viewer, null)).filter((e) =>
+          inDirection(e.diaryDate, direction),
+        );
+        // Everything but a changed text is read in a few queries, not per diary.
+        const ids = [...own.map((row) => row.id), ...shared.map((e) => e.diaryId)];
+        const partner = await queries.findDiaries(shared.map((e) => e.diaryId));
+        const timelines = await queries.timelines(ids);
+        const reads = await queries.readRangesIn(viewer, ids);
+        const received = Map.groupBy(
+          await queries.epochs.allRecipientEpochs(viewer),
+          (e) => e.diaryId,
+        );
+        const cutoffOf = (timeline: readonly CommitPoint[]) => settled(timeline)?.version ?? -1;
+
+        const dates = nearestFirst(
+          [...new Set([...own, ...shared].map((d) => d.diaryDate))],
+          direction.after !== undefined,
+        );
+        for (const date of dates) {
+          const row = own.find((r) => r.diaryDate === date);
+          if (row) {
+            const cutoff = cutoffOf(timelines.get(row.id) ?? []);
+            const text = {
+              diaryId: row.id,
+              generationId: row.generationId,
+              bound: row.version,
+              cutoff,
+            };
+            if (await unreadOf(queries, viewer, text, reads.get(row.id) ?? [])) return date;
+          }
+          const epoch = shared.find((e) => e.diaryDate === date);
+          if (epoch) {
+            const diary = partner.get(epoch.diaryId)!;
+            const bound = boundOf(epoch, diary);
+            const timeline = authorize(
+              timelines.get(diary.id) ?? [],
+              diary,
+              viewer,
+              received.get(diary.id) ?? [],
+            )!;
+            const cutoff = epoch.closedAt ? bound : cutoffOf(timeline);
+            const text = { diaryId: diary.id, generationId: epoch.generationId, bound, cutoff };
+            if (await unreadOf(queries, viewer, text, reads.get(diary.id) ?? [])) return date;
+          }
+        }
+        return null;
       });
     },
 
