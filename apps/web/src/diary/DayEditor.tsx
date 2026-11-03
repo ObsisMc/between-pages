@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
+import { PenLine } from 'lucide-react';
 import type { Day, ResponseOf } from '@between-pages/contracts';
 import { ApiError, callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
@@ -233,29 +234,39 @@ function DayView({ date, focus }: { date: string; focus: string | null }) {
       <h2 className="mr-auto inline-flex items-center gap-2 text-base font-semibold">
         <Avatar person={{ name, slot: person?.slot ?? null }} />
         <span>{side === 'mine' ? `${name}（我）` : name}</span>
-        {side === 'mine' && mineId && !sharedNow && <span className="share-state">仅自己可见</span>}
+        {side === 'mine' && mineId && !sharedNow && (
+          <span className="share-state rounded-full bg-accent px-2 py-0.5 text-xs font-normal text-ink-soft">
+            仅自己可见
+          </span>
+        )}
       </h2>
     );
   };
 
-  // The diaries keep the single-diary page's look (`legacy`) until it is redrawn.
   return (
-    <article className="legacy diary day" aria-labelledby={titleId}>
+    <article className="font-sans text-ink" aria-labelledby={titleId}>
       <h1 id={titleId} className="m-0 font-serif text-3xl font-normal text-ink">
         {dayLabel(date)}
       </h1>
       {failed && (
-        <div className="notice" role="alert">
-          <p>{failed === 'offline' ? '离线时无法读取这一天' : '这一天暂时无法读取'}</p>
-          <button
+        <div
+          className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-notice px-4 py-3 text-sm"
+          role="alert"
+        >
+          <p className="flex-1">
+            {failed === 'offline' ? '离线时无法读取这一天' : '这一天暂时无法读取'}
+          </p>
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={() => {
               setFailed(null);
               void load();
             }}
           >
             重试
-          </button>
+          </Button>
         </div>
       )}
       {ready && (
@@ -359,19 +370,21 @@ function DayView({ date, focus }: { date: string; focus: string | null }) {
                 <>
                   {titleOf('mine')}
                   {notYet ? (
-                    <p className="list-note">你这边还没到这一天</p>
+                    <p className="mt-3 text-sm text-ink-soft">你这边还没到这一天</p>
                   ) : (
-                    <button
+                    <Button
                       ref={writeButton}
                       type="button"
+                      className="mt-3"
                       disabled={creating}
                       onClick={() => void write()}
                     >
+                      <PenLine aria-hidden="true" />
                       写这天
-                    </button>
+                    </Button>
                   )}
                   {createError && (
-                    <p className="notice" role="alert">
+                    <p className="mt-3 rounded-xl bg-notice px-4 py-3 text-sm" role="alert">
                       {createError}
                     </p>
                   )}
@@ -381,7 +394,7 @@ function DayView({ date, focus }: { date: string; focus: string | null }) {
           ))}
         </>
       )}
-      {!ready && !failed && <p className="status">正在打开…</p>}
+      {!ready && !failed && <p className="py-8 text-center text-ink-soft">正在打开…</p>}
     </article>
   );
 }

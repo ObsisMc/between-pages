@@ -1,9 +1,7 @@
 /* Warm, simple, paper-like (docs/project-identity.md). Tailwind and its reset come first;
-   the styles of pages not yet redrawn sit in the base layer after the reset, so utilities
-   still win over them (digital-paper-interface 落地顺序 2). */
+   every page is drawn with its utilities on the tokens below (digital-paper-interface). */
 @import 'tailwindcss';
 @import './fonts.css';
-@import './legacy.css' layer(base);
 
 :root {
   --paper: #fbf7f0;
@@ -71,6 +69,79 @@
   --color-ring: var(--ink-soft);
   --font-serif: var(--font-title);
   --font-sans: var(--font-body);
+}
+
+@layer base {
+  /* The diary keeps the reading position itself (unread-and-day-page D5); the browsers' own
+     scroll anchoring would adjust the same scroll a second time. */
+  html,
+  body {
+    overflow-anchor: none;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    line-height: 1.6;
+  }
+}
+
+/* Classes the editor binding, the read-only text and the avatars set on text they do not
+   lay out themselves. In the components layer, so a utility on the same element still wins. */
+@layer components {
+  /* Each author's ink, by slot (EDIT-13): text color only, never a background. */
+  .author-slot-1 {
+    color: var(--author-1);
+  }
+
+  .author-slot-2 {
+    color: var(--author-2);
+  }
+
+  /* "只看我的文字": the other person's text is hidden on screen only (EDIT-14). */
+  .author-hidden {
+    display: none;
+  }
+
+  /* Another person's caret with their name, and a light selection tint (kernel D8). */
+  .remote-caret {
+    position: relative;
+    margin-left: -1px;
+    border-left: 2px solid currentColor;
+  }
+
+  .remote-caret::after {
+    content: attr(data-name);
+    position: absolute;
+    bottom: 100%;
+    left: -2px;
+    padding: 0 0.3em;
+    border-radius: 0.25rem;
+    background: var(--paper);
+    border: 1px solid currentColor;
+    font-family: var(--font-body);
+    font-size: 0.7em;
+    white-space: nowrap;
+  }
+
+  .remote-selection {
+    background: color-mix(in srgb, currentColor 15%, transparent);
+  }
+
+  /* A passage just jumped to (unread-and-day-page D4, space-records D8), fading out. */
+  .unread-flash {
+    animation: unread-flash 2s ease-out forwards;
+  }
+
+  @keyframes unread-flash {
+    from {
+      background: var(--notice);
+    }
+    to {
+      background: transparent;
+    }
+  }
 }
 
 /* A quiet scrollbar for the boxes that scroll inside a page (the diary page's index, feed

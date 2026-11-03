@@ -19,18 +19,22 @@ export function initialOf(name: string): string {
  * once accounts have one; nothing else changes.
  */
 export function Avatar({ person, hollow = false }: { person: AvatarPerson; hollow?: boolean }) {
+  // The circle is the person's ink (`author-slot-N`, the soft ink outside a space); the
+  // initial is paper on it, or the ink itself when hollow.
   const classes = [
-    'avatar',
-    person.slot ? `author-slot-${person.slot}` : '',
-    hollow ? 'hollow' : '',
+    'inline-grid size-7 shrink-0 place-items-center rounded-full border-[1.5px] border-current font-sans text-sm leading-none',
+    person.slot ? `author-slot-${person.slot}` : 'text-ink-soft',
+    hollow ? 'bg-transparent' : 'bg-current',
   ];
   return (
     <span
-      className={classes.filter(Boolean).join(' ')}
+      className={classes.join(' ')}
       role="img"
       aria-label={hollow ? `${person.name}（还没有写字）` : person.name}
     >
-      <span aria-hidden="true">{initialOf(person.name)}</span>
+      <span aria-hidden="true" className={hollow ? undefined : 'text-paper'}>
+        {initialOf(person.name)}
+      </span>
     </span>
   );
 }

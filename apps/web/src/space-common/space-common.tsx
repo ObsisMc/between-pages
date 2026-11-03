@@ -25,7 +25,9 @@ export const useSpaceUnread = (enabled: boolean) =>
   });
 
 export function EntryDot({ count }: { count: number | undefined }) {
-  return count ? <span className="unread-dot" role="img" aria-label="有新内容" /> : null;
+  return count ? (
+    <span className="inline-block size-2 rounded-full bg-warm" role="img" aria-label="有新内容" />
+  ) : null;
 }
 
 export type SeenTarget = { type: SpaceRecordType; id: string; mark: number };

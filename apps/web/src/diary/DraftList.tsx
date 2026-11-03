@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { EditIntent } from '../editor-binding/index.ts';
+import { Button } from '../ui/index.ts';
 import { groupDrafts } from './drafts.ts';
 import type { DiaryDraft } from './session.ts';
 
@@ -17,8 +18,8 @@ const copyable = (intent: EditIntent) =>
 function Intent({ intent, onCopy }: { intent: EditIntent; onCopy: (text: string) => void }) {
   const text = copyable(intent);
   return (
-    <div className="draft-intent">
-      <p className="draft-context">
+    <div className="grid justify-items-start gap-1">
+      <p className="whitespace-pre-wrap text-ink [&_del]:text-ink-soft [&_ins]:bg-notice [&_ins]:no-underline">
         {intent.before}
         {intent.kind === 'insert' && <ins>{intent.text}</ins>}
         {intent.kind === 'delete' && <del>{intent.text}</del>}
@@ -30,15 +31,15 @@ function Intent({ intent, onCopy }: { intent: EditIntent; onCopy: (text: string)
         )}
         {intent.after}
       </p>
-      <p className="draft-kind">
+      <p className="text-sm text-ink-soft">
         {intent.kind === 'insert' && '新写的文字，未进入正文'}
         {intent.kind === 'delete' && '原本要删除的文字，正文里没有删除'}
         {intent.kind === 'replace' && '替换：划线的是原文，新写的部分可以复制'}
       </p>
       {text && (
-        <button type="button" onClick={() => onCopy(text)}>
+        <Button type="button" variant="outline" size="sm" onClick={() => onCopy(text)}>
           复制新写的文字
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -62,31 +63,38 @@ export function DraftList({
   };
 
   return (
-    <section className="drafts" aria-label="恢复草稿">
-      <h2>恢复草稿</h2>
-      <p className="draft-help">
+    <section className="mt-6 border-t border-dashed border-line pt-5" aria-label="恢复草稿">
+      <h2 className="font-serif text-lg font-medium">恢复草稿</h2>
+      <p className="mt-1 text-sm text-ink-soft">
         这些输入没有进入正文。需要的话复制后粘贴回正文，会作为你的新输入保存。
       </p>
-      {copied && <p role="status">已复制</p>}
-      <ul>
+      {copied && (
+        <p role="status" className="mt-2 text-sm text-done">
+          已复制
+        </p>
+      )}
+      <ul className="mt-4 grid gap-3">
         {groupDrafts(drafts).map((group) => {
           const key = group.draftIds[0]!;
           return (
-            <li key={key}>
-              <p className="draft-meta">
+            <li
+              key={key}
+              className="grid justify-items-start gap-3 rounded-xl border border-line p-4"
+            >
+              <p className="text-sm text-ink-soft">
                 {reasonText[group.reason]} · 写于 {time.format(group.writtenAt)}
               </p>
               {group.intents.map((intent, i) => (
                 <Intent key={i} intent={intent} onCopy={copy} />
               ))}
               {confirming === key ? (
-                <button type="button" onClick={() => onDelete(group.draftIds)}>
+                <Button type="button" size="sm" onClick={() => onDelete(group.draftIds)}>
                   确认删除这条草稿
-                </button>
+                </Button>
               ) : (
-                <button type="button" onClick={() => setConfirming(key)}>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setConfirming(key)}>
                   删除草稿
-                </button>
+                </Button>
               )}
             </li>
           );

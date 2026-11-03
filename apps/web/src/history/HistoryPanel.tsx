@@ -2,6 +2,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { callApi } from '../api/client.ts';
 import type { HistoryPointView } from './format.ts';
+import { Button, cn } from '../ui/index.ts';
 import { countdownLabel, dayOf, dayLabel, timeLabel } from './format.ts';
 
 /** The cache key of one diary's history pages; metadata only, never diary text. */
@@ -78,46 +79,58 @@ export function HistoryPanel({
   }
 
   return (
-    <aside className="history" aria-label="历史版本">
-      <h2>历史版本</h2>
-      {history.isPending && <p className="history-note">正在读取…</p>}
+    <aside
+      className="mt-6 grid gap-3 rounded-2xl border border-line p-5 text-sm"
+      aria-label="历史版本"
+    >
+      <h2 className="font-serif text-lg font-medium">历史版本</h2>
+      {history.isPending && <p className="text-ink-soft">正在读取…</p>}
       {history.isError && (
-        <p className="notice" role="alert">
+        <p className="rounded-xl bg-notice px-4 py-3" role="alert">
           历史读取失败，请稍后再试
         </p>
       )}
       {left !== null && (
-        <p className="history-note">
+        <p className="text-ink-soft">
           {left > 0 ? `正在写的这段约 ${countdownLabel(left)}后成为历史版本` : '正在生成历史版本…'}
         </p>
       )}
-      {history.isSuccess && points.length === 0 && <p className="history-note">还没有历史版本</p>}
+      {history.isSuccess && points.length === 0 && <p className="text-ink-soft">还没有历史版本</p>}
       {days.map(({ day, points: ofDay }) => (
         <section key={day}>
-          <h3>{dayLabel(ofDay[0]!.committedAt)}</h3>
-          <ul>
+          <h3 className="mb-2 text-ink-soft">{dayLabel(ofDay[0]!.committedAt)}</h3>
+          <ul className="flex flex-wrap gap-2">
             {ofDay.map((point) => (
               <li key={point.publicId}>
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    'tabular-nums',
+                    selected === point.publicId && 'border-warm bg-accent text-warm',
+                  )}
                   aria-pressed={selected === point.publicId}
                   onClick={() => onSelect(point)}
                 >
                   {timeLabel(point.committedAt)}
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
         </section>
       ))}
       {history.hasNextPage && (
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
+          className="justify-self-start"
           disabled={history.isFetchingNextPage}
           onClick={() => void history.fetchNextPage()}
         >
           加载更早的版本
-        </button>
+        </Button>
       )}
     </aside>
   );
