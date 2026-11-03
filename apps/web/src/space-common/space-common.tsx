@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { SpaceRecordType } from '@between-pages/contracts';
 import { ApiError, callApi } from '../api/client.ts';
+import { Button, cn } from '../ui/index.ts';
 
 // What every space feature beyond the diary shows the same way (space-records ADR): the
 // entry dot, records reported as seen once on screen for about a second, "有 N 处新内容 ·
@@ -110,18 +111,28 @@ export function UnreadJump({ ids }: { ids: readonly string[] }) {
     setNext(index + 1);
   };
   return (
-    <p className="unread-banner">
+    <p className="my-2 flex min-h-11 items-center gap-1 text-sm">
       {next === 0 ? (
         <>
           有 {atOpen} 处新内容 ·{' '}
-          <button type="button" className="link" onClick={() => jump(0)}>
+          <Button
+            type="button"
+            variant="link"
+            className="text-warm underline"
+            onClick={() => jump(0)}
+          >
             跳到第一处
-          </button>
+          </Button>
         </>
       ) : (
-        <button type="button" className="link" onClick={() => jump(next)}>
+        <Button
+          type="button"
+          variant="link"
+          className="text-warm underline"
+          onClick={() => jump(next)}
+        >
           下一处
-        </button>
+        </Button>
       )}
     </p>
   );
@@ -129,7 +140,7 @@ export function UnreadJump({ ids }: { ids: readonly string[] }) {
 
 export function ReadOnlyNotice() {
   return (
-    <p className="notice" role="status">
+    <p className="my-4 rounded-xl bg-notice px-4 py-3 text-sm" role="status">
       已解绑，记录只读
     </p>
   );
@@ -154,7 +165,7 @@ export function StampText({
   fresh?: boolean;
 }) {
   return (
-    <span className={fresh ? 'stamp fresh' : 'stamp'}>
+    <span className={cn('mr-3 text-sm', fresh ? 'text-warm' : 'text-ink-soft')}>
       {name} {verb} · {dayText(at)}
     </span>
   );
@@ -162,9 +173,12 @@ export function StampText({
 
 /** The label of a record new to the viewer: "新" or "改过" (D8). */
 export function UnreadLabel({ unread }: { unread: 'new' | 'edited' | 'acted' | null }) {
-  if (unread === 'new') return <span className="record-label">新</span>;
-  if (unread === 'edited') return <span className="record-label">改过</span>;
-  return null;
+  const text = unread === 'new' ? '新' : unread === 'edited' ? '改过' : null;
+  return text ? (
+    <span className="ml-1 rounded-md bg-notice px-1.5 py-0.5 align-middle font-sans text-xs font-normal">
+      {text}
+    </span>
+  ) : null;
 }
 
 /** What a refused or failed write tells the person (space-records 失败与恢复). */

@@ -160,13 +160,14 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       'shared-diaries': ['api'],
       // server-backup-and-google-docs D9: the backup page, the Google callback and the home banner.
       backup: ['api'],
-      // two-clocks: the home time area, the clocks page and the browser's zone report.
-      'two-clocks': ['api'],
+      // two-clocks: the home time area, the clocks page and the browser's zone report; the
+      // page sits in the shell's page container (digital-paper-interface 落地顺序 4).
+      'two-clocks': ['api', 'shell', 'ui'],
       // space-records: the entry dot, seen reports, unread jumps and the read-only notice
       // every space feature uses; features import it and never each other.
-      'space-common': ['api'],
+      'space-common': ['api', 'ui'],
       wishes: ['api', 'space-common'],
-      anniversaries: ['api', 'space-common'],
+      anniversaries: ['api', 'space-common', 'shell', 'ui'],
       // book-frontend-workspace: `day-text` renders one diary's text read-only and knows no
       // other module; `day-feed` is the continuous list of them and the date index, which
       // `diary` mounts beside the day editor (digital-paper-interface D2, 落地顺序 2).
