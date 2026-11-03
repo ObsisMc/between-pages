@@ -30,6 +30,7 @@
 | [partner-local-dates](./2026-10-30-partner-local-dates.md) | 纪念日与礼物的日期以对方的当地日期为准，最后一天精确到小时 | 已实现 | 领域 | 5/5 已完成 |
 | [opening-book-home](./2026-10-31-opening-book-home.md) | 主页以一本书的开篇呈现，两地时间与日记入口融入书页 | 已采纳 | 领域 | 0/5 未开始 |
 | [book-frontend-workspace](./2026-11-01-book-frontend-workspace.md) | 书页式前端以目录连接页面，日记用双页工作区和按日期连续浏览 | 已采纳 | 领域 | 4/9 部分 |
+| [unread-from-character-records](./2026-11-01-unread-from-character-records.md) | 列表未读由字的写入、删除与已读记录直接算出，提交时记下删除的字 | 提议 | 领域 | 0/5 未开始 |
 <!-- adr-index:end -->
 
 ## 原则
