@@ -21,7 +21,7 @@ async function menu(name: string) {
 }
 
 describe('SiteHeader', () => {
-  it('[adr:space-records#10] [adr:digital-paper-interface#4] lists only the diaries and backup for an account that was never bound', async () => {
+  it('[adr:space-records#10] [adr:book-frontend-workspace#2] lists only the diaries and backup for an account that was never bound', async () => {
     stubApi({ ...noRelationship, 'GET /api/me': signedIn('alice') });
     renderAt('/');
     const bar = await nav();
@@ -62,7 +62,7 @@ describe('SiteHeader', () => {
     ]);
   });
 
-  it('[adr:digital-paper-interface#4] keeps the read-only space and its records after unbinding, without the clocks', async () => {
+  it('[adr:book-frontend-workspace#7] keeps the read-only space and its records after unbinding, without the clocks', async () => {
     stubApi({
       ...noRelationship,
       'GET /api/me': signedIn('alice'),
