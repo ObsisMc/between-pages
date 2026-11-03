@@ -3,8 +3,9 @@ import * as Primitive from '@radix-ui/react-tabs';
 import { cn } from './cn.ts';
 
 // shadcn's tabs on the paper tokens, drawn as an underlined row: Radix gives them the tab
-// roles, arrow keys and the selected state. A panel given `forceMount` stays mounted and is
-// hidden while another tab shows, so what was typed in it survives the switch.
+// roles, arrow keys and the selected state. A panel given `forceMount` stays mounted, so
+// what was typed in it survives a switch; Radix leaves it visible, so the caller passes
+// `hidden` while another tab shows.
 export const Tabs = Primitive.Root;
 
 export function TabsList({ className, ...props }: ComponentProps<typeof Primitive.List>) {
@@ -29,10 +30,5 @@ export function TabsTrigger({ className, ...props }: ComponentProps<typeof Primi
 }
 
 export function TabsContent({ className, ...props }: ComponentProps<typeof Primitive.Content>) {
-  return (
-    <Primitive.Content
-      className={cn('pt-6 outline-none data-[state=inactive]:hidden', className)}
-      {...props}
-    />
-  );
+  return <Primitive.Content className={cn('pt-6 outline-none', className)} {...props} />;
 }

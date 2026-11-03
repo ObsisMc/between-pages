@@ -1026,7 +1026,7 @@ export function WishesPage() {
               礼物墙 <TabDot on={unread.wall.length > 0} />
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="theirs" forceMount>
+          <TabsContent value="theirs" forceMount hidden={tab !== 'theirs'}>
             {view.theirs.length ? (
               <ul>
                 {view.theirs.map((w) => (
@@ -1037,7 +1037,7 @@ export function WishesPage() {
               <p className="py-6 text-ink-soft">TA 还没有许愿</p>
             )}
           </TabsContent>
-          <TabsContent value="mine" forceMount>
+          <TabsContent value="mine" forceMount hidden={tab !== 'mine'}>
             {view.mine.length ? (
               <ul>
                 {view.mine.map((w) => (
@@ -1048,7 +1048,7 @@ export function WishesPage() {
               <p className="py-6 text-ink-soft">还没有许愿</p>
             )}
           </TabsContent>
-          <TabsContent value="preparing" forceMount>
+          <TabsContent value="preparing" forceMount hidden={tab !== 'preparing'}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="flex items-center gap-2 text-sm text-ink-soft [&_svg]:size-4">
                 <Lock aria-hidden="true" />
@@ -1089,7 +1089,7 @@ export function WishesPage() {
               <p className="py-6 text-ink-soft">还没有在准备的礼物</p>
             )}
           </TabsContent>
-          <TabsContent value="wall" forceMount>
+          <TabsContent value="wall" forceMount hidden={tab !== 'wall'}>
             <Wall view={view} report={report} />
           </TabsContent>
         </Tabs>

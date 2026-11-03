@@ -89,6 +89,8 @@ class SeeEverything {
   disconnect() {}
 }
 beforeEach(() => vi.stubGlobal('IntersectionObserver', SeeEverything));
+/** Radix tabs switch on mouse down. */
+const openTab = (tab: HTMLElement) => fireEvent.mouseDown(tab, { button: 0 });
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
@@ -192,8 +194,12 @@ describe('WishesPage', () => {
     });
     renderAt('/wishes', routes);
     expect(await screen.findByText('已解绑，记录只读')).toBeDefined();
-    for (const name of ['许个愿', '收到了', '编辑', '删除', '悄悄准备'])
-      expect(screen.queryByRole('button', { name })).toBeNull();
+    for (const tab of ['我的心愿', '悄悄准备', '礼物墙']) {
+      openTab(screen.getByRole('tab', { name: tab }));
+      for (const name of ['许个愿', '收到了', '编辑', '删除', '准备一份惊喜', '修改'])
+        expect(screen.queryByRole('button', { name })).toBeNull();
+    }
+    expect(screen.getByText('花')).toBeDefined();
     expect(screen.queryByLabelText('日期')).toBeNull();
   });
 
@@ -212,7 +218,7 @@ describe('WishesPage', () => {
       'GET /api/space/unread': () => Response.json({ features: { wishes: 0 } }),
     });
     renderAt('/wishes', routes);
-    fireEvent.click(await screen.findByRole('tab', { name: '我的心愿' }));
+    openTab(await screen.findByRole('tab', { name: '我的心愿' }));
     fireEvent.click(await screen.findByRole('button', { name: '收到了' }));
     expect((await screen.findByRole('alert')).textContent).toBe('已解绑，记录只读');
     fireEvent.click(screen.getByRole('button', { name: '收到了' }));
@@ -285,7 +291,7 @@ describe('WishesPage', () => {
       ]),
     });
     renderAt('/wishes', routes);
-    fireEvent.click(await screen.findByRole('tab', { name: '礼物墙' }));
+    openTab(await screen.findByRole('tab', { name: '礼物墙' }));
     expect(await screen.findByText('杯子')).toBeDefined();
     // A linked anniversary shows its name now and links to it; a deleted one, the kept name.
     const linked = await screen.findByRole('link', { name: '第一次见面' });
@@ -353,11 +359,11 @@ describe('WishesPage', () => {
         ),
     });
     renderAt('/wishes', routes);
-    fireEvent.click(await screen.findByRole('tab', { name: '悄悄准备' }));
+    openTab(await screen.findByRole('tab', { name: '悄悄准备' }));
     fireEvent.click(screen.getByRole('button', { name: '写卡片' }));
     fireEvent.change(screen.getByLabelText('卡片'), { target: { value: '冬天快乐' } });
-    fireEvent.click(screen.getByRole('tab', { name: '礼物墙' }));
-    fireEvent.click(screen.getByRole('tab', { name: '悄悄准备' }));
+    openTab(screen.getByRole('tab', { name: '礼物墙' }));
+    openTab(screen.getByRole('tab', { name: '悄悄准备' }));
     expect((screen.getByLabelText('卡片') as HTMLTextAreaElement).value).toBe('冬天快乐');
   });
 
