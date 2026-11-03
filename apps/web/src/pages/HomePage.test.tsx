@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
-import { noRelationship, renderAt, signedIn, signedOut, stubApi } from '../../test/render.tsx';
+import { noRelationship, renderAt, signedIn, stubApi } from '../../test/render.tsx';
 import { PARTNER, SPACE, space } from '../../test/relationship.ts';
 
 const today = new Intl.DateTimeFormat('en-CA').format(new Date());
@@ -23,32 +23,6 @@ afterEach(() => {
 });
 
 describe('HomePage', () => {
-  it('signs out, forgets the session and returns to /login', async () => {
-    let session = true;
-    stubApi({
-      ...noRelationship,
-      'GET /api/me': () => (session ? signedIn('alice')() : signedOut()),
-      'POST /api/auth/sign-out': () => ((session = false), Response.json({ success: true })),
-    });
-    const { router, client } = renderAt('/');
-    fireEvent.click(await screen.findByText('退出'));
-    await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
-    expect(await screen.findByText('使用 Google 登录')).toBeDefined();
-    expect(client.getQueryData(['me'])).toBeUndefined();
-  });
-
-  it('stays and says so when signing out fails', async () => {
-    stubApi({
-      ...noRelationship,
-      'GET /api/me': signedIn('alice'),
-      'POST /api/auth/sign-out': () => new Response(null, { status: 500 }),
-    });
-    const { router } = renderAt('/');
-    fireEvent.click(await screen.findByText('退出'));
-    expect((await screen.findByRole('alert')).textContent).toBe('退出失败，请重试');
-    expect(router.state.location.pathname).toBe('/');
-  });
-
   it('[adr:opening-book-home#1] [adr:book-frontend-workspace#2] shows no diary text and never asks for diaries', async () => {
     const days = vi.fn(() =>
       Response.json({
@@ -79,7 +53,7 @@ describe('HomePage', () => {
     });
     renderAt('/');
     expect(await screen.findByText('TA 那边')).toBeDefined();
-    expect(await screen.findByText('已登录为 alice')).toBeDefined();
+    expect(await screen.findByRole('link', { name: '浏览所有日记' })).toBeDefined();
     expect(days).not.toHaveBeenCalled();
     expect(screen.queryByText(/今天下雨/)).toBeNull();
   });
@@ -99,7 +73,7 @@ describe('HomePage', () => {
     stubApi({ ...noRelationship, 'GET /api/me': signedIn('alice') });
     renderAt('/');
     expect(await screen.findByText('生成邀请链接')).toBeDefined();
-    expect(screen.getByText('我这边')).toBeDefined();
+    expect(await screen.findByText('我这边')).toBeDefined();
     expect(screen.queryByText(/TA 那边|醒着/)).toBeNull();
   });
 

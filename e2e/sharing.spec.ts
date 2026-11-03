@@ -19,7 +19,7 @@ async function signedIn(browser: Browser, name: string): Promise<Page> {
   await page.goto('/login');
   await page.getByLabel('开发登录').fill(name);
   await page.getByRole('button', { name: '开发登录' }).click();
-  await expect(page.getByText(`已登录为 ${name}`)).toBeVisible();
+  await expect(page.getByRole('button', { name: `账号：${name}` })).toBeVisible();
   return page;
 }
 

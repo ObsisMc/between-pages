@@ -21,7 +21,7 @@ async function signedIn(browser: Browser, name: string, timezoneId: string): Pro
   await page.goto('/login');
   await page.getByLabel('开发登录').fill(name);
   await page.getByRole('button', { name: '开发登录' }).click();
-  await expect(page.getByText(`已登录为 ${name}`)).toBeVisible();
+  await expect(page.getByRole('button', { name: `账号：${name}` })).toBeVisible();
   return page;
 }
 
@@ -44,8 +44,8 @@ test('[adr:partner-local-dates#1] [adr:partner-local-dates#5] the partner’s bi
   await expect(b.getByText(/TA 那边/).first()).toBeVisible();
 
   await a.goto('/');
-  await a.getByRole('button', { name: '目录', exact: true }).click();
-  await a.getByRole('link', { name: /纪念日/ }).click();
+  await a.getByRole('navigation', { name: '主要' }).getByRole('button', { name: /^一起/ }).click();
+  await a.getByRole('menuitem', { name: /纪念日/ }).click();
   await a.getByLabel('日期').fill(todayIn(AHEAD));
   await a.getByRole('button', { name: '记下' }).click();
   await expect(a.locator('li.anniversary')).toContainText(`${name('b')} 的生日`);

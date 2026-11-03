@@ -3,7 +3,7 @@
    one in the feed's own box. The session keeps the reading position itself, as on the
    window (see `overflow-anchor` there). */
 .workspace.wide {
-  height: calc(100dvh - 4rem);
+  height: calc(100dvh - 4rem - var(--site-header));
   grid-template-rows: minmax(0, 1fr);
 }
 
@@ -80,20 +80,10 @@
 }
 
 /* The feed alone is the window's height so its list scrolls inside it, the date jump above
-   it always in reach; the rows above the list keep clear of the bookmark. */
+   it always in reach. */
 .workspace.narrow-feed .book-left {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  height: calc(100dvh - var(--site-header));
   padding-bottom: 0;
-}
-
-.workspace.narrow-feed .book-left::before {
-  content: none;
-}
-
-.workspace.narrow-feed .workspace-nav,
-.workspace.narrow-feed .workspace-title,
-.workspace.narrow-feed .feed-jump {
-  padding-right: 3rem;
 }

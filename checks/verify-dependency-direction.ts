@@ -114,6 +114,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       main: ['*'],
       routes: [
         'auth',
+        'shell',
         'pages',
         'diary',
         'join',
@@ -136,9 +137,14 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'space-common',
         'two-clocks',
       ],
-      // book-frontend-workspace D1, D2: the spread, the bookmark and the contents are layout
-      // and navigation only; the caller says which entries exist.
+      // book-frontend-workspace D1: the spread is layout only, until digital-paper-interface
+      // replaces it.
       book: [],
+      // digital-paper-interface 落地顺序 2: the shadcn components know no other module.
+      ui: [],
+      // digital-paper-interface D1: the site header and which pages it lists; the account menu
+      // signs out and forgets a kept invitation.
+      shell: ['ui', 'api', 'auth', 'avatar', 'join', 'relationship', 'space-common'],
       'editor-binding': [],
       journal: [],
       sender: ['journal'],

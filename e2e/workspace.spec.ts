@@ -171,8 +171,8 @@ test('[adr:book-frontend-workspace#6] narrow: the feed and the day are one page 
     expect
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
       .toBe(true);
-  const bookmarkOnScreen = async () => {
-    const box = (await page.getByRole('button', { name: '目录' }).boundingBox())!;
+  const navigationOnScreen = async () => {
+    const box = (await page.getByRole('navigation', { name: '主要' }).boundingBox())!;
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(375);
     expect(box.y + box.height).toBeLessThanOrEqual(740);
@@ -183,7 +183,7 @@ test('[adr:book-frontend-workspace#6] narrow: the feed and the day are one page 
   await expect(page.getByText('从右页选一天')).toHaveCount(0);
   await expect(editor(page)).toHaveCount(0);
   await expect(page.getByLabel('跳到日期')).toBeInViewport();
-  await bookmarkOnScreen();
+  await navigationOnScreen();
   await noSidewaysScroll();
   await scrollFeedTo(page, DATES[5]!);
   const kept = await feedTop(page);
@@ -193,12 +193,12 @@ test('[adr:book-frontend-workspace#6] narrow: the feed and the day are one page 
   await expect(page).toHaveURL(new RegExp(`/days/${DATES[7]}$`));
   await expect(editor(page)).toBeFocused();
   await expect(feed(page)).toHaveCount(0);
-  await bookmarkOnScreen();
+  await navigationOnScreen();
   await noSidewaysScroll();
 
   await page.getByRole('link', { name: '← 所有日记' }).click();
   await expect(page).toHaveURL(/\/days$/);
   await expect.poll(() => feedTop(page)).toEqual(kept);
   await expect(page.getByLabel('跳到日期')).toBeInViewport();
-  await bookmarkOnScreen();
+  await navigationOnScreen();
 });

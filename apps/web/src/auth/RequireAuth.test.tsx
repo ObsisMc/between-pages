@@ -15,7 +15,7 @@ describe('RequireAuth', () => {
     renderAt('/');
     expect(await screen.findByText('正在打开…')).toBeDefined();
     release();
-    expect(await screen.findByText('已登录为 alice')).toBeDefined();
+    expect(await screen.findByRole('button', { name: '账号：alice' })).toBeDefined();
   });
 
   it('redirects to /login without a session', async () => {
@@ -34,7 +34,7 @@ describe('RequireAuth', () => {
     expect(await screen.findByText('服务暂不可用，请稍后再试')).toBeDefined();
     healthy = true;
     fireEvent.click(screen.getByText('重试'));
-    expect(await screen.findByText('已登录为 alice')).toBeDefined();
+    expect(await screen.findByRole('button', { name: '账号：alice' })).toBeDefined();
   });
 
   it('sends unknown paths to the home page', async () => {

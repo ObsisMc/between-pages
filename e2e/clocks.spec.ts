@@ -23,7 +23,7 @@ async function signedIn(browser: Browser, name: string, timezoneId: string): Pro
   const page = await (await browser.newContext({ timezoneId })).newPage();
   await page.goto('/login');
   await devLogin(page, name);
-  await expect(page.getByText(`已登录为 ${name}`)).toBeVisible();
+  await expect(page.getByRole('button', { name: `账号：${name}` })).toBeVisible();
   return page;
 }
 
