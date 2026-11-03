@@ -1,5 +1,12 @@
-import { useId } from 'react';
-import { Mascot, type MascotTone } from '../avatar/index.ts';
+import { useId, useRef, useState, type PointerEvent } from 'react';
+import {
+  MascotBody,
+  MascotPaws,
+  MascotShadow,
+  type MascotMood,
+  type MascotTone,
+} from '../avatar/index.ts';
+import './windows.css';
 
 // The paired windows (digital-paper-interface D4): frame, sill, sky, light and mascot are
 // separate SVG layers, so each can change on its own. The frame's color is the person's
@@ -14,7 +21,29 @@ export type WindowSide = {
   sky: Sky | null;
   /** Nobody at this window yet (no partner): the frame stays, empty and faded. */
   empty?: boolean;
+  /** The mascot's face; `asleep` also floats a few z's (window-mascots D6). */
+  mood?: MascotMood;
+  /**
+   * Bumped each time the mascot should hop; a new value restarts the animation.
+   * `squish` is a tap on it, `hop` is joy at being poked by the partner.
+   */
+  bounce?: { kind: 'squish' | 'hop'; at: number } | null;
+  /** A short speech bubble above the mascot. */
+  bubble?: string | null;
+  /**
+   * Makes the mascot a button with this accessible name. A tap (or Enter or Space) pokes it;
+   * a drag of more than 14 px across it pets it, which only a pointer can do (window-mascots D2).
+   */
+  poke?: { label: string; onPoke: () => void; onPet: () => void } | null;
 };
+
+/** How far the pointer must travel before a press counts as petting rather than a tap. */
+const PET_AFTER_PX = 14;
+const MAX_LEAN_DEG = 9;
+const HEART_EVERY_MS = 200;
+
+type Heart = { id: number; x: number; y: number };
+type Pet = { lean: number; active: boolean };
 
 const FRAME: Record<'1' | '2' | 'none', { light: string; base: string; dark: string }> = {
   '1': { light: '#f6bb8c', base: '#e9975e', dark: '#c97a44' },
@@ -56,6 +85,95 @@ function SkyDetails({ sky }: { sky: Sky }) {
 }
 
 function Window({ side }: { side: WindowSide }) {
+  const [pet, setPet] = useState<Pet>({ lean: 0, active: false });
+  const [hearts, setHearts] = useState<Heart[]>([]);
+  const box = useRef<HTMLDivElement>(null);
+  const press = useRef<{ x: number; y: number; travel: number; heartAt: number } | null>(null);
+  const petting = useRef(false);
+  const swallowClick = useRef(false);
+
+  const addHeart = (event: PointerEvent) => {
+    const rect = box.current!.getBoundingClientRect();
+    const heart = {
+      id: performance.now(),
+      x: ((event.clientX - rect.left) / rect.width) * 100,
+      y: ((event.clientY - rect.top) / rect.height) * 100,
+    };
+    setHearts((all) => [...all, heart]);
+    setTimeout(() => setHearts((all) => all.filter((h) => h.id !== heart.id)), 1100);
+  };
+
+  const onPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    press.current = { x: event.clientX, y: event.clientY, travel: 0, heartAt: 0 };
+  };
+  const onPointerMove = (event: PointerEvent<HTMLButtonElement>) => {
+    const p = press.current;
+    if (!p) return;
+    p.travel += Math.abs(event.clientX - p.x) + Math.abs(event.clientY - p.y);
+    p.x = event.clientX;
+    p.y = event.clientY;
+    if (!petting.current && p.travel < PET_AFTER_PX) return;
+    petting.current = true;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const offset = (event.clientX - (rect.left + rect.width / 2)) / (rect.width / 2);
+    setPet({ lean: Math.max(-1, Math.min(1, offset)) * MAX_LEAN_DEG, active: true });
+    if (event.timeStamp - p.heartAt > HEART_EVERY_MS) {
+      p.heartAt = event.timeStamp;
+      addHeart(event);
+    }
+  };
+  const endPress = () => {
+    press.current = null;
+    if (!petting.current) return;
+    petting.current = false;
+    swallowClick.current = true;
+    setPet({ lean: 0, active: false });
+    side.poke?.onPet();
+  };
+
+  const mood = pet.active && side.mood !== 'asleep' ? 'happy' : side.mood;
+  return (
+    <div ref={box} className="mascot-window relative">
+      <WindowArt side={{ ...side, ...(mood ? { mood } : {}) }} pet={pet} />
+      {hearts.map((heart) => (
+        <span
+          key={heart.id}
+          aria-hidden="true"
+          className="mascot-heart pointer-events-none absolute z-10 text-lg text-[#ec7f8f]"
+          style={{ left: `${heart.x}%`, top: `${heart.y}%` }}
+        >
+          ♥
+        </span>
+      ))}
+      {side.bubble && (
+        <p
+          key={side.bubble}
+          className="mascot-bubble pointer-events-none absolute top-[44%] left-1/2 z-10 -translate-x-1/2 rounded-full border border-line bg-paper px-3 py-1 text-sm whitespace-nowrap text-ink shadow-sm"
+        >
+          {side.bubble}
+        </p>
+      )}
+      {side.poke && !side.empty && (
+        <button
+          type="button"
+          aria-label={side.poke.label}
+          onClick={() => {
+            if (swallowClick.current) swallowClick.current = false;
+            else side.poke?.onPoke();
+          }}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endPress}
+          onPointerCancel={endPress}
+          className="absolute top-[66%] left-[24%] h-[29%] w-[52%] cursor-pointer touch-none rounded-[45%] border-0 bg-transparent p-0 shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring active:cursor-grabbing"
+        />
+      )}
+    </div>
+  );
+}
+
+function WindowArt({ side, pet }: { side: WindowSide; pet: Pet }) {
   const id = useId();
   const frame = FRAME[side.tone === null ? 'none' : (String(side.tone) as '1' | '2')];
   const sky = side.sky ?? 'day';
@@ -124,10 +242,56 @@ function Window({ side }: { side: WindowSide }) {
           filter={`url(#${id}grain)`}
         />
         <rect x="12" y="245" width="176" height="3" rx="1.5" fill="#fff" opacity="0.35" />
-        {/* The mascot sits on the sill, its paws over the front edge. */}
+        {/* The mascot sits on the sill: its surface line (y 78 on the mascot's grid) is the
+            sill's top. Only the body moves; the shadow and paws stay put, except that a
+            hop lifts the paws with it and shrinks the shadow. */}
         {!side.empty && (
-          <g transform="translate(50 179)">
-            <Mascot tone={side.tone} size={100} />
+          <g transform="translate(50 179) scale(0.8333)">
+            <g
+              key={`s${side.bounce?.at ?? 0}`}
+              className={side.bounce?.kind === 'hop' ? 'mascot-shadow-hop' : undefined}
+            >
+              <MascotShadow />
+            </g>
+            {/* Leans toward the petting hand; the inner group keeps its own motion. */}
+            <g
+              className="mascot-lean"
+              style={{
+                transform: `rotate(${pet.lean}deg) scale(${pet.active ? '1.03, 0.96' : '1, 1'})`,
+              }}
+            >
+              <g
+                key={side.bounce?.at ?? 0}
+                className={
+                  side.bounce
+                    ? `mascot-${side.bounce.kind}`
+                    : pet.active
+                      ? 'mascot-purr'
+                      : 'mascot-breathe'
+                }
+              >
+                <MascotBody tone={side.tone} mood={side.mood ?? 'idle'} />
+              </g>
+            </g>
+            <g
+              key={`p${side.bounce?.at ?? 0}`}
+              className={side.bounce?.kind === 'hop' ? 'mascot-paws-hop' : undefined}
+            >
+              <MascotPaws tone={side.tone} />
+            </g>
+          </g>
+        )}
+        {!side.empty && side.mood === 'asleep' && (
+          <g className="mascot-zzz" fill="#7b6a5c" fontFamily="var(--font-serif)">
+            <text x="138" y="180" fontSize="14">
+              z
+            </text>
+            <text x="148" y="166" fontSize="18">
+              z
+            </text>
+            <text x="160" y="148" fontSize="22">
+              Z
+            </text>
           </g>
         )}
       </g>

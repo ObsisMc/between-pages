@@ -918,5 +918,30 @@ export const anniversaryReminders = pgTable(
   ],
 );
 
+// What one person's partner sent them on the home and they have not seen yet (window-mascots
+// D3): one row per binding period and recipient, counts only, deleted once both are shown.
+// The sent-at columns only space out the partner's sends (one of each kind a second, D4); no
+// history of who poked when is kept.
+export const mascotPokes = pgTable(
+  'mascot_pokes',
+  {
+    periodId: uuid('period_id')
+      .notNull()
+      .references(() => bindingPeriods.id),
+    recipientId: uuid('recipient_id')
+      .notNull()
+      .references(() => users.id),
+    pokes: integer('pokes').notNull().default(0),
+    pets: integer('pets').notNull().default(0),
+    lastAt: timestamp('last_at', { withTimezone: true }).notNull(),
+    pokeSentAt: timestamp('poke_sent_at', { withTimezone: true }),
+    petSentAt: timestamp('pet_sent_at', { withTimezone: true }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.periodId, t.recipientId] }),
+    check('mascot_pokes_counts', sql`${t.pokes} >= 0 and ${t.pets} >= 0`),
+  ],
+);
+
 // Auth layer tables, owned by Better Auth; exported so drizzle-kit migrates them with ours.
 export * from './auth-schema.ts';

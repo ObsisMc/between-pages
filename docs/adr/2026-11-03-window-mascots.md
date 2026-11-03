@@ -1,6 +1,6 @@
 # 主页窗里的团子可以戳和摸，对方在主页上看到，团子只按作息睡觉
 
-- 状态：提议
+- 状态：已实现
 - 日期：2026-11-03
 - 决策者：Ray
 - 范围：领域
@@ -158,7 +158,7 @@ PokesResponse = { received: { pokes: number; pets: number; lastAt: string } | nu
 ## 风险与代价
 
 - 主页打开时每人每 10 秒一次很小的查询；两个人的规模下可以忽略，不需要索引以外的优化。
-- 新增一张表和一次迁移；按 AGENTS.md，表结构变更须 Ray 同意（见落地顺序 1）。
+- 新增一张表和一次迁移（`0010_mascot_pokes`），Ray 于 2026-11-03 决定实现本功能时一并同意。
 - 触屏上的拖动只在桌面浏览器的触摸模拟里看过；真机验证随阶段 4 的手机支持。
 - 旧绑定期间可能各留一行没看过的累计，不清理。
 
@@ -167,26 +167,13 @@ PokesResponse = { received: { pokes: number; pets: number; lastAt: string } | nu
 - 台词、气泡位置、爱心大小与颜色：默认沿用 spike，实现 PR 里按 Ray 的验收调整。
 - 收到时是否在「此刻」入口亮圆点：默认不亮（D3），只在主页上表现。
 
-## 落地顺序
+## 验证
 
-1. Ray 评审本 ADR，采纳时一并同意新增 `mascot_pokes` 表与对应迁移；不新增依赖。
-2. 一个实现 PR，叠在主页 PR #65 之上（或其合并之后），不依赖日记页改版：
-   - `packages/contracts`：`pokes.ts` 与三条路由，`npm run openapi`。
-   - `apps/api`：`schema.ts` 加表、`npm run db:generate -- --name mascot_pokes`；`pokes/` 服务、`store/pokes.ts`、`routes/pokes.ts`；`*.db.test.ts` 覆盖绑定边界、限频、按次数确认与重新绑定。
-   - `apps/web`：按 D7 拆分；从 spike 取回 `Mascot` 三层、`windows` 的手势与动画，重写 `useMascotPokes` 为 `pokes` 模块，去掉 spike 标记。
-   - 模块 README、`checks/verify-dependency-direction.ts`、路线图与根 README 状态行同步。
-3. `spike/mascot-poke` 分支在实现 PR 合并后删除，不合并。
-
-自主实现约定：上面列出的表、迁移和模块边界已预先批准；台词与动画参数可自行调整并在 PR 里附截图；要新增依赖、改动其他表、或让任何接口返回对方状态时停下来问。
-
-## 验收标准
-
-- 不变量 1：组件测试戳和摸自己的团子后没有任何请求。
-- 不变量 2、3、6：`*.db.test.ts` 通过 `app.inject()` 验证未绑定、解绑、第三人与重新绑定的结果，限频内的重复发送不计数，发送的响应与对方是否看过无关。
-- 不变量 4：`*.db.test.ts` 验证显示与确认之间新到的戳在下次询问时仍在；浏览器测试中两个账号互戳，接收方看到一次，刷新后不再出现。
-- 不变量 5：组件测试按作息与时区切换睡着与醒着，没设作息时醒着；检查 `PokesResponse` 与 `/api/clocks` 都不含活跃时间。
-- 不变量 7：组件测试在减少动态效果下不加动画类名，气泡仍出现。
-- 不变量 8：`*.db.test.ts` 验证确认后行被删除；Google 可读副本与未读接口不受影响。
+- 不变量 1：组件测试（`apps/web/src/pokes/pokes.test.tsx`）戳和摸自己的团子后没有任何请求；浏览器测试中 A 戳自己的团子不发出请求（`e2e/mascots.spec.ts`）。
+- 不变量 2、3、6：`apps/api/src/app.pokes.db.test.ts` 经 `app.inject()` 与真实 PostgreSQL 验证未绑定、第三人、解绑后与重新绑定的结果，发送的响应只是发送方自己的待看，限频内的重复发送答复相同、只计一次。
+- 不变量 4、8：同一文件验证显示与确认之间新到的戳留到下一次、确认后整行删除、多确认不会变成负数；浏览器测试中 B 打开主页看到一次「戳了你一下，摸了摸你」，确认后刷新不再出现。
+- 不变量 5：组件测试按作息与时区切换睡着与醒着（与「大概在睡」同时出现），没设作息时醒着；`PokesResponse` 只有 `received`。
+- 不变量 7：浏览器测试在 `reducedMotion: 'reduce'` 下检查团子各层没有动画，气泡与那一行照常。
 
 ## 补充信息
 

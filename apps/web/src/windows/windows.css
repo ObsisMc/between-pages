@@ -1,0 +1,170 @@
+/* The mascot's small motions (window-mascots D1, D2). Every one is off under reduced motion; the
+   face change and the bubble still say what happened. */
+.mascot-window g[class^='mascot-'] {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+.mascot-lean {
+  transition: transform 0.18s ease-out;
+}
+.mascot-purr {
+  animation: mascot-purr 0.32s ease-in-out infinite;
+}
+.mascot-heart {
+  animation: mascot-heart 1.1s ease-out forwards;
+}
+.mascot-breathe {
+  animation: mascot-breathe 4.2s ease-in-out infinite;
+}
+.mascot-squish {
+  animation: mascot-squish 0.55s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.mascot-hop {
+  animation: mascot-hop 0.9s ease-out 2;
+}
+/* The paws ride along with a hop (without its squash) and the shadow shrinks under it. Hops
+   move in px, the grid's units, so body and paws rise by the same amount. */
+.mascot-paws-hop {
+  animation: mascot-paws-hop 0.9s ease-out 2;
+}
+.mascot-window .mascot-shadow-hop {
+  animation: mascot-shadow-hop 0.9s ease-out 2;
+  transform-origin: 50% 50%;
+}
+.mascot-window .mascot-blink {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: mascot-blink 5s infinite;
+}
+.mascot-zzz text {
+  animation: mascot-z 3.6s ease-in-out infinite;
+  opacity: 0;
+}
+.mascot-zzz text:nth-child(2) {
+  animation-delay: 1.2s;
+}
+.mascot-zzz text:nth-child(3) {
+  animation-delay: 2.4s;
+}
+.mascot-bubble {
+  animation: mascot-bubble 0.35s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+@keyframes mascot-breathe {
+  50% {
+    transform: scale(1.02, 0.98);
+  }
+}
+@keyframes mascot-purr {
+  50% {
+    transform: scale(1.015, 0.985) translateY(1%);
+  }
+}
+@keyframes mascot-heart {
+  from {
+    opacity: 0.95;
+    transform: translate(-50%, -50%) scale(0.6);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -260%) scale(1.15);
+  }
+}
+@keyframes mascot-squish {
+  0% {
+    transform: scale(1, 1);
+  }
+  30% {
+    transform: scale(1.16, 0.78);
+  }
+  65% {
+    transform: scale(0.94, 1.08);
+  }
+  100% {
+    transform: scale(1, 1);
+  }
+}
+@keyframes mascot-hop {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  15% {
+    transform: translateY(0) scale(1.1, 0.88);
+  }
+  45% {
+    transform: translateY(-9px) scale(0.95, 1.06);
+  }
+  75% {
+    transform: translateY(0) scale(1.06, 0.94);
+  }
+}
+@keyframes mascot-paws-hop {
+  0%,
+  15%,
+  75%,
+  100% {
+    transform: translateY(0);
+  }
+  45% {
+    transform: translateY(-9px);
+  }
+}
+@keyframes mascot-shadow-hop {
+  0%,
+  15%,
+  75%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  45% {
+    transform: scale(0.7);
+    opacity: 0.5;
+  }
+}
+@keyframes mascot-blink {
+  0%,
+  94%,
+  100% {
+    transform: scaleY(1);
+  }
+  97% {
+    transform: scaleY(0.1);
+  }
+}
+@keyframes mascot-z {
+  0% {
+    opacity: 0;
+    transform: translate(0, 6px);
+  }
+  30% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(6px, -10px);
+  }
+}
+@keyframes mascot-bubble {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.8);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot-window * {
+    animation: none !important;
+  }
+  .mascot-zzz text {
+    opacity: 0.8;
+  }
+  .mascot-lean {
+    transition: none;
+  }
+  .mascot-heart {
+    display: none;
+  }
+}

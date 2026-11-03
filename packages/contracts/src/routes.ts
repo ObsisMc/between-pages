@@ -28,6 +28,7 @@ import {
   ReportTimezoneRequest,
   SaveSleepRequest,
 } from './clocks.ts';
+import { PokesResponse, SeenPokesRequest, SendPokeRequest } from './pokes.ts';
 import {
   DayParams,
   DayResponse,
@@ -391,6 +392,31 @@ export const routes = {
     access: 'user',
     body: ReportTimezoneRequest,
     response: ClockSettings,
+  },
+  pokes: {
+    method: 'GET',
+    path: '/api/pokes',
+    summary:
+      "The partner's pokes and pets the caller has not seen yet, while the two are bound (window-mascots D4).",
+    access: 'user',
+    response: PokesResponse,
+  },
+  sendPoke: {
+    method: 'POST',
+    path: '/api/pokes',
+    summary:
+      "Pokes or pets the current partner's mascot, counted at most once a second per kind; the answer is the caller's own waiting pokes.",
+    access: 'user',
+    body: SendPokeRequest,
+    response: PokesResponse,
+  },
+  seenPokes: {
+    method: 'POST',
+    path: '/api/pokes/seen',
+    summary: 'Takes the pokes and pets the caller has shown off what is waiting for them.',
+    access: 'user',
+    body: SeenPokesRequest,
+    response: PokesResponse,
   },
   saveSleep: {
     method: 'PUT',

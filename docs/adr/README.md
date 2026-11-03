@@ -32,6 +32,7 @@
 | [book-frontend-workspace](./2026-11-01-book-frontend-workspace.md) | 书页式前端以目录连接页面，日记用双页工作区和按日期连续浏览 | 已采纳 | 领域 | 8/9 部分 |
 | [digital-paper-interface](./2026-11-03-digital-paper-interface.md) | 数字书页以内容布局承载成熟组件，并保留轻拟物双窗与圆团子 | 已采纳 | 领域 | 4/10 部分 |
 | [drop-single-diary-page](./2026-11-03-drop-single-diary-page.md) | 不再保留单篇日记页，每篇日记都在日记页的「这一天」里打开 | 已实现 | 领域 | 3/3 已完成 |
+| [window-mascots](./2026-11-03-window-mascots.md) | 主页窗里的团子可以戳和摸，对方在主页上看到，团子只按作息睡觉 | 已实现 | 领域 | 7/8 部分 |
 <!-- adr-index:end -->
 
 ## 原则

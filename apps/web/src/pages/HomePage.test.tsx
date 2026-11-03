@@ -12,6 +12,7 @@ const bound = {
   'GET /api/binding': () =>
     Response.json({ binding: { space: space(), periodId: SPACE }, invitation: null }),
   'GET /api/spaces': () => Response.json({ spaces: [space()] }),
+  'GET /api/pokes': () => Response.json({ received: null }),
   'GET /api/clocks': () =>
     Response.json({
       me: { timezone: zone, sleep: null },

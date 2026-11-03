@@ -65,6 +65,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'sharing',
         'backup',
         'clocks',
+        'pokes',
         'space-records',
         'wishes',
         'anniversaries',
@@ -88,6 +89,8 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       sharing: ['store', 'events', 'errors'],
       // two-clocks: the caller's own zone and sleep schedule, and the partner's while bound.
       clocks: ['store'],
+      // window-mascots: pokes between the two bound now, counted and confirmed in the store.
+      pokes: ['store'],
       // space-records: membership, the open binding, history and unread for every space
       // feature, knowing none of them; a feature (`wishes`, `anniversaries`) writes only
       // through it and never imports another feature; transport composes them where they
@@ -138,6 +141,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'two-clocks',
         'ui',
         'windows',
+        'pokes',
       ],
       // digital-paper-interface 落地顺序 2: the shadcn components know no other module.
       ui: [],
@@ -163,6 +167,8 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       // two-clocks: the home time area, the clocks page and the browser's zone report; the
       // page sits in the shell's page container (digital-paper-interface 落地顺序 4).
       'two-clocks': ['api', 'shell', 'ui'],
+      // window-mascots D7: the home's pokes; the windows only draw and hear gestures.
+      pokes: ['api', 'windows'],
       // space-records: the entry dot, seen reports, unread jumps and the read-only notice
       // every space feature uses; features import it and never each other.
       'space-common': ['api', 'ui'],
