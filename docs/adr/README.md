@@ -28,6 +28,7 @@
 | [two-clocks](./2026-10-29-two-clocks.md) | 两地时间按浏览器时区自动显示对方当地时间，各自设一组作息算出今天都醒着的时段 | 已采纳 | 领域 | 5/6 部分 |
 | [wishes-and-gifts](./2026-10-29-wishes-and-gifts.md) | 心愿单让对方不用问就知道想要什么，送礼在揭晓前只有送的人看得到，揭晓后连同卡片进礼物墙 | 已实现 | 领域 | 9/9 已完成 |
 | [partner-local-dates](./2026-10-30-partner-local-dates.md) | 纪念日与礼物的日期以对方的当地日期为准，最后一天精确到小时 | 已实现 | 领域 | 5/5 已完成 |
+| [digital-paper-interface](./2026-11-03-digital-paper-interface.md) | 数字书页以内容布局承载成熟组件，并保留轻拟物双窗与圆团子 | 提议 | 领域 | 0/8 未开始 |
 <!-- adr-index:end -->
 
 ## 原则

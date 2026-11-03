@@ -27,6 +27,10 @@
 
 - [情侣软件市场、用户需求、产品审查与上线推广报告（2026-10-30）](./research/market-product-launch-2026-10-30.md)：竞品、用户反馈、仓库现状与产品验证建议的日期快照。报告中的建议和仓库评价不是已确认的产品规格或当前进度；实施范围与状态分别以[功能规格](./diary-spec.md)和[开发路线](./roadmap.md)为准。
 
+## 界面设计提议
+
+- [数字书页与轻拟物双窗（2026-11-03）](./design/2026-11-03-digital-paper/README.md)：全部页面的可交互示意、逐页截图、圆团子效果稿与实施约束；配套 [ADR 提议](./adr/2026-11-03-digital-paper-interface.md)。页面布局待评审，尚未接入正式应用。
+
 ## Engineering (English)
 
 - [Architecture](./architecture.md): modules, dependency direction, runtime flow.

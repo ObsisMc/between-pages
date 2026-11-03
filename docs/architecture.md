@@ -21,6 +21,10 @@ The [diary collaboration kernel](adr/2026-10-26-diary-collaboration-kernel.md), 
 
 The [unread-and-day-page](adr/2026-10-28-unread-and-day-page.md) design (stage 2 reading) is implemented: `GET /api/days` and `GET /api/days/:date` merge both people's diaries by date in the authorized-state reader and mark list unread by character identity, counting only text a history point already holds; the home page shows that one list with initial avatars (`diary-list`, `avatar`); the diary screen offers its unread without scrolling, jumps to it and keeps the reading position across remote commits and filters; and `/days/:date` in `diary` stacks both diaries of a date as two independent sessions. Its manual check with a real IME and the system clipboard is [recorded](validation/unread-and-day-page-manual-2026-10-28.md) separately.
 
+## Design proposals
+
+The [digital-paper-interface proposal](adr/2026-11-03-digital-paper-interface.md) and its [design package](design/2026-11-03-digital-paper/README.md) explore content-led layouts and tactile paired windows. They do not change the current decisions or runtime. Before adoption, reconcile the book design PRs and record any partial supersession on both sides.
+
 ## Modules
 
 | Module | Owns | Does not own |
