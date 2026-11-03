@@ -59,11 +59,16 @@ test('[adr:partner-local-dates#1] [adr:partner-local-dates#5] the partner’s bi
 
   // A surprise from A reaches B dated on B's side, filed under B's birthday.
   await a.goto('/wishes');
-  await a.getByLabel('名称').nth(1).fill('围巾');
-  await a.getByRole('button', { name: '悄悄准备' }).click();
+  await a.getByRole('tab', { name: '悄悄准备' }).click();
+  await a.getByRole('button', { name: '准备一份惊喜' }).click();
+  await a.getByRole('dialog').getByLabel('名称').fill('围巾');
+  await a.getByRole('dialog').getByRole('button', { name: '悄悄准备' }).click();
   await a.locator('li.gift.preparing').getByRole('button', { name: '揭晓' }).click();
+  await expect(a.locator('li.gift.preparing')).toHaveCount(0);
+  await a.getByRole('tab', { name: /礼物墙/ }).click();
   const gift = a.locator('li.gift', { hasText: '围巾' });
   await expect(gift).toContainText(todayIn(AHEAD));
+  await gift.getByRole('button', { name: '修改' }).click();
   await gift.getByLabel('场合').selectOption({ label: `${name('b')} 的生日` });
   await expect(gift.getByRole('link', { name: `${name('b')} 的生日` })).toBeVisible();
 

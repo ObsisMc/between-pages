@@ -1,7 +1,9 @@
-import { useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
+import { ChevronDown, Gift as GiftIcon, Lock, Plus } from 'lucide-react';
 import type { GiftOccasion } from '@between-pages/contracts';
 import { callApi } from '../api/client.ts';
+import { Page, PageHeader } from '../shell/index.ts';
 import {
   ReadOnlyNotice,
   StampText,
@@ -13,6 +15,29 @@ import {
   useSeenReporter,
   type SeenTarget,
 } from '../space-common/index.ts';
+import {
+  Button,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+  Input,
+  Label,
+  NativeSelect,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Textarea,
+  ToggleGroup,
+  ToggleGroupItem,
+  cn,
+} from '../ui/index.ts';
 import {
   useOccasions,
   useWishes,
@@ -28,6 +53,9 @@ import {
 // caller's own gifts in preparation with their cards (D2, D3), revealing (D4), the gift wall
 // with its date and occasion (D5), and notes of records the partner deleted (space-records
 // D6). A gift in preparation exists only in the giver's answers, so nothing here hides it.
+// The four lists are tabs (digital-paper-interface D3); every panel stays mounted, hidden
+// while another shows, so a half-written card survives a switch, and a hidden record is not
+// on screen, so it is never reported as seen.
 
 const OCCASIONS: Record<GiftOccasion, string> = {
   holiday: '节日',
@@ -35,7 +63,12 @@ const OCCASIONS: Record<GiftOccasion, string> = {
   no_reason: '没什么理由',
 };
 
+type Tab = 'theirs' | 'mine' | 'preparing' | 'wall';
+
 const elementId = (type: string, id: string) => `${type}-${id}`;
+
+/** Shows a record's tab and scrolls it into view, for links inside the page. */
+const ShowRecord = createContext<(id: string) => void>(() => {});
 
 // A gift's occasion as one select value: a generic occasion, or `a:` and an anniversary ID.
 const ANNIVERSARY = 'a:';
@@ -50,6 +83,16 @@ const occasionText = (gift: Gift, occasions: Occasion[]) =>
     ? (occasions.find((o) => o.id === gift.anniversary!.id)?.label ?? gift.anniversary.name)
     : gift.occasion && OCCASIONS[gift.occasion];
 
+const alertClass = 'rounded-xl bg-notice px-4 py-3 text-sm text-ink';
+
+function Refusal({ text }: { text: string | null }) {
+  return text ? (
+    <p className={cn(alertClass, 'mt-3')} role="alert">
+      {text}
+    </p>
+  ) : null;
+}
+
 function Hearts({
   value,
   onChange,
@@ -59,17 +102,20 @@ function Hearts({
 }) {
   if (!onChange)
     return value ? (
-      <span className="hearts" role="img" aria-label={`想要程度 ${value}/5`}>
+      <span className="tracking-widest text-warm" role="img" aria-label={`想要程度 ${value}/5`}>
         {'♥'.repeat(value)}
       </span>
     ) : null;
   return (
-    <span className="hearts" role="group" aria-label="想要程度">
+    <span className="flex gap-1" role="group" aria-label="想要程度">
       {[1, 2, 3, 4, 5].map((n) => (
         <button
           key={n}
           type="button"
-          className={value !== null && n <= value ? 'heart on' : 'heart'}
+          className={cn(
+            'min-h-0 cursor-pointer rounded-md border-0 bg-transparent p-1 text-xl leading-none',
+            value !== null && n <= value ? 'text-warm' : 'text-line',
+          )}
           aria-pressed={value === n}
           aria-label={`${n} 颗心`}
           onClick={() => onChange(value === n ? null : n)}
@@ -95,18 +141,24 @@ function LinkPreview({ link, preview }: { link: string | null; preview: Wish['pr
   if (!link) return null;
   const title = preview?.title ?? preview?.site ?? hostOf(link);
   return (
-    <a className="link-preview" href={link} target="_blank" rel="noopener noreferrer">
+    <a
+      className="mt-3 flex max-w-md items-center gap-3 rounded-xl border border-line p-2 text-ink no-underline hover:bg-accent"
+      href={link}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
       {preview?.image && !broken && (
         <img
+          className="size-14 shrink-0 rounded-lg object-cover"
           src={preview.image}
           alt=""
           referrerPolicy="no-referrer"
           onError={() => setBroken(true)}
         />
       )}
-      <span>
-        <span className="link-title">{title}</span>
-        <span className="link-site">{preview?.site ?? hostOf(link)}</span>
+      <span className="flex min-w-0 flex-col">
+        <span className="truncate text-sm">{title}</span>
+        <span className="text-xs text-ink-soft">{preview?.site ?? hostOf(link)}</span>
       </span>
     </a>
   );
@@ -115,69 +167,71 @@ function LinkPreview({ link, preview }: { link: string | null; preview: Wish['pr
 type Fields = { name: string; link: string; note: string; want: number | null };
 const blank: Fields = { name: '', link: '', note: '', want: null };
 
+/** The fields of a wish, or of a surprise without note and hearts; the caller holds them. */
 function WishForm({
-  initial = blank,
+  fields,
+  onFields,
   submitText,
   withNote = true,
+  busy,
   onSubmit,
-  onCancel,
+  cancel,
 }: {
-  initial?: Fields;
+  fields: Fields;
+  onFields: (fields: Fields) => void;
   submitText: string;
   withNote?: boolean;
-  onSubmit: (fields: Fields) => Promise<boolean>;
-  onCancel?: () => void;
+  busy: boolean;
+  onSubmit: () => void;
+  cancel: ReactNode;
 }) {
-  const [fields, setFields] = useState(initial);
-  const set = (patch: Partial<Fields>) => setFields((f) => ({ ...f, ...patch }));
+  const set = (patch: Partial<Fields>) => onFields({ ...fields, ...patch });
   return (
     <form
-      className="wish-form"
+      className="grid gap-4"
       onSubmit={(event) => {
         event.preventDefault();
-        void onSubmit(fields).then((ok) => ok && !onCancel && setFields(blank));
+        onSubmit();
       }}
     >
-      <label>
+      <Label>
         名称
-        <input
+        <Input
           value={fields.name}
           maxLength={100}
           required
           onChange={(e) => set({ name: e.target.value })}
         />
-      </label>
-      <label>
+      </Label>
+      <Label>
         链接
-        <input
+        <Input
           type="url"
           value={fields.link}
           placeholder="https://"
           onChange={(e) => set({ link: e.target.value })}
         />
-      </label>
+      </Label>
       {withNote && (
         <>
-          <label>
+          <Label>
             备注
-            <input
+            <Input
               value={fields.note}
               maxLength={500}
               placeholder="尺码、颜色、哪个牌子都行"
               onChange={(e) => set({ note: e.target.value })}
             />
-          </label>
+          </Label>
           <Hearts value={fields.want} onChange={(want) => set({ want })} />
         </>
       )}
-      <button type="submit" className="primary" disabled={!fields.name.trim()}>
-        {submitText}
-      </button>
-      {onCancel && (
-        <button type="button" onClick={onCancel}>
-          取消
-        </button>
-      )}
+      <div className="flex justify-end gap-2">
+        {cancel}
+        <Button type="submit" disabled={busy || !fields.name.trim()}>
+          {submitText}
+        </Button>
+      </div>
     </form>
   );
 }
@@ -205,10 +259,25 @@ function Record({
 }) {
   const ref = useSeen(record.unread ? { type, id: record.id, mark: record.mark } : null, report);
   return (
-    <li id={elementId(type, record.id)} ref={ref} className={className}>
-      {children}
+    <li
+      id={elementId(type, record.id)}
+      ref={ref}
+      className={cn('flex gap-4 border-b border-line py-6', className)}
+    >
+      <span
+        aria-hidden="true"
+        className="hidden size-12 shrink-0 items-center justify-center rounded-xl bg-accent text-warm sm:flex [&_svg]:size-5"
+      >
+        <GiftIcon />
+      </span>
+      <div className="min-w-0 flex-1">{children}</div>
     </li>
   );
+}
+
+/** Small buttons on a record. */
+function Actions({ children }: { children: ReactNode }) {
+  return <div className="mt-3 flex flex-wrap items-center gap-2">{children}</div>;
 }
 
 function MyWish({
@@ -220,7 +289,7 @@ function MyWish({
   view: WishesView;
   report: (t: SeenTarget) => void;
 }) {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState<Fields | null>(null);
   const write = useWrite();
   const [deleteId, renewDelete] = useRequestId();
   const [receiveId, renewReceive] = useRequestId();
@@ -228,35 +297,50 @@ function MyWish({
     <Record type="wish" record={wish} report={report} className="wish">
       {editing ? (
         <WishForm
-          initial={{
-            name: wish.name,
-            link: wish.link ?? '',
-            note: wish.note ?? '',
-            want: wish.want,
-          }}
+          fields={editing}
+          onFields={setEditing}
           submitText="保存"
-          onCancel={() => setEditing(false)}
-          onSubmit={(f) =>
-            write
+          busy={write.busy}
+          cancel={
+            <Button type="button" variant="ghost" onClick={() => setEditing(null)}>
+              取消
+            </Button>
+          }
+          onSubmit={() =>
+            void write
               .run(() =>
                 callApi('editWish', {
                   params: { wishId: wish.id },
-                  body: { expectedRevision: wish.revision, ...wishBody(f) },
+                  body: { expectedRevision: wish.revision, ...wishBody(editing) },
                 }),
               )
-              .then((ok) => (ok && setEditing(false), ok))
+              .then((ok) => ok && setEditing(null))
           }
         />
       ) : (
         <>
           <WishFace wish={wish} />
           {!view.readOnly && (
-            <div className="actions">
-              <button type="button" onClick={() => setEditing(true)}>
-                编辑
-              </button>
-              <button
+            <Actions>
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setEditing({
+                    name: wish.name,
+                    link: wish.link ?? '',
+                    note: wish.note ?? '',
+                    want: wish.want,
+                  })
+                }
+              >
+                编辑
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
                 disabled={write.busy}
                 onClick={() =>
                   void write
@@ -270,9 +354,11 @@ function MyWish({
                 }
               >
                 收到了
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 disabled={write.busy}
                 onClick={() =>
                   window.confirm(`删除"${wish.name}"？`) &&
@@ -287,16 +373,12 @@ function MyWish({
                 }
               >
                 删除
-              </button>
-            </div>
+              </Button>
+            </Actions>
           )}
         </>
       )}
-      {write.error && (
-        <p className="notice" role="alert">
-          {write.error}
-        </p>
-      )}
+      <Refusal text={write.error} />
     </Record>
   );
 }
@@ -304,11 +386,16 @@ function MyWish({
 function WishFace({ wish }: { wish: Wish }) {
   return (
     <>
-      <p className="wish-name">
-        {wish.name} <Hearts value={wish.want} /> <UnreadLabel unread={wish.unread} />
+      <p className="font-serif text-xl">
+        {wish.name} <UnreadLabel unread={wish.unread} />
       </p>
+      {wish.note && <p className="mt-1 text-sm text-ink-soft">{wish.note}</p>}
+      {wish.want !== null && (
+        <p className="mt-1 text-sm">
+          <Hearts value={wish.want} />
+        </p>
+      )}
       <LinkPreview link={wish.link} preview={wish.preview} />
-      {wish.note && <p className="wish-note">{wish.note}</p>}
     </>
   );
 }
@@ -324,18 +411,29 @@ function TheirWish({
 }) {
   const write = useWrite();
   const [requestId, renew] = useRequestId();
+  const show = useContext(ShowRecord);
   return (
     <Record type="wish" record={wish} report={report} className="wish">
       <WishFace wish={wish} />
       {wish.preparingGiftId ? (
-        <p className="secret">
-          你在准备 · <a href={`#${elementId('gift', wish.preparingGiftId)}`}>写卡片、揭晓</a>
+        <p className="mt-3 text-sm text-ink-soft">
+          你在准备 ·{' '}
+          <Button
+            type="button"
+            variant="link"
+            className="text-warm underline"
+            onClick={() => show(elementId('gift', wish.preparingGiftId!))}
+          >
+            写卡片、揭晓
+          </Button>
         </p>
       ) : (
         !view.readOnly && (
-          <div className="actions">
-            <button
+          <Actions>
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               disabled={write.busy}
               onClick={() =>
                 void write
@@ -344,18 +442,17 @@ function TheirWish({
               }
             >
               我在准备
-            </button>
-          </div>
+            </Button>
+          </Actions>
         )
       )}
-      {write.error && (
-        <p className="notice" role="alert">
-          {write.error}
-        </p>
-      )}
+      <Refusal text={write.error} />
     </Record>
   );
 }
+
+const cardClass =
+  'mt-3 border-l-2 border-warm pl-4 font-serif leading-relaxed whitespace-pre-wrap text-ink';
 
 function CardEditor({
   gift,
@@ -372,17 +469,17 @@ function CardEditor({
   if (readOnly || !open)
     return (
       <>
-        {showCard && gift.card && <blockquote className="gift-card">{gift.card.text}</blockquote>}
+        {showCard && gift.card && <blockquote className={cardClass}>{gift.card.text}</blockquote>}
         {!readOnly && (
-          <button type="button" onClick={() => setOpen(true)}>
+          <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
             {gift.card ? '改卡片' : '写卡片'}
-          </button>
+          </Button>
         )}
       </>
     );
   return (
     <form
-      className="card-editor"
+      className="mt-3 grid w-full gap-3"
       onSubmit={(event) => {
         event.preventDefault();
         void write
@@ -395,21 +492,19 @@ function CardEditor({
           .then((ok) => ok && setOpen(false));
       }}
     >
-      <label>
+      <Label>
         卡片
-        <textarea value={text} maxLength={1000} onChange={(e) => setText(e.target.value)} />
-      </label>
-      <button type="submit" className="primary" disabled={!text.trim() || write.busy}>
-        保存卡片
-      </button>
-      <button type="button" onClick={() => setOpen(false)}>
-        取消
-      </button>
-      {write.error && (
-        <p className="notice" role="alert">
-          {write.error}
-        </p>
-      )}
+        <Textarea value={text} maxLength={1000} onChange={(e) => setText(e.target.value)} />
+      </Label>
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" disabled={!text.trim() || write.busy}>
+          保存卡片
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
+          取消
+        </Button>
+      </div>
+      <Refusal text={write.error} />
     </form>
   );
 }
@@ -429,16 +524,21 @@ function Preparing({
   const forWish = gift.wishId !== null;
   return (
     <Record type="gift" record={gift} report={report} className="gift preparing">
-      <p className="gift-name">
-        {gift.name} <span className="secret">{forWish ? '心愿单上的' : '单外的惊喜'}</span>
+      <p className="font-serif text-xl">
+        {gift.name}{' '}
+        <span className="font-sans text-sm text-ink-soft">
+          {forWish ? '心愿单上的' : '单外的惊喜'}
+        </span>
       </p>
       <LinkPreview link={gift.link} preview={gift.preview} />
-      <CardEditor gift={gift} readOnly={view.readOnly} />
+      <Actions>
+        <CardEditor gift={gift} readOnly={view.readOnly} />
+      </Actions>
       {!view.readOnly && (
-        <div className="actions">
-          <button
+        <Actions>
+          <Button
             type="button"
-            className="primary"
+            size="sm"
             disabled={write.busy}
             onClick={() =>
               window.confirm(`揭晓"${gift.name}"？揭晓后 TA 就能看到礼物和卡片，不能撤回。`) &&
@@ -453,9 +553,11 @@ function Preparing({
             }
           >
             揭晓
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             disabled={write.busy}
             onClick={() =>
               window.confirm('取消准备？TA 不会知道。') &&
@@ -470,14 +572,10 @@ function Preparing({
             }
           >
             取消准备
-          </button>
-        </div>
+          </Button>
+        </Actions>
       )}
-      {write.error && (
-        <p className="notice" role="alert">
-          {write.error}
-        </p>
-      )}
+      <Refusal text={write.error} />
     </Record>
   );
 }
@@ -495,7 +593,7 @@ function WallCard({
     report,
   );
   return (
-    <blockquote ref={ref} className="gift-card">
+    <blockquote ref={ref} className={cardClass}>
       {card.text} <UnreadLabel unread={card.unread} />
     </blockquote>
   );
@@ -522,165 +620,200 @@ function WallGift({
   const linked = gift.anniversary && occasions.some((o) => o.id === gift.anniversary!.id);
   return (
     <Record type="gift" record={gift} report={report} className="gift">
-      <p className="gift-name">
+      <p className="font-serif text-xl">
         {gift.name} <UnreadLabel unread={gift.unread} />
       </p>
-      <p className="gift-meta">
+      <p className="gift-meta mt-1 text-sm text-ink-soft">
         {fromMe ? `我送给 ${view.partner.displayName}` : `${view.partner.displayName} 送给我`}
         {gift.date && ` · ${gift.date}`}
         {occasion && ' · '}
-        {linked ? <Link to={`/anniversaries/${gift.anniversary!.id}`}>{occasion}</Link> : occasion}
+        {linked ? (
+          <Link
+            to={`/anniversaries/${gift.anniversary!.id}`}
+            className="text-warm underline underline-offset-4"
+          >
+            {occasion}
+          </Link>
+        ) : (
+          occasion
+        )}
       </p>
       <LinkPreview link={gift.link} preview={gift.preview} />
       {gift.card && <WallCard card={gift.card} report={report} />}
-      <p className="stamps">
-        {gift.revealed && (
-          <StampText
-            name={nameOf(gift.revealed.by)}
-            verb="揭晓了"
-            at={gift.revealed.at}
-            fresh={fresh}
-          />
-        )}
-        {gift.dateSet && (
-          <StampText
-            name={nameOf(gift.dateSet.by)}
-            verb="改了日期"
-            at={gift.dateSet.at}
-            fresh={fresh}
-          />
-        )}
-        {gift.occasionSet && (
-          <StampText
-            name={nameOf(gift.occasionSet.by)}
-            verb="改了场合"
-            at={gift.occasionSet.at}
-            fresh={fresh}
-          />
-        )}
-      </p>
-      {!view.readOnly && (
-        <div className="actions">
-          <label>
-            日期
-            <input
-              type="date"
-              value={gift.date ?? ''}
-              onChange={(e) =>
-                e.target.value &&
-                void write
-                  .run(() =>
-                    callApi('setGiftDate', {
-                      params: { giftId: gift.id },
-                      body: { requestId: dateId, date: e.target.value },
-                    }),
-                  )
-                  .then((ok) => ok && renewDate())
-              }
+      {(gift.revealed || gift.dateSet || gift.occasionSet) && (
+        <p className="mt-2">
+          {gift.revealed && (
+            <StampText
+              name={nameOf(gift.revealed.by)}
+              verb="揭晓了"
+              at={gift.revealed.at}
+              fresh={fresh}
             />
-          </label>
-          <label>
-            场合
-            <select
-              value={occasionValue(gift)}
-              onChange={(e) => {
-                const value = e.target.value;
-                const anniversary = value.startsWith(ANNIVERSARY);
-                void write
-                  .run(() =>
-                    callApi('setGiftOccasion', {
-                      params: { giftId: gift.id },
-                      body: {
-                        requestId: occasionId,
-                        occasion: anniversary ? null : ((value || null) as GiftOccasion | null),
-                        anniversaryId: anniversary ? value.slice(ANNIVERSARY.length) : null,
-                      },
-                    }),
-                  )
-                  .then((ok) => ok && renewOccasion());
-              }}
-            >
-              <option value="">未选</option>
-              <OccasionOptions gifts={[gift]} occasions={occasions} />
-            </select>
-          </label>
-          {fromMe && <CardEditor gift={gift} readOnly={false} showCard={false} />}
-          {gift.authorId === view.me.id && (
-            <button
-              type="button"
-              disabled={write.busy}
-              onClick={() =>
-                window.confirm(`从礼物墙删除"${gift.name}"？`) &&
-                void write
-                  .run(() =>
-                    callApi('deleteGift', {
-                      params: { giftId: gift.id },
-                      body: { requestId: deleteId },
-                    }),
-                  )
-                  .then((ok) => ok && renewDelete())
-              }
-            >
-              删除
-            </button>
           )}
-        </div>
-      )}
-      {write.error && (
-        <p className="notice" role="alert">
-          {write.error}
+          {gift.dateSet && (
+            <StampText
+              name={nameOf(gift.dateSet.by)}
+              verb="改了日期"
+              at={gift.dateSet.at}
+              fresh={fresh}
+            />
+          )}
+          {gift.occasionSet && (
+            <StampText
+              name={nameOf(gift.occasionSet.by)}
+              verb="改了场合"
+              at={gift.occasionSet.at}
+              fresh={fresh}
+            />
+          )}
         </p>
       )}
+      {!view.readOnly && (
+        <Collapsible className="mt-3">
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="group text-ink-soft">
+              修改
+              <ChevronDown
+                aria-hidden="true"
+                className="transition-transform group-data-[state=open]:rotate-180"
+              />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-3 grid gap-4 rounded-xl border border-line p-4">
+            <div className="flex flex-wrap items-end gap-4">
+              <Label>
+                日期
+                <Input
+                  type="date"
+                  value={gift.date ?? ''}
+                  onChange={(e) =>
+                    e.target.value &&
+                    void write
+                      .run(() =>
+                        callApi('setGiftDate', {
+                          params: { giftId: gift.id },
+                          body: { requestId: dateId, date: e.target.value },
+                        }),
+                      )
+                      .then((ok) => ok && renewDate())
+                  }
+                />
+              </Label>
+              <Label>
+                场合
+                <NativeSelect
+                  value={occasionValue(gift)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const anniversary = value.startsWith(ANNIVERSARY);
+                    void write
+                      .run(() =>
+                        callApi('setGiftOccasion', {
+                          params: { giftId: gift.id },
+                          body: {
+                            requestId: occasionId,
+                            occasion: anniversary ? null : ((value || null) as GiftOccasion | null),
+                            anniversaryId: anniversary ? value.slice(ANNIVERSARY.length) : null,
+                          },
+                        }),
+                      )
+                      .then((ok) => ok && renewOccasion());
+                  }}
+                >
+                  <option value="">未选</option>
+                  <OccasionOptions gifts={[gift]} occasions={occasions} />
+                </NativeSelect>
+              </Label>
+            </div>
+            {(fromMe || gift.authorId === view.me.id) && (
+              <div className="flex flex-wrap gap-2">
+                {fromMe && <CardEditor gift={gift} readOnly={false} showCard={false} />}
+                {gift.authorId === view.me.id && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={write.busy}
+                    onClick={() =>
+                      window.confirm(`从礼物墙删除"${gift.name}"？`) &&
+                      void write
+                        .run(() =>
+                          callApi('deleteGift', {
+                            params: { giftId: gift.id },
+                            body: { requestId: deleteId },
+                          }),
+                        )
+                        .then((ok) => ok && renewDelete())
+                    }
+                  >
+                    删除
+                  </Button>
+                )}
+              </div>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+      <Refusal text={write.error} />
     </Record>
   );
 }
 
-function SurpriseForm() {
+/**
+ * A form in a dialog that closes once sent; what was typed stays when it is closed unsent,
+ * and a refusal keeps it open with the reason.
+ */
+function FormDialog({
+  trigger,
+  title,
+  description,
+  submitText,
+  withNote,
+  send,
+}: {
+  trigger: ReactNode;
+  title: string;
+  description?: string;
+  submitText: string;
+  withNote: boolean;
+  send: (fields: Fields, requestId: string) => Promise<unknown>;
+}) {
   const write = useWrite();
   const [requestId, renew] = useRequestId();
+  const [open, setOpen] = useState(false);
+  const [fields, setFields] = useState(blank);
   return (
-    <>
-      <WishForm
-        submitText="悄悄准备"
-        withNote={false}
-        onSubmit={(f) =>
-          write
-            .run(() =>
-              callApi('prepareGift', {
-                body: { requestId, wishId: null, name: f.name.trim(), link: f.link.trim() || null },
-              }),
-            )
-            .then((ok) => (ok && renew(), ok))
-        }
-      />
-      {write.error && (
-        <p className="notice" role="alert">
-          {write.error}
-        </p>
-      )}
-    </>
-  );
-}
-
-function NewWish() {
-  const write = useWrite();
-  const [requestId, renew] = useRequestId();
-  return (
-    <>
-      <WishForm
-        submitText="许个愿"
-        onSubmit={(f) =>
-          write
-            .run(() => callApi('createWish', { body: { requestId, ...wishBody(f) } }))
-            .then((ok) => (ok && renew(), ok))
-        }
-      />
-      {write.error && (
-        <p className="notice" role="alert">
-          {write.error}
-        </p>
-      )}
-    </>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent {...(description ? {} : { 'aria-describedby': undefined })}>
+        <DialogTitle>{title}</DialogTitle>
+        {description && <DialogDescription>{description}</DialogDescription>}
+        <WishForm
+          fields={fields}
+          onFields={setFields}
+          submitText={submitText}
+          withNote={withNote}
+          busy={write.busy}
+          cancel={
+            <DialogClose asChild>
+              <Button type="button" variant="ghost">
+                取消
+              </Button>
+            </DialogClose>
+          }
+          onSubmit={() =>
+            void write
+              .run(() => send(fields, requestId))
+              .then((ok) => ok && (renew(), setFields(blank), setOpen(false)))
+          }
+        />
+        {write.error && (
+          <p className={alertClass} role="alert">
+            {write.error}
+          </p>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -709,10 +842,12 @@ function OccasionOptions({ gifts, occasions }: { gifts: Gift[]; occasions: Occas
   );
 }
 
+type Giver = 'all' | 'me' | 'partner';
+
 function Wall({ view, report }: { view: WishesView; report: (t: SeenTarget) => void }) {
   const occasions = useOccasions().data ?? [];
   const [occasion, setOccasion] = useState<string>('all');
-  const [giver, setGiver] = useState<'all' | 'me' | 'partner'>('all');
+  const [giver, setGiver] = useState<Giver>('all');
   const shown = view.wall.filter(
     (g) =>
       (occasion === 'all' ||
@@ -722,108 +857,42 @@ function Wall({ view, report }: { view: WishesView; report: (t: SeenTarget) => v
       (giver === 'all' || (giver === 'me') === (g.giverId === view.me.id)),
   );
   return (
-    <section>
-      <h2>礼物墙</h2>
-      <p className="filters">
-        <label>
+    <>
+      <div className="mb-2 flex flex-wrap items-center gap-x-6 gap-y-3">
+        <ToggleGroup
+          type="single"
+          aria-label="谁送的"
+          value={giver}
+          // A single toggle group turns its item off on a second click; one stays chosen.
+          onValueChange={(value) => value && setGiver(value as Giver)}
+        >
+          <ToggleGroupItem value="all">全部</ToggleGroupItem>
+          <ToggleGroupItem value="me">我送的</ToggleGroupItem>
+          <ToggleGroupItem value="partner">TA 送的</ToggleGroupItem>
+        </ToggleGroup>
+        <label className="flex items-center gap-2 text-sm text-ink-soft">
           场合
-          <select value={occasion} onChange={(e) => setOccasion(e.target.value)}>
+          <NativeSelect
+            className="h-9 w-auto"
+            value={occasion}
+            onChange={(e) => setOccasion(e.target.value)}
+          >
             <option value="all">全部</option>
             <OccasionOptions gifts={view.wall} occasions={occasions} />
             <option value="none">未选</option>
-          </select>
+          </NativeSelect>
         </label>
-        <label>
-          谁送的
-          <select value={giver} onChange={(e) => setGiver(e.target.value as typeof giver)}>
-            <option value="all">全部</option>
-            <option value="me">我送的</option>
-            <option value="partner">TA 送的</option>
-          </select>
-        </label>
-      </p>
+      </div>
       {shown.length ? (
-        <ul className="records">
+        <ul>
           {shown.map((g) => (
             <WallGift key={g.id} gift={g} view={view} report={report} />
           ))}
         </ul>
       ) : (
-        <p className="empty">还没有礼物</p>
+        <p className="py-6 text-ink-soft">还没有礼物</p>
       )}
-    </section>
-  );
-}
-
-export function WishesPage() {
-  const wishes = useWishes();
-  const report = useSeenReporter(wishesKey);
-  const view = wishes.data;
-  if (wishes.isError)
-    return (
-      <main className="page wishes">
-        <p className="notice" role="alert">
-          打不开心愿与礼物，请稍后再试
-        </p>
-        <Link to="/">回到首页</Link>
-      </main>
-    );
-  if (!view) return <main className="page wishes">正在打开…</main>;
-  const unreadIds = [
-    ...view.notes.filter((n) => n.unread).map((n) => elementId('note', n.id)),
-    ...view.mine.filter((w) => w.unread).map((w) => elementId('wish', w.id)),
-    ...view.theirs.filter((w) => w.unread).map((w) => elementId('wish', w.id)),
-    ...view.wall.filter((g) => g.unread || g.card?.unread).map((g) => elementId('gift', g.id)),
-  ];
-  return (
-    <main className="page wishes">
-      <header>
-        <Link to="/">← 首页</Link>
-      </header>
-      <h1>心愿与礼物</h1>
-      {view.readOnly && <ReadOnlyNotice />}
-      <UnreadJump ids={unreadIds} />
-      {view.notes.length > 0 && (
-        <ul className="records notes">
-          {view.notes.map((n) => (
-            <Note key={n.id} note={n} view={view} report={report} />
-          ))}
-        </ul>
-      )}
-      <section>
-        <h2>我的心愿</h2>
-        {!view.readOnly && <NewWish />}
-        <ul className="records">
-          {view.mine.map((w) => (
-            <MyWish key={w.id} wish={w} view={view} report={report} />
-          ))}
-        </ul>
-      </section>
-      <section>
-        <h2>{view.partner.displayName} 的心愿</h2>
-        {view.theirs.length ? (
-          <ul className="records">
-            {view.theirs.map((w) => (
-              <TheirWish key={w.id} wish={w} view={view} report={report} />
-            ))}
-          </ul>
-        ) : (
-          <p className="empty">TA 还没有许愿</p>
-        )}
-      </section>
-      <section>
-        <h2>
-          我在准备 <span className="secret">只有你看得到</span>
-        </h2>
-        {!view.readOnly && <SurpriseForm />}
-        <ul className="records">
-          {view.preparing.map((g) => (
-            <Preparing key={g.id} gift={g} view={view} report={report} />
-          ))}
-        </ul>
-      </section>
-      <Wall view={view} report={report} />
-    </main>
+    </>
   );
 }
 
@@ -841,10 +910,190 @@ function Note({
     report,
   );
   return (
-    <li id={elementId('note', note.id)} ref={ref} className="note">
+    <li
+      id={elementId('note', note.id)}
+      ref={ref}
+      className="rounded-xl bg-accent px-4 py-3 text-sm"
+    >
       {view.partner.displayName} 删了"{note.name}"（
       {note.acted === 'prepared' ? '你在准备' : '你动过'}）· {dayText(note.deleted.at)}{' '}
       <UnreadLabel unread={note.unread ? 'new' : null} />
     </li>
+  );
+}
+
+function TabDot({ on }: { on: boolean }) {
+  return on ? (
+    <span className="size-1.5 rounded-full bg-warm" role="img" aria-label="有新内容" />
+  ) : null;
+}
+
+export function WishesPage() {
+  const wishes = useWishes();
+  const report = useSeenReporter(wishesKey);
+  const [tab, setTab] = useState<Tab>('theirs');
+  const view = wishes.data;
+  if (wishes.isError)
+    return (
+      <Page>
+        <p className={alertClass} role="alert">
+          打不开心愿与礼物，请稍后再试
+        </p>
+        <Link to="/" className="mt-4 inline-block text-sm text-ink-soft underline">
+          回到首页
+        </Link>
+      </Page>
+    );
+  if (!view) return <Page className="text-ink-soft">正在打开…</Page>;
+  const unread = {
+    theirs: view.theirs.filter((w) => w.unread).map((w) => elementId('wish', w.id)),
+    mine: view.mine.filter((w) => w.unread).map((w) => elementId('wish', w.id)),
+    wall: view.wall.filter((g) => g.unread || g.card?.unread).map((g) => elementId('gift', g.id)),
+  };
+  const tabOf = (id: string): Tab | null =>
+    view.theirs.some((w) => elementId('wish', w.id) === id)
+      ? 'theirs'
+      : view.mine.some((w) => elementId('wish', w.id) === id)
+        ? 'mine'
+        : view.preparing.some((g) => elementId('gift', g.id) === id)
+          ? 'preparing'
+          : view.wall.some((g) => elementId('gift', g.id) === id)
+            ? 'wall'
+            : null;
+  const reveal = (id: string) => {
+    const owner = tabOf(id);
+    if (owner) setTab(owner);
+  };
+  const show = (id: string) => {
+    reveal(id);
+    // The tab shows on the next render; scroll once it has.
+    requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ block: 'center' }));
+  };
+  // In tab order, after the notes on top, so "下一处" walks through the tabs.
+  const unreadIds = [
+    ...view.notes.filter((n) => n.unread).map((n) => elementId('note', n.id)),
+    ...unread.theirs,
+    ...unread.mine,
+    ...unread.wall,
+  ];
+  const partner = view.partner.displayName;
+  return (
+    <ShowRecord.Provider value={show}>
+      <Page>
+        <PageHeader
+          title="心愿与礼物"
+          description="把喜欢的小事，留给彼此。"
+          actions={
+            !view.readOnly && (
+              <FormDialog
+                trigger={
+                  <Button>
+                    <Plus aria-hidden="true" />
+                    许个愿
+                  </Button>
+                }
+                title="许个愿"
+                submitText="许个愿"
+                withNote
+                send={(f, requestId) =>
+                  callApi('createWish', { body: { requestId, ...wishBody(f) } }).then(() =>
+                    setTab('mine'),
+                  )
+                }
+              />
+            )
+          }
+        />
+        {view.readOnly && <ReadOnlyNotice />}
+        <UnreadJump ids={unreadIds} show={reveal} />
+        {view.notes.length > 0 && (
+          <ul className="mb-6 grid gap-2">
+            {view.notes.map((n) => (
+              <Note key={n.id} note={n} view={view} report={report} />
+            ))}
+          </ul>
+        )}
+        <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)}>
+          <TabsList aria-label="心愿与礼物">
+            <TabsTrigger value="theirs">
+              {partner} 的心愿 <TabDot on={unread.theirs.length > 0} />
+            </TabsTrigger>
+            <TabsTrigger value="mine">
+              我的心愿 <TabDot on={unread.mine.length > 0} />
+            </TabsTrigger>
+            <TabsTrigger value="preparing">悄悄准备</TabsTrigger>
+            <TabsTrigger value="wall">
+              礼物墙 <TabDot on={unread.wall.length > 0} />
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="theirs" forceMount>
+            {view.theirs.length ? (
+              <ul>
+                {view.theirs.map((w) => (
+                  <TheirWish key={w.id} wish={w} view={view} report={report} />
+                ))}
+              </ul>
+            ) : (
+              <p className="py-6 text-ink-soft">TA 还没有许愿</p>
+            )}
+          </TabsContent>
+          <TabsContent value="mine" forceMount>
+            {view.mine.length ? (
+              <ul>
+                {view.mine.map((w) => (
+                  <MyWish key={w.id} wish={w} view={view} report={report} />
+                ))}
+              </ul>
+            ) : (
+              <p className="py-6 text-ink-soft">还没有许愿</p>
+            )}
+          </TabsContent>
+          <TabsContent value="preparing" forceMount>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="flex items-center gap-2 text-sm text-ink-soft [&_svg]:size-4">
+                <Lock aria-hidden="true" />
+                这里的准备只有你看得到，TA 不会知道。
+              </p>
+              {!view.readOnly && (
+                <FormDialog
+                  trigger={
+                    <Button variant="outline" size="sm">
+                      <Plus aria-hidden="true" />
+                      准备一份惊喜
+                    </Button>
+                  }
+                  title="准备一份惊喜"
+                  description="心愿单之外的礼物。揭晓之前，TA 看不到它。"
+                  submitText="悄悄准备"
+                  withNote={false}
+                  send={(f, requestId) =>
+                    callApi('prepareGift', {
+                      body: {
+                        requestId,
+                        wishId: null,
+                        name: f.name.trim(),
+                        link: f.link.trim() || null,
+                      },
+                    })
+                  }
+                />
+              )}
+            </div>
+            {view.preparing.length ? (
+              <ul>
+                {view.preparing.map((g) => (
+                  <Preparing key={g.id} gift={g} view={view} report={report} />
+                ))}
+              </ul>
+            ) : (
+              <p className="py-6 text-ink-soft">还没有在准备的礼物</p>
+            )}
+          </TabsContent>
+          <TabsContent value="wall" forceMount>
+            <Wall view={view} report={report} />
+          </TabsContent>
+        </Tabs>
+      </Page>
+    </ShowRecord.Provider>
   );
 }

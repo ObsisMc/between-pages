@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { renderAt, stubApi } from '../../test/render.tsx';
 import { WishesPage } from './WishesPage.tsx';
 
@@ -212,6 +212,7 @@ describe('WishesPage', () => {
       'GET /api/space/unread': () => Response.json({ features: { wishes: 0 } }),
     });
     renderAt('/wishes', routes);
+    fireEvent.click(await screen.findByRole('tab', { name: '我的心愿' }));
     fireEvent.click(await screen.findByRole('button', { name: '收到了' }));
     expect((await screen.findByRole('alert')).textContent).toBe('已解绑，记录只读');
     fireEvent.click(screen.getByRole('button', { name: '收到了' }));
@@ -284,16 +285,23 @@ describe('WishesPage', () => {
       ]),
     });
     renderAt('/wishes', routes);
+    fireEvent.click(await screen.findByRole('tab', { name: '礼物墙' }));
     expect(await screen.findByText('杯子')).toBeDefined();
     // A linked anniversary shows its name now and links to it; a deleted one, the kept name.
     const linked = await screen.findByRole('link', { name: '第一次见面' });
     expect(linked.getAttribute('href')).toBe(`/anniversaries/${MET}`);
     expect(screen.getByText(/认识的日子/, { selector: '.gift-meta' })).toBeDefined();
-    fireEvent.change(screen.getByLabelText('谁送的'), { target: { value: 'partner' } });
+    const givers = screen.getByRole('radiogroup', { name: '谁送的' });
+    fireEvent.click(within(givers).getByRole('radio', { name: 'TA 送的' }));
     expect(screen.queryByText('杯子')).toBeNull();
     expect(screen.getByText('花')).toBeDefined();
-    fireEvent.change(screen.getByLabelText('谁送的'), { target: { value: 'all' } });
-    const occasion = screen.getByLabelText('场合', { selector: '.filters select' });
+    // A second click keeps the choice: one of them is always on.
+    fireEvent.click(within(givers).getByRole('radio', { name: 'TA 送的' }));
+    expect(
+      within(givers).getByRole('radio', { name: 'TA 送的' }).getAttribute('aria-checked'),
+    ).toBe('true');
+    fireEvent.click(within(givers).getByRole('radio', { name: '全部' }));
+    const occasion = screen.getAllByLabelText('场合').find((el) => !el.closest('li'))!;
     fireEvent.change(occasion, { target: { value: 'holiday' } });
     expect(screen.queryByText('花')).toBeNull();
     expect(screen.getByText('杯子')).toBeDefined();
@@ -303,5 +311,73 @@ describe('WishesPage', () => {
     fireEvent.change(occasion, { target: { value: 'none' } });
     expect(screen.getByText('花')).toBeDefined();
     expect(screen.queryByText('信')).toBeNull();
+  });
+
+  it('[adr:digital-paper-interface#2] adds a wish from its dialog, keeping what was typed when closed unsent, then shows my list', async () => {
+    const created = vi.fn((init: RequestInit | undefined) => {
+      void init;
+      return Response.json({ wish: wish({ authorId: ME.id }) });
+    });
+    stubApi({
+      'GET /api/wishes': () => Response.json(view()),
+      'POST /api/wishes': created,
+      'GET /api/space/unread': () => Response.json({ features: { wishes: 0 } }),
+    });
+    renderAt('/wishes', routes);
+    fireEvent.click(await screen.findByRole('button', { name: '许个愿' }));
+    let dialog = screen.getByRole('dialog', { name: '许个愿' });
+    fireEvent.change(within(dialog).getByLabelText('名称'), { target: { value: '灰色围巾' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '取消' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    fireEvent.click(screen.getByRole('button', { name: '许个愿' }));
+    dialog = screen.getByRole('dialog', { name: '许个愿' });
+    expect((within(dialog).getByLabelText('名称') as HTMLInputElement).value).toBe('灰色围巾');
+    fireEvent.click(within(dialog).getByRole('button', { name: '3 颗心' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: '许个愿' }));
+    await waitFor(() => expect(created).toHaveBeenCalled());
+    expect(JSON.parse(created.mock.calls[0]![0]!.body as string)).toMatchObject({
+      name: '灰色围巾',
+      want: 3,
+    });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByRole('tab', { name: '我的心愿' }).getAttribute('aria-selected')).toBe(
+      'true',
+    );
+  });
+
+  it('[adr:digital-paper-interface#2] keeps a half-written card across tab switches', async () => {
+    stubApi({
+      'GET /api/wishes': () =>
+        Response.json(
+          view({ preparing: [gift({ status: 'preparing', revealed: null, giverId: ME.id })] }),
+        ),
+    });
+    renderAt('/wishes', routes);
+    fireEvent.click(await screen.findByRole('tab', { name: '悄悄准备' }));
+    fireEvent.click(screen.getByRole('button', { name: '写卡片' }));
+    fireEvent.change(screen.getByLabelText('卡片'), { target: { value: '冬天快乐' } });
+    fireEvent.click(screen.getByRole('tab', { name: '礼物墙' }));
+    fireEvent.click(screen.getByRole('tab', { name: '悄悄准备' }));
+    expect((screen.getByLabelText('卡片') as HTMLTextAreaElement).value).toBe('冬天快乐');
+  });
+
+  it('marks the tabs holding something new, and jumps into the tab of the first one', async () => {
+    const scrolled = vi.fn();
+    Element.prototype.scrollIntoView = scrolled;
+    stubApi({
+      'GET /api/wishes': () => Response.json(view({ wall: [gift({ unread: 'new', mark: 1 })] })),
+      'POST /api/space/seen': () => Response.json({ recorded: true }),
+      'GET /api/space/unread': () => Response.json({ features: { wishes: 0 } }),
+      ...anniversaries(),
+    });
+    renderAt('/wishes', routes);
+    const wall = await screen.findByRole('tab', { name: /礼物墙/ });
+    expect(within(wall).getByRole('img', { name: '有新内容' })).toBeDefined();
+    expect(
+      within(screen.getByRole('tab', { name: /的心愿/, selected: true })).queryByRole('img'),
+    ).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '跳到第一处' }));
+    expect(wall.getAttribute('aria-selected')).toBe('true');
+    expect(scrolled).toHaveBeenCalled();
   });
 });

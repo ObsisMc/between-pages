@@ -166,7 +166,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       // space-records: the entry dot, seen reports, unread jumps and the read-only notice
       // every space feature uses; features import it and never each other.
       'space-common': ['api', 'ui'],
-      wishes: ['api', 'space-common'],
+      wishes: ['api', 'space-common', 'shell', 'ui'],
       anniversaries: ['api', 'space-common', 'shell', 'ui'],
       // book-frontend-workspace: `day-text` renders one diary's text read-only and knows no
       // other module; `day-feed` is the continuous list of them and the date index, which
