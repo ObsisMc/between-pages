@@ -1,7 +1,7 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
-// The day page through the real stack (unread-and-day-page D6, D7): both diaries of a date
-// stacked, each its own session, the view switch, "写这天", and author protection between
+// The day page through the real stack (unread-and-day-page D6, D7), as the workspace's left
+// page (book-frontend-workspace D3): both diaries of a date stacked, each its own session, the view switch, "写这天", and author protection between
 // the two editors. A shares every date with B; B shares nothing.
 const run = Date.now().toString(36);
 
@@ -26,9 +26,31 @@ async function pair(browser: Browser, prefix: string) {
   return { a, b };
 }
 
+/** "写今天" in the diary workspace; returns the date the server chose. */
+async function writeToday(page: Page) {
+  await page.goto('/days');
+  await page.getByRole('button', { name: '写今天' }).click();
+  await expect(page).toHaveURL(/\/days\/\d{4}-\d{2}-\d{2}$/);
+  return page.url().split('/').at(-1)!;
+}
+
+/** Chooses `date` in the feed of all diaries; the left page opens it. */
+async function chooseInFeed(page: Page, date: string) {
+  await page.goto('/days');
+  await page
+    .getByRole('region', { name: '所有日记' })
+    .locator(`[data-date="${date}"]`)
+    .getByRole('link')
+    .first()
+    .click();
+  await expect(page).toHaveURL(new RegExp(`/days/${date}$`));
+}
+
 const mine = (page: Page) => page.getByRole('region', { name: '我的日记' });
 const theirs = (page: Page) => page.getByRole('region', { name: 'TA 的日记' });
 const editorIn = (region: ReturnType<typeof mine>) => region.getByRole('textbox');
+/** A's only diary editor on A's page; the feed's date jump is a textbox too. */
+const ownEditor = (page: Page) => editorIn(mine(page));
 
 test('[adr:unread-and-day-page#9] [adr:unread-and-day-page#11] DATE-03 both diaries of a day stacked and written in place, each its own session', async ({
   browser,
@@ -36,17 +58,13 @@ test('[adr:unread-and-day-page#9] [adr:unread-and-day-page#11] DATE-03 both diar
 }) => {
   test.setTimeout(120_000);
   const { a, b } = await pair(browser, `dy${browserName}${run}`);
-  await a.goto('/');
-  await a.getByRole('button', { name: '写今天' }).click();
-  await expect(a).toHaveURL(/\/diaries\/[0-9a-f-]{36}$/);
-  await a.getByRole('textbox').click();
+  const date = await writeToday(a);
+  await ownEditor(a).click();
   await a.keyboard.type('A的今天');
   await expect(a.locator('.save-status')).toHaveText('已同步 · 对方可以看到', { timeout: 15_000 });
 
-  // B's card for the day opens the day page; B has no diary there yet.
-  await b.goto('/');
-  await b.getByRole('region', { name: '日记', exact: true }).getByRole('link').click();
-  await expect(b).toHaveURL(/\/days\/\d{4}-\d{2}-\d{2}$/);
+  // B chooses the day in the feed; B has no diary there yet.
+  await chooseInFeed(b, date);
   await expect(editorIn(theirs(b))).toHaveText('A的今天');
   await mine(b).getByRole('button', { name: '写这天' }).click();
   await expect(editorIn(mine(b))).toBeVisible();
@@ -65,7 +83,7 @@ test('[adr:unread-and-day-page#9] [adr:unread-and-day-page#11] DATE-03 both diar
   await expect(theirs(b).locator('.save-status')).toHaveText('已同步 · 对方可以看到', {
     timeout: 15_000,
   });
-  await expect(a.getByRole('textbox')).toHaveText('A的今天，B回');
+  await expect(ownEditor(a)).toHaveText('A的今天，B回');
   await expect(editorIn(mine(b))).toHaveText('B自己的');
 
   // Undo acts on the focused diary only. (How much of B's own typing one step takes back
@@ -77,11 +95,11 @@ test('[adr:unread-and-day-page#9] [adr:unread-and-day-page#11] DATE-03 both diar
   await b.keyboard.press('ControlOrMeta+z');
   await expect(editorIn(mine(b))).not.toContainText('甲');
   await expect(editorIn(theirs(b))).toHaveText('A的今天，B回');
-  await expect(a.getByRole('textbox')).toHaveText('A的今天，B回');
+  await expect(ownEditor(a)).toHaveText('A的今天，B回');
 
-  // A's page did not turn into a day page by itself; it offers it, A chooses.
+  // A's page did not change by itself: B shares nothing, so A's day still holds one diary.
   await expect(a.getByText(/TA 也写了这天/)).toHaveCount(0);
-  await expect(a.getByRole('textbox')).toHaveCount(1);
+  await expect(a.locator('.diary-editor').getByRole('textbox')).toHaveCount(1);
 });
 
 test('[adr:unread-and-day-page#7] [adr:unread-and-day-page#9] D7 the two editors protect each other: a selection dragged across changes nothing, pasted text is the writer’s, hidden text is not read', async ({
@@ -90,16 +108,18 @@ test('[adr:unread-and-day-page#7] [adr:unread-and-day-page#9] D7 the two editors
 }) => {
   test.setTimeout(120_000);
   const { a, b } = await pair(browser, `dz${browserName}${run}`);
-  await a.goto('/');
-  await a.getByRole('button', { name: '写今天' }).click();
-  await expect(a).toHaveURL(/\/diaries\/[0-9a-f-]{36}$/);
-  const aDiary = a.url().split('/').at(-1)!;
-  await a.getByRole('textbox').click();
+  const date = await writeToday(a);
+  const aDiary = await a.evaluate(
+    async (day) =>
+      ((await (await fetch(`/api/days/${day}`)).json()) as { day: { mine: { diaryId: string } } })
+        .day.mine.diaryId,
+    date,
+  );
+  await ownEditor(a).click();
   await a.keyboard.type('A写的字');
   await expect(a.locator('.save-status')).toHaveText('已同步 · 对方可以看到', { timeout: 15_000 });
 
-  await b.goto('/');
-  await b.getByRole('region', { name: '日记', exact: true }).getByRole('link').click();
+  await chooseInFeed(b, date);
   await mine(b).getByRole('button', { name: '写这天' }).click();
   await editorIn(mine(b)).click();
   await b.keyboard.type('B写的字');
@@ -154,7 +174,7 @@ test('[adr:unread-and-day-page#7] [adr:unread-and-day-page#9] D7 the two editors
       await expect(editorIn(mine(b))).toHaveText('B写的字');
       await expect(editorIn(theirs(b))).toHaveText('A写的字');
     }
-  await expect(a.getByRole('textbox')).toHaveText('A写的字');
+  await expect(ownEditor(a)).toHaveText('A写的字');
 
   // Copied from A's diary and pasted into B's own: B's plain text.
   await editorIn(mine(b)).click();
@@ -175,7 +195,7 @@ test('[adr:unread-and-day-page#7] [adr:unread-and-day-page#9] D7 the two editors
   // "我的" hides A's diary without unmounting it; text A writes meanwhile is not read.
   await b.getByRole('group', { name: '视图' }).getByRole('button', { name: '我的' }).click();
   await expect(theirs(b)).toBeHidden();
-  await a.getByRole('textbox').click();
+  await ownEditor(a).click();
   await a.keyboard.press('ControlOrMeta+End');
   await a.keyboard.type('，后来的');
   await expect(a.locator('.save-status')).toHaveText('已同步 · 对方可以看到', { timeout: 15_000 });

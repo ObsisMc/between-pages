@@ -17,13 +17,26 @@ async function signedIn(browser: Browser, name: string): Promise<Page> {
   return page;
 }
 
-const editor = (page: Page) => page.getByRole('textbox');
+// The diary editors; the feed's date jump is a textbox too.
+const editor = (page: Page) => page.locator('.diary-editor').getByRole('textbox');
 const status = (page: Page) => page.locator('.save-status');
 const saved = (page: Page) =>
   expect(status(page)).toHaveText('已保存到服务器', { timeout: 15_000 });
 /** Saved where the other person can read it: the own diary while shared, or a live share. */
 const synced = (page: Page) =>
   expect(status(page)).toHaveText('已同步 · 对方可以看到', { timeout: 15_000 });
+
+/** "写今天" in the diary workspace; returns the diary's ID, as the server lists it. */
+async function writeToday(page: Page) {
+  await page.goto('/days');
+  await page.getByRole('button', { name: '写今天' }).click();
+  await expect(page).toHaveURL(/\/days\/\d{4}-\d{2}-\d{2}$/);
+  await expect(editor(page)).toBeVisible();
+  return page.evaluate(async (date) => {
+    const res = await fetch(`/api/days/${date}`);
+    return ((await res.json()) as { day: { mine: { diaryId: string } } }).day.mine.diaryId;
+  }, page.url().split('/').at(-1)!);
+}
 
 async function typeAtEnd(page: Page, text: string) {
   await editor(page).click();
@@ -107,10 +120,7 @@ test('K8 K7 opening while another device is offline: committed input stays text,
   // A1 writes; the next batch commits but its ACK is lost; then A1 goes offline with more.
   const a1 = await signedIn(browser, name('a'));
   const control = await socketSwitch(a1);
-  await a1.getByRole('button', { name: '写今天' }).click();
-  await expect(a1).toHaveURL(/\/diaries\/[0-9a-f-]{36}$/);
-  await expect(editor(a1)).toBeVisible();
-  const diaryId = a1.url().split('/').at(-1)!;
+  const diaryId = await writeToday(a1);
   await typeAtEnd(a1, '公开的字');
   await saved(a1);
   control.fromServer = (message) => !message.includes('"type":"ack"');
@@ -170,19 +180,17 @@ test('EDIT-13 EDIT-14 TIME-03 K11 the partner reads and writes a shared diary in
   await expect(b).toHaveURL(/\/spaces\/[0-9a-f-]{36}$/);
   const spaceId = new URL(b.url()).pathname.split('/').at(-1)!;
 
-  await a.goto('/');
-  await a.getByRole('button', { name: '写今天' }).click();
-  await expect(a).toHaveURL(/\/diaries\/[0-9a-f-]{36}$/);
+  await writeToday(a);
   const ownDiary = a.url();
   await typeAtEnd(a, 'A的字');
   await synced(a);
 
-  // B finds it among A's shared diaries on the space page and opens it as a live share
-  // (the home page's card opens the day page, e2e/day.spec.ts).
+  // B finds it among A's shared diaries on the space page; it opens its date in the
+  // workspace, where the live share is the one diary B can write in.
   await b.goto(`/spaces/${spaceId}`);
   const shared = b.getByRole('region', { name: `${name('pa')} 共享的日记` });
   await shared.getByRole('link', { name: /A的字/ }).click();
-  await expect(b).toHaveURL(/\/diaries\/[0-9a-f-]{36}\/shares\/[0-9a-f-]{36}$/);
+  await expect(b).toHaveURL(new RegExp(`${new URL(ownDiary).pathname}$`));
   await expect(editor(b)).toHaveText('A的字');
   const legend = b.getByLabel('作者');
   await expect(legend).toContainText(name('pa'));

@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+  type ReactNode,
+} from 'react';
 import { Link } from 'react-router';
 import { Avatar, type AvatarPerson } from '../avatar/index.ts';
 import type { Clip } from '../day-text/index.ts';
@@ -10,6 +18,19 @@ import './day-feed.css';
 
 /** A person of the feed: who they are, for whose text is whose, and their avatar. */
 export type FeedPerson = AvatarPerson & { id: string };
+
+/**
+ * Where the list is read (D3): a date, and inside it a character by identity, at a
+ * distance from the top of the list's box. `{ date, offset: 0 }` puts a date at the top.
+ * Plain data, so it can live in the browser's history state.
+ */
+export type FeedPosition = Anchor;
+
+/** How long the list rests after scrolling before it reports where it is. */
+export const POSITION_MS = 400;
+
+/** Opens a date in the left page (or the narrow day page); `edit` gives it the focus. */
+type Open = (date: string, edit: boolean) => void;
 
 // A diary date is a calendar day, not an instant: shown as written, in no time zone.
 const dateText = new Intl.DateTimeFormat(undefined, {
@@ -58,6 +79,8 @@ function DateSection({
   listTrusted,
   authorClass,
   clip,
+  chosen,
+  onOpen,
 }: {
   entry: Entry;
   me: FeedPerson;
@@ -67,6 +90,8 @@ function DateSection({
   listTrusted: boolean;
   authorClass: (author: string) => string;
   clip: () => Clip;
+  chosen: boolean;
+  onOpen: Open | undefined;
 }) {
   const [textUnread, setTextUnread] = useState<Partial<Record<Side, boolean>>>({});
   const onUnread = useCallback(
@@ -75,12 +100,37 @@ function DateSection({
     [],
   );
   const label = dateLabel(entry.date);
+  const to = `/days/${entry.date}`;
+  const opening = (edit: boolean) =>
+    onOpen &&
+    ((event: MouseEvent) => {
+      event.preventDefault();
+      onOpen(entry.date, edit);
+    });
+  // The chosen date says so in words, not only by its mark (D1, D3).
+  const head = (rest?: ReactNode) => (
+    <header className="feed-date-head">
+      <h3>
+        <Link to={to} aria-current={chosen ? 'true' : undefined} onClick={opening(false)}>
+          {label}
+        </Link>
+      </h3>
+      {chosen && <span className="feed-chosen">在左页</span>}
+      {rest}
+      <Link className="feed-edit" to={to} state={{ edit: true }} onClick={opening(true)}>
+        编辑
+      </Link>
+    </header>
+  );
+  const sectionProps = {
+    className: chosen ? 'feed-date chosen' : 'feed-date',
+    'data-date': entry.date,
+    'aria-label': label,
+  };
   if (!entry.day)
     return (
-      <section className="feed-date" data-date={entry.date} aria-label={label}>
-        <header className="feed-date-head">
-          <h3>{label}</h3>
-        </header>
+      <section {...sectionProps}>
+        {head()}
         <p className="list-note">这一天没有可以读的日记</p>
       </section>
     );
@@ -92,16 +142,17 @@ function DateSection({
     ({ diary }) => textUnread[diary.side] ?? (listTrusted && diary.unread),
   );
   return (
-    <section className="feed-date" data-date={entry.date} aria-label={label}>
-      <header className="feed-date-head">
-        <h3>{label}</h3>
-        <span className="feed-avatars">
-          {diaries.map(({ diary, person }) => (
-            <Avatar key={diary.side} person={person} hollow={!diary.hasText} />
-          ))}
-        </span>
-        {unread && <span className="unread-dot" role="img" aria-label="有新内容" />}
-      </header>
+    <section {...sectionProps}>
+      {head(
+        <>
+          <span className="feed-avatars">
+            {diaries.map(({ diary, person }) => (
+              <Avatar key={diary.side} person={person} hollow={!diary.hasText} />
+            ))}
+          </span>
+          {unread && <span className="unread-dot" role="img" aria-label="有新内容" />}
+        </>,
+      )}
       {diaries.map(({ diary, person }) => {
         const collapse = collapseOf(entry.date, diary, editingDate);
         if (collapse)
@@ -109,7 +160,11 @@ function DateSection({
             <p key={diary.side} className="feed-collapsed">
               {diaries.length > 1 && <span className="feed-diary-who">{person.name}</span>}
               <span>{collapseText[collapse]}</span>
-              {collapse !== 'editing' && <Link to={`/days/${entry.date}`}>在左页打开</Link>}
+              {collapse !== 'editing' && (
+                <Link to={to} onClick={opening(false)}>
+                  在左页打开
+                </Link>
+              )}
             </p>
           );
         return (
@@ -134,17 +189,31 @@ function DateSection({
  * newest first, each in full and read-only, scrolled inside its own box. Dates load a page
  * at a time as either end comes near, a date input jumps to any day, and text is read only
  * for dates near the viewport. `editingDate` names the date whose own diary the left page
- * has open; that diary shows only "正在左页编辑". The line being read keeps its place when
- * text above it changes height.
+ * has open; that diary shows only "正在左页编辑". `chosenDate`, the left page's date, is
+ * marked "在左页". The line being read keeps its place when text above it changes height.
+ *
+ * `position` says where to show: a reported position, a date at the top, or the newest
+ * (null). The list goes there on mount and when it changes to anything but what the list
+ * itself last reported through `onPosition` (after scrolling) or `onOpen` (choosing a
+ * date or "编辑"), so the caller can keep it in the browser's history and bring it back.
+ * Without `onOpen` a date's links simply navigate.
  */
 export function DayFeed({
   me,
   partner,
   editingDate = null,
+  chosenDate = null,
+  position = null,
+  onPosition,
+  onOpen,
 }: {
   me: FeedPerson;
   partner: FeedPerson;
   editingDate?: string | null;
+  chosenDate?: string | null;
+  position?: FeedPosition | null;
+  onPosition?: (at: FeedPosition) => void;
+  onOpen?: (date: string, edit: boolean, at: FeedPosition | null) => void;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   // Without IntersectionObserver every date counts as near and nothing loads by itself.
@@ -218,12 +287,23 @@ export function DayFeed({
   }, [edges.newer, failure, loading, entries, newer]);
 
   // The reading position (D8): held across this feed's renders, and across height changes
-  // inside a date, which re-render only that date.
+  // inside a date, which re-render only that date. A position brought back whose character
+  // is not shown yet stays pending until its text is, or the reader moves the list.
   const anchor = useRef<Anchor | null>(null);
+  const pending = useRef<Anchor | null>(null);
   const hold = useCallback(() => {
     const root = scroller.current;
     if (!root) return;
-    if (anchor.current) restoreAnchor(root, anchor.current);
+    if (pending.current && restoreAnchor(root, pending.current)) pending.current = null;
+    else if (anchor.current) restoreAnchor(root, anchor.current);
+    anchor.current = captureAnchor(root);
+  }, []);
+  const place = useCallback((root: HTMLElement, at: Anchor) => {
+    pending.current = null;
+    if (!restoreAnchor(root, at)) {
+      restoreAnchor(root, { date: at.date, offset: at.offset });
+      pending.current = at;
+    }
     anchor.current = captureAnchor(root);
   }, []);
   useLayoutEffect(hold);
@@ -235,14 +315,63 @@ export function DayFeed({
     return () => observer.disconnect();
   }, [entries, hold]);
 
-  // A jump shows the date at the top; the dates loading above it then keep it there.
+  // A jump shows the date at the top, or where the position brought back held it; the
+  // dates loading above it then keep it there.
   useLayoutEffect(() => {
     const root = scroller.current;
     const section = target && root?.querySelector(`[data-date="${target.date}"]`);
     if (!root || !section) return;
+    if (target.at) return place(root, target.at);
     root.scrollTop += section.getBoundingClientRect().top - root.getBoundingClientRect().top;
     anchor.current = captureAnchor(root);
-  }, [target]);
+  }, [target, place]);
+
+  // Where the caller wants the list (D3): not where it already said it is. Undefined until
+  // mounted: a (re)mount drops the reads in flight, so it goes there again.
+  const { start, jump } = feed;
+  const reported = useRef<string | null | undefined>(undefined);
+  useEffect(
+    () => () => {
+      reported.current = undefined;
+    },
+    [],
+  );
+  const positionKey = position && JSON.stringify(position);
+  useEffect(() => {
+    if (positionKey === reported.current) return;
+    reported.current = positionKey;
+    const at = positionKey === null ? null : (JSON.parse(positionKey) as Anchor);
+    const root = scroller.current;
+    if (!at) start();
+    else if (root?.querySelector(`[data-date="${at.date}"]`)) place(root, at);
+    else jump(at.date, at);
+  }, [positionKey, start, jump, place]);
+
+  const callbacks = useRef({ onPosition, onOpen });
+  useEffect(() => {
+    callbacks.current = { onPosition, onOpen };
+  });
+  const reportTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(reportTimer.current), []);
+  const reportLater = () => {
+    clearTimeout(reportTimer.current);
+    reportTimer.current = setTimeout(() => {
+      const at = anchor.current;
+      if (!at || !callbacks.current.onPosition) return;
+      reported.current = JSON.stringify(at);
+      callbacks.current.onPosition(at);
+    }, POSITION_MS);
+  };
+  const open = useCallback<Open>((date, edit) => {
+    const root = scroller.current;
+    const at = root && captureAnchor(root);
+    clearTimeout(reportTimer.current);
+    if (at) reported.current = JSON.stringify(at);
+    callbacks.current.onOpen?.(date, edit, at);
+  }, []);
+  const stopPending = () => {
+    pending.current = null;
+  };
 
   const nearDate = (date: string) => !near || near.has(date);
   const busy = loading === 'start' || loading === 'jump';
@@ -252,7 +381,7 @@ export function DayFeed({
         className="feed-jump"
         onSubmit={(event) => {
           event.preventDefault();
-          if (jumpDate) feed.jump(jumpDate);
+          if (jumpDate) jump(jumpDate);
         }}
       >
         <label>
@@ -273,7 +402,12 @@ export function DayFeed({
         ref={scroller}
         onScroll={() => {
           if (scroller.current) anchor.current = captureAnchor(scroller.current);
+          reportLater();
         }}
+        onWheel={stopPending}
+        onTouchStart={stopPending}
+        onKeyDown={stopPending}
+        onPointerDown={stopPending}
       >
         {busy && <p className="list-note">正在读取…</p>}
         {feedWindow?.nextAfter && (
@@ -298,6 +432,8 @@ export function DayFeed({
             listTrusted={!failure}
             authorClass={authorClass}
             clip={clip}
+            chosen={entry.date === chosenDate}
+            onOpen={onOpen && open}
           />
         ))}
         {entries?.length === 0 && <p className="list-note">还没有日记，从今天开始写吧</p>}

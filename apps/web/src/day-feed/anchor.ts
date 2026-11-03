@@ -57,8 +57,12 @@ function offsetOf(scroller: HTMLElement, anchor: Anchor): number | null {
   return section.getBoundingClientRect().top - top;
 }
 
-/** Scrolls so the anchor is as far from the scroller's top as it was. */
-export function restoreAnchor(scroller: HTMLElement, anchor: Anchor) {
+/**
+ * Scrolls so the anchor is as far from the scroller's top as it was; false when it is not
+ * on the page (its date, or its character, is not shown), and then nothing moves.
+ */
+export function restoreAnchor(scroller: HTMLElement, anchor: Anchor): boolean {
   const offset = offsetOf(scroller, anchor);
   if (offset !== null && offset !== anchor.offset) scroller.scrollTop += offset - anchor.offset;
+  return offset !== null;
 }

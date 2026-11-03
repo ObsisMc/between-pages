@@ -1,10 +1,11 @@
-import { Navigate, type RouteObject } from 'react-router';
+import { Navigate, Outlet, type RouteObject } from 'react-router';
 import { RequireAuth } from './auth/RequireAuth.tsx';
 import { BackupPage, GoogleCallbackPage } from './backup/index.ts';
-import { DayPage, DaysPage, DiaryPage } from './diary/index.ts';
+import { DaysWorkspace, DiaryPage } from './diary/index.ts';
 import { JoinPage } from './join/index.ts';
 import { HomePage } from './pages/HomePage.tsx';
 import { LoginPage } from './pages/LoginPage.tsx';
+import { SiteBookmark } from './pages/SiteContents.tsx';
 import { SpacePage } from './space/index.ts';
 import { ClocksPage } from './two-clocks/index.ts';
 import { WishesPage } from './wishes/index.ts';
@@ -13,7 +14,7 @@ import { AnniversariesPage, AnniversaryPage } from './anniversaries/index.ts';
 // authentication-and-sessions D10: /login is public, / and diaries need a session,
 // everything else goes to /. /join is public so it can keep an invitation across the login
 // round trip (spaces-and-invitations D12); it asks for a session itself.
-export const appRoutes: RouteObject[] = [
+const pages: RouteObject[] = [
   { path: '/login', element: <LoginPage /> },
   {
     path: '/',
@@ -40,21 +41,14 @@ export const appRoutes: RouteObject[] = [
       </RequireAuth>
     ),
   },
-  // All diaries by date, newest first (book-frontend-workspace D3).
+  // The diary workspace: all diaries by date, and one date's two diaries beside them
+  // (book-frontend-workspace D3, unread-and-day-page D6). One route, so the feed stays
+  // mounted while the date changes.
   {
-    path: '/days',
+    path: '/days/:date?',
     element: (
       <RequireAuth>
-        <DaysPage />
-      </RequireAuth>
-    ),
-  },
-  // Both people's diaries of one date (unread-and-day-page D6).
-  {
-    path: '/days/:date',
-    element: (
-      <RequireAuth>
-        <DayPage />
+        <DaysWorkspace />
       </RequireAuth>
     ),
   },
@@ -120,4 +114,17 @@ export const appRoutes: RouteObject[] = [
     ),
   },
   { path: '*', element: <Navigate to="/" replace /> },
+];
+
+// Every page shares one 「目录」 bookmark, shown once signed in (book-frontend-workspace D2).
+export const appRoutes: RouteObject[] = [
+  {
+    element: (
+      <>
+        <Outlet />
+        <SiteBookmark />
+      </>
+    ),
+    children: pages,
+  },
 ];

@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import { render } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider, type RouteObject } from 'react-router';
@@ -28,15 +29,23 @@ export const signedIn =
   () =>
     Response.json({ user: { id: '6f1c1d0e-0000-4000-8000-000000000001', displayName } });
 
-/** Renders the real routes at `path` with a fresh, no-delay query client. */
-export function renderAt(path: string, routes: RouteObject[] = appRoutes) {
+/**
+ * Renders the real routes at `path` with a fresh, no-delay query client; with `strict`,
+ * inside StrictMode, which mounts every component twice as development builds do.
+ */
+export function renderAt(
+  path: string,
+  routes: RouteObject[] = appRoutes,
+  { strict = false }: { strict?: boolean } = {},
+) {
   const client = new QueryClient({ defaultOptions: { queries: { retryDelay: 0 } } });
   const router = createMemoryRouter(routes, { initialEntries: [path] });
-  render(
+  const app = (
     <QueryClientProvider client={client}>
       <RouterProvider router={router} />
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
+  render(strict ? <StrictMode>{app}</StrictMode> : app);
   return { router, client };
 }
 

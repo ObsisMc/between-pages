@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { callApi } from '../api/client.ts';
-import { PERIOD_TEXT } from './ClockStrip.tsx';
+import { PERIOD_TEXT } from './HomeClocks.tsx';
 import { browserZone, clocksKey, useClocks, useNow, useTimezoneReport } from './queries.ts';
 import {
   awakeTogether,

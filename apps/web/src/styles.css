@@ -123,44 +123,17 @@ button.primary {
   color: var(--ink);
 }
 
-.home header {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.greeting {
-  font-family: var(--font-title);
-  font-size: 1.5rem;
-}
-
 .status {
   text-align: center;
   padding: 4rem 1.25rem;
   color: var(--ink-soft);
 }
 
-.past-date {
-  margin-top: 1.5rem;
-  display: grid;
-  gap: 0.5rem;
-}
-
-.past-date label,
 .draft-meta,
 .draft-kind,
 .draft-help {
   color: var(--ink-soft);
   font-size: 0.875rem;
-}
-
-.past-date input {
-  font: inherit;
-  min-height: 2.75rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.75rem;
-  border: 1px solid var(--line);
-  background: transparent;
-  color: var(--ink);
 }
 
 .page.diary {
@@ -533,28 +506,7 @@ button.primary {
   background: color-mix(in srgb, currentColor 15%, transparent);
 }
 
-/* The day list (unread-and-day-page D3): one card per date, avatars, an unread dot. */
-.day-card {
-  display: grid;
-  gap: 0.375rem;
-}
-
-.day-card-head {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.day-card-avatars {
-  display: inline-flex;
-  gap: 0.25rem;
-}
-
-.diary-card-who {
-  color: var(--ink-soft);
-  font-size: 0.875rem;
-}
-
+/* Initial avatars and the unread dot (unread-and-day-page D3). */
 .avatar {
   display: inline-grid;
   place-items: center;
@@ -700,9 +652,8 @@ button.link {
   min-height: 8rem;
 }
 
-/* Two clocks (two-clocks D4): a quiet strip whose edge follows the hour on the partner's
-   side; the bands are placeholders until the stage 4 visual pass. */
-.clock-strip,
+/* Two clocks (two-clocks D4): a clock whose edge follows the hour on the partner's side;
+   the bands are placeholders until the stage 4 visual pass. */
 .clock {
   border-left: 0.25rem solid var(--line);
   padding: 0.5rem 0.75rem;
@@ -744,21 +695,7 @@ button.link {
   font-size: 0.875rem;
 }
 
-/* Space features (space-records): the home entries with their dots, a record's "新"/"改过"
-   label and who-did-what stamps. */
-.space-entries {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin: 0.75rem 0;
-}
-
-.space-entries a {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-}
-
+/* Space features (space-records): a record's "新"/"改过" label and who-did-what stamps. */
 .record-label {
   margin-left: 0.25rem;
   padding: 0 0.375rem;

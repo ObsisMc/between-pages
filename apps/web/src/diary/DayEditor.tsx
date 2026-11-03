@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
-import { Link, useParams } from 'react-router';
 import type { Day, ResponseOf } from '@between-pages/contracts';
 import { ApiError, callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
@@ -34,7 +33,7 @@ function storeSwap(swapped: boolean) {
 }
 
 /** The device's IANA zone decides which date "today" is (spec §4); the server checks it. */
-const timezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+export const timezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 const todayHere = () =>
   new Intl.DateTimeFormat('en-CA', { timeZone: timezone() }).format(new Date());
 
@@ -65,10 +64,14 @@ function combined(reports: (BlockReport | undefined)[]): Unread | undefined {
   };
 }
 
-/** `/days/:date`: the day page, one per date. */
-export function DayPage() {
-  const { date } = useParams();
-  return date ? <DayView key={date} date={date} /> : null;
+/**
+ * One date's day editor, the workspace's left page or the narrow single page
+ * (book-frontend-workspace D3, D6); a new date is a new editor. `focus` asks ("编辑" in the
+ * feed, "写今天") for the caller's diary to take the focus once open, or "写这天" without
+ * one; a new value asks again.
+ */
+export function DayEditor({ date, focus = null }: { date: string; focus?: string | null }) {
+  return <DayView key={date} date={date} focus={focus} />;
 }
 
 /**
@@ -81,7 +84,8 @@ export function DayPage() {
  * Without the caller's diary, "写这天" starts it in place, unless the date has not begun
  * here yet. The page never changes its layout by itself (invariant 13).
  */
-function DayView({ date }: { date: string }) {
+function DayView({ date, focus }: { date: string; focus: string | null }) {
+  const titleId = useId();
   const user = useMe().data?.user;
   const { people, known } = usePeople();
   const [day, setDay] = useState<Day | null>(null);
@@ -98,6 +102,8 @@ function DayView({ date }: { date: string }) {
   const [reports, setReports] = useState<Partial<Record<Side, BlockReport>>>({});
   const sessions = useRef<Record<Side, DiarySession | null>>({ mine: null, theirs: null });
   const blocks = useRef<Record<Side, HTMLElement | null>>({ mine: null, theirs: null });
+  const writeButton = useRef<HTMLButtonElement>(null);
+  const focusedFor = useRef<string | null>(null);
 
   const load = useCallback(
     () =>
@@ -204,6 +210,19 @@ function DayView({ date }: { date: string }) {
   const unread = combined(shown.map((side) => reports[side]));
   const ready = !!user && known && !!day;
 
+  // "编辑" hands the focus to this page's own diary, once, when it can take it (D3).
+  const ownPhase = reports.mine?.state.phase;
+  useEffect(() => {
+    if (!focus || focusedFor.current === focus || !ready) return;
+    const target = mineId
+      ? ownPhase === 'open' &&
+        blocks.current.mine?.querySelector<HTMLElement>('[contenteditable="true"]')
+      : writeButton.current;
+    if (!target) return;
+    target.focus();
+    focusedFor.current = focus;
+  }, [focus, ready, mineId, ownPhase]);
+
   const titleOf = (side: Side): ReactNode => {
     const person = side === 'mine' ? me : partner;
     const name = side === 'mine' ? (user?.displayName ?? '我') : (partner?.name ?? 'TA');
@@ -217,11 +236,10 @@ function DayView({ date }: { date: string }) {
   };
 
   return (
-    <main className="page diary day">
-      <header>
-        <Link to="/">← 返回</Link>
-        <h1 className="day-date">{dayLabel(date)}</h1>
-      </header>
+    <article className="diary day" aria-labelledby={titleId}>
+      <h1 id={titleId} className="day-date">
+        {dayLabel(date)}
+      </h1>
       {failed && (
         <div className="notice" role="alert">
           <p>{failed === 'offline' ? '离线时无法读取这一天' : '这一天暂时无法读取'}</p>
@@ -329,7 +347,12 @@ function DayView({ date }: { date: string }) {
                   {notYet ? (
                     <p className="list-note">你这边还没到这一天</p>
                   ) : (
-                    <button type="button" disabled={creating} onClick={() => void write()}>
+                    <button
+                      ref={writeButton}
+                      type="button"
+                      disabled={creating}
+                      onClick={() => void write()}
+                    >
                       写这天
                     </button>
                   )}
@@ -345,6 +368,6 @@ function DayView({ date }: { date: string }) {
         </>
       )}
       {!ready && !failed && <p className="status">正在打开…</p>}
-    </main>
+    </article>
   );
 }

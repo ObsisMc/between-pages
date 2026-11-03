@@ -129,19 +129,21 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'api',
         'auth',
         'backup',
-        'diary-list',
+        'book',
         'join',
         'relationship',
         'shared-diaries',
         'space-common',
         'two-clocks',
       ],
+      // book-frontend-workspace D1, D2: the spread, the bookmark and the contents are layout
+      // and navigation only; the caller says which entries exist.
+      book: [],
       'editor-binding': [],
       journal: [],
       sender: ['journal'],
       'sync-client': ['api'],
       history: ['api'],
-      'diary-list': ['api', 'avatar'],
       // unread-and-day-page: the initial avatar knows no other module.
       avatar: [],
       'sharing-range': [],
@@ -151,7 +153,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       'shared-diaries': ['api'],
       // server-backup-and-google-docs D9: the backup page, the Google callback and the home banner.
       backup: ['api'],
-      // two-clocks: the home strip, the clocks page and the browser's zone report.
+      // two-clocks: the home time area, the clocks page and the browser's zone report.
       'two-clocks': ['api'],
       // space-records: the entry dot, seen reports, unread jumps and the read-only notice
       // every space feature uses; features import it and never each other.
@@ -159,12 +161,14 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       wishes: ['api', 'space-common'],
       anniversaries: ['api', 'space-common'],
       // book-frontend-workspace: `day-text` renders one diary's text read-only and knows no
-      // other module; `day-feed` is the right page's list of them, which `diary` mounts.
+      // other module; `day-feed` is the right page's list of them, which `diary` mounts
+      // beside the day editor in a `book` spread (D3).
       'day-text': [],
       'day-feed': ['api', 'avatar', 'day-text', 'read-tracker'],
       diary: [
         'api',
         'auth',
+        'book',
         'day-feed',
         'editor-binding',
         'journal',
