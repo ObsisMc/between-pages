@@ -31,6 +31,7 @@
 | [opening-book-home](./2026-10-31-opening-book-home.md) | 主页以一本书的开篇呈现，两地时间与日记入口融入书页 | 已实现 | 领域 | 4/5 部分 |
 | [book-frontend-workspace](./2026-11-01-book-frontend-workspace.md) | 书页式前端以目录连接页面，日记用双页工作区和按日期连续浏览 | 已采纳 | 领域 | 9/9 已完成 |
 | [digital-paper-interface](./2026-11-03-digital-paper-interface.md) | 数字书页以内容布局承载成熟组件，并保留轻拟物双窗与圆团子 | 已采纳 | 领域 | 1/10 部分 |
+| [window-mascots](./2026-11-03-window-mascots.md) | 主页窗里的团子可以戳和摸，对方在主页上看到，团子只按作息睡觉 | 提议 | 领域 | 0/8 未开始 |
 <!-- adr-index:end -->
 
 ## 原则
