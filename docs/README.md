@@ -33,6 +33,10 @@
 - [2026-11-01 心愿与礼物视觉探索](./design/2026-11-01-wishes-exploration/README.md)：桌面与手机的心愿列表、私密准备、礼物墙示意；图像和交互均待确认，功能规则见心愿与送礼 ADR。
 - [2026-11-01 日期界面视觉探索](./design/2026-11-01-dates-exploration/README.md)：见面月历、纪念日与见面计划两种日期选择方式；图像和交互均待确认。
 
+## 界面设计提议
+
+- [数字书页与轻拟物双窗（2026-11-03）](./design/2026-11-03-digital-paper/README.md)：全部页面的可交互示意、逐页截图、圆团子效果稿与实施约束；配套 [ADR](./adr/2026-11-03-digital-paper-interface.md)已采纳，实现进行中。
+
 ## Engineering (English)
 
 - [Architecture](./architecture.md): modules, dependency direction, runtime flow.

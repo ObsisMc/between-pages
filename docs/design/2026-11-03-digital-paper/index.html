@@ -1,0 +1,4745 @@
+<!doctype html>
+<html lang="en" data-visualize-standalone>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com https://persistent.oaistatic.com/plugins/visualize/; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Between Pages — 数字书页设计提议</title>
+<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
+
+</head>
+<body>
+<iframe id="codex-visualization" sandbox="allow-scripts" referrerpolicy="no-referrer" title="Between Pages — 数字书页设计提议" data-srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot; data-visualize-standalone&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; &#x27;wasm-unsafe-eval&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com https://persistent.oaistatic.com/plugins/visualize/; style-src &#x27;unsafe-inline&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;title&gt;Between Pages — 数字书页设计提议&lt;/title&gt;
+&lt;style&gt;:root {
+  color-scheme: light dark;
+  background-color: var(
+    --background,
+    var(--color-background-primary, light-dark(rgb(255 255 255), rgb(24 24 24)))
+  ) !important;
+
+  /* Agent-facing contract; keep in sync with SKILL.md. */
+  --background: var(
+    --color-background-primary,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --card: color-mix(in oklab, var(--foreground) 5%, var(--background));
+  --card-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --popover: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255), rgb(45 45 45))
+  );
+  --popover-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --primary: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --primary-foreground: var(
+    --color-text-inverse,
+    light-dark(rgb(255 255 255), rgb(13 13 13))
+  );
+  --secondary: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255 / 96%), rgb(54 54 54 / 96%))
+  );
+  --secondary-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --muted: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --muted-foreground: var(
+    --color-text-secondary,
+    light-dark(rgb(26 28 31 / 49.4%), rgb(255 255 255 / 49.8%))
+  );
+  --accent: var(
+    --color-background-info,
+    light-dark(rgb(229 242 255), rgb(13 39 63))
+  );
+  --accent-foreground: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --destructive: var(
+    --color-text-warning,
+    light-dark(rgb(226 85 7), rgb(255 133 73))
+  );
+  --border: var(
+    --color-border-secondary,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+  --input: var(
+    --color-border-primary,
+    light-dark(
+      rgb(26 28 31 / 11.8%),
+      color-mix(in oklab, rgb(0 0 0) 10%, transparent)
+    )
+  );
+  --ring: var(
+    --color-ring-primary,
+    light-dark(rgb(51 156 255), rgb(131 195 255 / 76%))
+  );
+  --font-size-base: var(--font-text-md-size, 16px);
+  --blue: light-dark(rgb(51 156 255), rgb(51 156 255));
+  --orange: light-dark(rgb(226 85 7), rgb(251 106 34));
+  --green: light-dark(rgb(0 162 64), rgb(64 201 119));
+  --red: light-dark(rgb(224 46 42), rgb(255 103 100));
+  --purple: light-dark(rgb(146 79 247), rgb(173 123 249));
+  --yellow: light-dark(rgb(255 195 0), rgb(255 210 64));
+  --viz-series-1: var(--primary);
+  --viz-series-2: light-dark(rgb(243 136 59), rgb(245 154 86));
+  --viz-series-3: light-dark(rgb(93 201 119), rgb(116 213 139));
+  --viz-series-4: light-dark(rgb(235 119 177), rgb(240 143 192));
+  --viz-series-5: light-dark(rgb(155 121 236), rgb(170 145 239));
+  --viz-series-6: light-dark(rgb(58 185 177), rgb(90 203 194));
+
+  /* Internal implementation variables; not part of the agent contract. */
+  --font-sans:
+    -apple-system-body, ui-sans-serif, -apple-system, system-ui, &quot;Segoe UI&quot;,
+    Helvetica, &quot;Apple Color Emoji&quot;, Arial, sans-serif, &quot;Segoe UI Emoji&quot;,
+    &quot;Segoe UI Symbol&quot;;
+  --font-mono:
+    ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, &quot;Liberation Mono&quot;,
+    monospace;
+  --font-size-normal: max(11px, var(--font-size-base));
+  --font-size-tooltip: calc(var(--font-size-base) - 1px);
+  --font-size-small: max(11px, calc(var(--font-size-base) - 2px));
+  --font-size-h1: calc(var(--font-size-normal) * 1.7142857143);
+  --font-size-h2: calc(var(--font-size-normal) * 1.4285714286);
+  --font-size-h3: calc(var(--font-size-normal) * 1.2857142857);
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --icon-size: 16px;
+  --line-height-normal: calc(var(--font-size-normal) * 1.5);
+  --line-height-tooltip: calc(var(--font-size-tooltip) * 1.4285714286);
+  --line-height-small: calc(var(--font-size-small) + 4px);
+  --corner-shape: round;
+  --radius: var(--border-radius-lg, 8px);
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
+  --radius-lg: var(--radius);
+  --radius-2xl: calc(var(--radius) * 2);
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 8%);
+  --checkmark-image: url(&quot;data:image/svg+xml,%3Csvg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; viewBox=&#x27;0 0 17 17&#x27;%3E%3Cpath d=&#x27;M12.8961 3.64101C13.1297 3.41418 13.4984 3.37523 13.7779 3.56581C14.0571 3.75635 14.1554 4.11331 14.0299 4.41347L13.9615 4.53847L7.71151 13.7045C7.59411 13.8767 7.4063 13.9877 7.19881 14.0072C6.99136 14.0267 6.78564 13.9533 6.63826 13.806L2.88826 10.056L2.79842 9.9457C2.6192 9.67407 2.64927 9.30496 2.88826 9.06581C3.12738 8.82669 3.49647 8.79676 3.76815 8.97597L3.8785 9.06581L7.03084 12.2182L12.8053 3.74941L12.8961 3.64101Z&#x27;/%3E%3C/svg%3E&quot;);
+
+  /* Legacy aliases; not part of the current agent contract. */
+  --viz-bg: transparent;
+  --viz-panel: var(--card);
+  --viz-border: var(--border);
+  --viz-text: var(--foreground);
+  --viz-muted: var(--muted-foreground);
+  --viz-accent: var(--primary);
+  --viz-accent-text: var(--primary-foreground);
+  --viz-accent-bg: var(--accent);
+  --viz-font-size: var(--font-size-base);
+  --viz-warning: var(--destructive);
+}
+
+:root[data-theme=&quot;light&quot;] {
+  color-scheme: light;
+}
+
+:root[data-theme=&quot;dark&quot;] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html &gt; body {
+  /* Preserve MCP aliases for older inline renderers without creating :root cycles. */
+  --color-background-primary: var(
+    --background,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --color-text-primary: var(
+    --foreground,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --color-border-secondary: var(
+    --border,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+
+  margin: 0;
+  padding: var(--visualize-paint-gutter, 0px);
+  color: var(--foreground);
+  background: transparent !important;
+  font-family: var(--font-sans) !important;
+  -webkit-font-smoothing: antialiased;
+  font-size: var(--font-size-base);
+  line-height: calc(var(--font-size-base) * 1.625);
+  font-weight: var(--font-weight-normal);
+}
+
+.cursor-interaction {
+  cursor: var(--cursor-interaction, pointer);
+}
+
+a {
+  color: color-mix(in srgb, var(--viz-accent) 80%, var(--viz-text) 20%);
+  cursor: var(--cursor-interaction, pointer);
+  text-decoration: none;
+  text-underline-offset: 2px;
+  font-weight: inherit;
+}
+
+a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 0.5px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-block: 0;
+}
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+li,
+.table {
+  font-family: var(--font-sans);
+}
+
+h1 {
+  font-size: calc(var(--font-size-base) * 1.5);
+  line-height: 1.3333333333;
+}
+
+h2 {
+  font-size: calc(var(--font-size-base) * 1.25);
+  line-height: 1.4;
+}
+h3 {
+  font-size: calc(var(--font-size-base) * 1.125);
+  line-height: 1.5555555556;
+}
+h4 {
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+}
+h5,
+h6 {
+  font-size: var(--font-size-base);
+  line-height: calc(var(--font-size-base) * 1.625);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+b,
+strong,
+th {
+  font-weight: 600;
+}
+
+code:not(pre code) {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  corner-shape: var(--corner-shape);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  word-break: break-word;
+}
+pre,
+pre code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.table {
+  width: 100%;
+  color: var(--foreground);
+  font: inherit;
+  text-align: start;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: calc(var(--font-size-base) * 0.875);
+  line-height: calc(var(--font-size-base) * 1.625);
+  font-family: var(--font-sans);
+}
+
+.table :is(th, td) {
+  padding-block: 10px;
+  padding-inline: 0 24px;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+  border-bottom-color: color-mix(in srgb, var(--foreground) 5%, transparent);
+}
+.table :is(th, td):not(:last-child) {
+  padding-inline-end: calc(var(--font-size-base) * 1.5);
+}
+
+.table-responsive &gt; .table :is(th, td) {
+  overflow-wrap: break-word;
+}
+
+.table :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+
+.table :is(caption, thead th) {
+  font-weight: 600;
+}
+
+.table thead :is(th, td) {
+  border-bottom-color: var(--border-strong, var(--input));
+  padding-block: calc(var(--font-size-base) / 2);
+  line-height: var(--font-size-base);
+}
+
+.table tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+.table tbody :is(th, td) {
+  padding-block: calc(var(--font-size-base) * 0.625);
+}
+
+.table.table-sm :is(th, td) {
+  padding-block: 8px;
+}
+
+.table.table-sm :is(th, td):not(:last-child) {
+  padding-inline-end: 16px;
+}
+
+.table :is(.text-end, [align=&quot;right&quot;]) {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.table :is(.text-center, [align=&quot;center&quot;]) {
+  text-align: center;
+}
+
+.table .text-nowrap {
+  white-space: nowrap;
+}
+
+#widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: transparent !important;
+}
+
+.card {
+  min-width: 0;
+  padding: 12px;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  border-radius: var(--radius-2xl);
+  corner-shape: var(--corner-shape);
+  color: var(--card-foreground);
+  background: var(--card);
+}
+
+.widget {
+  min-width: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-lg);
+  corner-shape: var(--corner-shape);
+  box-shadow: 0 0 0 0.5px var(--border-strong, var(--border));
+  color: var(--foreground);
+  background: var(--background);
+}
+
+#widget &gt; :not(.card, .widget, .progress) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(
+    20rem,
+    var(--tooltip-available-width, calc(100vw - 10px)),
+    calc(100vw - 10px)
+  );
+  max-height: min(
+    var(--tooltip-available-height, calc(100vh - 10px)),
+    calc(100vh - 10px)
+  );
+  border: 1px solid var(--border);
+  corner-shape: var(--corner-shape);
+  overflow-wrap: break-word;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+  font-family: var(--font-sans);
+  padding: 5px 12px;
+  border-color: color-mix(
+    in oklab,
+    light-dark(var(--primary-foreground), var(--foreground)) 5%,
+    transparent
+  );
+  border-radius: var(--radius-2xl);
+  color: light-dark(var(--primary-foreground), var(--foreground));
+  background: light-dark(var(--foreground), var(--popover));
+  box-shadow: 0 8px 18px rgb(15 23 42 / 20%);
+  letter-spacing: -0.15px;
+  font-size: calc(var(--font-size-base) * 14 / 16);
+  font-size: round(nearest, calc(var(--font-size-base) * 14 / 16), 1px);
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+}
+
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(180px, 24%), 1fr));
+  gap: 10px;
+}
+
+.viz-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-stat-value {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+.viz-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+hr {
+  width: 100%;
+  height: 1px;
+  margin-block: 6px;
+  border: 0;
+  background: var(--border);
+}
+
+.nav {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.progress {
+  display: flex;
+  height: 8px;
+  margin-block: calc((var(--line-height-normal, 1.5em) - 8px) / 2);
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+}
+
+.progress-bar:only-child {
+  border-radius: var(--radius-full);
+}
+
+.progress-bar {
+  height: 100%;
+  flex-shrink: 0;
+  border: 0;
+  background: var(--viz-series-1);
+}
+
+.viz-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  color: color-mix(in srgb, var(--foreground) 40%, var(--muted-foreground));
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+  font-family: var(--font-sans);
+  font-size: calc(var(--font-size-base) * 14 / 16);
+  font-size: round(nearest, calc(var(--font-size-base) * 14 / 16), 1px);
+  font-weight: var(--font-weight-normal);
+  line-height: 1;
+}
+
+small,
+.text-small {
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.viz-controls &gt; .form-label {
+  display: grid;
+  min-width: min(100%, 260px);
+  flex: 1 1 280px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 0;
+}
+
+.viz-controls &gt; .form-label &gt; :is(.form-control, .form-range, .form-select) {
+  grid-column: 1 / -1;
+}
+
+.btn,
+.nav-link,
+.form-check-input,
+.form-control,
+.form-range,
+.form-select {
+  font: inherit;
+}
+
+/* Match inline alignment without overriding a containing flex or grid layout. */
+.btn,
+.nav-link,
+.form-control,
+.form-select,
+.form-range,
+.form-check {
+  vertical-align: middle;
+}
+
+.btn,
+.nav-link {
+  --btn-size: calc(12px + 2 * var(--control-spacing, 12px));
+  appearance: button;
+  display: inline-flex;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+  border: 1px solid var(--input);
+  corner-shape: var(--corner-shape);
+  cursor: var(--cursor-interaction, pointer);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-font-smoothing: inherit;
+  font-family: var(--font-sans);
+  height: fit-content;
+  min-height: var(--btn-size);
+  padding-inline: var(--control-spacing, 12px);
+  border-color: transparent;
+  border-radius: var(--radius-full);
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+  font-size: calc(var(--font-size-base) * 14 / 16);
+  font-size: round(nearest, calc(var(--font-size-base) * 14 / 16), 1px);
+  font-weight: var(--font-weight-normal);
+  line-height: 18px;
+}
+
+.btn {
+  border-color: var(--border);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+}
+
+/* Codex Button size=&quot;compact&quot;; appearance stays with the button variant. */
+.btn-sm {
+  --btn-size: 24px;
+  padding-inline: 8px;
+  font-size: calc(var(--font-size-base) * 12 / 16);
+  font-size: round(nearest, calc(var(--font-size-base) * 12 / 16), 1px);
+  line-height: 16px;
+}
+
+.btn:is(.btn-block, .viz-tile) {
+  inline-size: 100%;
+}
+
+.btn.viz-tile {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+a.btn {
+  cursor: var(--cursor-interaction, pointer);
+  text-decoration: none;
+}
+
+.btn:not(:disabled):hover {
+  background: light-dark(
+    color-mix(in srgb, var(--foreground) 5.5%, transparent),
+    color-mix(in srgb, var(--foreground) 8%, transparent)
+  );
+}
+
+.nav-link:not(:disabled):not([aria-disabled=&quot;true&quot;]):hover {
+  background: color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
+.btn-primary {
+  border-color: var(--border);
+  color: var(--primary-foreground);
+  background: var(--foreground);
+  background-clip: border-box;
+}
+
+.btn-primary .text-muted {
+  color: color-mix(in srgb, var(--primary-foreground) 50%, transparent);
+}
+
+.btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 80%, transparent);
+  background-clip: border-box;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.btn-ghost:not(:disabled):hover {
+  color: var(--muted-foreground);
+  background: light-dark(
+    color-mix(in srgb, var(--foreground) 5.5%, transparent),
+    color-mix(in srgb, var(--foreground) 8%, transparent)
+  );
+}
+
+.nav-pills .nav-link {
+  min-width: 0;
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.nav-justified .nav-link {
+  flex: 1 1 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.nav-pills .nav-link.active {
+  color: var(--foreground);
+  background: var(--muted);
+}
+
+/* Shared preview chrome; product styles stay inside each variant. */
+.viz-dotted-background {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--foreground) 14%, transparent) 0.8px,
+    transparent 0.8px
+  );
+  background-position: center;
+  background-size: 16px 16px;
+}
+
+.viz-carousel {
+  position: relative;
+  min-width: 0;
+}
+
+.viz-carousel:has(&gt; .viz-carousel-controls) {
+  min-height: calc(60px + var(--viz-carousel-picker-height, 0px));
+  padding-bottom: 60px;
+}
+
+.viz-carousel &gt; [data-variant][hidden] {
+  display: none !important;
+}
+
+.viz-carousel &gt; [data-variant] {
+  isolation: isolate;
+}
+
+.viz-carousel-controls {
+  --viz-carousel-hover: light-dark(
+    color-mix(in srgb, var(--foreground) 5.4%, transparent),
+    color-mix(in srgb, var(--foreground) 7.8%, transparent)
+  );
+  position: absolute;
+  z-index: 2;
+  bottom: 8px;
+  left: 50%;
+  display: flex;
+  width: max-content;
+  /* Leave room for the host&#x27;s design-controls launcher at the trailing edge. */
+  max-width: calc(100% - 96px);
+  align-items: center;
+  gap: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-sans);
+  /* Match the settings dropdown chrome independently of the content font size. */
+  font-size: 13px;
+  font-weight: var(--font-weight-normal);
+  line-height: 18px;
+  transform: translateX(-50%);
+  user-select: none;
+}
+
+/* Keep authored mockup button styles out of the shared carousel chrome. */
+.viz-carousel-controls button,
+.viz-carousel-picker &gt; summary {
+  display: flex !important;
+  height: auto !important;
+  min-height: 30px;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px;
+  padding: 0 6px !important;
+  -webkit-app-region: no-drag;
+  border: 0 !important;
+  border-radius: 14px !important;
+  color: inherit !important;
+  background: transparent !important;
+  font: inherit !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.viz-carousel-controls &gt; button,
+.viz-carousel-picker &gt; summary {
+  position: relative;
+  isolation: isolate;
+}
+
+.viz-carousel-controls &gt; button {
+  --icon-size: 16px;
+  width: 30px !important;
+  padding: 0 !important;
+}
+
+.viz-carousel-picker &gt; summary {
+  padding-inline: 12px !important;
+}
+
+.viz-carousel-controls .viz-carousel-caret {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  margin: 0;
+  color: inherit;
+  transform: rotate(180deg);
+}
+
+.viz-carousel-controls &gt; button &gt; svg,
+.viz-carousel-controls .viz-carousel-caret,
+.viz-carousel-count {
+  opacity: 0.5;
+}
+
+.viz-carousel-controls &gt; button::before,
+.viz-carousel-picker &gt; summary::before {
+  position: absolute;
+  z-index: -1;
+  inset: 3px;
+  border-radius: 12px;
+  content: &quot;&quot;;
+  pointer-events: none;
+}
+
+.viz-carousel-controls &gt; button:hover::before,
+.viz-carousel-picker &gt; summary:hover::before {
+  background: var(--viz-carousel-hover);
+}
+
+.viz-carousel-controls &gt; button,
+.viz-carousel-controls [data-lucide],
+.viz-carousel-controls .lucide {
+  flex-shrink: 0;
+}
+
+.viz-carousel-picker {
+  min-width: 0;
+}
+
+.viz-carousel-picker &gt; summary {
+  min-width: 0;
+  list-style: none;
+}
+
+.viz-carousel-picker &gt; summary::-webkit-details-marker {
+  display: none;
+}
+
+.viz-carousel-count {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.viz-carousel-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.viz-carousel-options {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 4px);
+  left: 0;
+  display: flex;
+  max-height: 240px;
+  flex-direction: column;
+  gap: 2px;
+  overflow: auto;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--background);
+  box-shadow: 0 4px 12px light-dark(rgb(0 0 0 / 6%), rgb(0 0 0 / 25%));
+}
+
+.viz-carousel-options &gt; button {
+  border-radius: max(0px, calc(var(--radius-lg) - 5px)) !important;
+  width: 100% !important;
+  min-height: 28px;
+  justify-content: flex-start !important;
+  padding: 4px 8px !important;
+  font-size: var(--font-size-small) !important;
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.viz-carousel-options &gt; [aria-current=&quot;true&quot;],
+.viz-carousel-options &gt; button:hover {
+  background: var(--viz-carousel-hover) !important;
+}
+
+.btn:disabled,
+.nav-link:disabled,
+.nav-link[aria-disabled=&quot;true&quot;] {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+[data-lucide] {
+  stroke-width: 1.6;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--foreground);
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  padding: 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  corner-shape: var(--corner-shape);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  height: calc(12px + 2 * var(--control-spacing, 12px));
+  min-height: calc(12px + 2 * var(--control-spacing, 12px));
+  padding-inline: calc(4px + var(--control-spacing, 12px) / 2);
+  border-color: var(--input);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--popover) 96%, transparent);
+  font-size: calc(var(--font-size-base) * 14 / 16);
+  font-size: round(nearest, calc(var(--font-size-base) * 14 / 16), 1px);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.4285714286;
+}
+.form-control:is(
+  [type=&quot;file&quot;],
+  [type=&quot;date&quot;],
+  [type=&quot;datetime-local&quot;],
+  [type=&quot;month&quot;],
+  [type=&quot;week&quot;],
+  [type=&quot;color&quot;]
+) {
+  height: calc(12px + 2 * var(--control-spacing, 12px));
+  min-height: calc(12px + 2 * var(--control-spacing, 12px));
+  line-height: 18px;
+}
+.form-control:is(
+  [type=&quot;date&quot;],
+  [type=&quot;datetime-local&quot;],
+  [type=&quot;month&quot;],
+  [type=&quot;week&quot;]
+) {
+  padding-inline: var(--control-spacing, 12px);
+}
+
+.form-control::placeholder {
+  color: var(--muted-foreground);
+}
+
+.form-control[type=&quot;file&quot;] {
+  overflow: hidden;
+  cursor: var(--cursor-interaction, pointer);
+  padding: 0;
+}
+
+.form-control[type=&quot;file&quot;]::file-selector-button {
+  padding: 0 8px;
+  border: 0;
+  border-right: 1px solid var(--input);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: inherit;
+  font: inherit;
+  min-height: calc(10px + 2 * var(--control-spacing, 12px));
+  padding-inline: var(--control-spacing, 12px);
+  margin-inline-end: var(--control-spacing, 12px);
+}
+
+.form-control[type=&quot;file&quot;]:not(:disabled):hover::file-selector-button {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-control-color[type=&quot;color&quot;] {
+  width: 40px;
+  height: calc(12px + 2 * var(--control-spacing, 12px));
+  padding: 3px;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-lg) - 4px);
+  corner-shape: var(--corner-shape);
+}
+
+textarea.form-control {
+  height: auto;
+  resize: vertical;
+  min-height: 96px;
+  padding: 8px 10px;
+}
+
+.form-control:focus-visible {
+  border-color: var(--ring);
+  box-shadow: none;
+}
+.form-control:disabled {
+  color: var(--muted-foreground);
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+  opacity: 1;
+}
+.form-control[aria-invalid=&quot;true&quot;] {
+  border-color: var(--red);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--red) 20%, transparent);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  cursor: not-allowed;
+}
+
+.form-select {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: fit-content;
+  min-height: calc(12px + 2 * var(--control-spacing, 12px));
+  margin: 0;
+  /* The secondary icon role is 14px at compact density and 16px at web density. */
+  --icon-size: calc(10px + var(--control-spacing, 12px) / 2);
+  /* Settings dropdowns retain a 12px inset and a 4px text-to-chevron gap. */
+  padding: 0 calc(16px + var(--icon-size)) 0 12px;
+  outline: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  corner-shape: var(--corner-shape);
+  color: var(--foreground);
+  background-color: var(--secondary);
+  background-image:
+    linear-gradient(
+      45deg,
+      transparent calc(50% - 0.6px),
+      var(--muted-foreground) calc(50% - 0.6px) calc(50% + 0.6px),
+      transparent calc(50% + 0.6px)
+    ),
+    linear-gradient(
+      135deg,
+      transparent calc(50% - 0.6px),
+      var(--muted-foreground) calc(50% - 0.6px) calc(50% + 0.6px),
+      transparent calc(50% + 0.6px)
+    );
+  background-position:
+    calc(100% - 12px - var(--icon-size) / 2) 50%,
+    calc(100% - 12px - var(--icon-size) * 0.18) 50%;
+  background-repeat: no-repeat;
+  background-size: calc(var(--icon-size) * 0.32) calc(var(--icon-size) * 0.32);
+  cursor: var(--cursor-interaction, default);
+  font-size: calc(var(--font-size-base) * 14 / 16);
+  font-size: round(nearest, calc(var(--font-size-base) * 14 / 16), 1px);
+  font-weight: var(--font-weight-normal);
+  line-height: 18px;
+}
+
+.form-select :is(option, optgroup) {
+  color: var(--popover-foreground);
+  background-color: var(--popover);
+}
+
+.form-select :is(option, optgroup):disabled {
+  color: var(--muted-foreground);
+}
+
+.form-select:not(:disabled):hover {
+  background-color: light-dark(
+    color-mix(in srgb, var(--foreground) 5.5%, transparent),
+    color-mix(in srgb, var(--foreground) 8%, transparent)
+  );
+}
+
+.form-select:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+.form-select:disabled {
+  opacity: 0.4;
+}
+
+.form-check {
+  display: flex;
+  min-height: calc(12px + 2 * var(--control-spacing, 12px));
+  align-items: center;
+  gap: 6px;
+}
+
+.form-check-input {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--input);
+  color: var(--primary-foreground);
+  background-color: transparent;
+  cursor: var(--cursor-interaction, default);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+  corner-shape: round;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  width: calc(10px + var(--control-spacing, 12px) / 2);
+  height: calc(10px + var(--control-spacing, 12px) / 2);
+  border-color: var(--border-strong, var(--input));
+  border-radius: calc(var(--radius-sm) / 2);
+  background-color: transparent;
+  color: var(--foreground);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input:not(:disabled):not(:checked):hover {
+  background-color: var(--card);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:is(:checked, :indeterminate) {
+  border-color: var(--border-strong, var(--input));
+  background-color: color-mix(in srgb, var(--popover) 96%, transparent);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:checked::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-foreground);
+  content: &quot;&quot;;
+  mask: var(--checkmark-image) center / 12px 12px no-repeat;
+  background-color: var(--foreground);
+}
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:indeterminate::before {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 65%;
+  height: 6.65%;
+  margin: auto;
+  border-radius: var(--radius-full);
+  background: var(--foreground);
+  mask: none;
+  content: &quot;&quot;;
+}
+
+.form-check-input[type=&quot;radio&quot;] {
+  border-radius: var(--radius-full);
+  width: 16px;
+  height: 16px;
+  border: 0;
+  box-shadow: inset 0 0 0 1px var(--input);
+}
+
+.form-check-input[type=&quot;radio&quot;]:checked {
+  border: 0;
+  background: radial-gradient(
+    circle,
+    var(--primary-foreground) 0 3px,
+    var(--foreground) 3px
+  );
+  box-shadow: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;]:focus-visible {
+  border-color: var(--ring);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+}
+.form-check:not(.form-switch) .form-check-input[type=&quot;radio&quot;]:disabled,
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;radio&quot;]:disabled
+  + .form-check-label {
+  opacity: 0.5;
+}
+
+.form-switch .form-check-input:disabled,
+.form-switch .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-check-label {
+  color: var(--foreground);
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-switch .form-check-input {
+  position: relative;
+  width: 32px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  box-shadow: none;
+  transition: background-color 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid light-dark(var(--primary-foreground), var(--foreground));
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-sm);
+  content: &quot;&quot;;
+  transform: translate(2px, -50%);
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+  border-color: #fff;
+  background: #fff;
+}
+
+.form-switch .form-check-input:checked {
+  background: var(--blue);
+}
+
+.form-switch .form-check-input:checked::before {
+  transform: translate(14px, -50%);
+}
+
+.form-switch .form-check-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+  outline: none;
+}
+
+.form-range {
+  appearance: none;
+  display: block;
+  width: 100%;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  accent-color: var(--primary);
+  height: calc(12px + 2 * var(--control-spacing, 12px));
+  min-height: calc(12px + 2 * var(--control-spacing, 12px));
+  outline: none;
+  border-radius: var(--radius-full);
+  color: var(--foreground);
+  background: transparent;
+}
+
+.form-range::-webkit-slider-runnable-track {
+  background: var(--form-range-track, var(--border));
+  height: 2px;
+  border-radius: var(--radius-full);
+}
+
+.form-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  margin-top: -9px;
+  border-color: transparent;
+  background: currentColor;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Outline the native track and thumb, preserving the larger input hit area. */
+.form-range:focus-visible::-webkit-slider-runnable-track {
+  outline: 2px auto Highlight;
+  outline-color: -webkit-focus-ring-color;
+}
+
+.form-range::-moz-range-track {
+  background: var(--form-range-track, var(--border));
+  height: 2px;
+  border-radius: var(--radius-full);
+}
+
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  border-color: transparent;
+  background: currentColor;
+  box-shadow: var(--shadow-sm);
+}
+
+.form-range:focus-visible::-moz-range-thumb {
+  outline: 2px solid Highlight;
+  outline-offset: 2px;
+}
+
+.form-range:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.btn:not(.btn-primary, .viz-tile):is(
+  [aria-pressed=&quot;true&quot;],
+  [aria-selected=&quot;true&quot;],
+  .is-selected
+) {
+  border-color: transparent;
+  color: var(--primary-foreground);
+  background: var(--blue);
+}
+
+.btn.viz-tile:is([aria-pressed=&quot;true&quot;], [aria-selected=&quot;true&quot;], .is-selected) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.btn:focus-visible,
+.nav-link:focus-visible {
+  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.viz-carousel-controls :is(button, summary):focus-visible {
+  outline: 2px solid var(--ring) !important;
+  outline-offset: 2px !important;
+}
+
+/* Web recipes are the default, including on renderers without inline style queries. */
+@supports (border-radius: if(style(--corner-shape: round): 1px; else: 2px)) {
+  /* Match the host&#x27;s proportional text-sm scale at every text preference. */
+  .tooltip,
+  .viz-badge,
+  .btn,
+  .nav-link,
+  .form-control,
+  .form-select {
+    font-size: if(
+      style(--corner-shape: round): round(
+          nearest,
+          calc(var(--font-size-base) * 14 / 16),
+          1px
+        );
+        else: round(nearest, calc(var(--font-size-base) * 13 / 14), 1px)
+    );
+  }
+
+  .btn-sm {
+    font-size: if(
+      style(--corner-shape: round): round(
+          nearest,
+          calc(var(--font-size-base) * 12 / 16),
+          1px
+        );
+        else: round(nearest, calc(var(--font-size-base) * 12 / 14), 1px)
+    );
+  }
+
+  .btn,
+  .nav-link,
+  .form-select {
+    border-radius: if(
+      style(--corner-shape: round): var(--radius-full); else: var(--radius-lg)
+    );
+  }
+
+  .form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+    border-radius: if(
+      style(--corner-shape: round): calc(var(--radius-sm) / 2);
+        else: calc(var(--radius-lg) * 0.4)
+    );
+  }
+
+  .tooltip {
+    font-weight: if(
+      style(--corner-shape: round): 600; else: var(--font-weight-normal)
+    );
+  }
+}
+
+@media (pointer: coarse) {
+  .viz-carousel:has(&gt; .viz-carousel-controls) {
+    min-height: calc(76px + var(--viz-carousel-picker-height, 0px));
+    padding-bottom: 76px;
+  }
+
+  .btn,
+  .nav-link,
+  .viz-carousel-controls button,
+  .viz-carousel-picker &gt; summary,
+  .form-control,
+  .form-select {
+    --btn-size: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Keep small-screen WebKit from zooming when a text field receives focus. */
+  .form-control,
+  .form-select {
+    font-size: max(16px, calc(var(--font-size-base) * 14 / 16));
+    font-size: max(
+      16px,
+      round(nearest, calc(var(--font-size-base) * 14 / 16), 1px)
+    );
+  }
+  .form-control:is(
+    [type=&quot;file&quot;],
+    [type=&quot;date&quot;],
+    [type=&quot;datetime-local&quot;],
+    [type=&quot;month&quot;],
+    [type=&quot;week&quot;],
+    [type=&quot;time&quot;],
+    [type=&quot;color&quot;]
+  ) {
+    height: 44px;
+    min-height: 44px;
+    font-size: max(16px, calc(var(--font-size-base) * 14 / 16));
+    font-size: max(
+      16px,
+      round(nearest, calc(var(--font-size-base) * 14 / 16), 1px)
+    );
+  }
+
+  .form-control[type=&quot;file&quot;]::file-selector-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .form-control-color[type=&quot;color&quot;] {
+    width: 44px;
+    height: 44px;
+  }
+
+  .form-control:is(
+    [type=&quot;date&quot;],
+    [type=&quot;datetime-local&quot;],
+    [type=&quot;month&quot;],
+    [type=&quot;time&quot;],
+    [type=&quot;week&quot;]
+  ) {
+    min-width: 0;
+    max-width: 100%;
+    padding-block: 8px;
+  }
+
+  .form-check {
+    min-height: 44px;
+    padding-inline: 15px;
+  }
+
+  .form-check-input {
+    position: relative;
+  }
+
+  .form-check-input::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    content: &quot;&quot;;
+    transform: translate(-50%, -50%);
+  }
+
+  .form-check-label {
+    display: inline-flex;
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .form-range {
+    height: 44px;
+    touch-action: pan-y;
+  }
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#widget &gt; svg {
+  width: 100%;
+}
+
+/* Model-authored chart rules can otherwise stretch icons after these styles load. */
+svg.lucide {
+  display: block;
+  width: var(--icon-size) !important;
+  height: var(--icon-size) !important;
+  flex: none;
+  margin: 0 !important;
+  stroke-width: 1.6;
+}
+
+.text-warning,
+.text-destructive {
+  color: var(--destructive);
+}
+
+html&gt;body{padding:0}&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;script type=&quot;application/json&quot; id=&quot;codex-visualization-widget-state&quot;&gt;__CODEX_VISUALIZATION_WIDGET_STATE__&lt;/script&gt;
+&lt;script&gt;(() =&gt; {
+  const root = document.documentElement;
+  const mediaQuery = globalThis.matchMedia(&quot;(prefers-color-scheme: dark)&quot;);
+  const apply = Reflect.apply;
+  const isArray = Array.isArray;
+  const hasOwn = Object.hasOwn;
+  const parentWindow = globalThis.parent;
+  const stringify = JSON.stringify;
+  const parse = JSON.parse;
+  const encode = TextEncoder.prototype.encode.bind(new TextEncoder());
+  const initialStateElement = document.getElementById(
+    &quot;codex-visualization-widget-state&quot;,
+  );
+  const initialGlobals = parse(initialStateElement?.textContent ?? &quot;{}&quot;);
+  initialStateElement?.remove();
+  /** @type {Record&lt;string, unknown&gt; | null} */
+  let state = initialGlobals.widgetState ?? null;
+  const statePersistence = initialGlobals.statePersistence ?? &quot;none&quot;;
+  let nextStateRequestId = 0;
+  /** @type {Map&lt;number, { resolve: () =&gt; void; reject: (error: Error) =&gt; void; timeout: ReturnType&lt;typeof globalThis.setTimeout&gt;; serializedState: string }&gt;} */
+  const pendingStateWrites = new Map();
+  const persistenceError = () =&gt;
+    Object.assign(
+      new Error(&quot;The host could not persist the widget state update&quot;),
+      {
+        code: -32000,
+        data: { code: &quot;widget_state_persistence_failed&quot;, retryable: false },
+      },
+    );
+  /**
+   * @param {object} prototype
+   * @param {string} property
+   */
+  const getPrototypeGetter = (prototype, property) =&gt; {
+    // oxlint-disable-next-line typescript/unbound-method -- invoked through captured Reflect.apply
+    const getter = Object.getOwnPropertyDescriptor(prototype, property)?.get;
+    if (getter == null) {
+      throw new Error(`Missing ${property} getter`);
+    }
+    return getter;
+  };
+  const getMessageData = getPrototypeGetter(MessageEvent.prototype, &quot;data&quot;);
+  const getMessagePorts = getPrototypeGetter(MessageEvent.prototype, &quot;ports&quot;);
+  const getMessageSource = getPrototypeGetter(MessageEvent.prototype, &quot;source&quot;);
+  // oxlint-disable-next-line typescript/unbound-method -- captured before the untrusted fragment runs
+  const addHostMessageListener = MessagePort.prototype.addEventListener;
+  // oxlint-disable-next-line typescript/unbound-method -- captured before the untrusted fragment runs
+  const postHostMessage = MessagePort.prototype.postMessage;
+  // oxlint-disable-next-line typescript/unbound-method -- captured before the untrusted fragment runs
+  const startHostPort = MessagePort.prototype.start;
+  // oxlint-disable-next-line typescript/unbound-method -- captured before the untrusted fragment runs
+  const stopMessagePropagation = Event.prototype.stopImmediatePropagation;
+  /** @type {MessagePort | null} */
+  let hostPort = null;
+  const postToHost = (type, payload) =&gt; {
+    if (hostPort != null) {
+      apply(postHostMessage, hostPort, [{ type, ...payload }]);
+    }
+  };
+  const openExternal = ({ href }) =&gt; {
+    if (globalThis.navigator.userActivation?.isActive === true) {
+      postToHost(&quot;open-external&quot;, { href });
+    }
+  };
+  const sendFollowUpMessage = ({ context, prompt, title }) =&gt; {
+    if (globalThis.navigator.userActivation?.isActive === true) {
+      postToHost(&quot;follow-up&quot;, { context, prompt, title });
+    }
+    return Promise.resolve();
+  };
+  /**
+   * @param {Record&lt;string, unknown&gt; | ((previous: Record&lt;string, unknown&gt; | null) =&gt; Record&lt;string, unknown&gt;)} next
+   * @returns {Promise&lt;void&gt;}
+   */
+  const setWidgetState = async (next) =&gt; {
+    const nextState = typeof next === &quot;function&quot; ? next(state) : next;
+    if (
+      nextState == null ||
+      typeof nextState !== &quot;object&quot; ||
+      isArray(nextState)
+    ) {
+      throw new TypeError(&quot;Widget state must be a JSON object&quot;);
+    }
+    const inputState = stringify(
+      nextState,
+      (_key, /** @type {unknown} */ value) =&gt; {
+        if (
+          typeof value === &quot;undefined&quot; ||
+          typeof value === &quot;function&quot; ||
+          typeof value === &quot;symbol&quot; ||
+          (typeof value === &quot;number&quot; &amp;&amp; !Number.isFinite(value))
+        ) {
+          throw new TypeError(&quot;Widget state must be a JSON object&quot;);
+        }
+        return value;
+      },
+    );
+    const parsedState = parse(inputState);
+    if (
+      parsedState == null ||
+      typeof parsedState !== &quot;object&quot; ||
+      isArray(parsedState)
+    ) {
+      throw new TypeError(&quot;Widget state must be a JSON object&quot;);
+    }
+    const storedState = {
+      modelContent: null,
+      privateContent: null,
+      ...parsedState,
+    };
+    const serializedState = stringify(storedState);
+    if (encode(serializedState).length &gt; 16 * 1024) {
+      throw new TypeError(
+        &quot;Widget state must be a JSON object of at most 16 KiB&quot;,
+      );
+    }
+    if (
+      hasOwn(storedState, &quot;imageIds&quot;) &amp;&amp;
+      (!isArray(storedState.imageIds) ||
+        storedState.imageIds.some(
+          (/** @type {unknown} */ id) =&gt; typeof id !== &quot;string&quot;,
+        ))
+    ) {
+      throw new TypeError(&quot;Widget state imageIds must be an array of strings&quot;);
+    }
+    if (storedState.imageIds?.length &gt; 0) {
+      throw Object.assign(
+        new TypeError(&quot;Visualization state does not support image attachments&quot;),
+        { code: -32602, data: { code: &quot;images_unsupported&quot; } },
+      );
+    }
+    state = storedState;
+    globalThis.openai.widgetState = state;
+    globalThis.dispatchEvent(
+      new CustomEvent(&quot;openai:set_globals&quot;, {
+        detail: { globals: { widgetState: state } },
+      }),
+    );
+    if (statePersistence === &quot;none&quot;) {
+      throw persistenceError();
+    }
+    const id = ++nextStateRequestId;
+    return new Promise((resolve, reject) =&gt; {
+      const timeout = globalThis.setTimeout(() =&gt; {
+        pendingStateWrites.delete(id);
+        reject(persistenceError());
+      }, 30_000);
+      pendingStateWrites.set(id, { resolve, reject, timeout, serializedState });
+      postToHost(&quot;widget-state-write&quot;, { id, state: serializedState });
+    });
+  };
+  const syncTheme = () =&gt; {
+    const theme = mediaQuery.matches ? &quot;dark&quot; : &quot;light&quot;;
+    root.dataset.theme = theme;
+    globalThis.openai = {
+      ...globalThis.openai,
+      openExternal,
+      sendFollowUpMessage,
+      setWidgetState,
+      theme,
+      visualizationStyleVariables: {},
+      visualizationTheme: theme,
+      widgetState: state,
+      statePersistence,
+      stateModelContext: &quot;none&quot;,
+    };
+    globalThis.dispatchEvent(
+      new CustomEvent(&quot;openai:set_globals&quot;, {
+        detail: { globals: globalThis.openai },
+      }),
+    );
+  };
+  const sendHeight = () =&gt; {
+    postToHost(&quot;height&quot;, {
+      height: Math.ceil(
+        Math.max(
+          document.body.scrollHeight,
+          document.body.getBoundingClientRect().height,
+        ),
+      ),
+    });
+  };
+
+  globalThis.addEventListener(
+    &quot;message&quot;,
+    (event) =&gt; {
+      const data = apply(getMessageData, event, []);
+      const ports = apply(getMessagePorts, event, []);
+      const source = apply(getMessageSource, event, []);
+      if (
+        hostPort != null ||
+        source !== parentWindow ||
+        typeof data !== &quot;object&quot; ||
+        data?.type !== &quot;codex-visualization-initialize&quot; ||
+        !isArray(ports) ||
+        ports.length !== 1
+      ) {
+        return;
+      }
+      apply(stopMessagePropagation, event, []);
+      const nextHostPort = ports[0];
+      try {
+        apply(addHostMessageListener, nextHostPort, [
+          &quot;message&quot;,
+          (event) =&gt; {
+            const data = apply(getMessageData, event, []);
+            if (typeof data === &quot;object&quot; &amp;&amp; data?.type === &quot;measure&quot;) {
+              sendHeight();
+            } else if (
+              typeof data === &quot;object&quot; &amp;&amp;
+              data?.type === &quot;widget-state-result&quot;
+            ) {
+              /** @type {unknown} */
+              const id = data.id;
+              if (typeof id !== &quot;number&quot;) {
+                return;
+              }
+              const pending = pendingStateWrites.get(id);
+              if (pending != null) {
+                pendingStateWrites.delete(id);
+                globalThis.clearTimeout(pending.timeout);
+                if (data.ok === true) {
+                  pending.resolve();
+                } else {
+                  pending.reject(persistenceError());
+                }
+              }
+            }
+          },
+        ]);
+        apply(startHostPort, nextHostPort, []);
+      } catch {
+        return;
+      }
+      hostPort = nextHostPort;
+      for (const [id, { serializedState }] of pendingStateWrites) {
+        postToHost(&quot;widget-state-write&quot;, { id, state: serializedState });
+      }
+      sendHeight();
+    },
+    { capture: true },
+  );
+  document.currentScript?.remove();
+  mediaQuery.addEventListener(&quot;change&quot;, syncTheme);
+  globalThis.addEventListener(&quot;click&quot;, (event) =&gt; {
+    if (event.defaultPrevented) {
+      return;
+    }
+    let element = null;
+    if (event.target instanceof globalThis.Element) {
+      element = event.target;
+    } else if (event.target instanceof globalThis.Node) {
+      element = event.target.parentElement;
+    }
+    const link = element?.closest(&quot;a[href]&quot;);
+    const href = link?.getAttribute(&quot;href&quot;);
+    if (href == null) {
+      return;
+    }
+    if (href.startsWith(&quot;#&quot;)) {
+      let id;
+      try {
+        id = decodeURIComponent(href.slice(1));
+      } catch {
+        return;
+      }
+      const target = id.length === 0 ? root : document.getElementById(id);
+      if (
+        target == null ||
+        globalThis.navigator.userActivation?.isActive !== true
+      ) {
+        return;
+      }
+      event.preventDefault();
+      postToHost(&quot;scroll-to&quot;, {
+        top: target.getBoundingClientRect().top + globalThis.scrollY,
+      });
+      return;
+    }
+    event.preventDefault();
+    openExternal({ href });
+  });
+  new ResizeObserver(sendHeight).observe(document.body);
+  syncTheme();
+})();
+&lt;/script&gt;
+&lt;style&gt;
+  #bp-suite {
+    --bp-paper: light-dark(#fcf9f2, #262521);
+    --bp-desk: light-dark(#eee9df, #1c1d1b);
+    --bp-nav: light-dark(#f4efe5, #22231f);
+    --bp-ink: light-dark(#393b35, #e5e1d6);
+    --bp-soft: light-dark(#777970, #aaa99c);
+    --bp-line: light-dark(#e4dfd3, #42443b);
+    --bp-orange: light-dark(#995c3d, #e2a07a);
+    --bp-blue: light-dark(#466b75, #93bec8);
+    --bp-tint: light-dark(#eae4d7, #38392f);
+    --bp-white: light-dark(#fffdf8, #30312a);
+    --bp-success: light-dark(#4e7054, #a3c29b);
+    font-family: -apple-system, BlinkMacSystemFont, &#x27;PingFang SC&#x27;, &#x27;Microsoft YaHei&#x27;, sans-serif;
+    color: var(--bp-ink);
+  }
+  #bp-suite * {
+    box-sizing: border-box;
+  }
+  #bp-suite button,
+  #bp-suite input,
+  #bp-suite textarea {
+    font: inherit;
+    color: inherit;
+  }
+  #bp-suite button {
+    cursor: inherit;
+  }
+  #bp-suite button:focus-visible,
+  #bp-suite [contenteditable]:focus-visible {
+    outline: 2px solid var(--bp-blue);
+    outline-offset: 3px;
+  }
+  #bp-suite .bp-stage {
+    min-height: 690px;
+  }
+  #bp-suite .bp-app {
+    background: var(--bp-paper);
+    border: 1px solid var(--bp-line);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    min-height: 656px;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  #bp-suite .bp-chrome {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 26px;
+    border-bottom: 1px solid var(--bp-line);
+    background: var(--bp-paper);
+    min-height: 72px;
+  }
+  #bp-suite .bp-brand {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    font-family: Georgia, &#x27;Songti SC&#x27;, serif;
+    font-size: 17px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  #bp-suite .bp-pair {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  #bp-suite .bp-face {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 23px;
+    height: 22px;
+    border-radius: 46% 49% 40% 43%;
+    background: color-mix(in srgb, var(--bp-orange) 20%, var(--bp-paper));
+    color: var(--bp-orange);
+    font-size: 12px;
+    letter-spacing: -2px;
+    padding-right: 2px;
+  }
+  #bp-suite .bp-face.blue {
+    background: color-mix(in srgb, var(--bp-blue) 20%, var(--bp-paper));
+    color: var(--bp-blue);
+  }
+  #bp-suite .bp-global {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  #bp-suite .bp-navbtn {
+    border: 0;
+    background: transparent;
+    color: var(--bp-soft);
+    border-radius: 6px;
+    padding: 7px 13px;
+    display: inline-flex;
+    gap: 7px;
+    align-items: center;
+    white-space: nowrap;
+    font-size: 13px;
+  }
+  #bp-suite .bp-navbtn[aria-pressed=&#x27;true&#x27;] {
+    background: var(--bp-tint);
+    color: var(--bp-ink);
+  }
+  #bp-suite .bp-dot {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    background: var(--bp-orange);
+    border-radius: 50%;
+    vertical-align: middle;
+  }
+  #bp-suite .bp-account {
+    color: var(--bp-soft);
+    font-size: 11px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  #bp-suite .bp-account .bp-face {
+    width: 25px;
+    height: 25px;
+    font-size: 12px;
+  }
+  #bp-suite .bp-workspace {
+    display: grid;
+    grid-template-columns: 225px minmax(0, 1fr);
+    min-height: 582px;
+  }
+  #bp-suite .bp-index {
+    background: var(--bp-nav);
+    border-right: 1px solid var(--bp-line);
+    padding: 25px 14px;
+  }
+  #bp-suite .bp-indexhead {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 9px;
+    margin-bottom: 17px;
+  }
+  #bp-suite .bp-indexhead strong {
+    font-weight: 500;
+    font-size: 13px;
+  }
+  #bp-suite .bp-iconbtn {
+    border: 0;
+    background: transparent;
+    padding: 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bp-soft);
+    border-radius: 5px;
+    min-width: 30px;
+    min-height: 30px;
+  }
+  #bp-suite i {
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+  }
+  #bp-suite .bp-btn {
+    border: 1px solid var(--bp-line);
+    border-radius: 7px;
+    padding: 7px 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    background: var(--bp-white);
+    white-space: nowrap;
+    font-size: 12px;
+    min-height: 34px;
+  }
+  #bp-suite .bp-btn.main {
+    background: var(--bp-ink);
+    color: var(--bp-paper);
+    border-color: var(--bp-ink);
+  }
+  #bp-suite .bp-write {
+    width: 100%;
+    margin: 0 0 22px;
+  }
+  #bp-suite .bp-month {
+    font-size: 11px;
+    color: var(--bp-soft);
+    padding: 0 10px;
+    margin-bottom: 8px;
+    letter-spacing: 0.03em;
+  }
+  #bp-suite .bp-date {
+    width: 100%;
+    display: block;
+    text-align: left;
+    border: 1px solid transparent;
+    background: transparent;
+    padding: 12px 10px;
+    border-radius: 7px;
+    margin: 3px 0;
+    color: var(--bp-ink);
+  }
+  #bp-suite .bp-date[aria-pressed=&#x27;true&#x27;] {
+    background: var(--bp-paper);
+    border-color: var(--bp-line);
+  }
+  #bp-suite .bp-date .bp-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 5px;
+    font-size: 12px;
+  }
+  #bp-suite .bp-date small {
+    font-size: 11px;
+    color: var(--bp-soft);
+    display: block;
+    white-space: normal;
+  }
+  #bp-suite .bp-indexbottom {
+    margin: 80px 10px 0;
+    padding-top: 14px;
+    border-top: 1px solid var(--bp-line);
+    color: var(--bp-soft);
+    font-size: 11px;
+  }
+  #bp-suite .bp-reading {
+    padding: 30px 42px 24px;
+    min-width: 0;
+    position: relative;
+  }
+  #bp-suite .bp-meta {
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    color: var(--bp-soft);
+    margin-bottom: 7px;
+  }
+  #bp-suite .bp-titleline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  #bp-suite h2 {
+    font-family: &#x27;Songti SC&#x27;, &#x27;Noto Serif SC&#x27;, Georgia, serif;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    font-size: 29px;
+    line-height: 1.4;
+    margin: 0;
+    color: var(--bp-ink);
+  }
+  #bp-suite .bp-segment {
+    display: flex;
+    align-items: center;
+    background: var(--bp-nav);
+    border: 1px solid var(--bp-line);
+    padding: 3px;
+    border-radius: 7px;
+    gap: 3px;
+  }
+  #bp-suite .bp-segment button {
+    border: 0;
+    background: transparent;
+    border-radius: 4px;
+    padding: 4px 11px;
+    font-size: 12px;
+    color: var(--bp-soft);
+    white-space: nowrap;
+  }
+  #bp-suite .bp-segment button[aria-pressed=&#x27;true&#x27;] {
+    background: var(--bp-white);
+    color: var(--bp-ink);
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--bp-ink) 8%, transparent);
+  }
+  #bp-suite .bp-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin: 17px 0 22px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--bp-line);
+  }
+  #bp-suite .bp-quiet {
+    border: 0;
+    background: transparent;
+    padding: 3px 0;
+    color: var(--bp-soft);
+    font-size: 11px;
+    display: inline-flex;
+    gap: 5px;
+    align-items: center;
+  }
+  #bp-suite .bp-quiet i {
+    width: 13px;
+    height: 13px;
+  }
+  #bp-suite .bp-tools {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+  #bp-suite .bp-new {
+    color: var(--bp-blue);
+    font-size: 11px;
+    border: 0;
+    background: transparent;
+    padding: 0;
+  }
+  #bp-suite .bp-entry {
+    margin-bottom: 28px;
+  }
+  #bp-suite .bp-author {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 13px;
+    font-size: 12px;
+  }
+  #bp-suite .bp-author .bp-quiet {
+    margin-left: auto;
+  }
+  #bp-suite .bp-entrytext {
+    font-family: &#x27;Songti SC&#x27;, &#x27;Noto Serif SC&#x27;, Georgia, serif;
+    font-size: 16px;
+    line-height: 2.05;
+    letter-spacing: 0.025em;
+    color: var(--bp-orange);
+  }
+  #bp-suite .bp-entrytext p {
+    margin: 0 0 12px;
+  }
+  #bp-suite .bp-entry.partner .bp-entrytext {
+    color: var(--bp-blue);
+  }
+  #bp-suite .bp-entry[hidden],
+  #bp-suite [hidden] {
+    display: none !important;
+  }
+  #bp-suite .bp-rule {
+    border: 0;
+    border-top: 1px solid var(--bp-line);
+    margin: 23px 0;
+  }
+  #bp-suite .bp-newmark {
+    background: color-mix(in srgb, var(--bp-blue) 10%, var(--bp-paper));
+    border-bottom: 1px solid color-mix(in srgb, var(--bp-blue) 35%, transparent);
+    padding: 2px 0;
+  }
+  #bp-suite .bp-foot {
+    color: var(--bp-soft);
+    font-size: 11px;
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 18px;
+    border-top: 1px solid var(--bp-line);
+    margin-top: 24px;
+  }
+  #bp-suite .bp-foot .bp-quiet {
+    font-size: 11px;
+  }
+  #bp-suite .bp-saved {
+    color: var(--bp-success);
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  #bp-suite .bp-saved i {
+    width: 13px;
+    height: 13px;
+  }
+  #bp-suite .bp-popover {
+    position: absolute;
+    right: 25px;
+    top: 158px;
+    width: 220px;
+    background: var(--bp-white);
+    border: 1px solid var(--bp-line);
+    border-radius: 9px;
+    padding: 13px;
+    box-shadow: 0 8px 25px color-mix(in srgb, var(--bp-ink) 12%, transparent);
+    z-index: 5;
+    font-size: 12px;
+  }
+  #bp-suite .bp-popover label {
+    display: flex;
+    gap: 9px;
+    align-items: center;
+    margin: 8px 0;
+  }
+  #bp-suite .bp-popover button {
+    display: block;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    padding: 8px 0;
+  }
+  #bp-suite .bp-history {
+    margin: 0 0 20px;
+    padding: 13px 16px;
+    background: var(--bp-nav);
+    border-left: 2px solid var(--bp-line);
+    font-size: 12px;
+    color: var(--bp-soft);
+  }
+  #bp-suite .bp-history div {
+    margin: 5px 0;
+  }
+  #bp-suite .bp-wishes {
+    padding: 30px 40px;
+    min-height: 582px;
+  }
+  #bp-suite .bp-wishheader {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  #bp-suite .bp-subline {
+    font-size: 12px;
+    color: var(--bp-soft);
+    margin-bottom: 26px;
+  }
+  #bp-suite .bp-wishtabs {
+    display: flex;
+    gap: 22px;
+    border-bottom: 1px solid var(--bp-line);
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  #bp-suite .bp-wishtabs button {
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    padding: 10px 0;
+    color: var(--bp-soft);
+    font-size: 12px;
+  }
+  #bp-suite .bp-wishtabs button[aria-pressed=&#x27;true&#x27;] {
+    color: var(--bp-ink);
+    border-bottom-color: var(--bp-orange);
+  }
+  #bp-suite .bp-wishrow {
+    display: grid;
+    grid-template-columns: 50px minmax(0, 1fr) auto;
+    gap: 17px;
+    align-items: center;
+    padding: 23px 0;
+    border-bottom: 1px solid var(--bp-line);
+  }
+  #bp-suite .bp-wishglyph {
+    width: 48px;
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bp-nav);
+    border-radius: 6px;
+    color: var(--bp-orange);
+  }
+  #bp-suite .bp-wishglyph i {
+    width: 25px;
+    height: 25px;
+  }
+  #bp-suite .bp-wishname {
+    font-family: &#x27;Songti SC&#x27;, Georgia, serif;
+    font-size: 17px;
+    margin-bottom: 4px;
+  }
+  #bp-suite .bp-wishdesc {
+    color: var(--bp-soft);
+    font-size: 12px;
+  }
+  #bp-suite .bp-wishmeta {
+    margin-top: 7px;
+    color: var(--bp-orange);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+  #bp-suite .bp-bottomnote {
+    font-size: 12px;
+    color: var(--bp-soft);
+    margin-top: 26px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #bp-suite .bp-dialogback {
+    position: absolute;
+    inset: 0;
+    background: color-mix(in srgb, var(--bp-ink) 25%, transparent);
+    z-index: 8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  #bp-suite .bp-dialog {
+    background: var(--bp-paper);
+    border: 1px solid var(--bp-line);
+    border-radius: 12px;
+    padding: 26px;
+    max-width: 380px;
+    width: 100%;
+    box-shadow: 0 16px 48px color-mix(in srgb, var(--bp-ink) 18%, transparent);
+  }
+  #bp-suite .bp-dialog h3 {
+    font-family: &#x27;Songti SC&#x27;, Georgia, serif;
+    font-size: 21px;
+    font-weight: 500;
+    margin: 0 0 20px;
+  }
+  #bp-suite .bp-field {
+    display: block;
+    font-size: 12px;
+    margin: 12px 0;
+  }
+  #bp-suite .bp-field input,
+  #bp-suite .bp-field textarea {
+    display: block;
+    width: 100%;
+    background: var(--bp-white);
+    border: 1px solid var(--bp-line);
+    border-radius: 6px;
+    margin-top: 6px;
+    padding: 9px 11px;
+    font-size: 14px;
+    resize: vertical;
+  }
+  #bp-suite .bp-dialogactions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 20px;
+  }
+  #bp-suite .bp-mobile-stage {
+    padding: 0 0 8px;
+    display: flex;
+    justify-content: center;
+    min-height: 690px;
+  }
+  #bp-suite .bp-mobile {
+    width: 375px;
+    max-width: 100%;
+    border-radius: 23px;
+    border: 5px solid var(--bp-tint);
+    min-height: 666px;
+  }
+  #bp-suite .bp-mobile .bp-chrome {
+    padding: 13px 17px;
+    min-height: 62px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  #bp-suite .bp-mobile .bp-brand {
+    font-size: 15px;
+  }
+  #bp-suite .bp-mobile .bp-account {
+    display: none;
+  }
+  #bp-suite .bp-mobile .bp-navbtn {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+  #bp-suite .bp-mobile .bp-pair {
+    display: none;
+  }
+  #bp-suite .bp-mobile .bp-workspace {
+    display: block;
+    min-height: 0;
+  }
+  #bp-suite .bp-mobile .bp-index {
+    display: none;
+  }
+  #bp-suite .bp-mobile .bp-reading {
+    padding: 22px 22px 20px;
+  }
+  #bp-suite .bp-mobile h2 {
+    font-size: 25px;
+  }
+  #bp-suite .bp-mobile .bp-meta {
+    font-size: 11px;
+  }
+  #bp-suite .bp-mobile .bp-titleline .bp-tools {
+    gap: 0;
+  }
+  #bp-suite .bp-mobile .bp-toolbar {
+    margin: 13px 0 21px;
+    padding-bottom: 13px;
+    gap: 8px;
+  }
+  #bp-suite .bp-mobile .bp-new {
+    font-size: 11px;
+  }
+  #bp-suite .bp-mobile .bp-entrytext {
+    font-size: 16px;
+    line-height: 1.95;
+  }
+  #bp-suite .bp-mobile .bp-author .bp-quiet {
+    font-size: 11px;
+  }
+  #bp-suite .bp-mobile .bp-entry {
+    margin-bottom: 22px;
+  }
+  #bp-suite .bp-mobile .bp-foot {
+    flex-wrap: wrap;
+    margin-top: 15px;
+    padding-top: 13px;
+    gap: 5px;
+  }
+  #bp-suite .bp-mobile .bp-wishes {
+    padding: 24px 20px;
+    min-height: 570px;
+  }
+  #bp-suite .bp-mobile .bp-wishheader {
+    align-items: flex-start;
+  }
+  #bp-suite .bp-mobile .bp-wishheader h2 {
+    font-size: 24px;
+  }
+  #bp-suite .bp-mobile .bp-wishtabs {
+    gap: 15px;
+  }
+  #bp-suite .bp-mobile .bp-wishrow {
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 12px;
+  }
+  #bp-suite .bp-mobile .bp-wishglyph {
+    width: 38px;
+    height: 46px;
+  }
+  #bp-suite .bp-mobile .bp-wishrow &gt; .bp-btn {
+    grid-column: 2;
+    justify-self: start;
+  }
+  #bp-suite .bp-mobile .bp-popover {
+    top: 140px;
+    right: 20px;
+  }
+  #bp-suite .bp-bookdesk {
+    padding: 18px;
+    background: var(--bp-desk);
+    border-radius: 12px;
+    min-height: 656px;
+  }
+  #bp-suite .bp-book {
+    border: 1px solid color-mix(in srgb, var(--bp-orange) 35%, var(--bp-line));
+    border-radius: 7px 16px 14px 7px;
+    box-shadow:
+      3px 4px 0 var(--bp-tint),
+      6px 7px 0 color-mix(in srgb, var(--bp-tint) 70%, var(--bp-orange));
+    min-height: 620px;
+  }
+  #bp-suite .bp-book .bp-chrome {
+    padding: 16px 24px;
+  }
+  #bp-suite .bp-book .bp-workspace {
+    grid-template-columns: 200px minmax(0, 1fr);
+    min-height: 550px;
+  }
+  #bp-suite .bp-book .bp-index {
+    background: var(--bp-paper);
+    border-right: 1px solid var(--bp-line);
+    box-shadow: inset -8px 0 16px -15px var(--bp-orange);
+    padding: 27px 16px;
+  }
+  #bp-suite .bp-book .bp-date[aria-pressed=&#x27;true&#x27;] {
+    background: var(--bp-nav);
+  }
+  #bp-suite .bp-book .bp-reading {
+    padding: 28px 40px;
+  }
+  #bp-suite .bp-book h2 {
+    font-size: 28px;
+  }
+  #bp-suite .bp-book .bp-entrytext {
+    font-size: 16px;
+  }
+  #bp-suite .bp-book .bp-wishes {
+    min-height: 550px;
+  }
+  @media (max-width: 700px) {
+    #bp-suite .bp-chrome {
+      padding: 14px 18px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    #bp-suite .bp-account {
+      display: none;
+    }
+    #bp-suite .bp-workspace,
+    #bp-suite .bp-book .bp-workspace {
+      grid-template-columns: 165px minmax(0, 1fr);
+    }
+    #bp-suite .bp-reading,
+    #bp-suite .bp-book .bp-reading {
+      padding: 24px;
+    }
+    #bp-suite .bp-titleline {
+      align-items: flex-start;
+    }
+    #bp-suite h2,
+    #bp-suite .bp-book h2 {
+      font-size: 24px;
+    }
+    #bp-suite .bp-stage {
+      min-height: 690px;
+    }
+    #bp-suite .bp-toolbar {
+      flex-wrap: wrap;
+    }
+    #bp-suite .bp-wishes {
+      padding: 24px;
+    }
+  }
+  @media (max-width: 500px) {
+    #bp-suite .bp-workspace,
+    #bp-suite .bp-book .bp-workspace {
+      display: block;
+    }
+    #bp-suite .bp-index {
+      display: none;
+    }
+    #bp-suite .bp-brand {
+      font-size: 15px;
+    }
+    #bp-suite .bp-pair {
+      display: none;
+    }
+    #bp-suite .bp-navbtn {
+      padding: 6px 10px;
+    }
+    #bp-suite .bp-bookdesk {
+      padding: 8px;
+    }
+    #bp-suite .bp-reading,
+    #bp-suite .bp-book .bp-reading {
+      padding: 22px;
+    }
+    #bp-suite .bp-wishrow {
+      grid-template-columns: 36px minmax(0, 1fr);
+      gap: 12px;
+    }
+    #bp-suite .bp-wishrow &gt; .bp-btn {
+      grid-column: 2;
+      justify-self: start;
+    }
+    #bp-suite .bp-wishglyph {
+      width: 36px;
+      height: 46px;
+    }
+    #bp-suite .bp-wishheader h2 {
+      font-size: 24px;
+    }
+    #bp-suite .bp-wishtabs {
+      gap: 15px;
+    }
+    #bp-suite .bp-btn,
+    #bp-suite .bp-iconbtn,
+    #bp-suite .bp-navbtn,
+    #bp-suite .bp-segment button {
+      min-height: 40px;
+    }
+    #bp-suite .bp-account {
+      display: none;
+    }
+    #bp-suite .bp-dialog {
+      padding: 19px;
+    }
+  }
+  #bp-suite .bp-stage {
+    min-height: 760px;
+  }
+  #bp-suite .bp-app {
+    min-height: 716px;
+  }
+  #bp-suite .bp-chrome {
+    gap: 14px;
+    padding: 17px 26px;
+  }
+  #bp-suite .bp-global {
+    gap: 3px;
+  }
+  #bp-suite .bp-navbtn {
+    padding: 7px 11px;
+  }
+  #bp-suite .bp-account button {
+    border: 0;
+    background: transparent;
+    font-size: 11px;
+    color: var(--bp-soft);
+    display: flex;
+    gap: 7px;
+    align-items: center;
+    padding: 6px;
+  }
+  #bp-suite .suite-subnav {
+    display: flex;
+    align-items: center;
+    gap: 23px;
+    padding: 10px 40px;
+    border-bottom: 1px solid var(--bp-line);
+    background: var(--bp-nav);
+    flex-wrap: wrap;
+  }
+  #bp-suite .suite-subnav button {
+    border: 0;
+    background: transparent;
+    color: var(--bp-soft);
+    padding: 5px 0;
+    font-size: 12px;
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+  }
+  #bp-suite .suite-subnav button[aria-pressed=&#x27;true&#x27;] {
+    color: var(--bp-orange);
+  }
+  #bp-suite .suite-page {
+    padding: 31px 42px 34px;
+    min-height: 594px;
+  }
+  #bp-suite .suite-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 9px;
+  }
+  #bp-suite .suite-kicker {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--bp-soft);
+    margin-bottom: 10px;
+  }
+  #bp-suite .suite-desc {
+    color: var(--bp-soft);
+    font-size: 12px;
+    margin-bottom: 25px;
+    line-height: 1.8;
+  }
+  #bp-suite .suite-sectiontitle {
+    font-family: &#x27;Songti SC&#x27;, Georgia, serif;
+    font-size: 19px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    margin: 0 0 13px;
+  }
+  #bp-suite .suite-soft {
+    color: var(--bp-soft);
+    font-size: 12px;
+    line-height: 1.8;
+  }
+  #bp-suite .suite-home {
+    padding: 35px 42px 24px;
+  }
+  #bp-suite .suite-hero {
+    display: grid;
+    grid-template-columns: 1.35fr 1fr;
+    gap: 28px;
+    align-items: center;
+    padding: 6px 0 32px;
+    border-bottom: 1px solid var(--bp-line);
+  }
+  #bp-suite .suite-hero h2 {
+    font-size: 35px;
+    margin: 4px 0 12px;
+  }
+  #bp-suite .suite-poem {
+    font-family: &#x27;Songti SC&#x27;, Georgia, serif;
+    font-size: 17px;
+    line-height: 1.9;
+    letter-spacing: 0.04em;
+    color: var(--bp-soft);
+    margin: 0 0 23px;
+  }
+  #bp-suite .suite-herobtns {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  #bp-suite .suite-herobtns .bp-btn {
+    padding: 9px 16px;
+  }
+  #bp-suite .suite-windows {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    align-items: flex-end;
+    padding-top: 6px;
+  }
+  #bp-suite .suite-window {
+    width: 92px;
+    height: 139px;
+    border: 5px solid color-mix(in srgb, var(--bp-orange) 45%, var(--bp-tint));
+    border-radius: 42px 42px 3px 3px;
+    position: relative;
+    background: linear-gradient(
+      150deg,
+      color-mix(in srgb, var(--bp-orange) 9%, var(--bp-paper)),
+      color-mix(in srgb, var(--bp-orange) 24%, var(--bp-paper))
+    );
+    box-shadow: 0 6px 0 var(--bp-tint);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 8px;
+  }
+  #bp-suite .suite-window.blue {
+    height: 153px;
+    border-color: color-mix(in srgb, var(--bp-blue) 45%, var(--bp-tint));
+    background: linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--bp-blue) 8%, var(--bp-paper)),
+      color-mix(in srgb, var(--bp-blue) 22%, var(--bp-paper))
+    );
+  }
+  #bp-suite .suite-window:before {
+    content: &#x27;&#x27;;
+    position: absolute;
+    top: 43px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: color-mix(in srgb, var(--bp-orange) 35%, var(--bp-tint));
+  }
+  #bp-suite .suite-window.blue:before {
+    background: color-mix(in srgb, var(--bp-blue) 35%, var(--bp-tint));
+  }
+  #bp-suite .suite-window .bp-face {
+    width: 38px;
+    height: 30px;
+    letter-spacing: 1px;
+    font-size: 17px;
+    background: color-mix(in srgb, var(--bp-orange) 30%, var(--bp-paper));
+  }
+  #bp-suite .suite-window .bp-face.blue {
+    background: color-mix(in srgb, var(--bp-blue) 30%, var(--bp-paper));
+  }
+  #bp-suite .suite-window i {
+    position: absolute;
+    top: 60px;
+    width: 19px;
+    height: 19px;
+    color: var(--bp-orange);
+  }
+  #bp-suite .suite-window.blue i {
+    color: var(--bp-blue);
+  }
+  #bp-suite .suite-homebody {
+    display: grid;
+    grid-template-columns: 1.35fr 1fr;
+    gap: 36px;
+    padding-top: 25px;
+  }
+  #bp-suite .suite-sectionhead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+  #bp-suite .suite-sectionhead .suite-sectiontitle {
+    margin: 0;
+  }
+  #bp-suite .suite-recent {
+    width: 100%;
+    text-align: left;
+    border: 0;
+    border-bottom: 1px solid var(--bp-line);
+    background: transparent;
+    padding: 16px 0;
+    display: grid;
+    grid-template-columns: 40px 1fr auto;
+    gap: 12px;
+    align-items: center;
+  }
+  #bp-suite .suite-recentdate {
+    font-family: Georgia, serif;
+    font-size: 26px;
+    color: var(--bp-soft);
+  }
+  #bp-suite .suite-recent strong {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  #bp-suite .suite-recent small {
+    font-size: 11px;
+    color: var(--bp-soft);
+  }
+  #bp-suite .suite-clockstrip {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 14px 0 18px;
+  }
+  #bp-suite .suite-clockstrip &gt; div {
+    flex: 1;
+  }
+  #bp-suite .suite-clocknum {
+    font-family: Georgia, serif;
+    font-size: 26px;
+    line-height: 1.3;
+    letter-spacing: 0.03em;
+  }
+  #bp-suite .suite-minilabel {
+    font-size: 11px;
+    color: var(--bp-soft);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 6px;
+  }
+  #bp-suite .suite-clockstrip &gt; i {
+    color: var(--bp-soft);
+  }
+  #bp-suite .suite-note {
+    padding: 17px 0;
+    border-top: 1px solid var(--bp-line);
+  }
+  #bp-suite .suite-note strong {
+    font-weight: 500;
+    font-family: &#x27;Songti SC&#x27;, Georgia, serif;
+    font-size: 17px;
+    display: block;
+    margin: 4px 0 8px;
+  }
+  #bp-suite .suite-homelinks {
+    display: flex;
+    gap: 21px;
+    padding-top: 20px;
+    flex-wrap: wrap;
+  }
+  #bp-suite .suite-homelinks button {
+    border: 0;
+    background: transparent;
+    font-size: 12px;
+    color: var(--bp-soft);
+    display: flex;
+    gap: 7px;
+    align-items: center;
+    padding: 4px 0;
+  }
+  #bp-suite .suite-clocks {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    border-bottom: 1px solid var(--bp-line);
+    padding: 4px 0 25px;
+    margin-bottom: 24px;
+  }
+  #bp-suite .suite-clockperson {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    margin-bottom: 13px;
+  }
+  #bp-suite .suite-bigtime {
+    font-size: 48px;
+    font-family: Georgia, serif;
+    letter-spacing: 0.03em;
+    font-weight: 400;
+    line-height: 1.2;
+    margin-bottom: 8px;
+  }
+  #bp-suite .suite-clocks .suite-soft {
+    font-size: 11px;
+  }
+  #bp-suite .suite-hours {
+    display: grid;
+    grid-template-columns: repeat(24, 1fr);
+    gap: 3px;
+    margin: 15px 0 5px;
+  }
+  #bp-suite .suite-hour {
+    height: 17px;
+    background: var(--bp-tint);
+    border-radius: 2px;
+  }
+  #bp-suite .suite-hour.on {
+    background: color-mix(in srgb, var(--bp-success) 65%, var(--bp-paper));
+  }
+  #bp-suite .suite-ticks {
+    display: flex;
+    justify-content: space-between;
+    color: var(--bp-soft);
+    font-size: 11px;
+  }
+  #bp-suite .suite-timewindows {
+    display: flex;
+    gap: 24px;
+    margin: 17px 0 22px;
+    flex-wrap: wrap;
+  }
+  #bp-suite .suite-timewindows span {
+    font-size: 12px;
+    display: block;
+    margin-top: 3px;
+    color: var(--bp-soft);
+  }
+  #bp-suite .suite-inlineform {
+    display: flex;
+    gap: 14px;
+    align-items: end;
+    flex-wrap: wrap;
+    padding-top: 17px;
+    border-top: 1px solid var(--bp-line);
+  }
+  #bp-suite .suite-inlineform label {
+    display: block;
+    font-size: 12px;
+    flex: 1;
+    min-width: 100px;
+  }
+  #bp-suite .suite-inlineform input,
+  #bp-suite .suite-inlineform select {
+    display: block;
+    width: 100%;
+    background: var(--bp-white);
+    color: var(--bp-ink);
+    border: 1px solid var(--bp-line);
+    border-radius: 6px;
+    padding: 8px;
+    margin-top: 6px;
+    font: inherit;
+    font-size: 14px;
+    min-width: 0;
+  }
+  #bp-suite .suite-annivhero {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 25px;
+    padding: 24px 27px;
+    background: var(--bp-nav);
+    border-radius: 6px;
+    margin: 23px 0 10px;
+  }
+  #bp-suite .suite-annivhero .suite-sectiontitle {
+    font-size: 24px;
+    margin: 5px 0 7px;
+  }
+  #bp-suite .suite-count {
+    font-size: 45px;
+    font-family: Georgia, serif;
+    letter-spacing: 0.02em;
+    color: var(--bp-orange);
+  }
+  #bp-suite .suite-count small {
+    font-size: 12px;
+    font-family: inherit;
+    color: var(--bp-soft);
+    margin-left: 6px;
+  }
+  #bp-suite .suite-record {
+    display: flex;
+    align-items: center;
+    gap: 17px;
+    padding: 21px 0;
+    border-bottom: 1px solid var(--bp-line);
+  }
+  #bp-suite .suite-record .suite-recordmain {
+    flex: 1;
+    min-width: 0;
+  }
+  #bp-suite .suite-record strong {
+    font-family: &#x27;Songti SC&#x27;, Georgia, serif;
+    font-size: 18px;
+    font-weight: 500;
+    display: block;
+    margin-bottom: 5px;
+  }
+  #bp-suite .suite-record .suite-soft {
+    font-size: 11px;
+  }
+  #bp-suite .suite-record .bp-btn {
+    flex-shrink: 0;
+  }
+  #bp-suite .suite-datebox {
+    width: 42px;
+    text-align: center;
+    color: var(--bp-soft);
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+  #bp-suite .suite-datebox b {
+    display: block;
+    font-family: Georgia, serif;
+    font-size: 27px;
+    font-weight: 400;
+    color: var(--bp-ink);
+  }
+  #bp-suite .suite-settings {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 36px;
+    margin-top: 27px;
+  }
+  #bp-suite .suite-setting {
+    border-top: 1px solid var(--bp-line);
+    padding: 21px 0;
+  }
+  #bp-suite .suite-setting .suite-sectiontitle {
+    font-size: 17px;
+    margin-bottom: 9px;
+  }
+  #bp-suite .suite-setting .bp-btn {
+    margin-top: 15px;
+  }
+  #bp-suite .suite-people {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin: 15px 0 22px;
+  }
+  #bp-suite .suite-person {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 14px;
+  }
+  #bp-suite .suite-person .bp-face {
+    width: 32px;
+    height: 29px;
+  }
+  #bp-suite .suite-people &gt; i {
+    color: var(--bp-soft);
+  }
+  #bp-suite .suite-quietblock {
+    padding: 20px;
+    background: var(--bp-nav);
+    border-radius: 7px;
+    align-self: start;
+  }
+  #bp-suite .suite-quietblock .suite-sectiontitle {
+    font-size: 17px;
+  }
+  #bp-suite .suite-quietblock .suite-soft {
+    font-size: 12px;
+  }
+  #bp-suite .suite-quietblock p {
+    margin: 10px 0;
+  }
+  #bp-suite .suite-settingline {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    align-items: center;
+    border-bottom: 1px solid var(--bp-line);
+    padding: 18px 0;
+  }
+  #bp-suite .suite-settingline:first-child {
+    padding-top: 0;
+  }
+  #bp-suite .suite-settingline strong {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  #bp-suite .suite-settingline .suite-soft {
+    font-size: 11px;
+  }
+  #bp-suite .suite-status {
+    font-size: 12px;
+    color: var(--bp-success);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  #bp-suite .suite-log {
+    margin: 16px 0 0;
+    padding: 13px 16px;
+    background: var(--bp-nav);
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--bp-soft);
+  }
+  #bp-suite .suite-log div {
+    padding: 5px 0;
+  }
+  #bp-suite .suite-feedback {
+    font-size: 12px;
+    color: var(--bp-success);
+    margin-top: 13px;
+    min-height: 20px;
+  }
+  #bp-suite .suite-period {
+    padding-left: 16px;
+    border-left: 1px solid var(--bp-line);
+    margin-top: 14px;
+    font-size: 12px;
+  }
+  #bp-suite .suite-period span {
+    display: block;
+    font-size: 11px;
+    color: var(--bp-soft);
+    margin-top: 4px;
+  }
+  #bp-suite .suite-auth {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 50px;
+    padding: 56px 60px;
+    align-items: center;
+    min-height: 590px;
+  }
+  #bp-suite .suite-authintro .suite-poem {
+    margin-top: 18px;
+  }
+  #bp-suite .suite-auth .suite-windows {
+    justify-content: flex-start;
+    margin: 27px 0;
+  }
+  #bp-suite .suite-authform {
+    background: var(--bp-white);
+    border: 1px solid var(--bp-line);
+    padding: 25px;
+    border-radius: 10px;
+  }
+  #bp-suite .suite-authform h2 {
+    font-size: 25px;
+    margin-bottom: 14px;
+  }
+  #bp-suite .suite-authform .bp-btn {
+    width: 100%;
+    margin-top: 18px;
+  }
+  #bp-suite .suite-authform .suite-soft {
+    font-size: 12px;
+  }
+  #bp-suite .suite-authlabel {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 12px 0;
+    margin-top: 10px;
+    border-top: 1px solid var(--bp-line);
+    font-size: 12px;
+  }
+  #bp-suite .suite-desktoplabel {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--bp-soft);
+  }
+  #bp-suite .bp-book .suite-hero {
+    grid-template-columns: 1fr 1fr;
+  }
+  #bp-suite .bp-book .suite-home {
+    padding: 32px 38px;
+  }
+  #bp-suite .bp-book .suite-hero h2 {
+    font-size: 32px;
+  }
+  #bp-suite .bp-mobile .bp-chrome {
+    padding: 12px 16px;
+    display: block;
+  }
+  #bp-suite .bp-mobile .bp-brand {
+    margin-bottom: 12px;
+  }
+  #bp-suite .bp-mobile .bp-global {
+    justify-content: space-between;
+    gap: 0;
+  }
+  #bp-suite .bp-mobile .bp-navbtn {
+    padding: 6px 10px;
+    min-height: 37px;
+  }
+  #bp-suite .bp-mobile .suite-subnav {
+    padding: 9px 20px;
+    gap: 16px;
+  }
+  #bp-suite .bp-mobile .suite-page,
+  #bp-suite .bp-mobile .suite-home {
+    padding: 25px 22px;
+  }
+  #bp-suite .bp-mobile .suite-hero {
+    display: block;
+    padding: 0 0 24px;
+  }
+  #bp-suite .bp-mobile .suite-hero h2 {
+    font-size: 29px;
+  }
+  #bp-suite .bp-mobile .suite-poem {
+    font-size: 15px;
+    margin-bottom: 18px;
+  }
+  #bp-suite .bp-mobile .suite-windows {
+    display: none;
+  }
+  #bp-suite .bp-mobile .suite-homebody {
+    display: block;
+    padding-top: 22px;
+  }
+  #bp-suite .bp-mobile .suite-homebody &gt; aside {
+    margin-top: 22px;
+  }
+  #bp-suite .bp-mobile .suite-homelinks {
+    gap: 15px;
+  }
+  #bp-suite .bp-mobile .suite-clocks {
+    gap: 18px;
+  }
+  #bp-suite .bp-mobile .suite-bigtime {
+    font-size: 37px;
+  }
+  #bp-suite .bp-mobile .suite-settings {
+    display: block;
+  }
+  #bp-suite .bp-mobile .suite-quietblock {
+    margin-top: 24px;
+  }
+  #bp-suite .bp-mobile .suite-auth {
+    display: block;
+    padding: 27px 22px;
+    min-height: 600px;
+  }
+  #bp-suite .bp-mobile .suite-authintro {
+    margin-bottom: 28px;
+  }
+  #bp-suite .bp-mobile .suite-authintro h2 {
+    font-size: 27px;
+  }
+  #bp-suite .bp-mobile .suite-annivhero {
+    padding: 20px 17px;
+    gap: 15px;
+  }
+  #bp-suite .bp-mobile .suite-annivhero .suite-sectiontitle {
+    font-size: 21px;
+  }
+  #bp-suite .bp-mobile .suite-count {
+    font-size: 33px;
+  }
+  #bp-suite .bp-mobile .suite-record {
+    gap: 12px;
+  }
+  #bp-suite .bp-mobile .suite-record strong {
+    font-size: 16px;
+  }
+  #bp-suite .bp-mobile .suite-heading {
+    align-items: flex-start;
+  }
+  @media (max-width: 650px) {
+    #bp-suite .bp-chrome {
+      padding: 14px 20px;
+    }
+    #bp-suite .suite-home,
+    #bp-suite .suite-page {
+      padding: 25px;
+    }
+    #bp-suite .suite-hero,
+    #bp-suite .bp-book .suite-hero {
+      grid-template-columns: 1fr;
+    }
+    #bp-suite .suite-hero .suite-windows {
+      display: none;
+    }
+    #bp-suite .suite-homebody,
+    #bp-suite .suite-settings {
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+    #bp-suite .suite-subnav {
+      padding: 9px 24px;
+      gap: 18px;
+    }
+    #bp-suite .suite-auth {
+      padding: 30px;
+      gap: 25px;
+    }
+    #bp-suite .suite-authintro h2 {
+      font-size: 26px;
+    }
+  }
+  @media (max-width: 460px) {
+    #bp-suite .bp-chrome,
+    #bp-suite .bp-book .bp-chrome {
+      display: block;
+      padding: 14px 20px;
+    }
+    #bp-suite .bp-brand {
+      margin-bottom: 12px;
+    }
+    #bp-suite .bp-global {
+      justify-content: space-between;
+    }
+    #bp-suite .bp-navbtn {
+      padding: 6px 10px;
+    }
+    #bp-suite .suite-home,
+    #bp-suite .suite-page,
+    #bp-suite .bp-book .suite-home {
+      padding: 24px 20px;
+    }
+    #bp-suite .suite-hero h2 {
+      font-size: 29px;
+    }
+    #bp-suite .suite-poem {
+      font-size: 15px;
+    }
+    #bp-suite .suite-auth {
+      display: block;
+      padding: 26px 22px;
+    }
+    #bp-suite .suite-authintro {
+      margin-bottom: 25px;
+    }
+    #bp-suite .suite-auth .suite-windows {
+      display: none;
+    }
+    #bp-suite .suite-clocks {
+      gap: 15px;
+    }
+    #bp-suite .suite-bigtime {
+      font-size: 36px;
+    }
+    #bp-suite .suite-record {
+      gap: 11px;
+      flex-wrap: wrap;
+    }
+    #bp-suite .suite-record strong {
+      font-size: 17px;
+    }
+    #bp-suite .suite-annivhero {
+      padding: 20px 16px;
+      gap: 12px;
+    }
+    #bp-suite .suite-count {
+      font-size: 33px;
+    }
+    #bp-suite .suite-annivhero .suite-sectiontitle {
+      font-size: 21px;
+    }
+    #bp-suite .suite-heading h2 {
+      font-size: 26px;
+    }
+    #bp-suite .suite-subnav {
+      gap: 16px;
+      padding: 8px 20px;
+    }
+    #bp-suite .suite-settingline {
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    #bp-suite .suite-inlineform input,
+    #bp-suite .suite-inlineform select {
+      font-size: 16px;
+    }
+    #bp-suite .suite-windows {
+      display: none;
+    }
+  }
+&lt;/style&gt;
+&lt;div
+  id=&quot;bp-suite&quot;
+  class=&quot;viz-carousel&quot;
+  aria-label=&quot;Between Pages 设计方向&quot;
+  data-previous-label=&quot;上一版&quot;
+  data-next-label=&quot;下一版&quot;
+&gt;
+  &lt;section class=&quot;bp-stage&quot; data-variant=&quot;轻书页 · 完整桌面&quot; aria-label=&quot;轻书页桌面日记&quot;&gt;
+    &lt;div class=&quot;bp-app&quot; data-app=&quot;desktop&quot;&gt;&lt;/div&gt;
+  &lt;/section&gt;
+  &lt;section
+    class=&quot;bp-stage viz-dotted-background&quot;
+    data-variant=&quot;轻书页 · 完整手机&quot;
+    aria-label=&quot;轻书页手机日记&quot;
+    hidden
+  &gt;
+    &lt;div class=&quot;bp-mobile-stage&quot;&gt;&lt;div class=&quot;bp-app bp-mobile&quot; data-app=&quot;mobile&quot;&gt;&lt;/div&gt;&lt;/div&gt;
+  &lt;/section&gt;
+  &lt;section class=&quot;bp-stage&quot; data-variant=&quot;保留书框 · 桌面&quot; aria-label=&quot;保留书框的日记&quot; hidden&gt;
+    &lt;div class=&quot;bp-bookdesk&quot;&gt;&lt;div class=&quot;bp-app bp-book&quot; data-app=&quot;book&quot;&gt;&lt;/div&gt;&lt;/div&gt;
+  &lt;/section&gt;
+&lt;/div&gt;
+&lt;script&gt;
+  (function () {
+    const root = document.getElementById(&#x27;bp-suite&#x27;);
+    const saved = window.openai?.widgetState?.privateContent || {};
+    const ownSnapshots = new Set();
+    const dateData = [
+      {
+        day: &#x27;3&#x27;,
+        week: &#x27;周二&#x27;,
+        note: &#x27;一起把平常的日子记下来&#x27;,
+        self: &#x27;今天下班的时候，天还没有完全黑。绕了一点路，在街角买了两枝花。&#x27;,
+        self2: &#x27;回家找了个玻璃瓶插起来，放在窗边。想等你有空的时候，一起看看它们。&#x27;,
+        other: &#x27;我这边刚刚开始下雨。看到你发来的花，忽然觉得今天也有一小件值得记下来的事。&#x27;,
+      },
+      {
+        day: &#x27;2&#x27;,
+        week: &#x27;周一&#x27;,
+        note: &#x27;那家小店，下次一起去&#x27;,
+        self: &#x27;午后去了常走的那条路，发现街角开了一家小小的面包店。&#x27;,
+        self2: &#x27;买了刚出炉的可颂。下次等你来，我们一起坐在窗边慢慢吃。&#x27;,
+        other: &#x27;把店名记下来了。今天也喝到了一杯很好喝的咖啡，想带你去试试。&#x27;,
+      },
+      {
+        day: &#x27;1&#x27;,
+        week: &#x27;周日&#x27;,
+        note: &#x27;没有安排的一天&#x27;,
+        self: &#x27;今天没有设闹钟，醒来已经快到中午。给自己做了一顿慢慢的早餐。&#x27;,
+        self2: &#x27;下午收拾了书架，找出一本读到一半的书。这样的周末，也很好。&#x27;,
+        other: &#x27;我把上次散步的照片整理好了。最喜欢的还是你回头笑的那张。&#x27;,
+      },
+    ];
+    function icon(name) {
+      return &#x27;&lt;i data-lucide=&quot;&#x27; + name + &#x27;&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&#x27;;
+    }
+    function persist() {
+      if (window.openai?.setWidgetState) {
+        const ui = {};
+        root.querySelectorAll(&#x27;[data-app]&#x27;).forEach((a) =&gt; (ui[a.dataset.app] = a._state));
+        ownSnapshots.add(JSON.stringify(ui));
+        window.openai
+          .setWidgetState({
+            modelContent: {
+              designs: [&#x27;轻书页&#x27;, &#x27;保留书框&#x27;],
+              screen: &#x27;完整页面示意：主页、日记、心愿、纪念日、两地时间、空间、备份、登录与邀请&#x27;,
+            },
+            privateContent: ui,
+          })
+          .catch(() =&gt; {});
+      }
+    }
+    function refreshIcons() {
+      if (globalThis.lucide) lucide.createIcons({ attrs: { width: 16, height: 16 } });
+    }
+    function entries(app) {
+      const d = dateData[app._state.date];
+      return `&lt;article class=&quot;bp-entry mine&quot;&gt;&lt;div class=&quot;bp-author&quot;&gt;&lt;span class=&quot;bp-face&quot;&gt;··&lt;/span&gt;&lt;span&gt;小林 &lt;span style=&quot;color:var(--bp-soft)&quot;&gt;· 我&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;bp-quiet&quot;&gt;与小雨共享&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;bp-entrytext&quot; contenteditable=&quot;true&quot; role=&quot;textbox&quot; aria-label=&quot;我的日记示意&quot; aria-multiline=&quot;true&quot; spellcheck=&quot;false&quot;&gt;&lt;p&gt;${d.self}&lt;/p&gt;&lt;p&gt;${d.self2}&lt;/p&gt;&lt;/div&gt;&lt;/article&gt;&lt;hr class=&quot;bp-rule&quot;&gt;&lt;article class=&quot;bp-entry partner&quot;&gt;&lt;div class=&quot;bp-author&quot;&gt;&lt;span class=&quot;bp-face blue&quot;&gt;··&lt;/span&gt;&lt;span&gt;小雨&lt;/span&gt;&lt;span class=&quot;bp-quiet&quot;&gt;${app._state.date === 0 ? &#x27;刚刚写下&#x27; : &#x27;那天写下&#x27;}&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;bp-entrytext&quot;&gt;&lt;p&gt;${app._state.date === 0 ? &#x27;&lt;span class=&quot;bp-newmark&quot;&gt;&#x27; + d.other + &#x27;&lt;/span&gt;&#x27; : d.other}&lt;/p&gt;&lt;/div&gt;&lt;/article&gt;`;
+    }
+    function journal(app) {
+      const s = app._state,
+        d = dateData[s.date];
+      return `&lt;div class=&quot;bp-workspace&quot;&gt;&lt;aside class=&quot;bp-index&quot; aria-label=&quot;日记日期&quot;&gt;&lt;div class=&quot;bp-indexhead&quot;&gt;&lt;strong&gt;我们的日记&lt;/strong&gt;&lt;button class=&quot;bp-iconbtn cursor-interaction&quot; data-action=&quot;calendar&quot; aria-label=&quot;选择日记日期&quot;&gt;${icon(&#x27;calendar-days&#x27;)}&lt;/button&gt;&lt;/div&gt;&lt;button class=&quot;bp-btn bp-write main cursor-interaction&quot; data-action=&quot;today&quot;&gt;${icon(&#x27;pen-line&#x27;)} 写今天&lt;/button&gt;&lt;div class=&quot;bp-month&quot;&gt;2026 年 11 月&lt;/div&gt;${dateData.map((x, i) =&gt; `&lt;button class=&quot;bp-date cursor-interaction&quot; data-date=&quot;${i}&quot; aria-pressed=&quot;${s.date === i}&quot;&gt;&lt;span class=&quot;bp-row&quot;&gt;&lt;span&gt;11 月 ${x.day} 日 · ${x.week}&lt;/span&gt;${i === 0 ? &#x27;&lt;span class=&quot;bp-dot&quot; aria-label=&quot;有新内容&quot;&gt;&lt;/span&gt;&#x27; : &#x27;&#x27;}&lt;/span&gt;&lt;small&gt;${x.note}&lt;/small&gt;&lt;/button&gt;`).join(&#x27;&#x27;)}&lt;div class=&quot;bp-indexbottom&quot;&gt;${icon(&#x27;sun&#x27;)} TA 那边 07:24&lt;br&gt;新的一天，刚刚开始。&lt;/div&gt;&lt;/aside&gt;&lt;main class=&quot;bp-reading&quot;&gt;&lt;div class=&quot;bp-meta&quot;&gt;2026 年 11 月 · ${d.week}&lt;/div&gt;&lt;div class=&quot;bp-titleline&quot;&gt;&lt;h2&gt;11 月 ${d.day} 日&lt;/h2&gt;&lt;div class=&quot;bp-tools&quot;&gt;&lt;button class=&quot;bp-iconbtn cursor-interaction&quot; data-action=&quot;history&quot; aria-label=&quot;查看历史&quot;&gt;${icon(&#x27;history&#x27;)}&lt;/button&gt;&lt;button class=&quot;bp-iconbtn cursor-interaction&quot; data-action=&quot;options&quot; aria-label=&quot;阅读选项&quot; aria-expanded=&quot;false&quot;&gt;${icon(&#x27;sliders-horizontal&#x27;)}&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;bp-toolbar&quot;&gt;&lt;div class=&quot;bp-segment&quot; aria-label=&quot;日记视图&quot;&gt;${[&#x27;双人&#x27;, &#x27;我的&#x27;, &#x27;TA 的&#x27;].map((v, i) =&gt; `&lt;button class=&quot;cursor-interaction&quot; data-view=&quot;${i}&quot; aria-pressed=&quot;${s.view === i}&quot;&gt;${v}&lt;/button&gt;`).join(&#x27;&#x27;)}&lt;/div&gt;&lt;button class=&quot;bp-new cursor-interaction&quot; data-action=&quot;unread&quot;&gt;${s.date === 0 ? &#x27;小雨有一段新内容 ↓&#x27; : &#x27;这天的日记&#x27;}&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;bp-history&quot; hidden&gt;&lt;div&gt;历史版本&lt;/div&gt;&lt;div&gt;今天 18:20 · 已保存的版本&lt;/div&gt;&lt;div&gt;今天 17:46 · 已保存的版本&lt;/div&gt;&lt;button class=&quot;bp-quiet cursor-interaction&quot; data-action=&quot;history&quot;&gt;收起历史&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;bp-entries&quot;&gt;${entries(app)}&lt;/div&gt;&lt;footer class=&quot;bp-foot&quot;&gt;&lt;span class=&quot;bp-saved&quot;&gt;${icon(&#x27;check&#x27;)} 已同步 · 对方可以看到&lt;/span&gt;&lt;button class=&quot;bp-quiet cursor-interaction&quot; data-action=&quot;backup&quot;&gt;${icon(&#x27;cloud-check&#x27;)} 备份详情&lt;/button&gt;&lt;/footer&gt;&lt;div class=&quot;bp-popover bp-options&quot; hidden&gt;&lt;label&gt;&lt;input type=&quot;checkbox&quot; data-filter=&quot;own&quot;&gt;只看我写的文字&lt;/label&gt;&lt;button class=&quot;cursor-interaction&quot; data-action=&quot;swap&quot;&gt;${icon(&#x27;arrow-down-up&#x27;)} 交换显示顺序&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;bp-popover bp-backup&quot; hidden&gt;&lt;div&gt;已备份到 Google&lt;/div&gt;&lt;div style=&quot;color:var(--bp-soft);margin-top:6px&quot;&gt;今天 18:20 · 日记的可读副本&lt;/div&gt;&lt;button class=&quot;cursor-interaction&quot; data-action=&quot;backup&quot;&gt;收起详情&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;bp-popover bp-calendar&quot; hidden&gt;${dateData.map((x, i) =&gt; `&lt;button class=&quot;cursor-interaction&quot; data-date=&quot;${i}&quot;&gt;11 月 ${x.day} 日 · ${x.week}&lt;/button&gt;`).join(&#x27;&#x27;)}&lt;/div&gt;&lt;/main&gt;&lt;/div&gt;`;
+    }
+    const wishes = [
+      {
+        name: &#x27;一盏床头阅读灯&#x27;,
+        desc: &#x27;暖一点的光，可以陪我读完睡前的几页。&#x27;,
+        site: &#x27;生活小物 · 2 天前&#x27;,
+        glyph: &#x27;lamp-desk&#x27;,
+        hearts: &#x27;♥ ♥ ♥ ♥&#x27;,
+      },
+      {
+        name: &#x27;和你一起去看海&#x27;,
+        desc: &#x27;不用安排很多事，走一走，吹吹风就好。&#x27;,
+        site: &#x27;想一起做的事 · 11 月 1 日&#x27;,
+        glyph: &#x27;waves&#x27;,
+        hearts: &#x27;♥ ♥ ♥ ♥ ♥&#x27;,
+      },
+      {
+        name: &#x27;一本喜欢的诗集&#x27;,
+        desc: &#x27;可以在扉页写一句话给我。&#x27;,
+        site: &#x27;书与纸张 · 10 月 28 日&#x27;,
+        glyph: &#x27;book-open&#x27;,
+        hearts: &#x27;♥ ♥ ♥&#x27;,
+      },
+    ];
+    function wishpage(app) {
+      return `&lt;main class=&quot;bp-wishes&quot;&gt;&lt;div class=&quot;bp-wishheader&quot;&gt;&lt;h2&gt;心愿与礼物&lt;/h2&gt;&lt;button class=&quot;bp-btn main cursor-interaction&quot; data-action=&quot;newwish&quot;&gt;${icon(&#x27;plus&#x27;)} 许个愿&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;bp-subline&quot;&gt;把喜欢的小事，留给彼此。&lt;/div&gt;&lt;div class=&quot;bp-wishtabs&quot; aria-label=&quot;心愿分类&quot;&gt;${[&#x27;小雨的心愿&#x27;, &#x27;我的心愿&#x27;, &#x27;悄悄准备&#x27;, &#x27;礼物墙&#x27;].map((t, i) =&gt; `&lt;button class=&quot;cursor-interaction&quot; data-wishtab=&quot;${i}&quot; aria-pressed=&quot;${app._state.wishtab === i}&quot;&gt;${t}${i === 0 ? &#x27; ·&#x27; : &#x27;&#x27;}&lt;/button&gt;`).join(&#x27;&#x27;)}&lt;/div&gt;&lt;div class=&quot;bp-wishlist&quot;&gt;&lt;/div&gt;&lt;div class=&quot;bp-bottomnote&quot;&gt;${icon(&#x27;lock-keyhole&#x27;)} &lt;span&gt;“悄悄准备”的内容只有你能看到。&lt;/span&gt;&lt;/div&gt;&lt;/main&gt;`;
+    }
+    function wishlist(app) {
+      const box = app.querySelector(&#x27;.bp-wishlist&#x27;),
+        tab = app._state.wishtab;
+      if (!box) return;
+      if (tab === 0 || tab === 1) {
+        box.innerHTML = wishes
+          .map(
+            (w, i) =&gt;
+              `&lt;article class=&quot;bp-wishrow&quot;&gt;&lt;div class=&quot;bp-wishglyph&quot;&gt;${icon(w.glyph)}&lt;/div&gt;&lt;div&gt;&lt;div class=&quot;bp-wishname&quot;&gt;${safe(w.name)}&lt;/div&gt;&lt;div class=&quot;bp-wishdesc&quot;&gt;${w.desc}&lt;/div&gt;&lt;div class=&quot;bp-wishmeta&quot;&gt;${w.hearts} &lt;span style=&quot;color:var(--bp-soft);letter-spacing:0&quot;&gt; · ${w.site}&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;&lt;button class=&quot;bp-btn cursor-interaction&quot; data-prepare=&quot;${i}&quot;&gt;${tab === 0 ? &#x27;我来准备&#x27; : &#x27;编辑&#x27;}&lt;/button&gt;&lt;/article&gt;`,
+          )
+          .join(&#x27;&#x27;);
+      } else if (tab === 2) {
+        box.innerHTML = `&lt;article class=&quot;bp-wishrow&quot;&gt;&lt;div class=&quot;bp-wishglyph&quot;&gt;${icon(&#x27;gift&#x27;)}&lt;/div&gt;&lt;div&gt;&lt;div class=&quot;bp-wishname&quot;&gt;${app._state.preparing || &#x27;一盏床头阅读灯&#x27;}&lt;/div&gt;&lt;div class=&quot;bp-wishdesc&quot;&gt;还没有揭晓 · 只有你看得到&lt;/div&gt;&lt;/div&gt;&lt;button class=&quot;bp-btn cursor-interaction&quot; data-action=&quot;newwish&quot;&gt;添加惊喜&lt;/button&gt;&lt;/article&gt;`;
+      } else {
+        box.innerHTML = `&lt;article class=&quot;bp-wishrow&quot;&gt;&lt;div class=&quot;bp-wishglyph&quot;&gt;${icon(&#x27;book-heart&#x27;)}&lt;/div&gt;&lt;div&gt;&lt;div class=&quot;bp-wishname&quot;&gt;一起收藏的小礼物&lt;/div&gt;&lt;div class=&quot;bp-wishdesc&quot;&gt;收到的礼物会留在这里。&lt;/div&gt;&lt;/div&gt;&lt;/article&gt;`;
+      }
+      refreshIcons();
+    }
+    function view(app) {
+      const s = app._state;
+      app
+        .querySelectorAll(&#x27;[data-view]&#x27;)
+        .forEach((b) =&gt; b.setAttribute(&#x27;aria-pressed&#x27;, String(+b.dataset.view === s.view)));
+      const mine = app.querySelector(&#x27;.bp-entry.mine&#x27;),
+        partner = app.querySelector(&#x27;.bp-entry.partner&#x27;),
+        rule = app.querySelector(&#x27;.bp-rule&#x27;);
+      if (!mine) return;
+      mine.hidden = s.view === 2;
+      partner.hidden = s.view === 1 || s.own;
+      rule.hidden = mine.hidden || partner.hidden;
+    }
+    function dialog(app) {
+      const d = document.createElement(&#x27;div&#x27;);
+      d.className = &#x27;bp-dialogback&#x27;;
+      d.innerHTML = `&lt;form class=&quot;bp-dialog&quot; role=&quot;dialog&quot; aria-modal=&quot;true&quot; aria-label=&quot;许个愿&quot;&gt;&lt;h3&gt;许个小小的愿望&lt;/h3&gt;&lt;label class=&quot;bp-field&quot;&gt;想要什么&lt;input name=&quot;name&quot; placeholder=&quot;一件东西，或想一起做的事&quot; required&gt;&lt;/label&gt;&lt;label class=&quot;bp-field&quot;&gt;链接 · 可不填&lt;input name=&quot;link&quot; placeholder=&quot;https://&quot;&gt;&lt;/label&gt;&lt;label class=&quot;bp-field&quot;&gt;想告诉 TA 的话&lt;textarea rows=&quot;2&quot; placeholder=&quot;颜色、尺寸，或喜欢它的原因&quot;&gt;&lt;/textarea&gt;&lt;/label&gt;&lt;div class=&quot;bp-dialogactions&quot;&gt;&lt;button type=&quot;button&quot; class=&quot;bp-btn cursor-interaction&quot; data-close&gt;取消&lt;/button&gt;&lt;button class=&quot;bp-btn main cursor-interaction&quot; type=&quot;button&quot; data-save&gt;放进心愿单&lt;/button&gt;&lt;/div&gt;&lt;/form&gt;`;
+      app.append(d);
+      const previous = document.activeElement;
+      const close = () =&gt; {
+        d.remove();
+        previous?.focus();
+      };
+      d.querySelector(&#x27;[data-close]&#x27;).onclick = close;
+      d.onclick = (e) =&gt; {
+        if (e.target === d) close();
+      };
+      d.onkeydown = (e) =&gt; {
+        if (e.key === &#x27;Escape&#x27;) close();
+        if (e.key === &#x27;Tab&#x27;) {
+          const controls = [...d.querySelectorAll(&#x27;input,textarea,button&#x27;)];
+          if (e.shiftKey &amp;&amp; document.activeElement === controls[0]) {
+            e.preventDefault();
+            controls.at(-1).focus();
+          } else if (!e.shiftKey &amp;&amp; document.activeElement === controls.at(-1)) {
+            e.preventDefault();
+            controls[0].focus();
+          }
+        }
+      };
+      d.querySelector(&#x27;[data-save]&#x27;).onclick = d.querySelector(&#x27;form&#x27;).onsubmit = (e) =&gt; {
+        e.preventDefault();
+        const name = d.querySelector(&#x27;input[name=name]&#x27;).value.trim();
+        if (name) {
+          wishes.unshift({
+            name,
+            desc: &#x27;刚刚许下的新心愿&#x27;,
+            site: &#x27;我的心愿 · 刚刚&#x27;,
+            glyph: &#x27;heart&#x27;,
+            hearts: &#x27;♥ ♥ ♥&#x27;,
+          });
+          app._state.wishtab = 1;
+          close();
+          render(app);
+          persist();
+        }
+      };
+      d.querySelector(&#x27;input&#x27;).focus();
+    }
+    function suiteNav(app) {
+      const s = app._state.screen;
+      const together = [&#x27;wishes&#x27;, &#x27;clocks&#x27;, &#x27;anniversaries&#x27;, &#x27;anniversary&#x27;].includes(s),
+        settings = [&#x27;space&#x27;, &#x27;backup&#x27;, &#x27;login&#x27;, &#x27;invite&#x27;].includes(s);
+      const tabs = together
+        ? [
+            [&#x27;wishes&#x27;, &#x27;心愿与礼物&#x27;],
+            [&#x27;anniversaries&#x27;, &#x27;纪念日&#x27;],
+            [&#x27;clocks&#x27;, &#x27;两地时间&#x27;],
+          ]
+        : settings
+          ? [
+              [&#x27;space&#x27;, &#x27;双人空间&#x27;],
+              [&#x27;backup&#x27;, &#x27;备份&#x27;],
+              [&#x27;login&#x27;, &#x27;登录&#x27;],
+              [&#x27;invite&#x27;, &#x27;邀请&#x27;],
+            ]
+          : [];
+      return `&lt;header class=&quot;bp-chrome&quot;&gt;&lt;div class=&quot;bp-brand&quot;&gt;&lt;span class=&quot;bp-pair&quot;&gt;&lt;span class=&quot;bp-face&quot;&gt;··&lt;/span&gt;&lt;span class=&quot;bp-face blue&quot;&gt;··&lt;/span&gt;&lt;/span&gt;Between Pages&lt;/div&gt;&lt;nav class=&quot;bp-global&quot; aria-label=&quot;主要导航&quot;&gt;${[
+        [&#x27;home&#x27;, &#x27;此刻&#x27;],
+        [&#x27;diary&#x27;, &#x27;日记&#x27;],
+        [&#x27;wishes&#x27;, &#x27;一起&#x27;],
+        [&#x27;space&#x27;, &#x27;设置&#x27;],
+      ]
+        .map(
+          ([k, t]) =&gt;
+            `&lt;button class=&quot;bp-navbtn cursor-interaction&quot; data-screen=&quot;${k}&quot; aria-pressed=&quot;${s === k || (k === &#x27;wishes&#x27; &amp;&amp; together) || (k === &#x27;space&#x27; &amp;&amp; settings)}&quot;&gt;${t}${k === &#x27;wishes&#x27; ? &#x27;&lt;span class=&quot;bp-dot&quot; aria-label=&quot;有新内容&quot;&gt;&lt;/span&gt;&#x27; : &#x27;&#x27;}&lt;/button&gt;`,
+        )
+        .join(
+          &#x27;&#x27;,
+        )}&lt;/nav&gt;&lt;div class=&quot;bp-account&quot;&gt;&lt;span&gt;小林与小雨&lt;/span&gt;&lt;span class=&quot;bp-face&quot;&gt;··&lt;/span&gt;&lt;/div&gt;&lt;/header&gt;${tabs.length ? `&lt;nav class=&quot;suite-subnav&quot; aria-label=&quot;${together ? &#x27;一起&#x27; : &#x27;设置&#x27;}&quot;&gt;${tabs.map(([k, t]) =&gt; `&lt;button class=&quot;cursor-interaction&quot; data-screen=&quot;${k}&quot; aria-pressed=&quot;${s === k || (s === &#x27;anniversary&#x27; &amp;&amp; k === &#x27;anniversaries&#x27;)}&quot;&gt;${t}&lt;/button&gt;`).join(&#x27;&#x27;)}&lt;/nav&gt;` : &#x27;&#x27;}`;
+    }
+    function windows() {
+      return `&lt;div class=&quot;suite-windows&quot; aria-hidden=&quot;true&quot;&gt;&lt;div class=&quot;suite-window&quot;&gt;${icon(&#x27;sun&#x27;)}&lt;span class=&quot;bp-face&quot;&gt;··&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;suite-window blue&quot;&gt;${icon(&#x27;moon&#x27;)}&lt;span class=&quot;bp-face blue&quot;&gt;··&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;`;
+    }
+    function homePage() {
+      return `&lt;main class=&quot;suite-home&quot;&gt;&lt;section class=&quot;suite-hero&quot;&gt;&lt;div&gt;&lt;div class=&quot;suite-kicker&quot;&gt;2026 年 11 月 3 日 · 星期二&lt;/div&gt;&lt;h2&gt;小林，晚上好。&lt;/h2&gt;&lt;p class=&quot;suite-poem&quot;&gt;不同的地方，同一片天空。&lt;br&gt;今天，也有想留给彼此的话吗？&lt;/p&gt;&lt;div class=&quot;suite-herobtns&quot;&gt;&lt;button class=&quot;bp-btn main cursor-interaction&quot; data-screen=&quot;diary&quot;&gt;${icon(&#x27;pen-line&#x27;)} 继续写今天&lt;/button&gt;&lt;button class=&quot;bp-quiet cursor-interaction&quot; data-screen=&quot;diary&quot;&gt;读小雨的新内容 ${icon(&#x27;arrow-up-right&#x27;)}&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;${windows()}&lt;/section&gt;&lt;div class=&quot;suite-homebody&quot;&gt;&lt;section&gt;&lt;div class=&quot;suite-sectionhead&quot;&gt;&lt;h3 class=&quot;suite-sectiontitle&quot;&gt;最近的几页&lt;/h3&gt;&lt;button class=&quot;bp-quiet cursor-interaction&quot; data-screen=&quot;diary&quot;&gt;所有日记 ${icon(&#x27;arrow-right&#x27;)}&lt;/button&gt;&lt;/div&gt;${dateData.map((d, i) =&gt; `&lt;button class=&quot;suite-recent cursor-interaction&quot; data-extra=&quot;open-${i}&quot;&gt;&lt;span class=&quot;suite-recentdate&quot;&gt;0${d.day}&lt;/span&gt;&lt;span&gt;&lt;strong&gt;${d.note}&lt;/strong&gt;&lt;small&gt;${i === 0 ? &#x27;你和小雨都写了今天 · 小雨有新内容&#x27; : &#x27;你和小雨 · &#x27; + d.week}&lt;/small&gt;&lt;/span&gt;${i === 0 ? &#x27;&lt;span class=&quot;bp-dot&quot; aria-label=&quot;有新内容&quot;&gt;&lt;/span&gt;&#x27; : icon(&#x27;chevron-right&#x27;)}&lt;/button&gt;`).join(&#x27;&#x27;)}&lt;/section&gt;&lt;aside&gt;&lt;div class=&quot;suite-sectionhead&quot;&gt;&lt;h3 class=&quot;suite-sectiontitle&quot;&gt;我们这边&lt;/h3&gt;&lt;button class=&quot;bp-quiet cursor-interaction&quot; data-screen=&quot;clocks&quot;&gt;${icon(&#x27;arrow-up-right&#x27;)}&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;suite-clockstrip&quot;&gt;&lt;div&gt;&lt;div class=&quot;suite-minilabel&quot;&gt;&lt;span class=&quot;bp-face&quot;&gt;··&lt;/span&gt;小林 · 上海&lt;/div&gt;&lt;div class=&quot;suite-clocknum&quot;&gt;20:24&lt;/div&gt;&lt;/div&gt;${icon(&#x27;move-horizontal&#x27;)}&lt;div&gt;&lt;div class=&quot;suite-minilabel&quot;&gt;&lt;span class=&quot;bp-face blue&quot;&gt;··&lt;/span&gt;小雨 · 纽约&lt;/div&gt;&lt;div class=&quot;suite-clocknum&quot;&gt;07:24&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;suite-note&quot;&gt;&lt;span class=&quot;suite-soft&quot;&gt;下一件值得期待的事&lt;/span&gt;&lt;strong&gt;还有 18 天，是小雨的生日。&lt;/strong&gt;&lt;button class=&quot;bp-quiet cursor-interaction&quot; data-screen=&quot;anniversary&quot;&gt;看看这一天 ${icon(&#x27;arrow-right&#x27;)}&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;suite-soft&quot;&gt;在一起的第 367 天。&lt;br&gt;把普通的日子，也慢慢收好。&lt;/div&gt;&lt;/aside&gt;&lt;/div&gt;&lt;footer class=&quot;suite-homelinks&quot;&gt;&lt;button class=&quot;cursor-interaction&quot; data-screen=&quot;wishes&quot;&gt;${icon(&#x27;heart&#x27;)} 心愿与礼物 &lt;span class=&quot;bp-dot&quot;&gt;&lt;/span&gt;&lt;/button&gt;&lt;button class=&quot;cursor-interaction&quot; data-screen=&quot;anniversaries&quot;&gt;${icon(&#x27;calendar-heart&#x27;)} 纪念日&lt;/button&gt;&lt;button class=&quot;cursor-interaction&quot; data-screen=&quot;space&quot;&gt;${icon(&#x27;users&#x27;)} 我们的空间&lt;/button&gt;&lt;/footer&gt;&lt;/main&gt;`;
+    }
+    function clocksPage(app) {
+      return `&lt;main class=&quot;suite-page&quot;&gt;&lt;div class=&quot;suite-heading&quot;&gt;&lt;h2&gt;两地时间&lt;/h2&gt;&lt;/div&gt;&lt;p class=&quot;suite-desc&quot;&gt;看看彼此的白天和夜晚，也给聊天留一点时间。&lt;/p&gt;&lt;section class=&quot;suite-clocks&quot;&gt;&lt;div&gt;&lt;div class=&quot;suite-clockperson&quot;&gt;&lt;span class=&quot;bp-face&quot;&gt;··&lt;/span&gt;小林 · 我这边 ${icon(&#x27;moon&#x27;)}&lt;/div&gt;&lt;div class=&quot;suite-bigtime&quot;&gt;20:24&lt;/div&gt;&lt;div class=&quot;suite-soft&quot;&gt;11 月 3 日 · 周二 · 上海&lt;br&gt;中国标准时间 · UTC+8&lt;/div&gt;&lt;/div&gt;&lt;div&gt;&lt;div class=&quot;suite-clockperson&quot;&gt;&lt;span class=&quot;bp-face blue&quot;&gt;··&lt;/span&gt;小雨 · TA 那边 ${icon(&#x27;sun&#x27;)}&lt;/div&gt;&lt;div class=&quot;suite-bigtime&quot;&gt;07:24&lt;/div&gt;&lt;div class=&quot;suite-soft&quot;&gt;11 月 3 日 · 周二 · 纽约&lt;br&gt;北美东部标准时间 · UTC−5&lt;/div&gt;&lt;/div&gt;&lt;/section&gt;&lt;section&gt;&lt;h3 class=&quot;suite-sectiontitle&quot;&gt;今天，什么时候都醒着&lt;/h3&gt;&lt;p class=&quot;suite-soft&quot;&gt;按你的日期与双方作息推算。&lt;/p&gt;&lt;div class=&quot;suite-hours&quot; role=&quot;img&quot; aria-label=&quot;共同清醒时段：上海时间 07:30 至 12:00 和 20:00 至 23:30&quot;&gt;${Array.from({ length: 24 }, (_, i) =&gt; `&lt;span class=&quot;suite-hour ${(i &gt;= 8 &amp;&amp; i &lt; 12) || i &gt;= 20 ? &#x27;on&#x27; : &#x27;&#x27;}&quot;&gt;&lt;/span&gt;`).join(&#x27;&#x27;)}&lt;/div&gt;&lt;div class=&quot;suite-ticks&quot;&gt;&lt;span&gt;00:00&lt;/span&gt;&lt;span&gt;06:00&lt;/span&gt;&lt;span&gt;12:00&lt;/span&gt;&lt;span&gt;18:00&lt;/span&gt;&lt;span&gt;24:00&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;suite-timewindows&quot;&gt;&lt;div&gt;07:30–12:00&lt;span&gt;小雨那边 · 前一天 18:30–23:00&lt;/span&gt;&lt;/div&gt;&lt;div&gt;20:00–23:30&lt;span&gt;小雨那边 · 07:00–10:30&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;&lt;/section&gt;&lt;section&gt;&lt;h3 class=&quot;suite-sectiontitle&quot;&gt;我的作息&lt;/h3&gt;&lt;div class=&quot;suite-inlineform&quot;&gt;&lt;label&gt;通常几点睡&lt;input type=&quot;time&quot; aria-label=&quot;通常几点睡&quot; value=&quot;23:30&quot;&gt;&lt;/label&gt;&lt;label&gt;通常几点醒&lt;input type=&quot;time&quot; aria-label=&quot;通常几点醒&quot; value=&quot;07:30&quot;&gt;&lt;/label&gt;&lt;button class=&quot;bp-btn cursor-interaction&quot; data-extra=&quot;sleep&quot;&gt;更新作息&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;suite-feedback&quot; aria-live=&quot;polite&quot;&gt;&lt;/div&gt;&lt;/section&gt;&lt;/main&gt;`;
+    }
+    const anniversaryItems = [
+      { name: &#x27;小雨的生日&#x27;, month: &#x27;11 月&#x27;, day: &#x27;21&#x27;, desc: &#x27;按小雨那边的日期 · 还有 18 天&#x27; },
+      { name: &#x27;小林的生日&#x27;, month: &#x27;12 月&#x27;, day: &#x27;09&#x27;, desc: &#x27;按你这边的日期 · 还有 36 天&#x27; },
+    ];
+    function anniversariesPage(app) {
+      return `&lt;main class=&quot;suite-page&quot;&gt;&lt;div class=&quot;suite-heading&quot;&gt;&lt;h2&gt;纪念日&lt;/h2&gt;&lt;button class=&quot;bp-btn cursor-interaction&quot; data-extra=&quot;new-anniversary&quot;&gt;${icon(&#x27;plus&#x27;)} 记下一天&lt;/button&gt;&lt;/div&gt;&lt;p class=&quot;suite-desc&quot;&gt;有些日子，每年都想和你再过一次。&lt;/p&gt;&lt;section class=&quot;suite-annivhero&quot;&gt;&lt;div&gt;&lt;div class=&quot;suite-kicker&quot;&gt;从 2025 年 11 月 1 日开始&lt;/div&gt;&lt;h3 class=&quot;suite-sectiontitle&quot;&gt;在一起的日子&lt;/h3&gt;&lt;div class=&quot;suite-soft&quot;&gt;我们的故事，又多了一页。&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;suite-count&quot;&gt;367&lt;small&gt;天&lt;/small&gt;&lt;/div&gt;&lt;/section&gt;&lt;div&gt;${[...anniversaryItems, ...(app._state.addedAnniversaries || [])].map((a) =&gt; `&lt;article class=&quot;suite-record&quot;&gt;&lt;div class=&quot;suite-datebox&quot;&gt;${a.month}&lt;b&gt;${a.day}&lt;/b&gt;&lt;/div&gt;&lt;div class=&quot;suite-recordmain&quot;&gt;&lt;strong&gt;${safe(a.name)}&lt;/strong&gt;&lt;div class=&quot;suite-soft&quot;&gt;${a.desc}&lt;/div&gt;&lt;/div&gt;&lt;button class=&quot;bp-iconbtn cursor-interaction&quot; data-screen=&quot;anniversary&quot; aria-label=&quot;查看纪念日&quot;&gt;${icon(&#x27;arrow-up-right&#x27;)}&lt;/button&gt;&lt;/article&gt;`).join(&#x27;&#x27;)}&lt;/div&gt;&lt;div class=&quot;suite-bottomnote suite-soft&quot; style=&quot;margin-top:22px&quot;&gt;每个人的生日，都按 TA 当地的日期到来。&lt;/div&gt;&lt;/main&gt;`;
+    }
+    function anniversaryPage() {
+      return `&lt;main class=&quot;suite-page&quot;&gt;&lt;button class=&quot;bp-quiet cursor-interaction&quot; data-screen=&quot;anniversaries&quot; style=&quot;margin-bottom:21px&quot;&gt;${icon(&#x27;arrow-left&#x27;)} 所有纪念日&lt;/button&gt;&lt;div class=&quot;suite-kicker&quot;&gt;11 月 21 日 · 按小雨那边的日期&lt;/div&gt;&lt;div class=&quot;suite-heading&quot;&gt;&lt;h2&gt;小雨的生日&lt;/h2&gt;&lt;button class=&quot;bp-btn cursor-interaction&quot; data-extra=&quot;reminder&quot;&gt;${icon(&#x27;bell&#x27;)} 提醒我&lt;/button&gt;&lt;/div&gt;&lt;p class=&quot;suite-desc&quot;&gt;还有 18 天，又到了值得认真庆祝的一天。&lt;/p&gt;&lt;div class=&quot;suite-feedback&quot; aria-live=&quot;polite&quot;&gt;&lt;/div&gt;&lt;div class=&quot;suite-settings&quot;&gt;&lt;section&gt;&lt;h3 class=&quot;suite-sectiontitle&quot;&gt;每一年的这一天&lt;/h3&gt;${[&#x27;2026&#x27;, &#x27;2025&#x27;, &#x27;2024&#x27;].map((y, i) =&gt; `&lt;article class=&quot;suite-record&quot;&gt;&lt;div class=&quot;suite-datebox&quot;&gt;&lt;b&gt;${y.slice(2)}&lt;/b&gt;${y}&lt;/div&gt;&lt;div class=&quot;suite-recordmain&quot;&gt;&lt;strong&gt;${i === 0 ? &#x27;下一次生日&#x27; : &#x27;那一年的生日&#x27;}&lt;/strong&gt;&lt;div class=&quot;suite-soft&quot;&gt;${i === 0 ? &#x27;还没有到来，先把期待留在这里。&#x27; : &#x27;打开这一天的日记，看看当时写了什么。&#x27;}&lt;/div&gt;&lt;/div&gt;${i === 0 ? &#x27;&#x27; : `&lt;button class=&quot;bp-iconbtn cursor-interaction&quot; data-screen=&quot;diary&quot; aria-label=&quot;读这天的日记&quot;&gt;${icon(&#x27;book-open&#x27;)}&lt;/button&gt;`}&lt;/article&gt;`).join(&#x27;&#x27;)}&lt;/section&gt;&lt;aside class=&quot;suite-quietblock&quot;&gt;&lt;h3 class=&quot;suite-sectiontitle&quot;&gt;给这一天的小心意&lt;/h3&gt;&lt;p class=&quot;suite-soft&quot;&gt;小雨的心愿里，也许有一点灵感。&lt;/p&gt;&lt;button class=&quot;bp-btn cursor-interaction&quot; data-screen=&quot;wishes&quot;&gt;${icon(&#x27;heart&#x27;)} 看看 TA 的心愿&lt;/button&gt;&lt;p class=&quot;suite-soft&quot; style=&quot;margin-top:18px&quot;&gt;已经送出的礼物，会和这一年的生日一起留在这里。&lt;/p&gt;&lt;/aside&gt;&lt;/div&gt;&lt;/main&gt;`;
+    }
+    function spacePage(app) {
+      return `&lt;main class=&quot;suite-page&quot;&gt;&lt;div class=&quot;suite-heading&quot;&gt;&lt;h2&gt;我们的空间&lt;/h2&gt;&lt;/div&gt;&lt;p class=&quot;suite-desc&quot;&gt;彼此有自己的日记，也有愿意分享给对方的部分。&lt;/p&gt;&lt;div class=&quot;suite-people&quot;&gt;&lt;div class=&quot;suite-person&quot;&gt;&lt;span class=&quot;bp-face&quot;&gt;··&lt;/span&gt;小林&lt;/div&gt;${icon(&#x27;link&#x27;)}&lt;div class=&quot;suite-person&quot;&gt;&lt;span class=&quot;bp-face blue&quot;&gt;··&lt;/span&gt;小雨&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;suite-settings&quot;&gt;&lt;section&gt;&lt;div class=&quot;suite-setting&quot;&gt;&lt;h3 class=&quot;suite-sectiontitle&quot;&gt;我的共享范围&lt;/h3&gt;&lt;p class=&quot;suite-soft&quot;&gt;${app._state.rangePreview || &#x27;2025 年 11 月 1 日起，包括以后写的日记。&#x27;}&lt;/p&gt;&lt;p class=&quot;suite-soft&quot; style=&quot;margin-top:10px&quot;&gt;只有你确认开放的日期，小雨才能看到。&lt;/p&gt;&lt;button class=&quot;bp-btn cursor-interaction&quot; data-extra=&quot;edit-range&quot;&gt;${icon(&#x27;calendar-range&#x27;)} 调整共享日期&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;suite-setting&quot;&gt;&lt;h3 class=&quot;suite-sectiontitle&quot;&gt;绑定记录&lt;/h3&gt;&lt;div class=&quot;suite-period&quot;&gt;与小雨的这段时光&lt;span&gt;2025 年 11 月 1 日 — 至今&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;&lt;/section&gt;&lt;aside class=&quot;suite-quietblock&quot;&gt;&lt;h3 class=&quot;suite-sectiontitle&quot;&gt;分享时，也知道边界&lt;/h3&gt;&lt;p class=&quot;suite-soft&quot;&gt;每个人只能修改自己写的文字。&lt;/p&gt;&lt;p class=&quot;suite-soft&quot;&gt;停止共享后，对方保留最后获准的只读版本；之后的私人修改不会更新给对方。&lt;/p&gt;&lt;button class=&quot;bp-quiet cursor-interaction&quot; data-extra=&quot;unbind-info&quot; style=&quot;margin-top:15px&quot;&gt;查看解除绑定的说明 ${icon(&#x27;arrow-up-right&#x27;)}&lt;/button&gt;&lt;div class=&quot;suite-feedback&quot; aria-live=&quot;polite&quot;&gt;&lt;/div&gt;&lt;/aside&gt;&lt;/div&gt;&lt;/main&gt;`;
+    }
+    function backupPage() {
+      return `&lt;main class=&quot;suite-page&quot;&gt;&lt;div class=&quot;suite-heading&quot;&gt;&lt;h2&gt;备份&lt;/h2&gt;&lt;span class=&quot;suite-status&quot;&gt;${icon(&#x27;shield-check&#x27;)} 正常&lt;/span&gt;&lt;/div&gt;&lt;p class=&quot;suite-desc&quot;&gt;好好保存写下的每一天。&lt;/p&gt;&lt;div class=&quot;suite-settings&quot;&gt;&lt;section&gt;&lt;div class=&quot;suite-settingline&quot;&gt;&lt;div&gt;&lt;strong&gt;服务端自动备份&lt;/strong&gt;&lt;div class=&quot;suite-soft&quot;&gt;由服务自动完成，无需你操作。&lt;/div&gt;&lt;/div&gt;&lt;span class=&quot;suite-status&quot;&gt;已开启&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;suite-setting&quot; style=&quot;border-top:0&quot;&gt;&lt;h3 class=&quot;suite-sectiontitle&quot;&gt;我的 Google 可读副本&lt;/h3&gt;&lt;p class=&quot;suite-soft&quot;&gt;已连接你的 Google 账号&lt;/p&gt;&lt;p class=&quot;suite-soft&quot; style=&quot;margin-top:9px&quot;&gt;按年、月整理，在自己的 Google Docs 里也能读到。&lt;/p&gt;&lt;div class=&quot;suite-status&quot; style=&quot;margin-top:18px&quot;&gt;${icon(&#x27;check&#x27;)} 可见日记的历史版本已备份&lt;/div&gt;&lt;div class=&quot;suite-soft&quot; style=&quot;margin-top:7px&quot;&gt;最近完成 · 今天 20:20&lt;/div&gt;&lt;div style=&quot;display:flex;gap:11px;flex-wrap:wrap;margin-top:5px&quot;&gt;&lt;button class=&quot;bp-btn cursor-interaction&quot; data-extra=&quot;backup-now&quot;&gt;${icon(&#x27;refresh-cw&#x27;)} 现在备份&lt;/button&gt;&lt;button class=&quot;bp-btn cursor-interaction&quot; data-extra=&quot;backup-log&quot;&gt;查看记录&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;suite-feedback&quot; aria-live=&quot;polite&quot;&gt;&lt;/div&gt;&lt;div class=&quot;suite-log&quot; hidden&gt;&lt;div&gt;今天 20:20 · 11 月 3 日 · 已写入 Google&lt;/div&gt;&lt;div&gt;昨天 22:14 · 11 月 2 日 · 已写入 Google&lt;/div&gt;&lt;div&gt;11 月 1 日 21:06 · 首次备份完成&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/section&gt;&lt;aside class=&quot;suite-quietblock&quot;&gt;&lt;h3 class=&quot;suite-sectiontitle&quot;&gt;三个状态，分别确认&lt;/h3&gt;&lt;p class=&quot;suite-soft&quot;&gt;已保存：文字已经存到服务器。&lt;/p&gt;&lt;p class=&quot;suite-soft&quot;&gt;已成历史：这段写作已经形成历史版本。&lt;/p&gt;&lt;p class=&quot;suite-soft&quot;&gt;已备份：对应的历史版本已写入 Google。&lt;/p&gt;&lt;hr class=&quot;bp-rule&quot;&gt;&lt;p class=&quot;suite-soft&quot;&gt;Google 里的副本是单向更新。在那边修改的文字，不会回到这里。&lt;/p&gt;&lt;/aside&gt;&lt;/div&gt;&lt;/main&gt;`;
+    }
+    function authPage(invite) {
+      return `&lt;main class=&quot;suite-auth&quot;&gt;&lt;section class=&quot;suite-authintro&quot;&gt;&lt;div class=&quot;suite-kicker&quot;&gt;BETWEEN PAGES&lt;/div&gt;&lt;h2&gt;给彼此，留一页。&lt;/h2&gt;&lt;p class=&quot;suite-poem&quot;&gt;把今天的小事，&lt;br&gt;慢慢写成我们的故事。&lt;/p&gt;${windows()}&lt;/section&gt;&lt;section class=&quot;suite-authform&quot;&gt;&lt;h2&gt;${invite ? &#x27;小雨邀请你一起写&#x27; : &#x27;欢迎回来&#x27;}&lt;/h2&gt;&lt;p class=&quot;suite-soft&quot;&gt;${invite ? &#x27;你将与小雨建立一个固定的双人空间。请先确认当前账号与自己的共享范围。&#x27; : &#x27;一本属于两个人的日记，从这里继续。&#x27;}&lt;/p&gt;${invite ? `&lt;div class=&quot;suite-authlabel&quot;&gt;&lt;span class=&quot;bp-face&quot;&gt;··&lt;/span&gt;当前账号 · 小林&lt;/div&gt;&lt;div class=&quot;suite-authlabel&quot;&gt;${icon(&#x27;lock-keyhole&#x27;)} 共享范围：暂不开放日记&lt;/div&gt;&lt;p class=&quot;suite-soft&quot; style=&quot;margin-top:14px&quot;&gt;接受邀请后，可以在空间里选择想共享的日期。绑定对象固定为彼此。&lt;/p&gt;&lt;button class=&quot;bp-btn main cursor-interaction&quot; data-extra=&quot;accept-invite&quot;&gt;接受邀请&lt;/button&gt;` : `&lt;button class=&quot;bp-btn main cursor-interaction&quot; data-extra=&quot;sign-in&quot;&gt;继续使用 Google&lt;/button&gt;&lt;p class=&quot;suite-soft&quot; style=&quot;margin-top:18px&quot;&gt;登录与 Google 日记备份分别授权。&lt;/p&gt;&lt;button class=&quot;bp-quiet cursor-interaction&quot; data-screen=&quot;invite&quot; style=&quot;margin-top:24px&quot;&gt;看看邀请页面 ${icon(&#x27;arrow-right&#x27;)}&lt;/button&gt;`}&lt;/section&gt;&lt;/main&gt;`;
+    }
+    function safe(str) {
+      return String(str).replace(
+        /[&amp;&lt;&gt;&quot;&#x27;]/g,
+        (c) =&gt; ({ &#x27;&amp;&#x27;: &#x27;&amp;amp;&#x27;, &#x27;&lt;&#x27;: &#x27;&amp;lt;&#x27;, &#x27;&gt;&#x27;: &#x27;&amp;gt;&#x27;, &#x27;&quot;&#x27;: &#x27;&amp;quot;&#x27;, &quot;&#x27;&quot;: &#x27;&amp;#39;&#x27; })[c],
+      );
+    }
+    function extraDialog(app, kind) {
+      const anniv = kind === &#x27;new-anniversary&#x27;;
+      const overlay = document.createElement(&#x27;div&#x27;);
+      overlay.className = &#x27;bp-dialogback&#x27;;
+      overlay.innerHTML = `&lt;section class=&quot;bp-dialog&quot; role=&quot;dialog&quot; aria-modal=&quot;true&quot; aria-label=&quot;${anniv ? &#x27;记下一天&#x27; : &#x27;调整共享日期&#x27;}&quot;&gt;&lt;h3&gt;${anniv ? &#x27;记下一天&#x27; : &#x27;调整共享日期&#x27;}&lt;/h3&gt;${anniv ? `&lt;label class=&quot;bp-field&quot;&gt;这一天叫什么&lt;input name=&quot;event&quot; placeholder=&quot;例如，第一次见面的日子&quot;&gt;&lt;/label&gt;&lt;label class=&quot;bp-field&quot;&gt;日期&lt;input type=&quot;date&quot; name=&quot;date&quot; value=&quot;2026-11-21&quot;&gt;&lt;/label&gt;&lt;label class=&quot;suite-authlabel&quot;&gt;&lt;input type=&quot;checkbox&quot; checked&gt; 每年纪念这一天&lt;/label&gt;` : `&lt;p class=&quot;suite-soft&quot;&gt;只调整你自己的日记；小雨的共享范围由 TA 自己决定。&lt;/p&gt;&lt;label class=&quot;bp-field&quot;&gt;从这一天起共享&lt;input type=&quot;date&quot; name=&quot;date&quot; value=&quot;2025-11-01&quot;&gt;&lt;/label&gt;&lt;label class=&quot;suite-authlabel&quot;&gt;&lt;input type=&quot;checkbox&quot; checked&gt; 包括以后写的日记&lt;/label&gt;&lt;p class=&quot;suite-soft&quot;&gt;下一步会列出将开放和将停止更新的日期，再确认保存。&lt;/p&gt;`}&lt;div class=&quot;bp-dialogactions&quot;&gt;&lt;button class=&quot;bp-btn cursor-interaction&quot; data-close-extra&gt;取消&lt;/button&gt;&lt;button class=&quot;bp-btn main cursor-interaction&quot; data-save-extra&gt;${anniv ? &#x27;记下来&#x27; : &#x27;预览范围变化&#x27;}&lt;/button&gt;&lt;/div&gt;&lt;/section&gt;`;
+      app.append(overlay);
+      const previous = document.activeElement;
+      const close = () =&gt; {
+        overlay.remove();
+        previous?.focus();
+      };
+      overlay.querySelector(&#x27;[data-close-extra]&#x27;).onclick = close;
+      overlay.addEventListener(&#x27;click&#x27;, (e) =&gt; {
+        if (e.target === overlay) close();
+      });
+      overlay.addEventListener(&#x27;keydown&#x27;, (e) =&gt; {
+        if (e.key === &#x27;Escape&#x27;) close();
+        if (e.key === &#x27;Tab&#x27;) {
+          const fields = [...overlay.querySelectorAll(&#x27;input,button&#x27;)];
+          if (e.shiftKey &amp;&amp; document.activeElement === fields[0]) {
+            e.preventDefault();
+            fields.at(-1).focus();
+          } else if (!e.shiftKey &amp;&amp; document.activeElement === fields.at(-1)) {
+            e.preventDefault();
+            fields[0].focus();
+          }
+        }
+      });
+      overlay.querySelector(&#x27;[data-save-extra]&#x27;).onclick = () =&gt; {
+        const input = overlay.querySelector(&#x27;input[name=date]&#x27;).value;
+        if (!input) return;
+        if (anniv) {
+          const name = overlay.querySelector(&#x27;input[name=event]&#x27;).value.trim();
+          if (!name) return;
+          (app._state.addedAnniversaries ??= []).push({
+            name,
+            month: parseInt(input.slice(5, 7)) + &#x27; 月&#x27;,
+            day: input.slice(8),
+            desc: &#x27;每年纪念 · &#x27; + input,
+          });
+          close();
+          render(app);
+          persist();
+        } else {
+          overlay.querySelector(&#x27;.bp-dialog&#x27;).innerHTML =
+            `&lt;h3&gt;确认共享变化&lt;/h3&gt;&lt;p class=&quot;suite-soft&quot;&gt;将开放：${safe(input)} 起的日记，包含之后的日期。&lt;/p&gt;&lt;p class=&quot;suite-soft&quot; style=&quot;margin-top:13px&quot;&gt;如果有日期停止共享，小雨会保留当时的只读版本。&lt;/p&gt;&lt;div class=&quot;suite-feedback&quot;&gt;这是范围确认的界面示意。&lt;/div&gt;&lt;div class=&quot;bp-dialogactions&quot;&gt;&lt;button class=&quot;bp-btn cursor-interaction&quot; data-finish&gt;返回空间&lt;/button&gt;&lt;/div&gt;`;
+          overlay.querySelector(&#x27;[data-finish]&#x27;).onclick = close;
+          overlay.querySelector(&#x27;button&#x27;).focus();
+        }
+      };
+      overlay.querySelector(&#x27;input&#x27;).focus();
+    }
+    function extraAction(app, action) {
+      if (action.startsWith(&#x27;open-&#x27;)) {
+        app._state.date = +action.slice(5);
+        app._state.screen = &#x27;diary&#x27;;
+        render(app);
+        return;
+      }
+      if (action === &#x27;new-anniversary&#x27; || action === &#x27;edit-range&#x27;) {
+        extraDialog(app, action);
+        return;
+      }
+      if (action === &#x27;sleep&#x27;) {
+        const times = [...app.querySelectorAll(&#x27;input[type=time]&#x27;)].map((x) =&gt; x.value);
+        app.querySelector(&#x27;.suite-feedback&#x27;).textContent =
+          &#x27;作息预览：&#x27; + times[0] + &#x27; 入睡，&#x27; + times[1] + &#x27; 醒来。&#x27;;
+      }
+      if (action === &#x27;reminder&#x27;)
+        app.querySelector(&#x27;.suite-feedback&#x27;).textContent = &#x27;生日提醒 · 提前 7 天（示意）&#x27;;
+      if (action === &#x27;unbind-info&#x27;)
+        app.querySelector(&#x27;.suite-feedback&#x27;).textContent =
+          &#x27;解除后，双方保留获准的只读记录；之后的私人修改不再共享。&#x27;;
+      if (action === &#x27;backup-log&#x27;) {
+        const box = app.querySelector(&#x27;.suite-log&#x27;);
+        box.hidden = !box.hidden;
+      }
+      if (action === &#x27;backup-now&#x27;)
+        app.querySelector(&#x27;.suite-feedback&#x27;).textContent = &#x27;当前没有等待备份的历史版本。&#x27;;
+      if (action === &#x27;sign-in&#x27;) {
+        app._state.screen = &#x27;home&#x27;;
+        render(app);
+      }
+      if (action === &#x27;accept-invite&#x27;) {
+        app._state.screen = &#x27;space&#x27;;
+        render(app);
+      }
+    }
+    function pageBody(app) {
+      switch (app._state.screen) {
+        case &#x27;home&#x27;:
+          return homePage();
+        case &#x27;clocks&#x27;:
+          return clocksPage(app);
+        case &#x27;anniversaries&#x27;:
+          return anniversariesPage(app);
+        case &#x27;anniversary&#x27;:
+          return anniversaryPage();
+        case &#x27;space&#x27;:
+          return spacePage(app);
+        case &#x27;backup&#x27;:
+          return backupPage();
+        case &#x27;login&#x27;:
+          return authPage(false);
+        case &#x27;invite&#x27;:
+          return authPage(true);
+        case &#x27;wishes&#x27;:
+          return wishpage(app);
+        default:
+          return journal(app);
+      }
+    }
+
+    function render(app) {
+      const s = app._state;
+      app.innerHTML = suiteNav(app) + pageBody(app);
+      if (s.screen === &#x27;wishes&#x27;) wishlist(app);
+      else view(app);
+      refreshIcons();
+    }
+    root.querySelectorAll(&#x27;[data-app]&#x27;).forEach((app) =&gt; {
+      app._state = {
+        screen: &#x27;home&#x27;,
+        date: 0,
+        view: 0,
+        wishtab: 0,
+        own: false,
+        ...saved[app.dataset.app],
+      };
+      render(app);
+      app.addEventListener(&#x27;click&#x27;, (e) =&gt; {
+        const b = e.target.closest(&#x27;button&#x27;);
+        if (!b) return;
+        if (b.dataset.extra) {
+          extraAction(app, b.dataset.extra);
+          persist();
+          return;
+        }
+        if (b.dataset.screen) {
+          app._state.screen = b.dataset.screen;
+          render(app);
+        } else if (b.dataset.date !== undefined) {
+          app._state.date = +b.dataset.date;
+          render(app);
+        } else if (b.dataset.view !== undefined) {
+          app._state.view = +b.dataset.view;
+          view(app);
+        } else if (b.dataset.wishtab !== undefined) {
+          app._state.wishtab = +b.dataset.wishtab;
+          render(app);
+        } else if (b.dataset.prepare !== undefined) {
+          if (app._state.wishtab === 0) {
+            app._state.preparing = wishes[+b.dataset.prepare].name;
+            app._state.wishtab = 2;
+            render(app);
+          } else dialog(app);
+        } else {
+          const action = b.dataset.action;
+          if (action === &#x27;newwish&#x27;) dialog(app);
+          if (action === &#x27;today&#x27;) {
+            app._state.date = 0;
+            render(app);
+            app.querySelector(&#x27;[contenteditable]&#x27;)?.focus();
+          }
+          if (action === &#x27;options&#x27; || action === &#x27;backup&#x27; || action === &#x27;calendar&#x27;) {
+            const panel = app.querySelector(&#x27;.bp-&#x27; + action);
+            if (panel) {
+              panel.hidden = !panel.hidden;
+              b.setAttribute(&#x27;aria-expanded&#x27;, String(!panel.hidden));
+            }
+          }
+          if (action === &#x27;history&#x27;) {
+            const panel = app.querySelector(&#x27;.bp-history&#x27;);
+            panel.hidden = !panel.hidden;
+          }
+          if (action === &#x27;unread&#x27;) {
+            app._state.view = 0;
+            app._state.own = false;
+            view(app);
+            app
+              .querySelector(&#x27;.bp-entry.partner&#x27;)
+              .scrollIntoView({ block: &#x27;nearest&#x27;, behavior: &#x27;smooth&#x27; });
+          }
+          if (action === &#x27;swap&#x27;) {
+            const box = app.querySelector(&#x27;.bp-entries&#x27;),
+              a = box.querySelector(&#x27;.mine&#x27;),
+              p = box.querySelector(&#x27;.partner&#x27;),
+              r = box.querySelector(&#x27;.bp-rule&#x27;);
+            if (box.firstElementChild === a) {
+              box.replaceChildren(p, r, a);
+            } else box.replaceChildren(a, r, p);
+            app.querySelector(&#x27;.bp-options&#x27;).hidden = true;
+          }
+        }
+        persist();
+      });
+      app.addEventListener(&#x27;change&#x27;, (e) =&gt; {
+        if (e.target.dataset.filter === &#x27;own&#x27;) {
+          app._state.own = e.target.checked;
+          view(app);
+          persist();
+        }
+      });
+      app.addEventListener(&#x27;input&#x27;, (e) =&gt; {
+        if (e.target.closest(&#x27;[contenteditable]&#x27;)) {
+          const status = app.querySelector(&#x27;.bp-saved&#x27;);
+          status.textContent = &#x27;编辑示意 · 未连接服务器&#x27;;
+        }
+      });
+    });
+    window.addEventListener(&#x27;openai:set_globals&#x27;, (e) =&gt; {
+      const ui = e.detail?.globals?.widgetState?.privateContent;
+      if (ui &amp;&amp; !ownSnapshots.has(JSON.stringify(ui)))
+        root.querySelectorAll(&#x27;[data-app]&#x27;).forEach((a) =&gt; {
+          if (ui[a.dataset.app] &amp;&amp; JSON.stringify(a._state) !== JSON.stringify(ui[a.dataset.app])) {
+            Object.assign(a._state, ui[a.dataset.app]);
+            render(a);
+          }
+        });
+    });
+    if (globalThis.Tweak) {
+      const design = { bodySize: 16 };
+      const reader = root.querySelector(&#x27;[data-app=&quot;desktop&quot;]&#x27;);
+      const tweak = new Tweak({
+        container: reader,
+        onChange: () =&gt;
+          root
+            .querySelectorAll(&#x27;.bp-entrytext&#x27;)
+            .forEach((x) =&gt; (x.style.fontSize = design.bodySize + &#x27;px&#x27;)),
+      });
+      tweak.addSlider(design, &#x27;bodySize&#x27;, {
+        label: &#x27;正文大小&#x27;,
+        min: 14,
+        max: 20,
+        step: 1,
+        unit: &#x27;px&#x27;,
+      });
+    }
+  })();
+&lt;/script&gt;
+
+&lt;script src=&quot;https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  if (window.FloatingUIDOM == null) {
+    return;
+  }
+  const { autoUpdate, computePosition, flip, offset, shift, size } =
+    window.FloatingUIDOM;
+  const tooltipPlacements = new Set([&quot;top&quot;, &quot;right&quot;, &quot;bottom&quot;, &quot;left&quot;]);
+  const tooltipId = `codex-visualization-tooltip-${
+    window.crypto?.randomUUID?.() ?? Date.now().toString(36)
+  }`;
+  const tooltipGap = 5;
+  const hoverDelay = 700;
+  const skipDelay = 300;
+  let activeTrigger = null;
+  let pendingTrigger = null;
+  let tooltip = null;
+  let openTimeout = null;
+  let autoUpdateCleanup = null;
+  let positionRequest = 0;
+  let skipDelayUntil = 0;
+  let lastPointerWasTouch = false;
+  let pinnedByTouch = false;
+
+  const getTrigger = (event) =&gt; {
+    for (const target of event.composedPath()) {
+      if (target?.nodeType === Node.ELEMENT_NODE) {
+        const trigger = target.closest(&quot;[data-tooltip]&quot;);
+        if (trigger) return trigger;
+      }
+    }
+    return null;
+  };
+  const containsTarget = (trigger, target) =&gt;
+    target?.nodeType != null &amp;&amp; trigger.contains(target);
+  const getContent = (trigger) =&gt;
+    trigger.getAttribute(&quot;data-tooltip&quot;)?.trim() ?? &quot;&quot;;
+  const getPlacement = (trigger) =&gt; {
+    const placement = trigger.getAttribute(&quot;data-tooltip-placement&quot;);
+    return tooltipPlacements.has(placement) ? placement : &quot;top&quot;;
+  };
+  const getTooltip = () =&gt; {
+    if (tooltip == null) {
+      tooltip = document.createElement(&quot;div&quot;);
+      tooltip.id = tooltipId;
+      tooltip.className = &quot;tooltip&quot;;
+      tooltip.setAttribute(&quot;role&quot;, &quot;tooltip&quot;);
+    }
+    return tooltip;
+  };
+  const setDescribedBy = (trigger, described) =&gt; {
+    const ids = new Set(
+      (trigger.getAttribute(&quot;aria-describedby&quot;) ?? &quot;&quot;)
+        .split(/\s+/)
+        .filter(Boolean),
+    );
+    if (described) {
+      ids.add(tooltipId);
+    } else {
+      ids.delete(tooltipId);
+    }
+    if (ids.size === 0) {
+      trigger.removeAttribute(&quot;aria-describedby&quot;);
+    } else {
+      trigger.setAttribute(&quot;aria-describedby&quot;, [...ids].join(&quot; &quot;));
+    }
+  };
+  const clearOpenTimeout = () =&gt; {
+    if (openTimeout != null) {
+      window.clearTimeout(openTimeout);
+      openTimeout = null;
+    }
+    pendingTrigger = null;
+  };
+  const closeTooltip = (activateSkipDelay = true) =&gt; {
+    clearOpenTimeout();
+    pinnedByTouch = false;
+    positionRequest += 1;
+    autoUpdateCleanup?.();
+    autoUpdateCleanup = null;
+    if (activeTrigger == null) {
+      return;
+    }
+    setDescribedBy(activeTrigger, false);
+    activeTrigger = null;
+    tooltip?.remove();
+    if (activateSkipDelay) {
+      skipDelayUntil = Date.now() + skipDelay;
+    }
+  };
+  const updatePosition = (trigger, floating) =&gt; {
+    const request = ++positionRequest;
+    void computePosition(trigger, floating, {
+      middleware: [
+        offset(tooltipGap),
+        flip({ padding: tooltipGap }),
+        shift({ padding: tooltipGap }),
+        size({
+          padding: tooltipGap,
+          apply({ availableHeight, availableWidth, elements }) {
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-width&quot;,
+              `${Math.max(0, availableWidth)}px`,
+            );
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-height&quot;,
+              `${Math.max(0, availableHeight)}px`,
+            );
+          },
+        }),
+      ],
+      placement: getPlacement(trigger),
+      strategy: &quot;fixed&quot;,
+    })
+      .then(({ x, y }) =&gt; {
+        if (activeTrigger !== trigger || request !== positionRequest) {
+          return;
+        }
+        const scale = window.devicePixelRatio || 1;
+        floating.style.transform = `translate(${Math.round(x * scale) / scale}px, ${Math.round(y * scale) / scale}px)`;
+        floating.style.visibility = &quot;visible&quot;;
+      })
+      .catch(() =&gt; {
+        if (activeTrigger === trigger &amp;&amp; request === positionRequest) {
+          closeTooltip(false);
+        }
+      });
+  };
+  const openTooltip = (trigger) =&gt; {
+    const content = getContent(trigger);
+    if (!trigger.isConnected || content.length === 0) {
+      return;
+    }
+    clearOpenTimeout();
+    if (activeTrigger === trigger) {
+      return;
+    }
+    closeTooltip();
+    const floating = getTooltip();
+    floating.textContent = content;
+    floating.style.visibility = &quot;hidden&quot;;
+    floating.style.transform = &quot;translate(0, 0)&quot;;
+    document.body.appendChild(floating);
+    activeTrigger = trigger;
+    setDescribedBy(trigger, true);
+    autoUpdateCleanup = autoUpdate(trigger, floating, () =&gt; {
+      updatePosition(trigger, floating);
+    });
+  };
+  const requestOpen = (trigger, immediate = false) =&gt; {
+    if (
+      getContent(trigger).length === 0 ||
+      activeTrigger === trigger ||
+      pendingTrigger === trigger
+    ) {
+      return;
+    }
+    clearOpenTimeout();
+    pendingTrigger = trigger;
+    const delay =
+      immediate || activeTrigger != null || Date.now() &lt; skipDelayUntil
+        ? 0
+        : hoverDelay;
+    if (delay === 0) {
+      openTooltip(trigger);
+      return;
+    }
+    openTimeout = window.setTimeout(() =&gt; {
+      openTimeout = null;
+      pendingTrigger = null;
+      openTooltip(trigger);
+    }, delay);
+  };
+  const handlePointerOpen = (event) =&gt; {
+    if (event.pointerType === &quot;touch&quot;) {
+      return;
+    }
+    const trigger = getTrigger(event);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    requestOpen(trigger);
+  };
+  const handlePointer = (event) =&gt; {
+    lastPointerWasTouch =
+      event.type === &quot;pointerdown&quot; &amp;&amp; event.pointerType === &quot;touch&quot;;
+  };
+  const handleTouchClick = (event) =&gt; {
+    const isTouch = event.pointerType === &quot;touch&quot; || lastPointerWasTouch;
+    lastPointerWasTouch = false;
+    if (!isTouch || event.detail === 0) {
+      return;
+    }
+    const trigger = getTrigger(event);
+    if (
+      trigger == null ||
+      !trigger.isConnected ||
+      getContent(trigger).length === 0 ||
+      (pinnedByTouch &amp;&amp; activeTrigger === trigger)
+    ) {
+      if (pinnedByTouch) {
+        closeTooltip();
+      }
+      return;
+    }
+    openTooltip(trigger);
+    pinnedByTouch = activeTrigger === trigger;
+    window.setTimeout(() =&gt; {
+      if (activeTrigger === trigger &amp;&amp; !trigger.isConnected) {
+        closeTooltip(false);
+      }
+    }, 0);
+  };
+  const handleLeave = (event) =&gt; {
+    if (pinnedByTouch) {
+      return;
+    }
+    const trigger = getTrigger(event);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handleFocusIn = (event) =&gt; {
+    const trigger = getTrigger(event);
+    if (trigger?.matches(&quot;:focus-visible&quot;)) {
+      requestOpen(trigger, true);
+    }
+  };
+  const handleKeyDown = (event) =&gt; {
+    if (event.key === &quot;Escape&quot;) {
+      closeTooltip();
+    }
+  };
+  const handleContextMenu = (event) =&gt; {
+    lastPointerWasTouch = false;
+    const trigger = getTrigger(event);
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handlers = {
+    pointerover: handlePointerOpen,
+    pointerdown: handlePointer,
+    pointercancel: handlePointer,
+    click: handleTouchClick,
+    pointerout: handleLeave,
+    focusin: handleFocusIn,
+    focusout: handleLeave,
+    keydown: handleKeyDown,
+    contextmenu: handleContextMenu,
+  };
+  const roots = new Map();
+  const handledEvents = new WeakSet();
+  const handleEvent = (event) =&gt; {
+    if (handledEvents.has(event)) return;
+    handledEvents.add(event);
+    handlers[event.type](event);
+  };
+  const discoverRoots = (node) =&gt; {
+    if (node.shadowRoot) listen(node.shadowRoot);
+    for (const element of node.querySelectorAll(&quot;*&quot;)) {
+      if (element.shadowRoot) listen(element.shadowRoot);
+    }
+  };
+  const listen = (root) =&gt; {
+    if (roots.has(root)) return;
+    for (const type of Object.keys(handlers)) root.addEventListener(type, handleEvent);
+    const observer = new window.MutationObserver((records) =&gt; {
+      for (const { addedNodes } of records) {
+        for (const node of addedNodes) {
+          if (node.nodeType === Node.ELEMENT_NODE) discoverRoots(node);
+        }
+      }
+      for (const [root, cleanup] of roots) {
+        if (root.host &amp;&amp; !root.host.isConnected) {
+          cleanup();
+          roots.delete(root);
+        }
+      }
+      if (activeTrigger &amp;&amp; !activeTrigger.isConnected) closeTooltip(false);
+    });
+    observer.observe(root, { childList: true, subtree: true });
+    roots.set(root, () =&gt; {
+      observer.disconnect();
+      for (const type of Object.keys(handlers)) root.removeEventListener(type, handleEvent);
+    });
+    discoverRoots(root);
+  };
+  const destroy = () =&gt; {
+    closeTooltip(false);
+    lastPointerWasTouch = false;
+    for (const cleanup of roots.values()) cleanup();
+    roots.clear();
+    tooltip = null;
+  };
+
+  // Events between children of one shadow root never reach the document.
+  listen(document);
+  window.addEventListener(&quot;pagehide&quot;, destroy, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-tabs&quot;&gt;
+(() =&gt; {
+  const selector = &#x27;.nav[role=&quot;tablist&quot;] [role=&quot;tab&quot;]&#x27;;
+  const disabled = &#x27;:disabled,[aria-disabled=&quot;true&quot;]&#x27;;
+  const selectTab = (selected) =&gt; {
+    const panelId = selected.getAttribute(&quot;aria-controls&quot;);
+    for (const tab of selected.closest(&#x27;[role=&quot;tablist&quot;]&#x27;).querySelectorAll(&#x27;[role=&quot;tab&quot;]&#x27;)) {
+      const active = tab === selected;
+      tab.classList.toggle(&quot;active&quot;, active);
+      tab.setAttribute(&quot;aria-selected&quot;, String(active));
+      const id = tab.getAttribute(&quot;aria-controls&quot;);
+      const panel = id &amp;&amp; document.getElementById(id);
+      if (panel != null) {
+        panel.hidden = id !== panelId;
+        if (!panel.hidden &amp;&amp; selected.id) {
+          panel.setAttribute(&quot;aria-labelledby&quot;, selected.id);
+        }
+      }
+    }
+  };
+  const interact = (event) =&gt; {
+    const tab = event.target?.closest?.(selector);
+    if (event.defaultPrevented || tab == null || tab.matches(disabled)) {
+      return;
+    }
+    if (event.type === &quot;click&quot;) {
+      selectTab(tab);
+      return;
+    }
+    const tabs = Array.from(
+      tab.closest(&#x27;[role=&quot;tablist&quot;]&#x27;).querySelectorAll(&#x27;[role=&quot;tab&quot;]&#x27;),
+    ).filter((candidate) =&gt; !candidate.matches(disabled));
+    const current = tabs.indexOf(tab);
+    let next;
+    if (event.key === &quot;ArrowRight&quot; || event.key === &quot;ArrowDown&quot;) {
+      next = (current + 1) % tabs.length;
+    } else if (event.key === &quot;ArrowLeft&quot; || event.key === &quot;ArrowUp&quot;) {
+      next = (current + tabs.length - 1) % tabs.length;
+    } else if (event.key === &quot;Home&quot;) {
+      next = 0;
+    } else if (event.key === &quot;End&quot;) {
+      next = tabs.length - 1;
+    } else {
+      return;
+    }
+    event.preventDefault();
+    tabs[next].focus();
+    selectTab(tabs[next]);
+  };
+
+  for (const list of document.querySelectorAll(&#x27;.nav[role=&quot;tablist&quot;]&#x27;)) {
+    const selected =
+      list.querySelector(&#x27;[role=&quot;tab&quot;][aria-selected=&quot;true&quot;]&#x27;) ??
+      list.querySelector(&#x27;[role=&quot;tab&quot;].active&#x27;) ??
+      list.querySelector(&#x27;[role=&quot;tab&quot;]&#x27;);
+    if (selected != null) {
+      selectTab(selected);
+    }
+  }
+  document.addEventListener(&quot;click&quot;, interact);
+  document.addEventListener(&quot;keydown&quot;, interact);
+  window.addEventListener(&quot;pagehide&quot;, () =&gt; {
+    document.removeEventListener(&quot;click&quot;, interact);
+    document.removeEventListener(&quot;keydown&quot;, interact);
+  }, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-carousel&quot;&gt;
+  (() =&gt; {
+    for (const root of document.querySelectorAll(&quot;.viz-carousel&quot;)) {
+      const panels = Array.from(
+        root.querySelectorAll(&quot;:scope &gt; [data-variant]&quot;),
+      );
+      if (panels.length === 0) {
+        continue;
+      }
+      root.setAttribute(&quot;role&quot;, &quot;group&quot;);
+      panels.forEach((panel, index) =&gt; {
+        panel.hidden = index !== 0;
+        panel.setAttribute(&quot;role&quot;, &quot;group&quot;);
+        if (!panel.hasAttribute(&quot;aria-label&quot;)) {
+          panel.setAttribute(&quot;aria-label&quot;, panel.dataset.variant);
+        }
+      });
+      root.dataset.activeVariant = panels[0].dataset.variant;
+      if (panels.length === 1) {
+        continue;
+      }
+
+      const controls = document.createElement(&quot;div&quot;);
+      controls.className = &quot;viz-carousel-controls&quot;;
+      // Portable copy of the settings dropdown&#x27;s legacy glyph; no 14px icon-package preset matches it.
+      // https://github.com/openai/openai/blob/master/codex/codex-apps/webview/src/icons/chevron.svg
+      controls.innerHTML = `
+      &lt;button type=&quot;button&quot; class=&quot;viz-carousel-previous cursor-interaction&quot;&gt;&lt;i data-lucide=&quot;chevron-left&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+      &lt;details class=&quot;viz-carousel-picker&quot;&gt;
+        &lt;summary class=&quot;cursor-interaction&quot;&gt;
+          &lt;span class=&quot;viz-carousel-count tabular-nums&quot;&gt;&lt;/span&gt;
+          &lt;span class=&quot;viz-carousel-name&quot;&gt;&lt;/span&gt;
+          &lt;svg class=&quot;viz-carousel-caret&quot; width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 20 21&quot; fill=&quot;none&quot; aria-hidden=&quot;true&quot; focusable=&quot;false&quot;&gt;
+            &lt;path d=&quot;M15.2793 7.71101C15.539 7.45131 15.961 7.45131 16.2207 7.71101C16.4804 7.97071 16.4804 8.39272 16.2207 8.65242L10.4707 14.4024C10.211 14.6621 9.78902 14.6621 9.52932 14.4024L3.77932 8.65242L3.69436 8.54792C3.52385 8.28979 3.55205 7.93828 3.77932 7.71101C4.00659 7.48374 4.3581 7.45554 4.61623 7.62605L4.72073 7.71101L10 12.9903L15.2793 7.71101Z&quot; fill=&quot;currentColor&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;0.6&quot; /&gt;
+          &lt;/svg&gt;
+        &lt;/summary&gt;
+        &lt;div class=&quot;viz-carousel-options&quot;&gt;&lt;/div&gt;
+      &lt;/details&gt;
+      &lt;button type=&quot;button&quot; class=&quot;viz-carousel-next cursor-interaction&quot;&gt;&lt;i data-lucide=&quot;chevron-right&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;`;
+      const previous = controls.querySelector(&quot;.viz-carousel-previous&quot;);
+      const next = controls.querySelector(&quot;.viz-carousel-next&quot;);
+      const picker = controls.querySelector(&quot;.viz-carousel-picker&quot;);
+      const summary = picker.querySelector(&quot;summary&quot;);
+      const count = controls.querySelector(&quot;.viz-carousel-count&quot;);
+      const name = controls.querySelector(&quot;.viz-carousel-name&quot;);
+      const options = controls.querySelector(&quot;.viz-carousel-options&quot;);
+      const status = document.createElement(&quot;span&quot;);
+      status.className = &quot;sr-only&quot;;
+      status.setAttribute(&quot;role&quot;, &quot;status&quot;);
+      status.setAttribute(&quot;aria-live&quot;, &quot;polite&quot;);
+      status.setAttribute(&quot;aria-atomic&quot;, &quot;true&quot;);
+      previous.setAttribute(
+        &quot;aria-label&quot;,
+        root.dataset.previousLabel ?? &quot;Previous variant&quot;,
+      );
+      next.setAttribute(&quot;aria-label&quot;, root.dataset.nextLabel ?? &quot;Next variant&quot;);
+
+      let active = 0;
+      let mousePointerId = null;
+      let summaryPointerHandled = false;
+      summary.addEventListener(&quot;pointerdown&quot;, (event) =&gt; {
+        summaryPointerHandled =
+          event.pointerType === &quot;mouse&quot; &amp;&amp; event.button === 0 &amp;&amp; !event.ctrlKey;
+        if (!summaryPointerHandled) {
+          return;
+        }
+        event.preventDefault();
+        summary.focus({ preventScroll: true });
+        picker.open = !picker.open;
+        mousePointerId = picker.open ? event.pointerId : null;
+      });
+      summary.addEventListener(&quot;click&quot;, (event) =&gt; {
+        if (summaryPointerHandled &amp;&amp; event.detail &gt; 0) {
+          event.preventDefault();
+        }
+      });
+      const choices = panels.map((panel, index) =&gt; {
+        const choice = document.createElement(&quot;button&quot;);
+        choice.type = &quot;button&quot;;
+        choice.className = &quot;cursor-interaction&quot;;
+        choice.textContent = panel.dataset.variant;
+        choice.addEventListener(&quot;click&quot;, () =&gt; {
+          select(index);
+          summary.focus();
+        });
+        choice.addEventListener(&quot;pointerup&quot;, (event) =&gt; {
+          if (
+            picker.open &amp;&amp;
+            event.pointerType === &quot;mouse&quot; &amp;&amp;
+            event.button === 0 &amp;&amp;
+            event.pointerId === mousePointerId
+          ) {
+            choice.click();
+          }
+        });
+        options.appendChild(choice);
+        return choice;
+      });
+      const select = (index) =&gt; {
+        const changed = active !== index;
+        active = index;
+        panels.forEach((panel, position) =&gt; {
+          panel.hidden = position !== active;
+          choices[position].setAttribute(
+            &quot;aria-current&quot;,
+            String(position === active),
+          );
+        });
+        root.dataset.activeVariant = panels[active].dataset.variant;
+        count.textContent = `${active + 1} / ${panels.length}`;
+        name.textContent = panels[active].dataset.variant;
+        picker.open = false;
+        mousePointerId = null;
+        if (changed) {
+          status.textContent = `${count.textContent}: ${name.textContent}`;
+        }
+      };
+      previous.addEventListener(&quot;click&quot;, () =&gt;
+        select((active + panels.length - 1) % panels.length),
+      );
+      next.addEventListener(&quot;click&quot;, () =&gt;
+        select((active + 1) % panels.length),
+      );
+      picker.addEventListener(&quot;keydown&quot;, (event) =&gt; {
+        if (event.key === &quot;Escape&quot; &amp;&amp; picker.open) {
+          event.preventDefault();
+          picker.open = false;
+          mousePointerId = null;
+          summary.focus();
+          return;
+        }
+        if (event.altKey || event.ctrlKey || event.metaKey) {
+          return;
+        }
+        const index = choices.indexOf(document.activeElement);
+        let nextIndex;
+        if (event.key === &quot;ArrowDown&quot;) {
+          nextIndex = index &lt; 0 ? active : (index + 1) % choices.length;
+        } else if (event.key === &quot;ArrowUp&quot;) {
+          nextIndex = index &lt; 0 ? active : (index + choices.length - 1) % choices.length;
+        } else if (picker.open &amp;&amp; event.key === &quot;Home&quot;) {
+          nextIndex = 0;
+        } else if (picker.open &amp;&amp; event.key === &quot;End&quot;) {
+          nextIndex = choices.length - 1;
+        } else {
+          return;
+        }
+        event.preventDefault();
+        picker.open = true;
+        choices[nextIndex].focus();
+      });
+      picker.addEventListener(&quot;focusout&quot;, (event) =&gt; {
+        if (!picker.contains(event.relatedTarget)) {
+          picker.open = false;
+          mousePointerId = null;
+        }
+      });
+      const dismiss = (event) =&gt; {
+        if (!summary.contains(event.target)) {
+          mousePointerId = null;
+        }
+        if (!picker.contains(event.target)) {
+          picker.open = false;
+        }
+      };
+      const endPointerSelection = () =&gt; {
+        mousePointerId = null;
+      };
+      const sizePicker = () =&gt; {
+        root.style.setProperty(
+          &quot;--viz-carousel-picker-height&quot;,
+          `${picker.open ? options.offsetHeight : 0}px`,
+        );
+      };
+      picker.addEventListener(&quot;toggle&quot;, sizePicker);
+      window.addEventListener(&quot;resize&quot;, sizePicker);
+      document.addEventListener(&quot;pointerdown&quot;, dismiss);
+      document.addEventListener(&quot;pointerup&quot;, endPointerSelection);
+      document.addEventListener(&quot;pointercancel&quot;, endPointerSelection);
+      window.addEventListener(&quot;blur&quot;, endPointerSelection);
+      window.addEventListener(
+        &quot;pagehide&quot;,
+        () =&gt; {
+          document.removeEventListener(&quot;pointerdown&quot;, dismiss);
+          document.removeEventListener(&quot;pointerup&quot;, endPointerSelection);
+          document.removeEventListener(&quot;pointercancel&quot;, endPointerSelection);
+          window.removeEventListener(&quot;blur&quot;, endPointerSelection);
+          window.removeEventListener(&quot;resize&quot;, sizePicker);
+        },
+        { once: true },
+      );
+      root.append(controls, status);
+      select(0);
+    }
+  })();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-lucide&quot; async src=&quot;https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  const initialize = () =&gt; {
+    globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+  };
+  if (globalThis.lucide != null) {
+    initialize();
+    return;
+  }
+  document
+    .getElementById(&quot;codex-visualization-lucide&quot;)
+    ?.addEventListener(&quot;load&quot;, initialize, { once: true });
+})();
+&lt;/script&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+
+<script>(() => {
+  const frame = document.getElementById("codex-visualization");
+  if (!(frame instanceof HTMLIFrameElement)) {
+    return;
+  }
+  const isShare = document.documentElement.classList.contains(
+    "visualization-share-root",
+  );
+  let viewportHeight = globalThis.innerHeight;
+  let sizeFingerprint = null;
+  let sizeWriteTimeout;
+  let lastSize = null;
+  let pendingSize = null;
+  const storageKey = `codex:visualization-widget-state-v2:${JSON.stringify([
+    globalThis.location.pathname,
+    globalThis.location.search,
+  ])}`;
+  const sizeStorageKey = `${storageKey}:share-size-v1`;
+  const parseState = (serializedState) => {
+    if (
+      typeof serializedState !== "string" ||
+      new TextEncoder().encode(serializedState).length > 16 * 1024
+    ) {
+      throw new TypeError(
+        "Widget state must be a JSON object of at most 16 KiB",
+      );
+    }
+    /** @type {unknown} */
+    const state = JSON.parse(serializedState);
+    if (
+      state == null ||
+      typeof state !== "object" ||
+      Array.isArray(state) ||
+      ("imageIds" in state &&
+        (!Array.isArray(state.imageIds) || state.imageIds.length > 0))
+    ) {
+      throw new TypeError("Widget state must be a JSON object");
+    }
+    const storedState = { modelContent: null, privateContent: null, ...state };
+    const canonicalState = JSON.stringify(
+      storedState,
+      (_key, /** @type {unknown} */ value) => {
+        if (typeof value === "number" && !Number.isFinite(value)) {
+          throw new TypeError("Widget state must contain finite numbers");
+        }
+        return value;
+      },
+    );
+    if (new TextEncoder().encode(canonicalState).length > 16 * 1024) {
+      throw new TypeError(
+        "Widget state must be a JSON object of at most 16 KiB",
+      );
+    }
+    return storedState;
+  };
+  let storage = null;
+  let state = null;
+  try {
+    const localStorage = globalThis.localStorage;
+    const probeKey = `${storageKey}:probe`;
+    localStorage.setItem(probeKey, "1");
+    localStorage.removeItem(probeKey);
+    storage = localStorage;
+    const savedState = storage.getItem(storageKey);
+    if (savedState != null) {
+      try {
+        state = parseState(savedState);
+      } catch {
+        // Invalid saved state does not disable future writes.
+      }
+    }
+  } catch {
+    storage = null;
+  }
+  const persistSize = () => {
+    globalThis.clearTimeout(sizeWriteTimeout);
+    if (pendingSize == null) {
+      return;
+    }
+    try {
+      storage?.setItem(sizeStorageKey, pendingSize);
+    } catch {
+      // A denied or full cache must not affect the visualization.
+    }
+    pendingSize = null;
+  };
+  if (isShare) {
+    globalThis.addEventListener("pagehide", persistSize);
+  }
+  const initialGlobals = {
+    widgetState: state,
+    statePersistence: storage == null ? "none" : "local",
+  };
+
+  const channel = new MessageChannel();
+  channel.port1.addEventListener("message", (event) => {
+    const data = event.data;
+    if (typeof data !== "object" || data == null) {
+      return;
+    }
+    if (data.type === "widget-state-write") {
+      if (!Number.isSafeInteger(data.id) || data.id <= 0) {
+        return;
+      }
+      let ok = false;
+      try {
+        if (storage != null) {
+          const state = parseState(data.state);
+          storage.setItem(storageKey, JSON.stringify(state));
+          ok = true;
+        }
+      } catch {
+        // Storage denial, quota limits, and invalid state return a failed receipt.
+      }
+      channel.port1.postMessage({
+        type: "widget-state-result",
+        id: data.id,
+        ok,
+      });
+      return;
+    }
+    if (data.type === "height") {
+      const height = data.height;
+      if (
+        typeof height !== "number" ||
+        !Number.isFinite(height) ||
+        height < 0
+      ) {
+        return;
+      }
+      if (height <= 10_000) {
+        const width = isShare && storage != null ? frame.clientWidth : null;
+        frame.style.height = Math.ceil(height) + "px";
+        if (isShare && storage != null) {
+          const size = JSON.stringify({
+            fingerprint: sizeFingerprint,
+            width,
+            viewportHeight: globalThis.innerHeight,
+            dark: globalThis.matchMedia("(prefers-color-scheme: dark)").matches,
+            scale: globalThis.devicePixelRatio,
+            height: Math.ceil(height),
+          });
+          if (size !== lastSize) {
+            lastSize = size;
+            pendingSize = size;
+            globalThis.clearTimeout(sizeWriteTimeout);
+            sizeWriteTimeout = globalThis.setTimeout(persistSize, 100);
+          }
+        }
+      }
+      if (isShare) {
+        // Keep unusually tall content accessible without accepting an unbounded height.
+        if (height > 10_000 && Number.parseFloat(frame.style.height) === 0) {
+          frame.style.removeProperty("height");
+        }
+        frame.scrolling = height > 10_000 ? "auto" : "no";
+        document.documentElement.classList.add("visualization-share-ready");
+      }
+      return;
+    }
+    if (data.type === "scroll-to") {
+      const top = data.top;
+      if (
+        typeof top === "number" &&
+        Number.isFinite(top) &&
+        top >= 0 &&
+        globalThis.navigator.userActivation?.isActive === true
+      ) {
+        globalThis.scrollTo({
+          top: Math.ceil(
+            globalThis.scrollY + frame.getBoundingClientRect().top + top,
+          ),
+        });
+      }
+      return;
+    }
+    if (data.type === "open-external") {
+      const rawHref = data.href;
+      if (typeof rawHref !== "string") {
+        return;
+      }
+      let href;
+      try {
+        const url = new URL(rawHref, document.baseURI);
+        if (url.protocol !== "https:") {
+          return;
+        }
+        href = url.href;
+      } catch {
+        return;
+      }
+      if (globalThis.navigator.userActivation?.isActive === true) {
+        const anchor = document.createElement("a");
+        anchor.href = href;
+        anchor.rel = "noopener noreferrer";
+        anchor.target = "_blank";
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+      }
+      return;
+    }
+    if (data.type === "follow-up") {
+      const prompt = data.prompt;
+      if (
+        typeof prompt !== "string" ||
+        globalThis.navigator.userActivation?.isActive !== true
+      ) {
+        return;
+      }
+      const title = data.title;
+      globalThis.prompt(typeof title === "string" ? title : prompt, prompt);
+    }
+  });
+  channel.port1.start();
+  const srcdoc = frame.dataset.srcdoc;
+  if (srcdoc == null) {
+    return;
+  }
+  globalThis.addEventListener("resize", () => {
+    const height = Number.parseFloat(frame.style.height);
+    if (!isShare && (!Number.isFinite(height) || height <= viewportHeight)) {
+      frame.style.removeProperty("height");
+    }
+    viewportHeight = globalThis.innerHeight;
+    channel.port1.postMessage({ type: "measure" });
+  });
+  frame.addEventListener(
+    "load",
+    () => {
+      frame.contentWindow?.postMessage(
+        { type: "codex-visualization-initialize" },
+        "*",
+        [channel.port2],
+      );
+    },
+    { once: true },
+  );
+  // Match the trusted bootstrap element, not the same text in an authored title.
+  const frameHtml = srcdoc.replace(
+    '<script type="application/json" id="codex-visualization-widget-state">__CODEX_VISUALIZATION_WIDGET_STATE__<\/script>',
+    () =>
+      '<script type="application/json" id="codex-visualization-widget-state">' +
+      JSON.stringify(initialGlobals).replaceAll("<", "\\u003c") +
+      "<\/script>",
+  );
+  if (isShare && storage != null) {
+    // Fingerprint the rendered document, including restored widget state, without
+    // storing its content. This is a layout cache, not a security identity.
+    let hash = 5381;
+    for (let index = 0; index < frameHtml.length; index += 1) {
+      hash = (hash * 33 + frameHtml.charCodeAt(index)) % 4_294_967_296;
+    }
+    sizeFingerprint = hash.toString(36);
+    try {
+      const size = JSON.parse(storage.getItem(sizeStorageKey) ?? "null");
+      if (
+        size?.fingerprint === sizeFingerprint &&
+        size.width === frame.clientWidth &&
+        size.viewportHeight === globalThis.innerHeight &&
+        size.dark ===
+          globalThis.matchMedia("(prefers-color-scheme: dark)").matches &&
+        size.scale === globalThis.devicePixelRatio &&
+        typeof size.height === "number" &&
+        Number.isFinite(size.height) &&
+        size.height >= 0 &&
+        size.height <= 10_000
+      ) {
+        frame.style.height = size.height + "px";
+      }
+    } catch {
+      // Ignore missing or invalid cache entries and measure the live frame.
+    }
+  }
+  frame.srcdoc = frameHtml;
+  delete frame.dataset.srcdoc;
+})();
+</script>
+</body>
+</html>
