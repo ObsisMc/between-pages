@@ -1,12 +1,12 @@
 # 数字书页以内容布局承载成熟组件，并保留轻拟物双窗与圆团子
 
-- 状态：提议
+- 状态：已采纳
 - 日期：2026-11-03
 - 决策者：Ray
 - 范围：领域
 - 关联：依赖 unread-and-day-page；依赖 partner-local-dates；依赖 ADR-0006；取代 opening-book-home 的D1 日期列表、D3 版式与D4 书签；取代 book-frontend-workspace 的D1 展开双页、D2 书签与目录呈现、D3 左右并排与D7 书页视觉
 
-提议把前端调整为暖纸色、衬线标题与清晰操作组件组成的数字书页：顶栏四个入口，主页呈现此刻与日记入口，日记页由日期索引和一个可在「连续读」与「这一天」之间切换的主区组成，空间功能按内容排版。双窗采用轻拟物数字插画的材质方向，橙蓝团子保留五官和小手，轮廓变得饱满圆润。[设计包](../design/2026-11-03-digital-paper/README.md)收录可交互页面、逐页截图、最终一轮效果稿与实现约束。导航、主页、日记页形态与主页时间线已由 Ray 在 2026-11-03 确定（D1、D2）；组件依赖仍待单独批准。
+提议把前端调整为暖纸色、衬线标题与清晰操作组件组成的数字书页：顶栏四个入口，主页呈现此刻与日记入口，日记页由日期索引和一个可在「连续读」与「这一天」之间切换的主区组成，空间功能按内容排版。双窗采用轻拟物数字插画的材质方向，橙蓝团子保留五官和小手，轮廓变得饱满圆润。[设计包](../design/2026-11-03-digital-paper/README.md)收录可交互页面、逐页截图、最终一轮效果稿与实现约束。导航、主页、日记页形态与主页时间线已由 Ray 在 2026-11-03 确定（D1、D2），同日采纳本 ADR 并批准落地顺序第 2 步列出的依赖。
 
 ## 背景与问题
 
@@ -98,7 +98,17 @@ Ray 希望可以采用 shadcn 一类成熟组件，保留产品辨识度，并�
 ## 落地顺序
 
 1. 书本栈只保留逻辑：Ray 验证后按 #53、#51、#52、#54、#56、#58（含 #57）、#59、#60、#49 的顺序合并；#60 的手动清单只需验阅读、未读、编辑、离线等行为，书本外观项可跳过。关闭 #61、#62，保留分支以取回 D4 的字体与头像。完成条件：上述 PR 已合并，`main` 上有 opening-book-home 与 book-frontend-workspace。
-2. 本 ADR 合到 `main` 时改为已采纳，并在同一 PR 同步 architecture.md 的当前决定。按组件的当前消费者评估 shadcn 依赖及确切版本；依赖增加仍按 AGENTS.md 的审批边界处理。本提议不提前批准安装。
+2. Ray 于 2026-11-03 采纳本 ADR，并批准以下依赖，每个包在第一个用到它的 PR 里加入，版本精确锁定：开发依赖 `tailwindcss` 4.3.3、`@tailwindcss/vite` 4.3.3；运行依赖 `class-variance-authority` 0.7.1、`clsx` 2.1.1、`tailwind-merge` 3.7.0、`lucide-react` 1.59.0、`@radix-ui/react-slot` 1.5.0、`@radix-ui/react-dropdown-menu` 2.2.1、`@radix-ui/react-tabs` 1.2.1、`@radix-ui/react-collapsible` 1.2.1、`@radix-ui/react-dialog` 1.3.1、`@radix-ui/react-popover` 1.3.1、`@radix-ui/react-toggle-group` 1.2.1、`@radix-ui/react-tooltip` 1.4.1。不加入 `radix-ui` 总包、`shadcn` 命令行（生成组件时用 `npx shadcn@4.22.1` 一次）、`tw-animate-css` 与 `react-day-picker`；需要时另行批准。Tailwind 的基础样式重置从第一个 PR 起全站生效，旧 CSS 随各页改版删除。`apps/web` 的子模块边界如下，`checks/verify-dependency-direction.ts` 随各 PR 同步（同日批准）：
+
+   | 子模块 | 职责 | 可引用 |
+   | --- | --- | --- |
+   | `ui`（新） | shadcn 生成的基础组件与 `cn()` | 无 |
+   | `shell`（新） | 顶栏、次级导航、页面容器与入口可见规则（自 `pages/SiteContents` 移入） | `ui`、`api` |
+   | `windows`（新） | 分层双窗：窗框、窗台、天空与按当地时间的昼夜 | `avatar` |
+   | `avatar` | 圆团子 `<Mascot>` 与带名字的头像 | 无 |
+   | `day-feed` | 增加日期索引 `DateIndex`，复用双向加载模型 | 不变 |
+   | `diary` | 日期索引与两种视图的日记页 | 增加 `ui`、`shell` |
+   | `book` | 逐步删除 | — |
 3. 先完成组件主题、顶栏导航、分层双窗与主页（复用 `HomeClocks`、`SiteContents` 的可见规则），再做日记页：日期索引与两种视图，复用 `DayFeed`、`DayEditor` 与未读按钮；删除 `BookSpread`、书签与目录。以既有作者、保存、未读和位置保持场景回归。
 4. 再落实心愿、纪念日、两地时间、空间与备份；登录和邀请复用认证与关系流程。每个行为变更同步模块 README 和对应测试。
 5. 在桌面 Chromium、WebKit 与目标窄窗口检查长文、键盘、中文、时区和异常状态；性能目标由实施前的实际组件基线确定，不以模拟页面的速度替代。

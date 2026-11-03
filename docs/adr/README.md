@@ -30,7 +30,7 @@
 | [partner-local-dates](./2026-10-30-partner-local-dates.md) | 纪念日与礼物的日期以对方的当地日期为准，最后一天精确到小时 | 已实现 | 领域 | 5/5 已完成 |
 | [opening-book-home](./2026-10-31-opening-book-home.md) | 主页以一本书的开篇呈现，两地时间与日记入口融入书页 | 已采纳 | 领域 | 0/5 未开始 |
 | [book-frontend-workspace](./2026-11-01-book-frontend-workspace.md) | 书页式前端以目录连接页面，日记用双页工作区和按日期连续浏览 | 已采纳 | 领域 | 0/9 未开始 |
-| [digital-paper-interface](./2026-11-03-digital-paper-interface.md) | 数字书页以内容布局承载成熟组件，并保留轻拟物双窗与圆团子 | 提议 | 领域 | 0/10 未开始 |
+| [digital-paper-interface](./2026-11-03-digital-paper-interface.md) | 数字书页以内容布局承载成熟组件，并保留轻拟物双窗与圆团子 | 已采纳 | 领域 | 0/10 未开始 |
 <!-- adr-index:end -->
 
 ## 原则
