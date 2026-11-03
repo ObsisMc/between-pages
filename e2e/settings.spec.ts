@@ -91,6 +91,8 @@ for (const viewport of VIEWPORTS) {
     test.setTimeout(120_000);
     const a = await pair(browser, `ts${viewport.width}${browserName}${run}`, viewport);
 
+    // A's header lists the space once it reads the binding again, as on any new page.
+    await a.reload();
     await a
       .getByRole('navigation', { name: '主要' })
       .getByRole('button', { name: /^设置/ })

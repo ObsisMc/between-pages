@@ -168,7 +168,7 @@ test('AUTH-08 AUTH-11 SHARE-03 restores the same space with the former partner w
   await unbind(a);
 
   // B invites A again without setting a range; A restores the same space without one.
-  await b.getByRole('link', { name: '← 首页' }).click();
+  await b.getByRole('navigation', { name: '主要' }).getByRole('link', { name: '此刻' }).click();
   const again = await inviteLink(b, (page) => page.getByLabel('暂不设置').check());
   await a.goto(again);
   await expect(a.getByText(`接受后恢复你和 ${name('b')} 原来的双人空间。`)).toBeVisible();
@@ -176,7 +176,7 @@ test('AUTH-08 AUTH-11 SHARE-03 restores the same space with the former partner w
   await a.getByRole('button', { name: '接受邀请' }).click();
   await expect(a).toHaveURL(new RegExp(`${spaceUrl}$`));
   await expect(a.getByText('当前绑定中')).toBeVisible();
-  await expect(a.locator('.periods li')).toHaveCount(2);
+  await expect(a.getByRole('region', { name: '绑定记录' }).getByRole('listitem')).toHaveCount(2);
   await expect(
     a.getByText('共享：全部历史与以后（尚未为本次绑定确认，日记没有共享；之前的设置仅供参考）'),
   ).toBeVisible();
