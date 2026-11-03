@@ -1,11 +1,9 @@
-import { useEffect, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { signOut } from '../api/auth.ts';
 import { useMe } from '../auth/me.ts';
 import { BackupBanner } from '../backup/index.ts';
 import { BookSpread } from '../book/index.ts';
-import { clearPendingInvite, pendingInvite } from '../join/index.ts';
+import { pendingInvite } from '../join/index.ts';
 import { RelationshipPanel, useBinding } from '../relationship/index.ts';
 import { HomeClocks } from '../two-clocks/index.ts';
 import { localToday } from './today.ts';
@@ -37,9 +35,7 @@ function Windows({ together }: { together: boolean }) {
 export function HomePage() {
   const me = useMe();
   const binding = useBinding();
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [failed, setFailed] = useState(false);
   const bound = !!binding.data?.binding;
   const date = dateParts();
 
@@ -47,20 +43,6 @@ export function HomePage() {
   useEffect(() => {
     if (pendingInvite()) void navigate('/join', { replace: true });
   }, [navigate]);
-
-  const onSignOut = async () => {
-    setFailed(false);
-    try {
-      await signOut();
-      // Drop every cached answer and a kept invitation of the old session before showing
-      // the login page.
-      queryClient.clear();
-      clearPendingInvite();
-      await navigate('/login', { replace: true });
-    } catch {
-      setFailed(true);
-    }
-  };
 
   return (
     <main className="home">
@@ -92,17 +74,6 @@ export function HomePage() {
               </Link>
             </nav>
             {me.data && <RelationshipPanel userId={me.data.user.id} />}
-            <p className="home-account">
-              <span>已登录为 {me.data?.user.displayName}</span> ·{' '}
-              <button type="button" className="home-sign-out" onClick={() => void onSignOut()}>
-                退出
-              </button>
-            </p>
-            {failed && (
-              <p className="notice" role="alert">
-                退出失败，请重试
-              </p>
-            )}
           </>
         }
       />

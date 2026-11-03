@@ -10,6 +10,15 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 // combined scenario did not fit one test's budget.
 const run = Date.now().toString(36);
 
+/** The space page is under the site header's 「设置」 (digital-paper-interface D1). */
+async function openSpace(page: Page) {
+  await page
+    .getByRole('navigation', { name: '主要' })
+    .getByRole('button', { name: /^设置/ })
+    .click();
+  await page.getByRole('menuitem', { name: '双人空间' }).click();
+}
+
 // Ray chose 60 s on 2026-11-01 for the combined scenario (19–27 s normally); it still holds
 // for each part.
 test.describe.configure({ timeout: 60_000 });
@@ -24,7 +33,7 @@ async function signedIn(browser: Browser, name: string): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
   await page.goto('/login');
   await devLogin(page, name);
-  await expect(page.getByText(`已登录为 ${name}`)).toBeVisible();
+  await expect(page.getByRole('button', { name: `账号：${name}` })).toBeVisible();
   return page;
 }
 
@@ -109,8 +118,8 @@ test('AUTH-02 AUTH-11 SHARE-03 binds a pair through an invitation, each with a p
   await b.getByRole('link', { name: '去登录' }).click();
   await devLogin(b, name('b'));
   await expect(b).toHaveURL(/\/join$/);
-  await expect(b.getByText(name('a'))).toBeVisible();
-  await expect(b.getByText(name('b'))).toBeVisible();
+  await expect(b.getByRole('main').getByText(name('a'))).toBeVisible();
+  await expect(b.getByRole('main').getByText(name('b'))).toBeVisible();
   await expect(b.getByText(/首版绑定后搭档固定/)).toBeVisible();
 
   // B shares one day only.
@@ -121,7 +130,7 @@ test('AUTH-02 AUTH-11 SHARE-03 binds a pair through an invitation, each with a p
 
   // A sees the space and only A's own range.
   await a.goto('/');
-  await a.getByRole('link', { name: `与 ${name('b')} 的空间` }).click();
+  await openSpace(a);
   await expect(a.getByText('共享：全部历史与以后（已为本次绑定确认，正在共享）')).toBeVisible();
   await expect(a.locator('body')).not.toContainText('2026-10-05');
 });

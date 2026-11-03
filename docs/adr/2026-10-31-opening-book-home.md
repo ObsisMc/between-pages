@@ -4,7 +4,7 @@
 - 日期：2026-10-31
 - 决策者：Ray
 - 范围：领域
-- 关联：依赖 spaces-and-invitations；取代 unread-and-day-page 的D3 首页位置；取代 two-clocks 的D4 首页呈现
+- 关联：依赖 spaces-and-invitations；取代 unread-and-day-page 的D3 首页位置；取代 two-clocks 的D4 首页呈现；D1 日期列表、D3 版式与D4 书签被 digital-paper-interface 取代
 
 主页是一段不直接展示日记正文的开篇（`/`，`apps/web/src/pages/HomePage.tsx`）。宽窗口显示展开的两页书：左页是日期、简短序言和两扇窗的插画，右页显示双方当地时间、共同醒着的时段及当前位置，并提供「打开今天的日记」「浏览所有日记」两个清楚的入口。导航以书签或书页元素融入界面，不使用固定在顶部或左侧的传统导航栏。窄窗口改为一张可纵向滚动的书页，带标注「目录」的书签留在页内、屏幕内。未绑定时展示邀请入口。本 ADR 只决定主页的信息与呈现；所有日记的连续列表、列表内编辑和未读交互由 [book-frontend-workspace](./2026-11-01-book-frontend-workspace.md) 决定。
 

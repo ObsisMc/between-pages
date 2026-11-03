@@ -21,12 +21,13 @@ test('E2-E4 signs in, survives a reload and signs out', async ({ page, browserNa
   const name = `alice-${browserName}-${run}`;
   await devLogin(page, name);
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByText(`已登录为 ${name}`)).toBeVisible();
+  await expect(page.getByRole('button', { name: `账号：${name}` })).toBeVisible();
 
   await page.reload();
-  await expect(page.getByText(`已登录为 ${name}`)).toBeVisible();
+  await expect(page.getByRole('button', { name: `账号：${name}` })).toBeVisible();
 
-  await page.getByRole('button', { name: '退出' }).click();
+  await page.getByRole('button', { name: `账号：${name}` }).click();
+  await page.getByRole('menuitem', { name: '退出' }).click();
   await expect(page).toHaveURL(/\/login$/);
   await page.goto('/');
   await expect(page).toHaveURL(/\/login$/);
@@ -35,8 +36,9 @@ test('E2-E4 signs in, survives a reload and signs out', async ({ page, browserNa
 test('E5 refuses a second subject with an email already in use', async ({ page, browserName }) => {
   const name = `carol-${browserName}-${run}`;
   await devLogin(page, name);
-  await expect(page.getByText(`已登录为 ${name}`)).toBeVisible();
-  await page.getByRole('button', { name: '退出' }).click();
+  await expect(page.getByRole('button', { name: `账号：${name}` })).toBeVisible();
+  await page.getByRole('button', { name: `账号：${name}` }).click();
+  await page.getByRole('menuitem', { name: '退出' }).click();
   await expect(page).toHaveURL(/\/login$/);
 
   await devLogin(page, `${name}#2`);
@@ -49,7 +51,7 @@ test('E5 refuses a second subject with an email already in use', async ({ page, 
 test('E6 sends a signed-in user from /login to /', async ({ page, browserName }) => {
   const name = `dave-${browserName}-${run}`;
   await devLogin(page, name);
-  await expect(page.getByText(`已登录为 ${name}`)).toBeVisible();
+  await expect(page.getByRole('button', { name: `账号：${name}` })).toBeVisible();
   await page.goto('/login');
   await expect(page).toHaveURL(/\/$/);
 });

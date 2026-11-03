@@ -1,0 +1,70 @@
+[
+  {
+    "engine": "chromium",
+    "routes": [
+      "home",
+      "diary",
+      "wishes",
+      "clocks",
+      "anniversaries",
+      "anniversary",
+      "space",
+      "backup",
+      "login",
+      "invite"
+    ],
+    "viewports": [
+      1024,
+      348,
+      320
+    ],
+    "overflow": [],
+    "errors": [],
+    "interactions": [
+      "date selection",
+      "view filter",
+      "history",
+      "wish creation",
+      "preparation tab",
+      "anniversary creation",
+      "sharing confirmation",
+      "backup log",
+      "mock login",
+      "mock invitation"
+    ]
+  },
+  {
+    "engine": "webkit",
+    "routes": [
+      "home",
+      "diary",
+      "wishes",
+      "clocks",
+      "anniversaries",
+      "anniversary",
+      "space",
+      "backup",
+      "login",
+      "invite"
+    ],
+    "viewports": [
+      1024,
+      348,
+      320
+    ],
+    "overflow": [],
+    "errors": [],
+    "interactions": [
+      "date selection",
+      "view filter",
+      "history",
+      "wish creation",
+      "preparation tab",
+      "anniversary creation",
+      "sharing confirmation",
+      "backup log",
+      "mock login",
+      "mock invitation"
+    ]
+  }
+]

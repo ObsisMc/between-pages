@@ -261,7 +261,7 @@ describe('DaysWorkspace', () => {
     const { router } = renderAt('/days');
     const region = await feed();
     await waitFor(() => expect(dateOf(region, '2026-10-24')).not.toBeNull());
-    expect(screen.getByRole('button', { name: '目录' })).toBeDefined();
+    expect(screen.getByRole('navigation', { name: '主要' })).toBeDefined();
     expect(screen.getByRole('button', { name: '写今天' })).toBeDefined();
     expect(screen.queryByText('从右页选一天')).toBeNull();
     await scrollTo(scrollerOf(region), 800);
@@ -271,7 +271,7 @@ describe('DaysWorkspace', () => {
     const write = await screen.findByRole('button', { name: '写这天' });
     await waitFor(() => expect(document.activeElement).toBe(write));
     expect(screen.queryByRole('region', { name: '所有日记' })).toBeNull();
-    expect(screen.getByRole('button', { name: '目录' })).toBeDefined();
+    expect(screen.getByRole('navigation', { name: '主要' })).toBeDefined();
 
     fireEvent.click(screen.getByRole('link', { name: '← 所有日记' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/days'));

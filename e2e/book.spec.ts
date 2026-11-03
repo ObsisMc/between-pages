@@ -1,8 +1,8 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
 // Browser acceptance of the book frontend (book-frontend-workspace 落地顺序 step 4,
-// opening-book-home): the book's layout at a wide and at narrow widths, long text, the
-// 「目录」 by keyboard, the home and contents per relationship state, both people writing
+// opening-book-home): the book's layout at a wide and at narrow widths, long text,
+// the site header by keyboard, the home and navigation per relationship state, both people writing
 // across days, a frozen share, an empty list, failures in the feed, keyboard use of the
 // feed, the narrow window's round unread buttons and save state that only the server sets.
 // Names carry the browser and a per-run suffix, so projects and reruns stay independent.
@@ -30,7 +30,7 @@ async function signedIn(
   await page.goto('/login');
   await page.getByLabel('开发登录').fill(name);
   await page.getByRole('button', { name: '开发登录' }).click();
-  await expect(page.getByText(`已登录为 ${name}`)).toBeVisible();
+  await expect(page.getByRole('button', { name: `账号：${name}` })).toBeVisible();
   return page;
 }
 
@@ -71,8 +71,9 @@ const datesFrom = (first: string, count: number) =>
 const feed = (page: Page) => page.getByRole('region', { name: '所有日记' });
 const dateIn = (page: Page, date: string) => feed(page).locator(`[data-date="${date}"]`);
 const editor = (page: Page) => page.locator('.diary-editor').getByRole('textbox');
-const bookmark = (page: Page) => page.getByRole('button', { name: '目录', exact: true });
-const contents = (page: Page) => page.getByRole('dialog', { name: '目录' });
+const navigation = (page: Page) => page.getByRole('navigation', { name: '主要' });
+const menuButton = (page: Page, name: string) =>
+  navigation(page).getByRole('button', { name: new RegExp(`^${name}`) });
 
 /**
  * Opens `path` until the feed shows `text` in `date`: a diary written seconds ago is
@@ -159,9 +160,9 @@ const outside = (page: Page) =>
     return found;
   });
 
-/** Whether the bookmark lies wholly inside the window. */
-const bookmarkOnScreen = async (page: Page) => {
-  const box = await bookmark(page).boundingBox();
+/** Whether the site navigation lies wholly inside the window. */
+const navigationOnScreen = async (page: Page) => {
+  const box = await navigation(page).boundingBox();
   const { width, height } = page.viewportSize()!;
   expect(box).not.toBeNull();
   expect(box!.x).toBeGreaterThanOrEqual(0);
@@ -187,7 +188,7 @@ test('[adr:book-frontend-workspace#1] wide: no text or control crosses the gutte
     if (path !== '/') await expect(editor(page).or(page.getByText('从右页选一天'))).toBeVisible();
     if (path === `/days/${longDay}`) await expect(editor(page)).toContainText('最后一行');
     expect(await outside(page), path).toEqual([]);
-    await bookmarkOnScreen(page);
+    await navigationOnScreen(page);
     if (path === '/') continue;
     // The workspace is the window's height: the pages scroll inside, never past the book.
     const foot = await page.evaluate(() => ({
@@ -212,7 +213,7 @@ test('[adr:book-frontend-workspace#1] wide: no text or control crosses the gutte
 });
 
 for (const viewport of NARROW) {
-  test(`[adr:opening-book-home#4] [adr:book-frontend-workspace#1] [adr:book-frontend-workspace#6] ${viewport.width}px: one sheet with the bookmark on screen and no sideways scroll`, async ({
+  test(`[adr:opening-book-home#4] [adr:book-frontend-workspace#1] [adr:book-frontend-workspace#6] ${viewport.width}px: one sheet with the navigation on screen and no sideways scroll`, async ({
     browser,
     browserName,
   }) => {
@@ -228,25 +229,24 @@ for (const viewport of NARROW) {
       await expect(page.locator('.book-page').first()).toBeVisible();
       if (path === `/days/${longDay}`) await expect(editor(page)).toContainText('最后一行');
       expect(await outside(page), path).toEqual([]);
-      await bookmarkOnScreen(page);
-      // Scrolled to the end of the sheet, the bookmark is still there.
+      await navigationOnScreen(page);
+      // Scrolled to the end of the sheet, the navigation is still there.
       await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-      await bookmarkOnScreen(page);
+      await navigationOnScreen(page);
       expect(await outside(page), `${path} scrolled`).toEqual([]);
     }
 
-    // The bookmark opens by keyboard; the contents is one page inside the window too.
+    // A menu opens by keyboard inside the window too.
     await page.goto('/');
-    await bookmark(page).focus();
+    await menuButton(page, '设置').focus();
     await page.keyboard.press('Enter');
-    await expect(contents(page)).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: '备份' })).toBeInViewport();
     expect(await outside(page)).toEqual([]);
-    await bookmarkOnScreen(page);
-    await expect(contents(page).getByRole('link', { name: /所有日记/ })).toBeInViewport();
+    await navigationOnScreen(page);
   });
 }
 
-test('[adr:opening-book-home#1] [adr:book-frontend-workspace#2] the home shows no diary text; the 目录 opens, wraps and closes by keyboard and back', async ({
+test('[adr:opening-book-home#1] [adr:book-frontend-workspace#2] the home shows no diary text; the site header works by keyboard', async ({
   browser,
   browserName,
 }) => {
@@ -275,76 +275,56 @@ test('[adr:opening-book-home#1] [adr:book-frontend-workspace#2] the home shows n
   await expect(page.locator('body')).not.toContainText('只给自己看的一句');
   expect(asked).toEqual([]);
 
-  // Tab reaches the bookmark; Enter opens the contents with the focus inside it.
+  // Tab reaches the 设置 menu; Enter opens it with the focus inside, Escape closes it.
   let tabs = 0;
-  while (!(await bookmark(page).evaluate((el) => el === document.activeElement))) {
+  while (!(await menuButton(page, '设置').evaluate((el) => el === document.activeElement))) {
     await page.keyboard.press('Tab');
     expect(++tabs).toBeLessThan(40);
   }
   await page.keyboard.press('Enter');
-  await expect(contents(page)).toBeVisible();
-  await expect(bookmark(page)).toHaveAttribute('aria-expanded', 'true');
-  expect(await contents(page).evaluate((el) => el.contains(document.activeElement))).toBe(true);
-  await expect(contents(page).getByRole('link', { name: /今天的日记/ })).toBeVisible();
-  await expect(contents(page).getByRole('link', { name: /所有日记/ })).toBeVisible();
-  await expect(page.locator('body')).not.toContainText('只给自己看的一句');
-
-  // Tab stays inside: from the last control it wraps to the first, and back again.
-  const links = contents(page).locator('a[href], button');
-  await links.last().focus();
-  await page.keyboard.press('Tab');
-  await expect(links.first()).toBeFocused();
-  await page.keyboard.press('Shift+Tab');
-  await expect(links.last()).toBeFocused();
-
-  // Escape closes it where it was opened, the focus back on the bookmark.
+  await expect(page.getByRole('menu')).toBeVisible();
+  await expect(menuButton(page, '设置')).toHaveAttribute('aria-expanded', 'true');
+  expect(await page.getByRole('menu').evaluate((el) => el.contains(document.activeElement))).toBe(
+    true,
+  );
   await page.keyboard.press('Escape');
-  await expect(contents(page)).toHaveCount(0);
-  await expect(page).toHaveURL(/\/$/);
-  await expect(bookmark(page)).toBeFocused();
+  await expect(page.getByRole('menu')).toHaveCount(0);
+  await expect(menuButton(page, '设置')).toBeFocused();
 
-  // The browser's back closes it too, without leaving the page.
+  // An entry by keyboard leads on, and the menu holding the page showing is marked current.
   await page.keyboard.press('Enter');
-  await expect(contents(page)).toBeVisible();
-  await page.goBack();
-  await expect(contents(page)).toHaveCount(0);
-  await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole('link', { name: '浏览所有日记' })).toBeVisible();
-
-  // An entry by keyboard leads on; back returns to the page it was opened on, closed.
-  await bookmark(page).focus();
+  await expect(page.getByRole('menuitem', { name: '备份' })).toBeFocused();
   await page.keyboard.press('Enter');
-  await contents(page)
-    .getByRole('link', { name: /所有日记/ })
-    .focus();
-  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/backup$/);
+  await expect(menuButton(page, '设置')).toHaveAttribute('aria-current', 'page');
+  await navigation(page).getByRole('link', { name: '日记' }).click();
   await expect(page).toHaveURL(/\/days$/);
-  await expect(contents(page)).toHaveCount(0);
-  await expect(dateIn(page, today)).toBeVisible();
-  // The page showing is marked current in the contents.
-  await bookmark(page).click();
-  await expect(contents(page).getByRole('link', { name: /所有日记/ })).toHaveAttribute(
+  await expect(navigation(page).getByRole('link', { name: '日记' })).toHaveAttribute(
     'aria-current',
     'page',
   );
-  await page.keyboard.press('Escape');
+  await expect(dateIn(page, today)).toBeVisible();
   await page.goBack();
-  await expect(page).toHaveURL(/\/$/);
-  await expect(contents(page)).toHaveCount(0);
+  await expect(page).toHaveURL(/\/backup$/);
 });
 
-test('[adr:opening-book-home#5] [adr:book-frontend-workspace#7] home and 目录 per relationship: never bound, bound without a sleep schedule, unbound with history', async ({
+test('[adr:opening-book-home#5] [adr:book-frontend-workspace#7] home and navigation per relationship: never bound, bound without a sleep schedule, unbound with history', async ({
   browser,
   browserName,
 }) => {
   test.setTimeout(150_000);
   const prefix = `br${browserName}${run}`;
+  // The pages the header's menus list, 一起 first when there is one.
   const entries = async (page: Page) => {
-    await bookmark(page).click();
-    await expect(contents(page)).toBeVisible();
-    const names = await contents(page).locator('.contents-label').allTextContents();
-    await page.keyboard.press('Escape');
-    await expect(contents(page)).toHaveCount(0);
+    const names: string[] = [];
+    for (const menu of ['一起', '设置']) {
+      if (!(await menuButton(page, menu).count())) continue;
+      await menuButton(page, menu).click();
+      await expect(page.getByRole('menu')).toBeVisible();
+      names.push(...(await page.getByRole('menuitem').allTextContents()));
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('menu')).toHaveCount(0);
+    }
     return names;
   };
 
@@ -354,7 +334,7 @@ test('[adr:opening-book-home#5] [adr:book-frontend-workspace#7] home and 目录 
   await expect(alone.getByText('TA 那边')).toHaveCount(0);
   await expect(alone.getByText(/共同醒着|按作息推算/)).toHaveCount(0);
   await expect(alone.getByRole('button', { name: '生成邀请链接' })).toBeVisible();
-  expect(await entries(alone)).toEqual(['今天的日记', '所有日记', '备份']);
+  expect(await entries(alone)).toEqual(['备份']);
 
   // Bound, neither has a sleep schedule: both clocks, an entry to set one, no made-up hours.
   const { a, b, space } = await pair(browser, prefix);
@@ -365,15 +345,7 @@ test('[adr:opening-book-home#5] [adr:book-frontend-workspace#7] home and 目录 
   await expect(a.locator('.clock-face', { hasText: 'TA 那边' })).toBeVisible();
   await expect(a.getByRole('link', { name: '设置作息' })).toBeVisible();
   await expect(a.getByText(/共同醒着/)).toHaveCount(0);
-  expect(await entries(a)).toEqual([
-    '今天的日记',
-    '所有日记',
-    '两地时间',
-    '心愿与礼物',
-    '纪念日',
-    '双人空间',
-    '备份',
-  ]);
+  expect(await entries(a)).toEqual(['两地时间', '心愿与礼物', '纪念日', '双人空间', '备份']);
 
   // A writes a shared diary, then unbinds; B keeps it read-only and nothing of A's later.
   const date = '2026-09-10';
@@ -392,14 +364,7 @@ test('[adr:opening-book-home#5] [adr:book-frontend-workspace#7] home and 目录 
     await expect(page.getByText(/共同醒着|按作息推算|设置作息/)).toHaveCount(0);
     await expect(page.getByRole('heading', { name: '邀请原搭档恢复关系' })).toBeVisible();
     // The archived space and its records stay reachable; the clocks do not.
-    expect(await entries(page)).toEqual([
-      '今天的日记',
-      '所有日记',
-      '心愿与礼物',
-      '纪念日',
-      '双人空间',
-      '备份',
-    ]);
+    expect(await entries(page)).toEqual(['心愿与礼物', '纪念日', '双人空间', '备份']);
   }
   await untilRead(b, '/days', date, '绑定时写的');
   await expect(dateIn(b, date)).toContainText('已停止共享');
@@ -635,7 +600,7 @@ test('[adr:book-frontend-workspace#5] [adr:book-frontend-workspace#6] narrow: th
     expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
   }
   expect(await outside(b)).toEqual([]);
-  await bookmarkOnScreen(b);
+  await navigationOnScreen(b);
 
   await down.click();
   await expect(dateIn(b, oldest)).toContainText('A的旧日记');
@@ -650,7 +615,7 @@ test('[adr:book-frontend-workspace#5] [adr:book-frontend-workspace#6] narrow: th
   await expect(feed(b).locator('.unread-flash')).toBeInViewport();
   await expect(dateIn(b, newest).getByLabel('有新内容')).toHaveCount(0, { timeout: 10_000 });
   await expect(up).toHaveCount(0);
-  await bookmarkOnScreen(b);
+  await navigationOnScreen(b);
 });
 
 test('[adr:book-frontend-workspace#8] offline, the left page says the text waits on this device and the feed claims nothing of it', async ({

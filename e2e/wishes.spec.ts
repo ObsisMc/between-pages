@@ -18,19 +18,21 @@ async function signedIn(browser: Browser, name: string): Promise<Page> {
   await page.goto('/login');
   await page.getByLabel('开发登录').fill(name);
   await page.getByRole('button', { name: '开发登录' }).click();
-  await expect(page.getByText(`已登录为 ${name}`)).toBeVisible();
+  await expect(page.getByRole('button', { name: `账号：${name}` })).toBeVisible();
   return page;
 }
 
-/** The space features are listed in the 「目录」 (book-frontend-workspace D2). */
+/** The space features are listed under 「一起」 in the site header (digital-paper-interface D1). */
+const together = (page: Page) =>
+  page.getByRole('navigation', { name: '主要' }).getByRole('button', { name: /^一起/ });
+
 async function openContents(page: Page) {
-  const bookmark = page.getByRole('button', { name: '目录', exact: true });
-  // Going to the same address keeps the history state, so the contents may still be open.
-  if ((await bookmark.getAttribute('aria-expanded')) !== 'true') await bookmark.click();
-  await expect(page.getByRole('dialog', { name: '目录' })).toBeVisible();
+  await expect(together(page)).toBeVisible();
+  if ((await together(page).getAttribute('aria-expanded')) !== 'true') await together(page).click();
+  await expect(page.getByRole('menu')).toBeVisible();
 }
 
-const entry = (page: Page) => page.getByRole('link', { name: /心愿与礼物/ });
+const entry = (page: Page) => page.getByRole('menuitem', { name: /心愿与礼物/ });
 const entryDot = (page: Page) => entry(page).getByRole('img', { name: '有新内容' });
 
 test('[adr:wishes-and-gifts#2] [adr:wishes-and-gifts#4] [adr:wishes-and-gifts#5] a surprise stays hidden until it is revealed with its card', async ({
@@ -41,9 +43,12 @@ test('[adr:wishes-and-gifts#2] [adr:wishes-and-gifts#4] [adr:wishes-and-gifts#5]
   test.setTimeout(60_000);
   const name = (who: string) => `${who}${browserName}${run}wish`;
   const a = await signedIn(browser, name('a'));
-  // Never bound: no space features at all.
-  await openContents(a);
-  await expect(entry(a)).toHaveCount(0);
+  // Without a space the header has no 「一起」, so nothing lists the space features.
+  await expect(a.getByRole('button', { name: '生成邀请链接' })).toBeVisible();
+  await expect(
+    a.getByRole('navigation', { name: '主要' }).getByRole('button', { name: /^设置/ }),
+  ).toBeVisible();
+  await expect(together(a)).toHaveCount(0);
   await a.keyboard.press('Escape');
   await a.getByRole('button', { name: '生成邀请链接' }).click();
   const link = await a.getByLabel('邀请链接').inputValue();
