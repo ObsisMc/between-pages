@@ -1,8 +1,8 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
-// Browser acceptance of the book frontend (book-frontend-workspace 落地顺序 step 4,
-// opening-book-home): the book's layout at a wide and at narrow widths, long text,
-// the site header by keyboard, the home and navigation per relationship state, both people writing
+// Browser acceptance of the diary frontend (book-frontend-workspace 落地顺序 step 4,
+// opening-book-home, digital-paper-interface D2): the diary page's layout at a wide and at
+// narrow widths, long text, the site header by keyboard, the home and navigation per relationship state, both people writing
 // across days, a frozen share, an empty list, failures in the feed, keyboard use of the
 // feed, the narrow window's round unread buttons and save state that only the server sets.
 // Names carry the browser and a per-run suffix, so projects and reruns stay independent.
@@ -89,7 +89,7 @@ async function untilRead(page: Page, path: string, date: string, text: string) {
 /** Writes `text` at the end of the caller's own diary of `date`, and waits for the server. */
 async function write(page: Page, date: string, text: string, shared = true) {
   await page.goto(`/days/${date}`);
-  const own = page.locator('.workspace-left .diary-editor, .narrow-day .diary-editor').first();
+  const own = page.getByRole('region', { name: '我的日记' }).locator('.diary-editor');
   await own.getByRole('textbox').click();
   await page.keyboard.press('ControlOrMeta+End');
   await page.keyboard.type(text);
@@ -124,9 +124,10 @@ const LONG_TEXT = [
 ].join('\n');
 
 /**
- * What lies outside the box it belongs to: each `.book-page`'s text and elements outside
- * that page (by more than a pixel, for rounding), and the window's sideways scroll. Text is
- * measured by its own boxes, so a word running out of its block counts, clipped or not.
+ * What lies outside the box it belongs to: the text and elements of each region of the page
+ * (the children of `main`: the date index, the main area) outside that region (by more than
+ * a pixel, for rounding), and the window's sideways scroll. Text is measured by its own
+ * boxes, so a word running out of its block counts, clipped or not.
  */
 const outside = (page: Page) =>
   page.evaluate(() => {
@@ -138,7 +139,7 @@ const outside = (page: Page) =>
       if (rect.left < box.left - 1 || rect.right > box.right + 1)
         found.push(`${what}: ${Math.round(rect.left)}–${Math.round(rect.right)}`);
     };
-    for (const sheet of document.querySelectorAll<HTMLElement>('.book-page')) {
+    for (const sheet of document.querySelectorAll<HTMLElement>('main > *')) {
       const page = sheet.getBoundingClientRect();
       if (page.width === 0) continue;
       const box = { left: Math.max(page.left, 0), right: Math.min(page.right, width) };
@@ -171,7 +172,7 @@ const navigationOnScreen = async (page: Page) => {
   expect(box!.y + box!.height).toBeLessThanOrEqual(height);
 };
 
-test('[adr:book-frontend-workspace#1] wide: no text or control crosses the gutter or the foot of the book, long text included', async ({
+test('[adr:book-frontend-workspace#1] wide: no text or control leaves the index or the main area, nor the window’s foot, long text included', async ({
   browser,
   browserName,
 }) => {
@@ -184,23 +185,21 @@ test('[adr:book-frontend-workspace#1] wide: no text or control crosses the gutte
   for (const path of ['/', '/days', `/days/${longDay}`]) {
     if (path === '/days') await untilRead(page, path, longDay, '最后一行');
     else await page.goto(path);
-    // The home is no longer a book (digital-paper-interface D2); it still never scrolls sideways.
-    await expect(
-      path === '/' ? page.getByRole('heading', { level: 1 }) : page.locator('.book-page').first(),
-    ).toBeVisible();
-    if (path !== '/') await expect(editor(page).or(page.getByText('从右页选一天'))).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    if (path !== '/')
+      await expect(page.getByRole('navigation', { name: '日期索引' })).toBeVisible();
     if (path === `/days/${longDay}`) await expect(editor(page)).toContainText('最后一行');
     expect(await outside(page), path).toEqual([]);
     await navigationOnScreen(page);
     if (path === '/') continue;
-    // The workspace is the window's height: the pages scroll inside, never past the book.
+    // The diary page is the window's height: the index and the main area scroll inside it.
     const foot = await page.evaluate(() => ({
       window: document.documentElement.scrollHeight <= window.innerHeight,
-      pages: [...document.querySelectorAll('.book-page')].every(
-        (p) => p.getBoundingClientRect().bottom <= window.innerHeight,
+      regions: [...document.querySelectorAll('main > *')].every(
+        (p) => p.getBoundingClientRect().bottom <= window.innerHeight + 1,
       ),
     }));
-    expect(foot, path).toEqual({ window: true, pages: true });
+    expect(foot, path).toEqual({ window: true, regions: true });
   }
 
   // The feed shows the long diary whole: its box is as tall as its text, and the list's
@@ -216,7 +215,7 @@ test('[adr:book-frontend-workspace#1] wide: no text or control crosses the gutte
 });
 
 for (const viewport of NARROW) {
-  test(`[adr:opening-book-home#4] [adr:book-frontend-workspace#1] [adr:book-frontend-workspace#6] ${viewport.width}px: one sheet with the navigation on screen and no sideways scroll`, async ({
+  test(`[adr:opening-book-home#4] [adr:book-frontend-workspace#1] [adr:book-frontend-workspace#6] ${viewport.width}px: one column with the navigation and the date picker on screen and no sideways scroll`, async ({
     browser,
     browserName,
   }) => {
@@ -229,13 +228,20 @@ for (const viewport of NARROW) {
     for (const path of ['/', '/days', `/days/${longDay}`]) {
       if (path === '/days') await untilRead(page, path, longDay, '最后一行');
       else await page.goto(path);
-      await expect(
-        path === '/' ? page.getByRole('heading', { level: 1 }) : page.locator('.book-page').first(),
-      ).toBeVisible();
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       if (path === `/days/${longDay}`) await expect(editor(page)).toContainText('最后一行');
       expect(await outside(page), path).toEqual([]);
       await navigationOnScreen(page);
-      // Scrolled to the end of the sheet, the navigation is still there.
+      if (path !== '/') {
+        // The index folded into the date picker opens inside the window.
+        await page.getByRole('button', { name: '日期', exact: true }).click();
+        const index = page.getByRole('navigation', { name: '日期索引' });
+        await expect(index.getByRole('link', { name: /^9 月 2 日/ })).toBeInViewport();
+        expect(await outside(page), `${path} picking`).toEqual([]);
+        await page.getByRole('button', { name: '日期', exact: true }).click();
+        await expect(index).toHaveCount(0);
+      }
+      // Scrolled to the end of the page, the navigation is still there.
       await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
       await navigationOnScreen(page);
       expect(await outside(page), `${path} scrolled`).toEqual([]);
@@ -516,7 +522,7 @@ test('[adr:book-frontend-workspace#5] the feed says when it cannot read, keeps w
       ? route.fulfill({ status: 500, json: { error: { code: 'INTERNAL', message: 'x' } } })
       : route.fallback(),
   );
-  await b.goto(`/days/${newest}`);
+  await b.goto('/days');
   await b.getByLabel('跳到日期').fill(oldest);
   await b.getByRole('button', { name: '跳转' }).click();
   const broken = dateIn(b, oldest);
@@ -541,11 +547,12 @@ test('[adr:book-frontend-workspace#3] [adr:book-frontend-workspace#4] the feed a
   await expect(dateIn(page, dates[44]!)).toBeVisible();
   await expect(dateIn(page, target)).toHaveCount(0);
 
+  // The date index comes first, a link per loaded date, so the bound covers all 45.
   const focusBy = async (locator: ReturnType<Page['locator']>) => {
     let tabs = 0;
     while (!(await locator.evaluate((el) => el === document.activeElement))) {
       await page.keyboard.press('Tab');
-      expect(++tabs).toBeLessThan(80);
+      expect(++tabs).toBeLessThan(160);
     }
   };
   // The date input's segments differ by engine; the value is set, the rest is keys.
@@ -555,13 +562,18 @@ test('[adr:book-frontend-workspace#3] [adr:book-frontend-workspace#4] the feed a
   await expect(dateIn(page, target)).toBeVisible();
 
   // Tab moves on from the jump through the dates above it (two links each) to the date;
-  // Enter opens it in the left page.
+  // Enter opens it in the main area, and the index marks it.
   await focusBy(dateIn(page, target).getByRole('link').first());
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(new RegExp(`/days/${target}$`));
-  await expect(dateIn(page, target).getByText('在左页', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('navigation', { name: '日期索引' }).locator(`[data-date="${target}"] a`),
+  ).toHaveAttribute('aria-current', 'page');
 
-  // "编辑" by keyboard hands the focus to the left page's diary.
+  // Back to the feed; "编辑" by keyboard hands the focus to the day's own diary.
+  await page.goBack();
+  await expect(page).toHaveURL(/\/days$/);
+  await expect(dateIn(page, target)).toBeVisible();
   await focusBy(dateIn(page, dates[23]!).getByRole('link', { name: '编辑' }));
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(new RegExp(`/days/${dates[23]}$`));
@@ -627,7 +639,7 @@ test('[adr:book-frontend-workspace#5] [adr:book-frontend-workspace#6] narrow: th
   await navigationOnScreen(b);
 });
 
-test('[adr:book-frontend-workspace#8] offline, the left page says the text waits on this device and the feed claims nothing of it', async ({
+test('[adr:book-frontend-workspace#8] offline, the day says the text waits on this device and the feed claims nothing of it', async ({
   browser,
   browserName,
 }) => {
@@ -650,12 +662,14 @@ test('[adr:book-frontend-workspace#8] offline, the left page says the text waits
   for (const ws of sockets) await ws.close();
   await page.keyboard.type('断网时写的');
   await expect(page.locator('.save-status')).toHaveText('暂时无法同步，已保存在本机');
-  // The feed reads only the server: the open diary stays collapsed, nothing claims saved.
-  await expect(dateIn(page, date)).toContainText('正在左页编辑');
-  await expect(feed(page)).not.toContainText('断网时写的');
   await expect(page.locator('body')).not.toContainText('已保存到服务器');
+  // The feed reads only the server: it shows nothing of the text waiting on this device.
+  await page.getByRole('link', { name: '连续读' }).click();
+  await expect(dateIn(page, date)).toBeVisible();
+  await expect(feed(page)).not.toContainText('断网时写的');
 
   online = true;
+  await page.goBack();
   await expect(page.locator('.save-status')).toHaveText('已保存到服务器', { timeout: 30_000 });
   await untilRead(page, '/days', date, '联网时写的断网时写的');
 });

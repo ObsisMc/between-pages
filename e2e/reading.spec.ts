@@ -1,8 +1,8 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
 // Stage 2 reading through the real stack (unread-and-day-page): the merged list of days, now
-// the workspace's feed, and its unread dot (D2, D3, book-frontend-workspace D5); the day
-// page as the workspace's left page, which scrolls inside its own box. The API runs with
+// the diary page's feed, and its unread dot (D2, D3, book-frontend-workspace D5); the day
+// page as its "这一天" view, which scrolls inside the main area. The API runs with
 // HISTORY_IDLE_MS=3000, so a history point, and with it the list's unread, closes seconds
 // after the last commit instead of two minutes.
 const run = Date.now().toString(36);
@@ -34,7 +34,7 @@ async function writeToday(page: Page) {
   return page.url().split('/').at(-1)!;
 }
 
-/** Chooses `date` in the feed; the left page opens it. */
+/** Chooses `date` in the feed; the main area opens it. */
 async function chooseInFeed(page: Page, date: string) {
   await feed(page).locator(`[data-date="${date}"]`).getByRole('link').first().click();
   await expect(page).toHaveURL(new RegExp(`/days/${date}$`));
@@ -97,10 +97,10 @@ test('READ-01 the feed lights once A’s text is in a history point and goes out
   await expect(dot).toHaveCount(0);
 });
 
-/** B's day page scrolls inside the workspace's left page: its box, and its scroll. */
+/** B's day scrolls inside the diary page's main area: its box, and its scroll. */
 const leftPage = (page: Page) =>
   page.evaluate(() => {
-    const box = document.querySelector('.workspace-left')!;
+    const box = document.querySelector('.day-scroll')!;
     const rect = box.getBoundingClientRect();
     return {
       top: Math.max(rect.top, 0),
@@ -167,7 +167,7 @@ test('[adr:unread-and-day-page#6] [adr:unread-and-day-page#8] READ-01 SYNC-06 op
   expect((await leftPage(b)).scrollTop).toBe(0);
 
   // "下一处未读" brings the unread passage about a third down the page, highlighted.
-  await b.locator('.workspace-left').getByRole('button', { name: '下一处未读' }).click();
+  await b.locator('.day-scroll').getByRole('button', { name: '下一处未读' }).click();
   const flash = b.locator('.unread-flash');
   await expect(flash).toBeVisible();
   const page = await leftPage(b);
@@ -179,7 +179,7 @@ test('[adr:unread-and-day-page#6] [adr:unread-and-day-page#8] READ-01 SYNC-06 op
 
   // The notice keeps its line once used (D5): idle, it is as tall as while it offered the
   // jump, so nothing below it moves under the reader.
-  const banner = b.locator('.workspace-left .unread-banner');
+  const banner = b.locator('.day-scroll .unread-banner');
   const offered = (await banner.boundingBox())!.height;
   await b.getByRole('button', { name: '跳到第一处' }).click();
   await expect(b.getByText('有 1 处新内容 · 跳到第一处')).toHaveCount(0);
@@ -218,7 +218,7 @@ test('[adr:unread-and-day-page#6] [adr:unread-and-day-page#8] READ-01 SYNC-06 op
   const scrollToLine = async (marker: string) => {
     const top = (await topOf(b, marker))!;
     await b.evaluate((y) => {
-      const box = document.querySelector('.workspace-left')!;
+      const box = document.querySelector('.day-scroll')!;
       const rect = box.getBoundingClientRect();
       box.scrollTop += y - (rect.top + rect.height / 2);
     }, top);

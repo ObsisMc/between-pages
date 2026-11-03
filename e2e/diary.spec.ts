@@ -2,7 +2,7 @@ import { expect, test, type Browser, type Page, type WebSocketRoute } from '@pla
 import * as Y from 'yjs';
 
 // Kernel phase 3 through the real stack in Chromium, Firefox and WebKit: the diary screen
-// (the day editor in the workspace's left page, and the old single-diary link), IndexedDB journal, Web Lock sender and sync socket against the API and PostgreSQL.
+// (the day editor in the diary page's main area, and the old single-diary link), IndexedDB journal, Web Lock sender and sync socket against the API and PostgreSQL.
 // Failures are made at the socket with routeWebSocket; everything behind it is real.
 // Names carry the browser and a per-run suffix, so projects running at once and reruns
 // against one database stay independent.
@@ -39,6 +39,7 @@ const ownDiaryId = (page: Page) =>
 
 /** Opens `date` from the feed's date jump, as the reader would. */
 async function openDate(page: Page, date: string) {
+  if (!/\/days$/.test(page.url())) await page.getByRole('link', { name: '连续读' }).click();
   await page.getByLabel('跳到日期').fill(date);
   await page.getByRole('button', { name: '跳转' }).click();
   await page
@@ -125,7 +126,7 @@ test('SAVE-01 DATE-02 writes today, saves to the server and finds it again', asy
 
   await page.reload();
   await expect(editor(page)).toHaveText('今天很累，但是想到你就开心了。');
-  await page.getByRole('link', { name: '← 序言' }).click();
+  await page.getByRole('navigation', { name: '主要' }).getByRole('link', { name: '此刻' }).click();
   await expect(page).toHaveURL(/\/$/);
   expect(await writeToday(page)).toBe(diaryId);
 });
