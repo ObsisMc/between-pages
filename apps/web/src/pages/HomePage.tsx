@@ -78,7 +78,7 @@ export function HomePage() {
   const unreadDate = unread.data?.date;
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-5 pt-8 pb-16 font-sans text-ink sm:px-8 sm:pt-12">
+    <main className="mx-auto w-full max-w-6xl px-5 pt-8 pb-16 font-sans text-ink wrap-anywhere sm:px-8 sm:pt-12">
       <div className="legacy">
         <BackupBanner />
       </div>

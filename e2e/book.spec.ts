@@ -184,7 +184,10 @@ test('[adr:book-frontend-workspace#1] wide: no text or control crosses the gutte
   for (const path of ['/', '/days', `/days/${longDay}`]) {
     if (path === '/days') await untilRead(page, path, longDay, '最后一行');
     else await page.goto(path);
-    await expect(page.locator('.book-page').first()).toBeVisible();
+    // The home is no longer a book (digital-paper-interface D2); it still never scrolls sideways.
+    await expect(
+      path === '/' ? page.getByRole('heading', { level: 1 }) : page.locator('.book-page').first(),
+    ).toBeVisible();
     if (path !== '/') await expect(editor(page).or(page.getByText('从右页选一天'))).toBeVisible();
     if (path === `/days/${longDay}`) await expect(editor(page)).toContainText('最后一行');
     expect(await outside(page), path).toEqual([]);
@@ -226,7 +229,9 @@ for (const viewport of NARROW) {
     for (const path of ['/', '/days', `/days/${longDay}`]) {
       if (path === '/days') await untilRead(page, path, longDay, '最后一行');
       else await page.goto(path);
-      await expect(page.locator('.book-page').first()).toBeVisible();
+      await expect(
+        path === '/' ? page.getByRole('heading', { level: 1 }) : page.locator('.book-page').first(),
+      ).toBeVisible();
       if (path === `/days/${longDay}`) await expect(editor(page)).toContainText('最后一行');
       expect(await outside(page), path).toEqual([]);
       await navigationOnScreen(page);
