@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import type { ResponseOf } from '@between-pages/contracts';
 import { ApiError, callApi } from '../api/client.ts';
+import { Button } from '../ui/index.ts';
 
 type SharedCard = ResponseOf<'sharedDiaries'>['diaries'][number];
 
@@ -54,21 +55,28 @@ export function SharedDiaryList({ spaceId, partner }: { spaceId: string; partner
 
   const title = `${partner} 共享的日记`;
   return (
-    <section className="diary-list shared-diaries" aria-label={title}>
-      <h2>{title}</h2>
-      {cards === null && loading && <p className="list-note">正在读取…</p>}
-      {cards?.length === 0 && <p className="list-note">对方还没有共享日记</p>}
+    <section className="border-b border-line pb-8" aria-label={title}>
+      <h2 className="mb-4 font-serif text-xl font-medium">{title}</h2>
+      {cards === null && loading && <p className="text-sm text-ink-soft">正在读取…</p>}
+      {cards?.length === 0 && <p className="text-sm text-ink-soft">对方还没有共享日记</p>}
       {cards && cards.length > 0 && (
-        <ul>
+        <ul className="mb-4 grid gap-3">
           {cards.map((card) => (
             <li key={card.diaryId}>
-              <Link className="diary-card" to={`/days/${card.diaryDate}`}>
-                <span className="diary-card-date">{dayOf(card.diaryDate)}</span>
-                {card.share === 'frozen' && <span className="share-state">已停止共享</span>}
-                <span className={card.excerpt ? 'diary-card-excerpt' : 'diary-card-excerpt empty'}>
+              <Link
+                className="grid gap-1 rounded-xl border border-line px-4 py-3 text-ink no-underline hover:border-warm focus-visible:border-warm"
+                to={`/days/${card.diaryDate}`}
+              >
+                <span className="font-serif">
+                  {dayOf(card.diaryDate)}
+                  {card.share === 'frozen' && (
+                    <span className="ml-2 font-sans text-sm text-ink-soft">已停止共享</span>
+                  )}
+                </span>
+                <span className={card.excerpt ? 'line-clamp-2' : 'text-sm text-ink-soft'}>
                   {card.excerpt === null ? '这篇暂时无法读取' : card.excerpt || '还没有写字'}
                 </span>
-                <span className="diary-card-updated">
+                <span className="text-sm text-ink-soft">
                   最后修改 {updatedText.format(new Date(card.updatedAt))}
                 </span>
               </Link>
@@ -77,15 +85,17 @@ export function SharedDiaryList({ spaceId, partner }: { spaceId: string; partner
         </ul>
       )}
       {failed && (
-        <p className="notice" role="alert">
+        <p className="rounded-xl bg-notice px-4 py-3 text-sm" role="alert">
           {failed === 'offline'
             ? '离线时无法读取对方共享的日记'
             : '对方共享的日记读取失败，请稍后再试'}
         </p>
       )}
       {nextBefore && (
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
           disabled={loading}
           onClick={() => {
             setLoading(true);
@@ -93,7 +103,7 @@ export function SharedDiaryList({ spaceId, partner }: { spaceId: string; partner
           }}
         >
           加载更早的日记
-        </button>
+        </Button>
       )}
     </section>
   );

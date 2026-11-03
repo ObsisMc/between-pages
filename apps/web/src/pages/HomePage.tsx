@@ -79,9 +79,7 @@ export function HomePage() {
 
   return (
     <main className="mx-auto w-full max-w-6xl px-5 pt-8 pb-16 font-sans text-ink wrap-anywhere sm:px-8 sm:pt-12">
-      <div className="legacy">
-        <BackupBanner />
-      </div>
+      <BackupBanner />
       <section className="grid items-center gap-10 md:grid-cols-[1.1fr_1fr] md:gap-14">
         <div>
           <p className="text-sm tracking-[0.2em] text-ink-soft">{dateLine(now)}</p>
