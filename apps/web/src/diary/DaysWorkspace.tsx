@@ -150,7 +150,9 @@ export function DaysWorkspace() {
   );
   const feedView = (
     <>
-      <h1 className="font-serif text-2xl font-normal text-ink">所有日记</h1>
+      <h1 className="mx-auto w-full max-w-(--measure) font-serif text-2xl font-normal text-ink px-(--measure-pad)">
+        所有日记
+      </h1>
       {feed}
     </>
   );
@@ -200,7 +202,9 @@ export function DaysWorkspace() {
 
   return (
     // Long words and links wrap inside their region, never across the index or the window.
-    <main className="grid h-[calc(100dvh-var(--site-header))] grid-cols-[17rem_minmax(0,1fr)] wrap-anywhere">
+    // The feed and the day share one reading width (`--measure`, `--measure-pad` inside it);
+    // their boxes span the main area, so the scrollbar sits at its edge, away from the text.
+    <main className="grid h-[calc(100dvh-var(--site-header))] grid-cols-[17rem_minmax(0,1fr)] wrap-anywhere [--measure-pad:2rem] [--measure:68rem]">
       <aside className="flex min-h-0 flex-col border-r border-line bg-accent/30">
         <div className="px-6 pt-6 pb-3">
           <p className="font-serif text-lg text-ink">我们的日记</p>
@@ -212,9 +216,12 @@ export function DaysWorkspace() {
         // The day scrolls inside the main area, the index staying beside it; its unread tools
         // float over this box, not the window (workspace.css).
         <div className="day-box relative min-h-0">
-          <div ref={dayBox} className="day-scroll h-full overflow-y-auto [overflow-anchor:none]">
+          <div
+            ref={dayBox}
+            className="day-scroll scroll-quiet h-full overflow-y-auto [overflow-anchor:none]"
+          >
             <ScrollBox value={dayBox}>
-              <div className="mx-auto max-w-3xl px-10 py-6">
+              <div className="mx-auto max-w-(--measure) px-(--measure-pad) py-6">
                 <div className="mb-6">{views}</div>
                 <DayEditor date={date} focus={focus} />
               </div>
@@ -222,8 +229,8 @@ export function DaysWorkspace() {
           </div>
         </div>
       ) : (
-        <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-col gap-3 px-10 pt-6">
-          <div className="mb-3">{views}</div>
+        <div className="flex min-h-0 w-full flex-col gap-3 pt-6">
+          <div className="mx-auto mb-3 w-full max-w-(--measure) px-(--measure-pad)">{views}</div>
           {feedView}
         </div>
       )}

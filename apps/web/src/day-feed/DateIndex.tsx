@@ -143,7 +143,7 @@ export function DateIndex({
   const busy = loading === 'start' || loading === 'jump';
   return (
     <nav aria-label="日期索引" className="flex min-h-0 flex-1 flex-col">
-      <div ref={box} className="min-h-0 flex-1 overflow-y-auto px-3 pb-6">
+      <div ref={box} className="scroll-quiet min-h-0 flex-1 overflow-y-auto px-3 pb-6">
         {busy && <p className="px-3 py-2 text-sm text-ink-soft">正在读取…</p>}
         {feedWindow?.nextAfter && (
           <div data-edge="newer">
