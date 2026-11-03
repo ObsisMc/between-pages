@@ -103,9 +103,10 @@ Ray 希望可以采用 shadcn 一类成熟组件，保留产品辨识度，并�
    | 子模块 | 职责 | 可引用 |
    | --- | --- | --- |
    | `ui`（新） | shadcn 生成的基础组件与 `cn()` | 无 |
-   | `shell`（新） | 顶栏、次级导航、页面容器与入口可见规则（自 `pages/SiteContents` 移入） | `ui`、`api` |
+   | `shell`（新） | 顶栏、次级导航、页面容器与入口可见规则（自 `pages/SiteContents` 移入），账号菜单退出 | `ui`、`api`、`auth`、`avatar`、`join`、`relationship`、`space-common` |
    | `windows`（新） | 分层双窗：窗框、窗台、天空与按当地时间的昼夜 | `avatar` |
    | `avatar` | 圆团子 `<Mascot>` 与带名字的头像 | 无 |
+   | `pages` | 主页与最近日期 | 增加 `avatar`、`ui`、`windows`，不再引用 `book` |
    | `day-feed` | 增加日期索引 `DateIndex`，复用双向加载模型 | 不变 |
    | `diary` | 日期索引与两种视图的日记页 | 增加 `ui`、`shell` |
    | `book` | 逐步删除 | — |
