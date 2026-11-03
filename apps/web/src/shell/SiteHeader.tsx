@@ -4,7 +4,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router';
 import { ChevronDown, LogOut } from 'lucide-react';
 import { signOut } from '../api/auth.ts';
 import { useMe } from '../auth/me.ts';
-import { Avatar } from '../avatar/index.ts';
+import { Avatar, Mascot } from '../avatar/index.ts';
 import { clearPendingInvite } from '../join/index.ts';
 import {
   Button,
@@ -22,7 +22,7 @@ import { useSiteEntries, type SiteEntry } from './entries.ts';
 // menus 一起 and 设置 holding the pages the caller can reach; the account menu signs out.
 
 const tab =
-  'inline-flex h-9 min-h-0 items-center gap-1 rounded-lg border-0 px-3 text-sm text-ink-soft no-underline transition-colors hover:bg-accent hover:text-foreground aria-[current=page]:bg-accent aria-[current=page]:text-foreground data-[state=open]:bg-accent sm:px-3.5';
+  'inline-flex h-9 min-h-0 items-center gap-1 rounded-lg border-0 px-2.5 text-sm whitespace-nowrap text-ink-soft no-underline transition-colors hover:bg-accent hover:text-foreground aria-[current=page]:bg-accent aria-[current=page]:text-foreground data-[state=open]:bg-accent sm:px-3.5';
 
 const UnreadDot = ({ label = '有新内容' }: { label?: string }) => (
   <span className="size-1.5 rounded-full bg-warm" role="img" aria-label={label} />
@@ -43,7 +43,7 @@ function Menu({
       <DropdownMenuTrigger className={tab} aria-current={active ? 'page' : undefined}>
         {label}
         {unread && <UnreadDot />}
-        <ChevronDown aria-hidden="true" className="size-3.5 opacity-60" />
+        <ChevronDown aria-hidden="true" className="hidden size-3.5 opacity-60 sm:block" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="center">
         {entries.map((entry) => (
@@ -122,9 +122,9 @@ export function SiteHeader() {
           className="flex items-center gap-2 text-foreground no-underline"
           aria-label="Between Pages"
         >
-          <span className="flex -space-x-1.5" aria-hidden="true">
-            <span className="size-5 rounded-full border-2 border-paper bg-author-1/35" />
-            <span className="size-5 rounded-full border-2 border-paper bg-author-2/35" />
+          <span className="flex -space-x-2" aria-hidden="true">
+            <Mascot tone={1} size={26} />
+            <Mascot tone={2} size={26} />
           </span>
           <span className="hidden font-serif text-lg sm:inline">Between Pages</span>
         </Link>

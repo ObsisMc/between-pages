@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { renderAt, signedIn, stubApi } from '../../test/render.tsx';
-import { INVITE, SPACE, TOKEN, errorBody, space } from '../../test/relationship.ts';
+import { INVITE, ME, SPACE, TOKEN, errorBody, space } from '../../test/relationship.ts';
+import { RelationshipPanel } from './index.ts';
 
 const noDays = () => Response.json({ days: [], nextBefore: null, nextAfter: null });
 
@@ -89,7 +90,11 @@ describe('RelationshipPanel', () => {
         Response.json({ binding: { space: space(), periodId: SPACE }, invitation: null }),
       'GET /api/spaces': () => Response.json({ spaces: [space()] }),
     });
-    const { router } = renderAt('/');
+    // The home shows the panel only while unbound; the panel itself still links a current space.
+    const { router } = renderAt('/', [
+      { path: '/', element: <RelationshipPanel userId={ME} /> },
+      { path: '/spaces/:spaceId', element: <p>空间</p> },
+    ]);
 
     fireEvent.click(await screen.findByText('与 bob 的空间'));
 

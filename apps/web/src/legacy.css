@@ -2,7 +2,7 @@
    Tailwind's reset. Inside those pages the first rule takes the reset back to the browser's
    own styles, so they look as they did; every rule below it, and every unlayered module
    stylesheet, still applies on top. New components outside them start from the reset. */
-:where(.page, .days-workspace, .home, .status) :where(*, ::before, ::after) {
+:where(.page, .days-workspace, .status, .legacy) :where(*, ::before, ::after) {
   all: revert;
 }
 

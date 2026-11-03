@@ -184,7 +184,10 @@ test('[adr:book-frontend-workspace#1] wide: no text or control crosses the gutte
   for (const path of ['/', '/days', `/days/${longDay}`]) {
     if (path === '/days') await untilRead(page, path, longDay, '最后一行');
     else await page.goto(path);
-    await expect(page.locator('.book-page').first()).toBeVisible();
+    // The home is no longer a book (digital-paper-interface D2); it still never scrolls sideways.
+    await expect(
+      path === '/' ? page.getByRole('heading', { level: 1 }) : page.locator('.book-page').first(),
+    ).toBeVisible();
     if (path !== '/') await expect(editor(page).or(page.getByText('从右页选一天'))).toBeVisible();
     if (path === `/days/${longDay}`) await expect(editor(page)).toContainText('最后一行');
     expect(await outside(page), path).toEqual([]);
@@ -226,7 +229,9 @@ for (const viewport of NARROW) {
     for (const path of ['/', '/days', `/days/${longDay}`]) {
       if (path === '/days') await untilRead(page, path, longDay, '最后一行');
       else await page.goto(path);
-      await expect(page.locator('.book-page').first()).toBeVisible();
+      await expect(
+        path === '/' ? page.getByRole('heading', { level: 1 }) : page.locator('.book-page').first(),
+      ).toBeVisible();
       if (path === `/days/${longDay}`) await expect(editor(page)).toContainText('最后一行');
       expect(await outside(page), path).toEqual([]);
       await navigationOnScreen(page);
@@ -246,7 +251,7 @@ for (const viewport of NARROW) {
   });
 }
 
-test('[adr:opening-book-home#1] [adr:book-frontend-workspace#2] the home shows no diary text; the site header works by keyboard', async ({
+test('[adr:opening-book-home#1] [adr:digital-paper-interface#9] the home shows no diary text; the site header works by keyboard', async ({
   browser,
   browserName,
 }) => {
@@ -263,15 +268,19 @@ test('[adr:opening-book-home#1] [adr:book-frontend-workspace#2] the home shows n
   });
   await write(page, today, '只给自己看的一句', false);
 
-  // The home asks for no diary and shows no diary text.
+  // The home lists the date it was written on, reads no diary and shows no diary text
+  // (digital-paper-interface D2, invariant 9).
   const asked: string[] = [];
   page.on('request', (request) => {
     const { pathname } = new URL(request.url());
-    if (/^\/api\/(days|diaries)/.test(pathname)) asked.push(pathname);
+    if (/^\/api\/diaries/.test(pathname)) asked.push(pathname);
   });
   await page.goto('/');
-  await expect(page.getByRole('link', { name: '打开今天的日记' })).toBeVisible();
-  await expect(page.getByRole('link', { name: '浏览所有日记' })).toBeVisible();
+  await expect(page.getByRole('link', { name: '继续写今天' })).toBeVisible();
+  await expect(page.getByRole('link', { name: '所有日记', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: '最近的几页' }).getByRole('link', { name: /今天/ }),
+  ).toContainText('你写了');
   await expect(page.locator('body')).not.toContainText('只给自己看的一句');
   expect(asked).toEqual([]);
 
@@ -454,7 +463,7 @@ test('[adr:book-frontend-workspace#5] the feed says when it cannot read, keeps w
   // Offline from the start: the failure row and its retry, nothing else claimed.
   await b.goto('/');
   // The home renders after its own requests, which going offline first would fail.
-  const allDiaries = b.getByRole('link', { name: '浏览所有日记' });
+  const allDiaries = b.getByRole('link', { name: '所有日记', exact: true });
   await expect(allDiaries).toBeVisible();
   await context.setOffline(true);
   await allDiaries.click();
