@@ -82,11 +82,6 @@ button.primary {
   font-size: 0.875rem;
 }
 
-.page.diary {
-  max-width: 42rem;
-  padding-top: 2rem;
-}
-
 .diary header {
   display: flex;
   justify-content: space-between;
@@ -166,10 +161,6 @@ button.primary {
 .draft-context ins {
   text-decoration: none;
   background: var(--notice);
-}
-
-.page.diary:has(.with-history) {
-  max-width: 64rem;
 }
 
 .diary-body.with-history {

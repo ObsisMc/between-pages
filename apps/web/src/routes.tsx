@@ -1,7 +1,7 @@
 import { Navigate, type RouteObject } from 'react-router';
 import { RequireAuth } from './auth/RequireAuth.tsx';
 import { BackupPage, GoogleCallbackPage } from './backup/index.ts';
-import { DaysWorkspace, DiaryPage } from './diary/index.ts';
+import { DaysWorkspace } from './diary/index.ts';
 import { JoinPage } from './join/index.ts';
 import { HomePage } from './pages/HomePage.tsx';
 import { LoginPage } from './pages/LoginPage.tsx';
@@ -21,23 +21,6 @@ const pages: RouteObject[] = [
     element: (
       <RequireAuth>
         <HomePage />
-      </RequireAuth>
-    ),
-  },
-  {
-    path: '/diaries/:diaryId',
-    element: (
-      <RequireAuth>
-        <DiaryPage />
-      </RequireAuth>
-    ),
-  },
-  // The partner's view of a shared diary, addressed by its epoch (kernel D10).
-  {
-    path: '/diaries/:diaryId/shares/:epochId',
-    element: (
-      <RequireAuth>
-        <DiaryPage />
       </RequireAuth>
     ),
   },

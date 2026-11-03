@@ -21,7 +21,7 @@
 | [spaces-and-invitations](./2026-10-25-spaces-and-invitations.md) | 个人日记独立存在，双人空间按日期和授权版本共享 | 已实现 | 领域 | 11/12 部分 |
 | [diary-collaboration-kernel](./2026-10-26-diary-collaboration-kernel.md) | 个人日记以增量协作保存，共享从获准的正文状态开始 | 已采纳 | 协同 | 28/31 部分 |
 | [server-backup-and-google-docs](./2026-10-28-server-backup-and-google-docs.md) | 服务器把数据库持续加密备份到 Cloudflare R2，每人的 Google Drive 只放每天一份可读的 Doc | 已采纳 | 备份 | 14/15 部分 |
-| [unread-and-day-page](./2026-10-28-unread-and-day-page.md) | 未读按字判定、列表只计已成历史的文字，同一天的两篇日记上下排在一个页面里 | 已实现 | 领域 | 14/14 已完成 |
+| [unread-and-day-page](./2026-10-28-unread-and-day-page.md) | 未读按字判定、列表只计已成历史的文字，同一天的两篇日记上下排在一个页面里 | 已实现 | 领域 | 13/14 部分 |
 | [anniversaries](./2026-10-29-anniversaries.md) | 纪念日按公历每年重复，各自设提前多久提醒，可数在一起的天数，并与礼物和日记相连 | 已采纳 | 领域 | 7/7 已完成 |
 | [meeting-plans](./2026-10-29-meeting-plans.md) | 见面计划记下每次见面的日期、地点与两张清单，首页倒数与见面日历都取自它，长期想做的事可以放进某次见面 | 已采纳 | 领域 | 0/8 未开始 |
 | [space-records](./2026-10-29-space-records.md) | 双人空间里的记录归空间、文字归作者，绑定期间才能操作，解绑后两人只读 | 已实现 | 领域 | 10/11 部分 |
@@ -31,6 +31,7 @@
 | [opening-book-home](./2026-10-31-opening-book-home.md) | 主页以一本书的开篇呈现，两地时间与日记入口融入书页 | 已实现 | 领域 | 4/5 部分 |
 | [book-frontend-workspace](./2026-11-01-book-frontend-workspace.md) | 书页式前端以目录连接页面，日记用双页工作区和按日期连续浏览 | 已采纳 | 领域 | 8/9 部分 |
 | [digital-paper-interface](./2026-11-03-digital-paper-interface.md) | 数字书页以内容布局承载成熟组件，并保留轻拟物双窗与圆团子 | 已采纳 | 领域 | 4/10 部分 |
+| [drop-single-diary-page](./2026-11-03-drop-single-diary-page.md) | 不再保留单篇日记页，每篇日记都在日记页的「这一天」里打开 | 已实现 | 领域 | 3/3 已完成 |
 <!-- adr-index:end -->
 
 ## 原则

@@ -1,5 +1,4 @@
 import { useContext, useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
-import { Link } from 'react-router';
 import type { ResponseOf } from '@between-pages/contracts';
 import { callApi } from '../api/client.ts';
 import { HistoryPanel, HistoryPreview, type HistoryPointView } from '../history/index.ts';
@@ -93,6 +92,7 @@ export function DiaryBlock({
   keepPosition,
   onSession,
   onReport,
+  onReopen,
 }: {
   userId: string;
   diaryId: string;
@@ -105,6 +105,8 @@ export function DiaryBlock({
   keepPosition?: (apply: () => void) => void;
   onSession?: (session: DiarySession | null) => void;
   onReport?: (report: BlockReport) => void;
+  /** The partner shared this diary again while it was open; the page opens the new epoch. */
+  onReopen?: () => void;
 }) {
   const peopleRef = useRef(people);
   const keepRef = useRef(keepPosition);
@@ -249,10 +251,12 @@ export function DiaryBlock({
           已停止共享，内容不再更新
         </p>
       )}
-      {state?.reopened && (
+      {state?.reopened && onReopen && (
         <p className="notice">
           对方重新共享了这篇日记。
-          <Link to={`/diaries/${diaryId}/shares/${state.reopened}`}>打开最新的版本</Link>
+          <button type="button" className="link" onClick={onReopen}>
+            打开最新的版本
+          </button>
         </p>
       )}
       {origin && (
