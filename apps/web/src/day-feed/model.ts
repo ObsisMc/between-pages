@@ -1,6 +1,6 @@
 import type { Day, ResponseOf } from '@between-pages/contracts';
 
-// The right page's window of dates (book-frontend-workspace D4, D8), without any I/O: which
+// The feed's and the date index's window of dates (book-frontend-workspace D4, D8), without any I/O: which
 // dates are loaded, the cursors to load more in both directions, and the rules that decide
 // what a diary on it shows.
 
@@ -131,13 +131,12 @@ export function diariesOf(day: Day): DiaryRef[] {
 }
 
 /**
- * Why a diary shows one row instead of its text (D8, invariant 9): the own diary of the date
- * open in the left page, or someone wrote after its newest history point. Null: its text.
+ * Why a diary shows one row instead of its text (D8, invariant 9): someone wrote after its
+ * newest history point. Null: its text.
  */
-export type Collapse = 'editing' | 'writing-self' | 'writing-partner' | null;
+export type Collapse = 'writing-self' | 'writing-partner' | null;
 
-export function collapseOf(date: string, diary: DiaryRef, editingDate: string | null): Collapse {
-  if (diary.side === 'mine' && date === editingDate) return 'editing';
+export function collapseOf(diary: DiaryRef): Collapse {
   if (diary.writing) return diary.side === 'mine' ? 'writing-self' : 'writing-partner';
   return null;
 }

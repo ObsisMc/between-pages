@@ -106,12 +106,12 @@ export function FeedDiary({
 
   return (
     <div
-      className="feed-diary"
+      className="feed-diary mt-4"
       data-diary={diaryId}
       data-unread={listUnread && anyUnread === undefined ? 'loading' : undefined}
     >
       {(name || diary.frozen) && (
-        <p className="feed-diary-who">
+        <p className="feed-diary-who mb-1 flex gap-2 text-sm text-ink-soft">
           {name}
           {diary.frozen && <span className="share-state">已停止共享</span>}
         </p>

@@ -1,89 +1,26 @@
-/* The diary workspace (book-frontend-workspace D3, D6). Wide: the book is the window's
-   height and each page scrolls inside itself, the left one in `.workspace-left`, the right
-   one in the feed's own box. The session keeps the reading position itself, as on the
-   window (see `overflow-anchor` there). */
-.workspace.wide {
-  height: calc(100dvh - 4rem - var(--site-header));
-  grid-template-rows: minmax(0, 1fr);
-}
-
-.workspace.wide .book-page {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  padding: 2rem 2.5rem;
-}
-
-/* The unread tools float over the left page, not the window. */
-.workspace.wide .book-left {
-  position: relative;
-}
-
-.workspace-left {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-anchor: none;
-}
-
-/* Inside the box's visible part (the page's padding is 2rem by 2.5rem): they belong to the
-   box's content, so a part outside it would be scrolled to, and they never move. */
-.workspace-left .unread-tools,
-.workspace-left .unread-direction {
+/* The wide diary page's day (digital-paper-interface D2): it scrolls inside the main area,
+   so the diaries' unread tools float over that box, not the window. They are placed against
+   `.day-box`, which does not scroll: inside the scrolling box they would belong to its
+   content, and a part outside it would be scrolled to. */
+.day-box .unread-tools,
+.day-box .unread-direction {
   position: absolute;
 }
 
-.workspace-left .unread-tools {
-  right: 3rem;
-  bottom: 2.5rem;
+.day-box .unread-tools {
+  right: 2.5rem;
+  bottom: 2rem;
 }
 
-.workspace-left .unread-direction.above {
-  top: 2.5rem;
+.day-box .unread-direction.above {
+  top: 1.5rem;
 }
 
-.workspace-left .unread-direction.below {
-  bottom: 2.5rem;
+.day-box .unread-direction.below {
+  bottom: 2rem;
 }
 
-/* A page is too narrow for the history beside the text; it goes below. */
-.workspace-left .diary-body.with-history {
+/* The main area is too narrow for the history beside the text; it goes below. */
+.day-box .diary-body.with-history {
   grid-template-columns: minmax(0, 1fr);
-}
-
-.workspace .day-feed {
-  flex: 1;
-}
-
-.workspace-nav {
-  margin-bottom: 1rem;
-}
-
-.workspace-nav a {
-  color: var(--ink-soft);
-}
-
-.workspace-title {
-  margin: 0 0 1rem;
-  font-family: var(--font-title);
-  font-size: 1.5rem;
-}
-
-.choose-day p {
-  color: var(--ink-soft);
-}
-
-/* Narrow: one page, everything in the left one. */
-.workspace.narrow-feed .book-right,
-.workspace.narrow-day .book-right {
-  display: none;
-}
-
-/* The feed alone is the window's height so its list scrolls inside it, the date jump above
-   it always in reach. */
-.workspace.narrow-feed .book-left {
-  display: flex;
-  flex-direction: column;
-  height: calc(100dvh - var(--site-header));
-  padding-bottom: 0;
 }

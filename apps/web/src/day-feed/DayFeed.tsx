@@ -15,7 +15,6 @@ import { FeedDiary } from './FeedDiary.tsx';
 import { collapseOf, diariesOf, type Collapse, type Entry, type Side } from './model.ts';
 import { UnreadArrow, useUnreadArrows } from './UnreadArrows.tsx';
 import { useDayFeed, type Failure, type Loading } from './useDayFeed.ts';
-import './day-feed.css';
 
 /** A person of the feed: who they are, for whose text is whose, and their avatar. */
 export type FeedPerson = AvatarPerson & { id: string };
@@ -30,7 +29,7 @@ export type FeedPosition = Anchor;
 /** How long the list rests after scrolling before it reports where it is. */
 export const POSITION_MS = 400;
 
-/** Opens a date in the left page (or the narrow day page); `edit` gives it the focus. */
+/** Opens a date's day view; `edit` gives its own diary the focus. */
 type Open = (date: string, edit: boolean) => void;
 
 // A diary date is a calendar day, not an instant: shown as written, in no time zone.
@@ -60,7 +59,6 @@ const failureText: Record<Failure['kind'], string> = {
 };
 
 const collapseText: Record<Exclude<Collapse, null>, string> = {
-  editing: '正在左页编辑',
   'writing-self': '你在别处正在写',
   'writing-partner': 'TA 正在写',
 };
@@ -75,23 +73,19 @@ function DateSection({
   entry,
   me,
   partner,
-  editingDate,
   near,
   listTrusted,
   authorClass,
   clip,
-  chosen,
   onOpen,
 }: {
   entry: Entry;
   me: FeedPerson;
   partner: FeedPerson;
-  editingDate: string | null;
   near: boolean;
   listTrusted: boolean;
   authorClass: (author: string) => string;
   clip: () => Clip;
-  chosen: boolean;
   onOpen: Open | undefined;
 }) {
   const [textUnread, setTextUnread] = useState<Partial<Record<Side, boolean>>>({});
@@ -108,23 +102,26 @@ function DateSection({
       event.preventDefault();
       onOpen(entry.date, edit);
     });
-  // The chosen date says so in words, not only by its mark (D1, D3).
   const head = (rest?: ReactNode) => (
-    <header className="feed-date-head">
-      <h3>
-        <Link to={to} aria-current={chosen ? 'true' : undefined} onClick={opening(false)}>
+    <header className="flex flex-wrap items-center gap-3">
+      <h3 className="font-serif text-xl">
+        <Link to={to} className="text-ink no-underline hover:underline" onClick={opening(false)}>
           {label}
         </Link>
       </h3>
-      {chosen && <span className="feed-chosen">在左页</span>}
       {rest}
-      <Link className="feed-edit" to={to} state={{ edit: true }} onClick={opening(true)}>
+      <Link
+        className="ml-auto text-sm text-ink-soft no-underline hover:text-ink hover:underline"
+        to={to}
+        state={{ edit: true }}
+        onClick={opening(true)}
+      >
         编辑
       </Link>
     </header>
   );
   const sectionProps = {
-    className: chosen ? 'feed-date chosen' : 'feed-date',
+    className: 'feed-date border-t border-line py-6 first-of-type:border-t-0',
     'data-date': entry.date,
     'aria-label': label,
   };
@@ -132,7 +129,7 @@ function DateSection({
     return (
       <section {...sectionProps}>
         {head()}
-        <p className="list-note">这一天没有可以读的日记</p>
+        <p className="mt-3 text-sm text-ink-soft">这一天没有可以读的日记</p>
       </section>
     );
 
@@ -146,7 +143,7 @@ function DateSection({
     <section {...sectionProps}>
       {head(
         <>
-          <span className="feed-avatars">
+          <span className="inline-flex gap-1">
             {diaries.map(({ diary, person }) => (
               <Avatar key={diary.side} person={person} hollow={!diary.hasText} />
             ))}
@@ -155,21 +152,19 @@ function DateSection({
         </>,
       )}
       {diaries.map(({ diary, person }) => {
-        const collapse = collapseOf(entry.date, diary, editingDate);
+        const collapse = collapseOf(diary);
         if (collapse)
           return (
             <p
               key={diary.side}
-              className="feed-collapsed"
+              className="feed-collapsed mt-4 flex flex-wrap items-baseline gap-3 text-ink-soft"
               data-unread={listTrusted && diary.unread ? 'collapsed' : undefined}
             >
-              {diaries.length > 1 && <span className="feed-diary-who">{person.name}</span>}
+              {diaries.length > 1 && <span className="text-sm">{person.name}</span>}
               <span>{collapseText[collapse]}</span>
-              {collapse !== 'editing' && (
-                <Link to={to} onClick={opening(false)}>
-                  在左页打开
-                </Link>
-              )}
+              <Link to={to} className="text-warm underline" onClick={opening(false)}>
+                打开这一天
+              </Link>
             </p>
           );
         return (
@@ -207,19 +202,23 @@ function EdgeButton({
   children: ReactNode;
 }) {
   return (
-    <button type="button" aria-disabled={!!busy} onClick={onLoad}>
+    <button
+      type="button"
+      className="min-h-0 rounded-lg border-0 bg-transparent px-3 py-2 text-sm text-ink-soft hover:bg-accent hover:text-ink"
+      aria-disabled={!!busy}
+      onClick={onLoad}
+    >
       {busy === end ? '正在读取…' : children}
     </button>
   );
 }
 
 /**
- * The right page (book-frontend-workspace D3, D4, D5, D8): both people's diaries by date,
- * newest first, each in full and read-only, scrolled inside its own box. Dates load a page
- * at a time as either end comes near, a date input jumps to any day, and text is read only
- * for dates near the viewport. `editingDate` names the date whose own diary the left page
- * has open; that diary shows only "正在左页编辑". `chosenDate`, the left page's date, is
- * marked "在左页". The line being read keeps its place when text above it changes height.
+ * The continuous reading view (digital-paper-interface D2; book-frontend-workspace D4, D5,
+ * D8): both people's diaries by date, newest first, each in full and read-only, scrolled
+ * inside its own box. Dates load a page at a time as either end comes near, a date input
+ * jumps to any day, and text is read only for dates near the viewport. The line being read
+ * keeps its place when text above it changes height.
  * Round ↑ / ↓ buttons over the box go to the nearest unread newer / older, loaded or not.
  *
  * `position` says where to show: a reported position, a date at the top, or the newest
@@ -231,16 +230,12 @@ function EdgeButton({
 export function DayFeed({
   me,
   partner,
-  editingDate = null,
-  chosenDate = null,
   position = null,
   onPosition,
   onOpen,
 }: {
   me: FeedPerson;
   partner: FeedPerson;
-  editingDate?: string | null;
-  chosenDate?: string | null;
   position?: FeedPosition | null;
   onPosition?: (at: FeedPosition) => void;
   onOpen?: (date: string, edit: boolean, at: FeedPosition | null) => void;
@@ -426,9 +421,9 @@ export function DayFeed({
   const nearDate = (date: string) => !near || near.has(date);
   const busy = loading === 'start' || loading === 'jump';
   return (
-    <section className="day-feed" aria-label="所有日记">
+    <section className="flex min-h-0 flex-1 flex-col gap-3" aria-label="所有日记">
       <form
-        className="feed-jump"
+        className="flex flex-wrap items-center gap-2 text-sm text-ink-soft"
         onSubmit={(event) => {
           event.preventDefault();
           if (!jumpDate) return;
@@ -436,22 +431,29 @@ export function DayFeed({
           jump(jumpDate);
         }}
       >
-        <label>
-          跳到日期{' '}
+        <label className="flex items-center gap-2">
+          跳到日期
           <input
             type="date"
+            className="h-9 rounded-lg border border-line bg-paper px-2 text-ink"
             value={jumpDate}
             required
             onChange={(event) => setJumpDate(event.target.value)}
           />
         </label>
-        <button type="submit" disabled={busy}>
+        <button
+          type="submit"
+          className="h-9 min-h-0 rounded-lg border border-line bg-transparent px-3 text-ink hover:bg-accent"
+          disabled={busy}
+        >
           跳转
         </button>
       </form>
-      <div className="feed-body">
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        {/* The feed keeps the reading position itself (D8, `anchor.ts`); the bottom padding
+            keeps the last line and action clear of the ↓ button. */}
         <div
-          className="day-feed-scroll"
+          className="day-feed-scroll min-h-0 flex-1 overflow-y-auto pb-14 [overflow-anchor:none]"
           ref={scroller}
           onScroll={() => {
             if (scroller.current) anchor.current = captureAnchor(scroller.current);
@@ -462,9 +464,10 @@ export function DayFeed({
           onKeyDown={stopPending}
           onPointerDown={stopPending}
         >
-          {busy && <p className="list-note">正在读取…</p>}
+          {busy && <p className="py-3 text-sm text-ink-soft">正在读取…</p>}
           {feedWindow?.nextAfter && (
-            <div className="feed-edge" data-edge="newer">
+            // Below the ↑ button.
+            <div className="pt-14 pb-3 text-center" data-edge="newer">
               <EdgeButton busy={loading} end="newer" onLoad={newer}>
                 加载更新的日记
               </EdgeButton>
@@ -476,29 +479,37 @@ export function DayFeed({
               entry={entry}
               me={me}
               partner={partner}
-              editingDate={editingDate}
               near={nearDate(entry.date)}
               listTrusted={!failure}
               authorClass={authorClass}
               clip={clip}
-              chosen={entry.date === chosenDate}
               onOpen={onOpen && open}
             />
           ))}
-          {entries?.length === 0 && <p className="list-note">还没有日记，从今天开始写吧</p>}
+          {entries?.length === 0 && (
+            <p className="py-3 text-ink-soft">还没有日记，从今天开始写吧</p>
+          )}
           {feedWindow?.nextBefore ? (
-            <div className="feed-edge" data-edge="older">
+            <div className="py-3 text-center" data-edge="older">
               <EdgeButton busy={loading} end="older" onLoad={older}>
                 加载更早的日记
               </EdgeButton>
             </div>
           ) : (
-            !!entries?.length && <p className="feed-end">已经是最早的一天</p>
+            !!entries?.length && (
+              <p className="py-3 text-center text-sm text-ink-soft">已经是最早的一天</p>
+            )
           )}
           {failure && (
-            <div className="notice feed-failure">
-              <p role="alert">{failureText[failure.kind]}</p>
-              <button type="button" onClick={failure.retry}>
+            <div className="flex items-center gap-3 rounded-xl bg-notice px-4 py-3">
+              <p role="alert" className="flex-1">
+                {failureText[failure.kind]}
+              </p>
+              <button
+                type="button"
+                className="h-9 min-h-0 rounded-lg border border-line bg-transparent px-3 text-sm text-ink hover:bg-paper"
+                onClick={failure.retry}
+              >
                 重试
               </button>
             </div>

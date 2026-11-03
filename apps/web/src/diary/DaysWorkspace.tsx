@@ -1,15 +1,16 @@
-import { useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useRef, useState, useSyncExternalStore, type MouseEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router';
+import { CalendarDays, ChevronDown, PenLine } from 'lucide-react';
 import { ApiError, callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
-import { BookSpread } from '../book/index.ts';
-import { DayFeed, type FeedPosition } from '../day-feed/index.ts';
-import { DayEditor, timezone } from './DayEditor.tsx';
+import { DateIndex, DayFeed, type FeedPerson, type FeedPosition } from '../day-feed/index.ts';
+import { Button, cn, Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/index.ts';
+import { DayEditor, timezone, todayHere } from './DayEditor.tsx';
 import { usePeople } from './DiaryPage.tsx';
 import { ScrollBox } from './scroll-box.ts';
 import './workspace.css';
 
-/** Below this width the book is one page (book.css), and so is the workspace (D6). */
+/** Below this width the date index folds into a date picker over the main area. */
 const NARROW = '(max-width: 56rem)';
 
 function onWidthChange(changed: () => void) {
@@ -22,31 +23,38 @@ const isNarrow = () => globalThis.matchMedia?.(NARROW).matches ?? false;
 const useNarrow = () => useSyncExternalStore(onWidthChange, isNarrow);
 
 /**
- * What a workspace entry keeps in the browser's history, never in the address (D3): where
- * the list was read, and whether the left page's own diary should take the focus.
+ * What a diary page entry keeps in the browser's history, never in the address
+ * (book-frontend-workspace D3): where the feed was read, whether the day's own diary should
+ * take the focus, and whether the entry before this one is the feed (`back`).
  */
-export type WorkspaceState = { feed?: FeedPosition; edit?: boolean };
+export type WorkspaceState = { feed?: FeedPosition; edit?: boolean; back?: boolean };
 
 export function workspaceState(state: unknown): WorkspaceState {
   if (typeof state !== 'object' || state === null) return {};
-  const { feed, edit } = state as Record<string, unknown>;
+  const { feed, edit, back } = state as Record<string, unknown>;
   const position =
     typeof feed === 'object' && feed !== null && typeof (feed as FeedPosition).date === 'string'
       ? (feed as FeedPosition)
       : undefined;
-  return { ...(position ? { feed: position } : {}), ...(edit === true ? { edit } : {}) };
+  return {
+    ...(position ? { feed: position } : {}),
+    ...(edit === true ? { edit } : {}),
+    ...(back === true ? { back } : {}),
+  };
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+const switchItem =
+  'inline-flex h-8 items-center rounded-lg px-3 text-sm text-ink-soft no-underline transition-colors hover:text-ink aria-[current=page]:bg-paper aria-[current=page]:text-ink aria-[current=page]:shadow-sm';
+
 /**
- * `/days` and `/days/:date`, the diary workspace (book-frontend-workspace D3, D6). Wide: a
- * spread whose left page edits the date in the address, or offers "从右页选一天" and
- * "写今天" without one, and whose right page is the feed of all diaries; each page scrolls
- * inside itself. Narrow: `/days` is the feed alone and `/days/:date` the day editor alone,
- * with "← 所有日记" back to where the feed was. Choosing a date pushes a history entry; the
- * feed's position lives in each entry's state, so a new left date keeps it, and back brings
- * the previous date and position again. The left page never waits for the feed.
+ * `/days` and `/days/:date`, the diary page (digital-paper-interface D2): the date index
+ * beside one main area, which is the feed of all diaries ("连续读", `/days`) or the day
+ * editor of the date in the address ("这一天"). Opening a date pushes a history entry; the
+ * feed's position lives in each entry's state, so going back to the feed shows it where it
+ * was. Narrow, the index folds into a date picker above the main area, which fills the
+ * width; the feed and the day are one page each (book-frontend-workspace D6).
  */
 export function DaysWorkspace() {
   const { date } = useParams();
@@ -55,7 +63,8 @@ export function DaysWorkspace() {
   const narrow = useNarrow();
   const user = useMe().data?.user;
   const { people } = usePeople();
-  const leftBox = useRef<HTMLDivElement>(null);
+  const dayBox = useRef<HTMLDivElement>(null);
+  const [picking, setPicking] = useState(false);
   if (date !== undefined && !DATE.test(date)) return <Navigate to="/days" replace />;
   if (!user) return null;
 
@@ -64,19 +73,68 @@ export function DaysWorkspace() {
   const focus = state.edit ? location.key : null;
   const here = { pathname: location.pathname, search: location.search, hash: location.hash };
 
+  const me: FeedPerson = {
+    id: user.id,
+    name: user.displayName,
+    slot: people.get(user.id)?.slot ?? null,
+  };
   const partnerId = [...people.keys()].find((id) => id !== user.id);
-  const partner = partnerId && people.get(partnerId);
+  const partnerOf = partnerId && people.get(partnerId);
+  const partner: FeedPerson =
+    partnerOf && partnerId
+      ? { id: partnerId, name: partnerOf.name, slot: partnerOf.slot }
+      : { id: '', name: 'TA', slot: null };
+
+  /** Opens a date's day; from the feed, the feed's entry is the one to go back to. */
+  const openDay = (to: string, edit = false) =>
+    void navigate(`/days/${to}`, {
+      state: { feed: state.feed, edit, ...(date ? {} : { back: true }) },
+    });
+  const choose = (to: string) => {
+    setPicking(false);
+    if (to !== date) openDay(to);
+  };
+  const backToFeed = (event: MouseEvent) => {
+    // Came here from the feed: its entry is the one before, with its position.
+    if (!state.back || location.key === 'default') return;
+    event.preventDefault();
+    void navigate(-1);
+  };
+  // "这一天" from the feed opens the date it was read at, else today.
+  const dayToOpen = date ?? state.feed?.date ?? todayHere();
+
+  const views = (
+    <nav aria-label="日记视图" className="inline-flex shrink-0 rounded-xl bg-accent p-1">
+      <Link
+        to="/days"
+        state={date ? { feed: state.feed ?? { date, offset: 0 } } : location.state}
+        aria-current={date ? undefined : 'page'}
+        className={switchItem}
+        onClick={date ? backToFeed : (event) => event.preventDefault()}
+      >
+        连续读
+      </Link>
+      <Link
+        to={`/days/${dayToOpen}`}
+        aria-current={date ? 'page' : undefined}
+        className={switchItem}
+        onClick={(event) => {
+          event.preventDefault();
+          if (!date) openDay(dayToOpen);
+        }}
+      >
+        这一天
+      </Link>
+    </nav>
+  );
+  const index = <DateIndex me={me} partner={partner} chosenDate={date ?? null} onChoose={choose} />;
+  const writeToday = <WriteToday onOpened={(diaryDate) => openDay(diaryDate, true)} />;
+
   const feed = (
     <DayFeed
-      me={{ id: user.id, name: user.displayName, slot: people.get(user.id)?.slot ?? null }}
-      partner={
-        partner && partnerId
-          ? { id: partnerId, name: partner.name, slot: partner.slot }
-          : { id: '', name: 'TA', slot: null }
-      }
-      editingDate={date ?? null}
-      chosenDate={date ?? null}
-      position={state.feed ?? (date ? { date, offset: 0 } : null)}
+      me={me}
+      partner={partner}
+      position={state.feed ?? null}
       onPosition={(at) =>
         void navigate(here, {
           replace: true,
@@ -86,81 +144,89 @@ export function DaysWorkspace() {
       onOpen={(to, edit, at) => {
         // The entry being left remembers the list as it is, for back.
         if (at) void navigate(here, { replace: true, state: { feed: at } });
-        if (to !== date || edit) void navigate(`/days/${to}`, { state: { feed: at, edit } });
+        void navigate(`/days/${to}`, { state: { feed: at ?? state.feed, edit, back: true } });
       }}
     />
   );
-  const writeToday = (diaryDate: string) =>
-    void navigate(`/days/${diaryDate}`, { state: { feed: state.feed, edit: true } });
+  const feedView = (
+    <>
+      <h1 className="font-serif text-2xl font-normal text-ink">所有日记</h1>
+      {feed}
+    </>
+  );
 
   if (narrow)
-    return date ? (
-      <Workspace className="narrow-day">
-        <nav className="workspace-nav">
-          <Link
-            to="/days"
-            state={{ feed: state.feed ?? { date, offset: 0 } }}
-            onClick={(event) => {
-              // Came here from the feed: its entry is the one before, with its position.
-              if (!state.feed || location.key === 'default') return;
-              event.preventDefault();
-              void navigate(-1);
-            }}
-          >
-            ← 所有日记
-          </Link>
-        </nav>
-        <DayEditor date={date} focus={focus} />
-      </Workspace>
-    ) : (
-      <Workspace className="narrow-feed">
-        <nav className="workspace-nav">
-          <Link to="/">← 序言</Link>
-        </nav>
-        <h1 className="workspace-title">所有日记</h1>
-        <WriteToday onOpened={writeToday} />
-        {feed}
-      </Workspace>
+    return (
+      <main
+        className={cn(
+          'flex flex-col wrap-anywhere',
+          // The feed scrolls inside itself, so it takes the rest of the window's height; the
+          // day scrolls with the window.
+          !date && 'h-[calc(100dvh-var(--site-header))]',
+        )}
+      >
+        <Collapsible
+          open={picking}
+          onOpenChange={setPicking}
+          className="flex min-h-0 shrink-0 flex-col border-b border-line px-4 py-3"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            {views}
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" size="sm">
+                <CalendarDays aria-hidden="true" />
+                日期
+                <ChevronDown
+                  aria-hidden="true"
+                  className={cn('transition-transform', picking && 'rotate-180')}
+                />
+              </Button>
+            </CollapsibleTrigger>
+            <div className="ml-auto">{writeToday}</div>
+          </div>
+          <CollapsibleContent className="mt-2 flex max-h-[55dvh] min-h-0 flex-col rounded-xl border border-line">
+            {index}
+          </CollapsibleContent>
+        </Collapsible>
+        {date ? (
+          <div className="px-4 py-5">
+            <DayEditor date={date} focus={focus} />
+          </div>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 pt-4">{feedView}</div>
+        )}
+      </main>
     );
 
   return (
-    <main className="days-workspace">
-      <BookSpread
-        className="workspace wide"
-        left={
-          <div className="workspace-left" ref={leftBox}>
-            <ScrollBox value={leftBox}>
-              <nav className="workspace-nav">
-                <Link to="/">← 序言</Link>
-              </nav>
-              {date ? (
+    // Long words and links wrap inside their region, never across the index or the window.
+    <main className="grid h-[calc(100dvh-var(--site-header))] grid-cols-[17rem_minmax(0,1fr)] wrap-anywhere">
+      <aside className="flex min-h-0 flex-col border-r border-line bg-accent/30">
+        <div className="px-6 pt-6 pb-3">
+          <p className="font-serif text-lg text-ink">我们的日记</p>
+        </div>
+        <div className="px-4 pb-3">{writeToday}</div>
+        {index}
+      </aside>
+      {date ? (
+        // The day scrolls inside the main area, the index staying beside it; its unread tools
+        // float over this box, not the window (workspace.css).
+        <div className="day-box relative min-h-0">
+          <div ref={dayBox} className="day-scroll h-full overflow-y-auto [overflow-anchor:none]">
+            <ScrollBox value={dayBox}>
+              <div className="mx-auto max-w-3xl px-10 py-6">
+                <div className="mb-6">{views}</div>
                 <DayEditor date={date} focus={focus} />
-              ) : (
-                <section className="choose-day" aria-label="选择日期">
-                  <h1 className="workspace-title">日记</h1>
-                  <p>从右页选一天</p>
-                  <WriteToday onOpened={writeToday} />
-                </section>
-              )}
+              </div>
             </ScrollBox>
           </div>
-        }
-        right={
-          <>
-            <h2 className="workspace-title">所有日记</h2>
-            {feed}
-          </>
-        }
-      />
-    </main>
-  );
-}
-
-/** The narrow workspace: one page, everything in it. */
-function Workspace({ className, children }: { className: string; children: ReactNode }) {
-  return (
-    <main className="days-workspace">
-      <BookSpread className={`workspace ${className}`} left={children} right={null} />
+        </div>
+      ) : (
+        <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-col gap-3 px-10 pt-6">
+          <div className="mb-3">{views}</div>
+          {feedView}
+        </div>
+      )}
     </main>
   );
 }
@@ -190,11 +256,18 @@ function WriteToday({ onOpened }: { onOpened: (diaryDate: string) => void }) {
   };
   return (
     <>
-      <button type="button" className="primary" disabled={opening} onClick={() => void open()}>
+      <Button
+        type="button"
+        className="w-full"
+        size="sm"
+        disabled={opening}
+        onClick={() => void open()}
+      >
+        <PenLine aria-hidden="true" />
         写今天
-      </button>
+      </Button>
       {error && (
-        <p className="notice" role="alert">
+        <p className="mt-2 rounded-lg bg-notice px-3 py-2 text-sm" role="alert">
           {error}
         </p>
       )}
