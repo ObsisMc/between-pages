@@ -15,6 +15,12 @@ test.afterEach(async ({ browser }) => {
   await Promise.all(browser.contexts().map((context) => context.close()));
 });
 
+/** Unfolds the range editor on the space page, folded while the range is confirmed. */
+async function editRange(page: Page) {
+  const fold = page.getByRole('button', { name: '调整共享日期' });
+  if ((await fold.getAttribute('aria-expanded')) !== 'true') await fold.click();
+}
+
 const WIDE = { width: 1280, height: 800 };
 const NARROW = [
   { width: 375, height: 740 },
@@ -418,6 +424,7 @@ test('[adr:book-frontend-workspace#7] both people writing across days read in on
 
   // A stops sharing: B keeps what was shared, marked, and never sees what A writes after.
   await a.goto(space);
+  await editRange(a);
   await a.getByLabel('自选日期').check();
   await a.getByRole('button', { name: '保存范围' }).click();
   await a.getByRole('button', { name: '确认保存' }).click();

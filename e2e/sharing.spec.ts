@@ -23,6 +23,12 @@ test.afterEach(async ({ browser }) => {
   await Promise.all(browser.contexts().map((context) => context.close()));
 });
 
+/** Unfolds the range editor on the space page, folded while the range is confirmed. */
+async function editRange(page: Page) {
+  const fold = page.getByRole('button', { name: '调整共享日期' });
+  if ((await fold.getAttribute('aria-expanded')) !== 'true') await fold.click();
+}
+
 async function signedIn(browser: Browser, name: string): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
   await page.goto('/login');
@@ -148,6 +154,7 @@ test('K8 K7 opening while another device is offline: committed input stays text,
   // A2 opens the range from the space page without waiting for A1.
   await a2.goto('/');
   await openSpace(a2);
+  await editRange(a2);
   await a2.getByLabel('全部历史与以后的日期').check();
   await a2.getByRole('button', { name: '保存范围' }).click();
   await expect(a2.getByText(/^将开放：全部历史与以后。/)).toBeVisible();
@@ -249,6 +256,7 @@ test('EDIT-13 EDIT-14 TIME-03 K11 the partner reads and writes a shared diary in
   // A stops sharing: B keeps the frozen text read-only and hears nothing private after it.
   await a.goto('/');
   await openSpace(a);
+  await editRange(a);
   await a.getByLabel('自选日期').check();
   await a.getByRole('button', { name: '保存范围' }).click();
   await expect(a.getByText(/^将停止更新：/)).toBeVisible();

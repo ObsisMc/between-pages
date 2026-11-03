@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { Plus } from 'lucide-react';
 import type { DateRange, DateSelection } from '@between-pages/contracts';
+import { Button, CheckboxLabel, Input, Label } from '../ui/index.ts';
 import { ALL_DAYS, describeSelection, isAllDays } from './range.ts';
 import { MonthView } from './MonthView.tsx';
 
@@ -53,45 +55,55 @@ function RowEditor({
   onRemove: () => void;
 }) {
   return (
-    <fieldset className="range-row">
-      <legend>{label}</legend>
-      <label>
-        开始
-        <input
-          type="date"
-          value={row.from}
-          disabled={row.fromOpen}
-          onChange={(e) => onChange({ ...row, from: e.target.value })}
-        />
-      </label>
-      <label className="range-open">
-        <input
-          type="checkbox"
-          checked={row.fromOpen}
-          onChange={(e) => onChange({ ...row, fromOpen: e.target.checked })}
-        />
-        从最早的日期
-      </label>
-      <label>
-        结束
-        <input
-          type="date"
-          value={row.to}
-          disabled={row.toOpen}
-          onChange={(e) => onChange({ ...row, to: e.target.value })}
-        />
-      </label>
-      <label className="range-open">
-        <input
-          type="checkbox"
-          checked={row.toOpen}
-          onChange={(e) => onChange({ ...row, toOpen: e.target.checked })}
-        />
-        以后持续
-      </label>
-      <button type="button" onClick={onRemove}>
+    <fieldset className="grid gap-3 rounded-xl border border-line px-4 pt-2 pb-4 sm:grid-cols-2">
+      <legend className="px-1 text-sm text-ink-soft">{label}</legend>
+      <div className="grid gap-2">
+        <Label>
+          开始
+          <Input
+            type="date"
+            value={row.from}
+            disabled={row.fromOpen}
+            onChange={(e) => onChange({ ...row, from: e.target.value })}
+          />
+        </Label>
+        <CheckboxLabel>
+          <input
+            type="checkbox"
+            checked={row.fromOpen}
+            onChange={(e) => onChange({ ...row, fromOpen: e.target.checked })}
+          />
+          从最早的日期
+        </CheckboxLabel>
+      </div>
+      <div className="grid gap-2">
+        <Label>
+          结束
+          <Input
+            type="date"
+            value={row.to}
+            disabled={row.toOpen}
+            onChange={(e) => onChange({ ...row, to: e.target.value })}
+          />
+        </Label>
+        <CheckboxLabel>
+          <input
+            type="checkbox"
+            checked={row.toOpen}
+            onChange={(e) => onChange({ ...row, toOpen: e.target.checked })}
+          />
+          以后持续
+        </CheckboxLabel>
+      </div>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="justify-self-start"
+        onClick={onRemove}
+      >
         删除这段
-      </button>
+      </Button>
     </fieldset>
   );
 }
@@ -140,29 +152,29 @@ export function RangeEditor({
   };
 
   return (
-    <div className="range-editor">
-      <div role="radiogroup" aria-label="共享日期">
-        <label>
+    <div className="grid gap-4 font-sans text-ink">
+      <div role="radiogroup" aria-label="共享日期" className="grid gap-2">
+        <CheckboxLabel>
           <input type="radio" checked={mode === 'all'} onChange={() => update({ mode: 'all' })} />
           全部历史与以后的日期
-        </label>
-        <label>
+        </CheckboxLabel>
+        <CheckboxLabel>
           <input
             type="radio"
             checked={mode === 'custom'}
             onChange={() => update({ mode: 'custom' })}
           />
           自选日期
-        </label>
+        </CheckboxLabel>
         {allowUnset && (
-          <label>
+          <CheckboxLabel>
             <input
               type="radio"
               checked={mode === 'unset'}
               onChange={() => update({ mode: 'unset' })}
             />
             暂不设置
-          </label>
+          </CheckboxLabel>
         )}
       </div>
       {mode === 'custom' && (
@@ -176,9 +188,16 @@ export function RangeEditor({
               onRemove={() => edit('include', include, i, null)}
             />
           ))}
-          <button type="button" onClick={() => update({ include: [...include, newRow()] })}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="justify-self-start"
+            onClick={() => update({ include: [...include, newRow()] })}
+          >
+            <Plus aria-hidden="true" />
             添加共享日期
-          </button>
+          </Button>
           {exclude.map((row, i) => (
             <RowEditor
               key={`x${i}`}
@@ -188,13 +207,22 @@ export function RangeEditor({
               onRemove={() => edit('exclude', exclude, i, null)}
             />
           ))}
-          <button type="button" onClick={() => update({ exclude: [...exclude, newRow()] })}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="justify-self-start"
+            onClick={() => update({ exclude: [...exclude, newRow()] })}
+          >
+            <Plus aria-hidden="true" />
             添加排除日期
-          </button>
-          <p className="range-help">单日请把开始和结束设为同一天；排除的日期优先于共享的日期。</p>
+          </Button>
+          <p className="text-sm text-ink-soft">
+            单日请把开始和结束设为同一天；排除的日期优先于共享的日期。
+          </p>
         </>
       )}
-      <p className="range-summary" aria-live="polite">
+      <p className="text-sm text-ink-soft" aria-live="polite">
         {choice.kind === 'unset'
           ? '暂不设置共享范围，以后可以单独设置'
           : choice.kind === 'invalid'

@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { DateSelection } from '@between-pages/contracts';
+import { Button, cn } from '../ui/index.ts';
 import { isShared } from './range.ts';
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -22,21 +24,33 @@ export function MonthView({ selection }: { selection: DateSelection }) {
     });
 
   return (
-    <div className="month-view">
-      <div className="month-nav">
-        <button type="button" onClick={() => shift(-1)} aria-label="上个月">
-          ‹
-        </button>
-        <span>
+    <div className="w-full max-w-sm font-sans text-ink">
+      <div className="mb-2 flex items-center justify-between">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => shift(-1)}
+          aria-label="上个月"
+        >
+          <ChevronLeft aria-hidden="true" />
+        </Button>
+        <span className="font-serif">
           {month.year} 年 {month.month + 1} 月
         </span>
-        <button type="button" onClick={() => shift(1)} aria-label="下个月">
-          ›
-        </button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => shift(1)}
+          aria-label="下个月"
+        >
+          <ChevronRight aria-hidden="true" />
+        </Button>
       </div>
-      <div className="month-grid">
+      <div className="grid grid-cols-7 gap-1 text-center text-sm">
         {WEEKDAYS.map((w) => (
-          <span key={w} className="month-weekday">
+          <span key={w} className="text-ink-soft">
             {w}
           </span>
         ))}
@@ -49,7 +63,7 @@ export function MonthView({ selection }: { selection: DateSelection }) {
           return (
             <span
               key={day}
-              className={shared ? 'month-day shared' : 'month-day'}
+              className={cn('rounded-lg py-1 tabular-nums', shared && 'bg-warm text-paper')}
               aria-label={`${month.month + 1} 月 ${i + 1} 日${shared ? '共享' : '不共享'}`}
             >
               {i + 1}

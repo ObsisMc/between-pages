@@ -23,8 +23,11 @@ export function BackupBanner() {
           ? 'Google 备份已经一天多没有成功，正在自动重试'
           : `Google 授权将在 ${dateTime(backup.google.expiresAt!)} 过期，请重新连接`;
   return (
-    <p className="notice backup-banner" role="alert">
-      {text} · <Link to="/backup">去备份页</Link>
+    <p className="mb-6 rounded-xl bg-notice px-4 py-3 text-sm text-ink" role="alert">
+      {text} ·{' '}
+      <Link to="/backup" className="text-warm underline underline-offset-4">
+        去备份页
+      </Link>
     </p>
   );
 }

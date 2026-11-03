@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { renderAt, signedIn, stubApi } from '../../test/render.tsx';
 import { PERIOD, SPACE, errorBody, periods, space } from '../../test/relationship.ts';
 
@@ -166,6 +166,42 @@ describe('SpacePage', () => {
       expectedPeriodId: PERIOD,
     });
     expect(screen.queryByText('保存范围')).toBeNull();
+  });
+
+  it('[adr:digital-paper-interface#2] folds the editor while the range is confirmed, keeping a choice across folding, and confirms in a dialog', async () => {
+    stubApi({
+      'GET /api/me': signedIn('alice'),
+      [`GET /api/spaces/${SPACE}`]: () => Response.json({ space: space(), periods: periods(true) }),
+      [`GET /api/spaces/${SPACE}/my-sharing`]: mine(1, PERIOD),
+      [`GET /api/spaces/${SPACE}/shared-diaries`]: noneShared,
+    });
+    renderAt(`/spaces/${SPACE}`);
+    const fold = await screen.findByRole('button', { name: '调整共享日期' });
+    expect(fold.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByRole('button', { name: '保存范围' })).toBeNull();
+    fireEvent.click(fold);
+    fireEvent.click(screen.getByRole('radio', { name: '全部历史与以后的日期' }));
+    fireEvent.click(fold);
+    fireEvent.click(fold);
+    expect(
+      (screen.getByRole('radio', { name: '全部历史与以后的日期' }) as HTMLInputElement).checked,
+    ).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: '保存范围' }));
+    const dialog = screen.getByRole('dialog', { name: '确认共享范围' });
+    expect(within(dialog).getByText('保存后：共享：全部历史与以后')).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: '取消' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('opens the editor while the range is not confirmed for this binding', async () => {
+    stubApi({
+      'GET /api/me': signedIn('alice'),
+      [`GET /api/spaces/${SPACE}`]: () => Response.json({ space: space(), periods: periods(true) }),
+      [`GET /api/spaces/${SPACE}/my-sharing`]: mine(1, null),
+      [`GET /api/spaces/${SPACE}/shared-diaries`]: noneShared,
+    });
+    renderAt(`/spaces/${SPACE}`);
+    expect(await screen.findByRole('button', { name: '保存范围' })).toBeDefined();
   });
 
   it('[adr:spaces-and-invitations#9] says a space it may not read does not exist', async () => {

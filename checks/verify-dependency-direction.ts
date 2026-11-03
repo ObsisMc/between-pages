@@ -153,13 +153,13 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       history: ['api'],
       // unread-and-day-page: the initial avatar knows no other module.
       avatar: [],
-      'sharing-range': [],
+      'sharing-range': ['ui'],
       relationship: ['api', 'sharing-range'],
       join: ['api', 'auth', 'relationship', 'sharing-range'],
-      space: ['api', 'auth', 'relationship', 'sharing-range', 'shared-diaries'],
-      'shared-diaries': ['api'],
+      space: ['api', 'auth', 'relationship', 'sharing-range', 'shared-diaries', 'shell', 'ui'],
+      'shared-diaries': ['api', 'ui'],
       // server-backup-and-google-docs D9: the backup page, the Google callback and the home banner.
-      backup: ['api'],
+      backup: ['api', 'shell', 'ui'],
       // two-clocks: the home time area, the clocks page and the browser's zone report; the
       // page sits in the shell's page container (digital-paper-interface 落地顺序 4).
       'two-clocks': ['api', 'shell', 'ui'],
