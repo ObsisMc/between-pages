@@ -78,6 +78,15 @@ test('[adr:shared-pages#1] [adr:shared-pages#9] two people write one page and se
 
   await b.goto('/shared-pages');
   await expect(b.getByRole('link', { name: /旅行清单/ })).not.toContainText('新');
+
+  // What A writes after B has read the page marks it again, and opening clears it.
+  await expect(a.getByRole('status').filter({ hasText: '已同步' })).toBeVisible();
+  await editor(a).click();
+  await a.keyboard.press('End');
+  await a.keyboard.type('行程');
+  await expect(a.getByRole('status').filter({ hasText: '已同步 · 对方可以看到' })).toBeVisible();
+  await b.reload();
+  await expect(b.getByRole('link', { name: /旅行清单/ })).toContainText('改过');
   expect(a.url()).toBe(url);
 });
 

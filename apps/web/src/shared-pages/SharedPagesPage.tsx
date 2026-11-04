@@ -20,7 +20,8 @@ import { useLeftDrafts } from './left-drafts.ts';
 import { pageTitle, sharedPagesKey, useSharedPages, type SharedPagesView } from './queries.ts';
 
 // The list of shared pages (shared-pages D1): flat, the last updated first, with a dot on
-// what the partner changed. Deletion notes come first (D3).
+// what the partner changed: new text is an action on the page (D5), which reads as "改过".
+// Deletion notes come first (D3).
 
 const alertClass = 'mt-3 rounded-xl bg-notice px-4 py-3 text-sm text-ink';
 
@@ -134,7 +135,8 @@ export function SharedPagesPage() {
                 className="flex flex-wrap items-baseline justify-between gap-3 rounded-xl border border-line px-4 py-3 hover:bg-accent"
               >
                 <span className="font-serif text-lg">
-                  {pageTitle(p.title)} <UnreadLabel unread={p.unread} />
+                  {pageTitle(p.title)}{' '}
+                  <UnreadLabel unread={p.unread === 'acted' ? 'edited' : p.unread} />
                 </span>
                 <span className="text-sm text-ink-soft">{dayText(p.updatedAt)}</span>
               </Link>

@@ -72,6 +72,12 @@ describe('shared pages', () => {
     screen.getByRole('link', { name: /未命名页面/ });
   });
 
+  it('marks a page the partner wrote in after the caller had read it', async () => {
+    stubApi({ ...fixed, [LIST]: json(view({ pages: [page({ unread: 'acted', mark: 2 })] })) });
+    renderAt('/shared-pages');
+    expect((await screen.findByRole('link', { name: /旅行清单/ })).textContent).toContain('改过');
+  });
+
   it('says what the partner deleted and what the caller had done there', async () => {
     stubApi({
       ...fixed,
