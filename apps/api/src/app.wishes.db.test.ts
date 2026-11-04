@@ -246,6 +246,35 @@ describe.runIf(testDatabaseUrl)('space records and wishes', () => {
     ).toEqual(wall[0]!.revealed);
   });
 
+  it('[adr:wishes-and-gifts#3] "收到了" after the gift was revealed answers that gift and reveals nothing', async () => {
+    const { a, b } = await pair();
+    const wish = await createWish(a);
+    const gift = await prepare(b, { wishId: wish.id });
+    // The order the concurrent case loses to: the giver's reveal commits first.
+    expect((await reveal(b, gift.id)).statusCode).toBe(200);
+    const [revealed] = (await view(a)).wall;
+
+    for (let again = 0; again < 2; again++) {
+      const got = ok(await receive(a, wish.id), (v) => routes.receiveWish.response.parse(v));
+      expect(got.giftId).toBe(gift.id);
+    }
+    expect((await view(a)).wall).toEqual([revealed]);
+    expect(revealed!.revealed!.by).toBe(b.id);
+    const actions = await query<{ n: number }>(
+      "select count(*)::int as n from space_actions where record_id = any($1) and kind in ('receive', 'reveal')",
+      [[wish.id, gift.id]],
+    );
+    expect(actions[0]!.n).toBe(1);
+
+    // Only the wisher may ask, and a gift since deleted is not answered.
+    expect(codeOf(await receive(b, wish.id))).toBe('NOT_FOUND');
+    const deleted = await send(b, 'POST', path(routes.deleteGift.path, gift.id), {
+      requestId: randomUUID(),
+    });
+    expect(deleted.statusCode).toBe(200);
+    expect(codeOf(await receive(a, wish.id))).toBe('NOT_FOUND');
+  });
+
   it('[adr:wishes-and-gifts#4] [adr:wishes-and-gifts#5] the three ways to reveal, and who sees the card', async () => {
     const { a, b } = await pair();
     // 1. The giver reveals a gift for a wish: it leaves the list, the card arrives with it.
