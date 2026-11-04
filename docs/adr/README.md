@@ -33,7 +33,7 @@
 | [digital-paper-interface](./2026-11-03-digital-paper-interface.md) | 数字书页以内容布局承载成熟组件，并保留轻拟物双窗与圆团子 | 已采纳 | 领域 | 4/10 部分 |
 | [drop-single-diary-page](./2026-11-03-drop-single-diary-page.md) | 不再保留单篇日记页，每篇日记都在日记页的「这一天」里打开 | 已实现 | 领域 | 3/3 已完成 |
 | [window-mascots](./2026-11-03-window-mascots.md) | 主页窗里的团子可以戳和摸，对方在主页上看到，团子只按作息睡觉 | 已实现 | 领域 | 7/8 部分 |
-| [shared-pages](./2026-11-04-shared-pages.md) | 共享页面是两人一起写的纯文字页面，每人只改自己的字，标题与删除两人都能做 | 已采纳 | 领域 | 0/11 未开始 |
+| [shared-pages](./2026-11-04-shared-pages.md) | 共享页面是两人一起写的纯文字页面，每人只改自己的字，标题与删除两人都能做 | 已采纳 | 领域 | 10/11 部分 |
 <!-- adr-index:end -->
 
 ## 原则
