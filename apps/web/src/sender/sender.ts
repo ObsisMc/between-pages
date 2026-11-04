@@ -35,6 +35,8 @@ export type SenderOptions<Intent> = {
   onStatus: (status: SaveStatus) => void;
   /** Refused input moved to drafts; the editor must reload from the journal (D7). */
   onDrafts: (drafts: Draft<Intent>[]) => void;
+  /** Whether this refusal ends the document for good, so its input can only become drafts. */
+  closes?: (code: ErrorCode) => boolean;
 };
 
 export type Sender = {
@@ -56,6 +58,7 @@ export function createSender<Intent>({
   transport,
   onStatus,
   onDrafts,
+  closes,
 }: SenderOptions<Intent>): Sender {
   const locks = globalThis.navigator?.locks;
   /** Set for good: nothing this instance does can make sending safe again. */
@@ -91,6 +94,11 @@ export function createSender<Intent>({
     if (result.type === 'offline') {
       status('offline');
       return false;
+    }
+    if (closes?.(result.code)) {
+      onDrafts(await journal.reject(diaryId, batch.batchId, 'rejected'));
+      status('attention');
+      return true;
     }
     switch (errorCategory[result.code]) {
       case 'retry':

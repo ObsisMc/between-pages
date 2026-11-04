@@ -1,6 +1,6 @@
 # 共享页面是两人一起写的纯文字页面，每人只改自己的字，标题与删除两人都能做
 
-- 状态：已采纳
+- 状态：已实现
 - 日期：2026-11-04
 - 决策者：Ray
 - 范围：领域
@@ -133,7 +133,7 @@ share_epochs、diary_read_ranges → diaries.id：不变
 
 页面只有一个代（generation），基线是空文档，不开轮次，提交的 `epoch_id` 恒为空，不做快照以外的代切换。删除的字和日记一样留在提交记录里。
 
-**锁的顺序只有一种**：先取绑定期间的共享锁，再取文档锁。`withDiaryLock` 改名 `withDocumentLock`；文档是页面时，它先不加锁读出不可变的 `space_id`，以 `FOR SHARE` 锁住未结束的绑定期间（没有就标记只读），再 `FOR UPDATE` 锁文档行。改标题与删除在 `spaceRecords.write` 的事务里再取文档锁，所以删除与提交按文档锁排序：提交要么在删除之前成功，要么得到 `NOT_FOUND`。解绑先写绑定期间再冻结日记，也是这个顺序。
+**锁的顺序只有一种**：先取绑定期间的共享锁，再取文档锁。文档是页面时，`withDocumentLock` 先不加锁读出不可变的 `space_id`，以 `FOR SHARE` 锁住未结束的绑定期间（没有就标记只读），再 `FOR UPDATE` 锁文档行。改标题与删除在 `spaceRecords.write` 的事务里再取文档锁，所以删除与提交按文档锁排序：提交要么在删除之前成功，要么得到 `NOT_FOUND`。解绑先写绑定期间再冻结日记，也是这个顺序。
 
 原因：依据 8。反过来取锁时，`FOR SHARE` 会排在等待中的解绑后面，提交、删除与解绑三方可能死锁；`spaceRecords.write` 已经先取绑定期间，所以提交也先取。
 
@@ -147,8 +147,6 @@ share_epochs、diary_read_ranges → diaries.id：不变
 | `diaries` | 去掉 `version`、`generation_id`，`id` 指向 `documents` |
 | `shared_pages` | space-records 的共用列（`private_to` 恒为空），`title`（0～60 字，默认空串）、`title_by`、`title_at` |
 | `space_changes`、`space_actions`、`space_reads` | 检查约束登记记录类型 `shared_page` 与动作 `renamed`、`wrote` |
-
-`diaries` 的 `version` 与 `generation_id` 在服务端约 8 处引用，集中在 `store`，都改为读 `documents`。
 
 **接口**（`packages/contracts`，全部 `no-store`）：
 
@@ -170,7 +168,8 @@ share_epochs、diary_read_ranges → diaries.id：不变
 - `apps/api/src/commit`、`ws`、`reader`：加 D7 的权限分支。
 - `apps/api/src/space-records/`：不改；作者检查 `authorOnly` 本来就由功能服务调用，页面服务改标题与删除时不调用它。
 - `apps/web/src/shared-pages/`：列表、页面、标题编辑、删除确认；路由 `/shared-pages`、`/shared-pages/:pageId`；`shell` 的"一起"增加"共享页面"，可见规则与心愿相同。
-- `apps/web/src/diary/session.ts`：`createDiarySession` 的取状态与订阅入口改为可传入，日记行为不变，页面传入自己的一组。
+- `apps/web/src/diary/session.ts`：`createDiarySession` 与 `DiaryBlock` 接受 `page`，从它取状态，不做阅读追踪；日记行为不变。发送器接受 `closes`，判定解绑或删除时待发内容转为草稿。
+- `apps/web/src/journal/`：基线带 `page` 标记，列表用 `pages()` 找出已删除页面留在本机的内容。
 
 ## 失败与恢复
 
@@ -222,28 +221,13 @@ share_epochs、diary_read_ranges → diaries.id：不变
 - 迁移要动 `diaries` 的列和两个外键，是本功能风险最高的一步，要用真实 PG 测试迁移前后的日记读写。
 - 页面删除的字和日记一样留在提交记录里，两人的客户端都可能收到；页面从第一个字起就是共享的，没有私密阶段，所以接受。
 
-## 落地顺序
+## 验证
 
-1. **本 ADR 采纳**：2026-11-04 与 Ray 逐条确认后改为已采纳，`docs/architecture.md` 的 Current decisions 加入本文。
-2. **`documents` 拆分**（一个 PR，无用户可见变化）：迁移 `0011_documents`，`store`、`withDocumentLock` 与引用改写；现有日记测试全部通过，加迁移回填的 PG 测试。
-3. **服务端**（一个 PR）：迁移 `0012_shared_pages`、契约、页面服务、D7 的权限分支、D5 的 `wrote`、未读汇总，`npm run openapi`，依赖方向规则。
-4. **网页**（一个 PR）：`shared-pages` 模块、导航与路由、`createDiarySession` 的入口、草稿恢复；规格 §3、§8.1 与 `docs/acceptance.md` 补上共享页面的条目。
-5. 实现后本文转为已实现，路线图与 README 状态行同步。
-
-自主实现约定：本文预先批准 `0011_documents` 与 `0012_shared_pages` 迁移，以及 `checks/modules.json`、依赖方向规则中登记新模块所需的改动；不需要新依赖。第 2 步发现要改协同校验或线上协议时停下来问 Ray。三个 PR 依次叠放，合并前等 Ray 确认。
-
-## 验收标准
-
-- 两人写同一页：各自的字有各自的颜色，互相看到光标，删除对方的字被编辑器和服务端拒绝（API 测试与浏览器测试，不变量 1）。
-- 解绑后两人能读不能写，重绑后恢复；并发的提交与解绑没有解绑之后才提交的写入（真实 PG 测试，不变量 2、3、11）。
-- 两人分别改标题、删除，历史记下操作人；同时改标题时后到的被拒（API 测试，不变量 4）。
-- 第三人的 REST、订阅与提交都得到不存在；已删除页面的读取 404，回执仍可查（API 测试，不变量 5）。
-- 删除对方写过字的页面，对方有删除记录与未读；没动过的不提示（API 测试，不变量 6）。
-- 页面的 ID 请求日记接口得到不存在；有页面时日记列表、未读与 `backup_outbox` 不变（API 测试，不变量 7）。
-- 一人连续提交多次，对方看过之前只有一条 `wrote`，看过后下一次提交再追加一条（真实 PG 测试，不变量 8）。
-- 圆点在列表和导航里亮起，打开页面后清除，对方看不到已读状态（API 测试与组件测试，不变量 9）。
-- 写字时被解绑或删除、离线后页面已删除，待发内容都能作为草稿复制出来（浏览器测试，不变量 10）。
-- 验证某条不变量的测试标题带 `[adr:shared-pages#<编号>]`。
+- 真实 PG、真实路由与同步连接：`apps/api/src/app.shared-pages.db.test.ts` 覆盖不变量 1～9、11，包括解绑与提交的并发、取锁顺序、第三人与已删除页面、`wrote` 的增长、页面不进日记接口与 `backup_outbox`。
+- 迁移：`apps/api/src/db/schema.db.test.ts` 在 `0010` 写入日记，升级后 `version`、代与创建时间不变。
+- 浏览器：`e2e/shared-pages.spec.ts` 两人同写一页、实时看到对方、拒绝删除对方的字、未读圆点，以及写字时页面被删和离线后页面已删时内容变成草稿（不变量 1、9、10）。
+- 组件测试：`apps/web/src/shared-pages/shared-pages.test.tsx` 列表、删除记录、只读与删除确认。
+- Ray 的手动验收待做。
 
 ## 补充信息
 

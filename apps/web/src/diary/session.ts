@@ -54,6 +54,8 @@ export type DiaryState = {
    * catch-up said, until a `stopped` notice. Undefined until the server has said so.
    */
   shared?: boolean;
+  /** A shared page can no longer be written here, and why. */
+  closed?: PageClosed;
   /** The owner shared this diary again as this new epoch; the frozen one stays as it is. */
   reopened?: string;
   /** "只看我的文字" is on: the other person's text is hidden and nothing can be edited. */
@@ -111,12 +113,31 @@ export type DiarySession = {
 const STORE_RETRY_MS = 5_000;
 const CARET_EVERY_MS = 100;
 
+/** What a shared page opens from (shared-pages D7). */
+export type PageSource = {
+  load(): Promise<{
+    readOnly: boolean;
+    generationId: string;
+    seq: number;
+    state: string;
+    bindings: ClientBinding[];
+  }>;
+};
+
+/** Refusals that end a page's writing here: unbound or deleted (shared-pages 失败与恢复). */
+export type PageClosed = 'SPACE_READ_ONLY' | 'NOT_FOUND';
+
 export type DiarySessionOptions = {
   place: HTMLElement;
   userId: string;
   diaryId: string;
   /** Opens the partner's shared diary as this epoch instead of the own diary (kernel D10). */
   epochId?: string | undefined;
+  /**
+   * Opens this document as a shared page instead of a diary: from `load`, read by both from
+   * the first word, with no read tracking (shared-pages D5, D7).
+   */
+  page?: PageSource | undefined;
   /** The class coloring an author's text (EDIT-13), by their slot in the space. */
   authorClass?: (author: string) => string | null;
   /** The name shown on another person's caret. */
@@ -139,6 +160,7 @@ export function createDiarySession({
   userId,
   diaryId,
   epochId,
+  page,
   authorClass,
   nameOf,
   onChange,
@@ -152,6 +174,7 @@ export function createDiarySession({
     storeFailed: false,
     drafts: [],
     remoteChanges: 0,
+    ...(page ? { shared: true } : {}),
   };
   let destroyed = false;
   let journal: Journal<EditIntent[]> | undefined;
@@ -231,7 +254,7 @@ export function createDiarySession({
     for (const op of pending) editor.applyUpdate(op.update, authors);
     for (const delta of arriving) editor.applyUpdate(delta, authors);
     arriving = null;
-    editor.setEditable(state.save !== 'readonly' && state.save !== 'upgrade');
+    editor.setEditable(state.save !== 'readonly' && state.save !== 'upgrade' && !state.closed);
   }
 
   /** After drafts were made the editor still shows their text, so it is rebuilt, but only once
@@ -295,6 +318,19 @@ export function createDiarySession({
   > {
     const bytes = (state: string) => Uint8Array.from(atob(state), (c) => c.charCodeAt(0));
     try {
+      if (page) {
+        const view = await page.load();
+        if (view.readOnly) set({ closed: 'SPACE_READ_ONLY' });
+        return {
+          diaryId,
+          page: true,
+          generationId: view.generationId,
+          seq: view.seq,
+          state: bytes(view.state),
+          bindings: view.bindings,
+          diaryDate: '',
+        };
+      }
       if (epochId) {
         const { diary } = await callApi('sharedDiary', { params: { diaryId, epochId } });
         return {
@@ -409,7 +445,16 @@ export function createDiarySession({
         void refreshDrafts();
         void remountWhenStored();
       },
+      ...(page ? { closes: closeOn } : {}),
     });
+  }
+
+  /** Unbound or deleted: nothing more goes in, and what waits becomes drafts (shared-pages D4). */
+  function closeOn(code: ErrorCode) {
+    if (code !== 'SPACE_READ_ONLY' && code !== 'NOT_FOUND') return false;
+    editor?.setEditable(false);
+    set({ closed: code });
+    return true;
   }
 
   /**
@@ -638,7 +683,7 @@ export function createDiarySession({
 
   open()
     .then(() => {
-      if (!destroyed && state.phase === 'open')
+      if (!destroyed && state.phase === 'open' && !page)
         reads = createReadTracker({
           diaryId,
           visible: onScreen,

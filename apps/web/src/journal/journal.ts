@@ -23,6 +23,8 @@ export type Baseline = {
   generationId: string;
   /** The partner's live epoch this copy belongs to; absent on the owner's own diary. */
   epochId?: string;
+  /** A shared page's document, which can be deleted under its writer (shared-pages D7). */
+  page?: true;
   seq: number;
   /** A Yjs update holding the whole state. */
   state: Uint8Array;
@@ -137,6 +139,8 @@ export type Journal<Intent = unknown> = {
    */
   reject(diaryId: string, batchId: string, reason: DraftReason): Promise<Draft<Intent>[]>;
   drafts(diaryId: string): Promise<Draft<Intent>[]>;
+  /** The shared pages this device holds a copy of, for input left on a deleted one. */
+  pages(): Promise<string[]>;
   deleteDraft(draftId: string): Promise<void>;
   close(): void;
 };
@@ -455,6 +459,12 @@ export async function openJournal<Intent = unknown>(userId: string): Promise<Jou
           tx.objectStore(DRAFTS).index('diaryId').getAll(diaryId),
         );
         return drafts.sort((a, b) => a.localSequence - b.localSequence);
+      }),
+
+    pages: () =>
+      run([BASELINES], 'readonly', async (tx) => {
+        const baselines = await request<Baseline[]>(tx.objectStore(BASELINES).getAll());
+        return baselines.filter((b) => b.page).map((b) => b.diaryId);
       }),
 
     deleteDraft: (draftId) =>

@@ -1,0 +1,160 @@
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
+import { Link, useNavigate, useParams } from 'react-router';
+import { useQueryClient } from '@tanstack/react-query';
+import { callApi } from '../api/client.ts';
+import { DiaryBlock, usePeople, type PageSource } from '../diary/index.ts';
+import { Page } from '../shell/index.ts';
+import { refusalText, useSeenReporter } from '../space-common/index.ts';
+import {
+  Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+  Input,
+} from '../ui/index.ts';
+import { sharedPagesKey, useSharedPage, useSharedPages, type SharedPageView } from './queries.ts';
+
+// One shared page (shared-pages D2–D5). The text is a diary session; this screen adds the
+// title and deletion, which either of the two may do, and clears the page's unread as soon
+// as it is open, and again as what the partner writes arrives (D5).
+
+const alertClass = 'mt-3 rounded-xl bg-notice px-4 py-3 text-sm text-ink';
+
+function Title({ view, onChanged }: { view: SharedPageView; onChanged: () => Promise<void> }) {
+  const [error, setError] = useState<string | null>(null);
+  const rename = async (title: string) => {
+    const next = title.trim();
+    if (next === view.page.title) return;
+    setError(null);
+    try {
+      await callApi('renameSharedPage', {
+        params: { pageId: view.page.id },
+        body: {
+          requestId: crypto.randomUUID(),
+          expectedRevision: view.page.revision,
+          title: next,
+        },
+      });
+    } catch (failure) {
+      setError(refusalText(failure));
+    }
+    await onChanged();
+  };
+  const enter = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') event.currentTarget.blur();
+  };
+  return (
+    <div className="min-w-0 flex-1">
+      <Input
+        // A rename by either person replaces what is shown.
+        key={view.page.revision}
+        aria-label="页面标题"
+        className="font-serif text-xl"
+        defaultValue={view.page.title}
+        placeholder="未命名页面"
+        maxLength={60}
+        disabled={view.readOnly}
+        onBlur={(event) => void rename(event.currentTarget.value)}
+        onKeyDown={enter}
+      />
+      {error && (
+        <p className={alertClass} role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function DeletePage({ view, partner }: { view: SharedPageView; partner: string }) {
+  const client = useQueryClient();
+  const navigate = useNavigate();
+  const [requestId] = useState(() => crypto.randomUUID());
+  const [error, setError] = useState<string | null>(null);
+  const partnerWrote = view.bindings.some((b) => b.userId === partner);
+  const remove = async () => {
+    setError(null);
+    try {
+      await callApi('deleteSharedPage', { params: { pageId: view.page.id }, body: { requestId } });
+      await client.invalidateQueries({ queryKey: sharedPagesKey, exact: true });
+      await navigate('/shared-pages');
+    } catch (failure) {
+      setError(refusalText(failure));
+    }
+  };
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button type="button" variant="outline">
+          删除
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogTitle>删除这一页？</DialogTitle>
+        <p className="text-sm">删除后两人都看不到，也不能恢复。</p>
+        {partnerWrote && <p className="text-sm">TA 写的内容也会一起消失。</p>}
+        {error && (
+          <p className={alertClass} role="alert">
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <DialogClose asChild>
+            <Button type="button" variant="outline">
+              取消
+            </Button>
+          </DialogClose>
+          <Button type="button" onClick={() => void remove()}>
+            确认删除
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function SharedPageScreen() {
+  const { pageId = '' } = useParams();
+  const client = useQueryClient();
+  const list = useSharedPages();
+  const opened = useSharedPage(pageId);
+  const { people, known } = usePeople();
+  const report = useSeenReporter(sharedPagesKey);
+  const source = useMemo<PageSource>(
+    () => ({ load: () => callApi('sharedPage', { params: { pageId } }) }),
+    [pageId],
+  );
+
+  const view = opened.data;
+  const unread = view?.page.unread;
+  const mark = view?.page.mark;
+  useEffect(() => {
+    if (unread && mark !== undefined) report({ type: 'shared_page', id: pageId, mark });
+  }, [unread, mark, pageId, report]);
+
+  const me = list.data?.me.id;
+  return (
+    <Page>
+      <Link to="/shared-pages" className="text-sm text-ink-soft underline">
+        所有页面
+      </Link>
+      <h1 className="sr-only">共享页面</h1>
+      {view && list.data && (
+        <div className="mt-4 mb-6 flex flex-wrap items-start gap-3">
+          <Title
+            view={view}
+            onChanged={() => client.invalidateQueries({ queryKey: sharedPagesKey })}
+          />
+          {!view.readOnly && <DeletePage view={view} partner={list.data.partner.id} />}
+        </div>
+      )}
+      {me && known ? (
+        <DiaryBlock key={pageId} userId={me} diaryId={pageId} page={source} people={people} />
+      ) : (
+        <p className="text-ink-soft">正在打开…</p>
+      )}
+    </Page>
+  );
+}

@@ -128,6 +128,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'two-clocks',
         'wishes',
         'anniversaries',
+        'shared-pages',
       ],
       api: [],
       auth: ['api', 'ui'],
@@ -176,6 +177,9 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       'space-common': ['api', 'ui'],
       wishes: ['api', 'space-common', 'shell', 'ui'],
       anniversaries: ['api', 'space-common', 'shell', 'ui'],
+      // shared-pages D7: a page's text is a diary's session; only its list reads the journal,
+      // for input left on a page deleted meanwhile.
+      'shared-pages': ['api', 'diary', 'journal', 'space-common', 'shell', 'ui'],
       // book-frontend-workspace: `day-text` renders one diary's text read-only and knows no
       // other module; `day-feed` is the continuous list of them and the date index, which
       // `diary` mounts beside the day editor (digital-paper-interface D2, 落地顺序 2).
