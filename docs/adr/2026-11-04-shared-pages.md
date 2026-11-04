@@ -1,6 +1,6 @@
 # 共享页面是两人一起写的纯文字页面，每人只改自己的字，标题与删除两人都能做
 
-- 状态：提议
+- 状态：已采纳
 - 日期：2026-11-04
 - 决策者：Ray
 - 范围：领域
@@ -139,7 +139,7 @@ share_epochs、diary_read_ranges → diaries.id：不变
 
 ## 数据与模块
 
-**数据**（迁移 `0011_shared_pages`）：
+**数据**（迁移 `0011_documents` 建 `documents` 并改 `diaries`，`0012_shared_pages` 建 `shared_pages` 并登记类型与动作）：
 
 | 表 | 内容 |
 | --- | --- |
@@ -224,13 +224,13 @@ share_epochs、diary_read_ranges → diaries.id：不变
 
 ## 落地顺序
 
-1. **本 ADR 采纳**：评审时改为已采纳，并在 `docs/architecture.md` 的 Current decisions 加一行。
-2. **`documents` 拆分**（一个 PR，无用户可见变化）：迁移的 `documents` 部分，`store`、`withDocumentLock` 与引用改写；现有日记测试全部通过，加迁移回填的 PG 测试。
-3. **服务端**（一个 PR）：迁移的 `shared_pages` 部分、契约、页面服务、D7 的权限分支、D5 的 `wrote`、未读汇总，`npm run openapi`，依赖方向规则。
+1. **本 ADR 采纳**：2026-11-04 与 Ray 逐条确认后改为已采纳，`docs/architecture.md` 的 Current decisions 加入本文。
+2. **`documents` 拆分**（一个 PR，无用户可见变化）：迁移 `0011_documents`，`store`、`withDocumentLock` 与引用改写；现有日记测试全部通过，加迁移回填的 PG 测试。
+3. **服务端**（一个 PR）：迁移 `0012_shared_pages`、契约、页面服务、D7 的权限分支、D5 的 `wrote`、未读汇总，`npm run openapi`，依赖方向规则。
 4. **网页**（一个 PR）：`shared-pages` 模块、导航与路由、`createDiarySession` 的入口、草稿恢复；规格 §3、§8.1 与 `docs/acceptance.md` 补上共享页面的条目。
 5. 实现后本文转为已实现，路线图与 README 状态行同步。
 
-自主实现约定：本文预先批准 `0011_shared_pages` 迁移，以及 `checks/modules.json`、依赖方向规则中登记新模块所需的改动；不需要新依赖。第 2 步发现要改协同校验或线上协议时停下来问 Ray。三个 PR 依次叠放，合并前等 Ray 确认。
+自主实现约定：本文预先批准 `0011_documents` 与 `0012_shared_pages` 迁移，以及 `checks/modules.json`、依赖方向规则中登记新模块所需的改动；不需要新依赖。第 2 步发现要改协同校验或线上协议时停下来问 Ray。三个 PR 依次叠放，合并前等 Ray 确认。
 
 ## 验收标准
 
