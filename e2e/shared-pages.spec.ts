@@ -44,7 +44,6 @@ test('[adr:shared-pages#1] [adr:shared-pages#9] two people write one page and se
   browser,
   browserName,
 }) => {
-  test.setTimeout(60_000);
   const { a, b } = await bound(browser, browserName, 'w');
   const url = await newPage(a, '旅行清单');
   await editor(a).click();
@@ -86,7 +85,6 @@ test('[adr:shared-pages#10] input survives the page being deleted, while open an
   browser,
   browserName,
 }) => {
-  test.setTimeout(60_000);
   const { a, b } = await bound(browser, browserName, 'd');
 
   // Deleted while the writer has it open: the next word comes back as a draft.
