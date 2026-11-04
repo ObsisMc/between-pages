@@ -8,7 +8,7 @@
 
 共享页面让两个人随时新建一页，一起写计划、清单和随手记。页面属于双人空间，第一版是平铺列表里的纯文字页面，没有目录。正文沿用日记的协同内核：字符级作者不可变，每人只能改自己写的字。标题和删除是页面级操作，两个人都能做，并记下是谁做的。解绑后两人只读，原来的两人重绑后恢复。页面不进 Google 可读副本，未读第一版只做页面级圆点。
 
-本文不负责：可勾选的清单、加粗与标题样式、目录、页面历史、恢复已删除的页面、按字的未读；见面计划的设计（它已采纳，排在本功能之后）。
+本文不负责：可勾选的清单、加粗与标题样式、目录、页面历史、恢复已删除的页面、按字的未读；见面计划的设计（它已采纳，排在本功能之后，2026-11-04 起搁置，先用共享页面实践）。
 
 ## 背景与问题
 
@@ -84,7 +84,7 @@ Ray 2026-10-30 提出：见面计划等功能的具体形式还不明确，先�
 
 ### D5：未读第一版只做页面级圆点，打开页面就算读过
 
-对方新建、改标题、写了正文、删除自己动过的页面时，这一页对你是未读：列表里这一页带圆点，导航的"共享页面"入口也亮圆点。打开这一页，圆点就清除；页面开着时对方继续写的内容，约每 30 秒上报一次看过。不做"下一处未读"，不按字标记。
+对方新建、改标题、写了正文、删除自己动过的页面时，这一页对你是未读：列表里这一页标"新"或"改过"（对方新建的页面标"新"，其余标"改过"），导航的"共享页面"入口亮圆点。打开这一页，圆点就清除；页面开着时对方继续写的内容，约每 30 秒上报一次看过。不做"下一处未读"，不按字标记。
 
 **这是规格 §8.1 和 space-records D8 "看到才算读过"的例外**，只适用于共享页面。代价是打开了但没读到底，圆点也会消失。接受这一点，因为页面是一起写的工作文档，不是要逐字读的日记（Ray 2026-11-04 确认）；要按字未读时，沿用日记的 `read-tracker` 另写 ADR。
 
@@ -114,13 +114,13 @@ diary_commits、diary_operations、diary_character_ranges、diary_snapshots：�
 share_epochs、diary_read_ranges → diaries.id：不变
 ```
 
-日记专有的查询都从 `diaries` 出发，页面不在这张表里，所以不可能出现在日记列表、日记未读、共享轮次或 Google 副本里，不需要在任何查询上加过滤条件。`diary_*` 子表和线上字段 `diaryId` 保留原名，含义扩大为"文档 ID"，这样同步协议、本机日志、发送器都不用改；代价是名字不准，在表注释与 `packages/contracts/src/sync.ts` 里写明。
+日记专有的查询都从 `diaries` 出发，页面不在这张表里，所以不可能出现在日记列表、日记未读、共享轮次或 Google 副本里，不需要在任何查询上加过滤条件。`diary_*` 子表和线上字段 `diaryId` 保留原名，含义扩大为"文档 ID"，这样同步协议与本机日志的结构都不用改；代价是名字不准，在表注释与 `packages/contracts/src/sync.ts` 里写明。
 
 原因：依据 7、9。见备选方案。
 
 ### D7：协同内核只多一条按空间绑定判断的路径
 
-`packages/collab`、`diary_*` 子表、本机日志、发送器、同步客户端和编辑器绑定都不改。`commit`、`ws/sync`、`reader` 里判断权限的地方，从"主人或轮次接收者"变成按文档种类分支：
+`packages/collab`、`diary_*` 子表、同步协议、同步客户端和编辑器绑定都不改，发送器与本机日志只各多一个入口（见"数据与模块"）。`commit` 与 `ws/sync` 里判断权限的地方，从"主人或轮次接收者"变成按文档种类分支；页面的提交事件走 `reader.deliverable` 的主人路径，两个人都按主人接收，`reader` 不用改：
 
 | 判断 | 日记 | 共享页面 |
 | --- | --- | --- |
@@ -152,9 +152,9 @@ share_epochs、diary_read_ranges → diaries.id：不变
 
 | 接口 | 内容 |
 | --- | --- |
-| `GET /api/shared-pages` | `{ me, partner, readOnly, pages, notes }`：全部页面，最近更新在前，每页带 `id`、`title`、`authorId`、`revision`、`updatedAt`、`unread`、`mark`；`notes` 是删除记录 |
+| `GET /api/shared-pages` | `{ me, partner, readOnly, pages, notes }`：全部页面，最近更新在前，每页带 `id`、`title`、`authorId`、`revision`、`updatedAt`、`renamed`、`unread`、`mark`；`notes` 是删除记录 |
 | `POST /api/shared-pages` | `{ requestId, title }` → `{ page }` |
-| `GET /api/shared-pages/:pageId` | `{ page, state, generationId, seq, bindings }`，`state` 的形状与 `GET /api/diaries/:diaryId` 相同 |
+| `GET /api/shared-pages/:pageId` | `{ page, readOnly, generationId, seq, state, bindings }`，`state` 的形状与 `GET /api/diaries/:diaryId` 相同 |
 | `PUT /api/shared-pages/:pageId/title` | `{ requestId, expectedRevision, title }` → `{ page }` |
 | `POST /api/shared-pages/:pageId/delete` | `{ requestId }` → `{ deleted: true }` |
 | `GET /api/space/unread` | `features` 增加 `sharedPages` |
@@ -165,7 +165,7 @@ share_epochs、diary_read_ranges → diaries.id：不变
 **模块**：
 
 - `apps/api/src/shared-pages/`：页面服务，只通过 `space-records` 写入；SQL 在 `apps/api/src/store/shared-pages.ts`。依赖方向与其他功能相同。
-- `apps/api/src/commit`、`ws`、`reader`：加 D7 的权限分支。
+- `apps/api/src/commit`、`ws`：加 D7 的权限分支；`store` 的 `withDocumentLock` 与 `notePageWritten`。
 - `apps/api/src/space-records/`：不改；作者检查 `authorOnly` 本来就由功能服务调用，页面服务改标题与删除时不调用它。
 - `apps/web/src/shared-pages/`：列表、页面、标题编辑、删除确认；路由 `/shared-pages`、`/shared-pages/:pageId`；`shell` 的"一起"增加"共享页面"，可见规则与心愿相同。
 - `apps/web/src/diary/session.ts`：`createDiarySession` 与 `DiaryBlock` 接受 `page`，从它取状态，不做阅读追踪；日记行为不变。发送器接受 `closes`，判定解绑或删除时待发内容转为草稿。
@@ -178,7 +178,7 @@ share_epochs、diary_read_ranges → diaries.id：不变
 | 写字时对方解绑 | 提交被拒 `SPACE_READ_ONLY`，页面转只读 | 待发内容转为可复制的草稿；重绑后手动写回 |
 | 写字时对方删除页面 | 提交被拒 `NOT_FOUND`，页面显示"这一页已被删除" | 待发内容转为可复制的草稿 |
 | 离线写了内容，页面在离线期间被删 | 重新打开时列表里没有这一页 | 列表读本机日志，发现已删除页面的待发内容时显示可复制的草稿 |
-| 对方只是开着页面在读，这一页被删或已解绑 | 下一次聚焦或提交时才知道 | 第一版不做实时通知，刷新后显示当前状态 |
+| 对方只是开着页面在读，这一页被删或已解绑 | 打开的页面不会立刻变化，下一次提交才知道 | 第一版不做实时通知，刷新后显示当前状态 |
 | 两人同时改标题 | 后到的 `RECORD_STALE` | 刷新后再改 |
 | 响应丢失 | 按 `batchId` 或 `requestId` 查回执或重试 | 与日记、空间记录相同 |
 | 提交与解绑并发 | 绑定期间的共享锁排序：提交在解绑之前，或被拒 | 同第一行 |
@@ -225,11 +225,11 @@ share_epochs、diary_read_ranges → diaries.id：不变
 
 - 真实 PG、真实路由与同步连接：`apps/api/src/app.shared-pages.db.test.ts` 覆盖不变量 1～9、11，包括解绑与提交的并发、取锁顺序、第三人与已删除页面、`wrote` 的增长、页面不进日记接口与 `backup_outbox`。
 - 迁移：`apps/api/src/db/schema.db.test.ts` 在 `0010` 写入日记，升级后 `version`、代与创建时间不变。
-- 浏览器：`e2e/shared-pages.spec.ts` 两人同写一页、实时看到对方、拒绝删除对方的字、未读圆点，以及写字时页面被删和离线后页面已删时内容变成草稿（不变量 1、9、10）。
+- 浏览器：`e2e/shared-pages.spec.ts` 两人同写一页、实时看到对方、拒绝删除对方的字、列表的未读标记，以及写字时页面被删和离线后页面已删时内容变成草稿（不变量 1、9、10）。
 - 组件测试：`apps/web/src/shared-pages/shared-pages.test.tsx` 列表、删除记录、只读与删除确认。
-- Ray 的手动验收待做。
+- 手动验收：[清单](../validation/shared-pages-manual-2026-11-04.md)，Ray 执行。
 
 ## 补充信息
 
 - 重新评估条件：实际使用后需要互改文字或可勾选的清单；页面多到平铺列表找不到；发生过误删；需要按字未读；出现第三种协同文档；见面计划决定复用页面。
-- 证据：2026-11-04 与 Ray 逐条确认：不能改对方的字、纯文字、标题与删除两人都能做、解绑后只读、不进 Google、页面级圆点、第一版不做目录。D6、D7 的存储与锁顺序由读 `apps/api/src/commit/commit.ts`、`ws/sync.ts`、`db/schema.ts` 与 `space-records` 后提出，待评审。
+- 证据：2026-11-04 与 Ray 逐条确认：不能改对方的字、纯文字、标题与删除两人都能做、解绑后只读、不进 Google、页面级圆点、第一版不做目录。D6、D7 的存储与锁顺序由读 `apps/api/src/commit/commit.ts`、`ws/sync.ts`、`db/schema.ts` 与 `space-records` 后提出，随 PR #76 采纳。

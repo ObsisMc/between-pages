@@ -217,6 +217,7 @@ MVP 包含：个人日记、固定唯一搭档绑定、邀请、自助解绑与�
 | AuthorizedViewVersion / ShareEpoch | 日记、空间、接收者、绑定期间、授权代次及主人+固定搭档正文版本；live 版本和不可变 frozen 版本分别寻址 |
 | AuthoredText / CollaborationState | 有序内容及稳定位置/元素标识、不可变 authorId、写入批次与 UTC 时间、恢复协同所需状态；允许压缩相邻区段 |
 | EditOperation | operationId、diaryId、认证 actor、设备/会话、目标稳定标识、载荷、客户端/服务端时间、提交版本；幂等 |
+| SharedPage | pageId、spaceId、不可变 authorId、标题及最后改它的人和时间、revision、软删除；正文走日记的提交链，归 Document，字符作者规则相同 |
 | ReadCoverage | 用户、日记、稳定文字范围/元素集合、已读合并信息；不得用一个最大序号代替 |
 | GoogleConnection / DayDoc | 每人自己的 Google 账号、加密的 refresh token 及密钥编号、连接状态；每人每天的 Doc ID、文件夹、应用上次写入的 revision、内容校验值与覆盖的版本 |
 | Outbox / DayWork | 提交时登记的目标版本与授权上下文；按"谁的 Drive、哪一天"合并的待写项、尝试次数、下次重试、错误状态 |
@@ -235,6 +236,7 @@ URL、框架及编码尚未固定，但以下语义须存在：
 | 订阅协同 | 日记、视图、period/epoch、已知状态 → 权限范围内更新；不发送未授权日期、版本或停止共享后的私人变化 |
 | 提交编辑 | operationId、授权上下文、稳定目标、编辑内容 → 持久化确认或拒绝；旧授权不能自动重放到新 epoch |
 | 提交已读 | 日记授权视图、实际可见稳定范围 → 该视图的合并进度；过滤隐藏不算已读 |
+| 共享页面 | 空间的两个人在绑定中新建、改标题、删除；正文按协同消息提交，解绑后被拒为只读，页面已删除时按不存在处理；第三人一律按不存在处理 |
 | 修改自己的共享范围 | 当前期间、expectedRevision、请求 ID、日期集合 → 原子策略修订与版本冻结/开放 |
 | 连接/断开 Google | OAuth state、PKCE 与发起会话校验，回调的 Google 账号即连接的账号；断开撤销授权、不删除 Drive 文件 |
 | 现在备份、查询备份 | 本人 → 连接状态、待写日期、问题记录；每篇日记在本人 Drive 中已覆盖的版本、时间与 Doc 链接 |
