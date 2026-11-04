@@ -27,7 +27,7 @@ async function newDiary(owner?: string) {
     baseline: Y.encodeStateAsUpdate(createDiaryDoc()),
   });
   const [row] = await query<{ generation_id: string }>(
-    'select generation_id from diaries where id = $1',
+    'select generation_id from documents where id = $1',
     [diaryId],
   );
   return { ownerId, diaryId, generationId: row!.generation_id };
@@ -53,7 +53,7 @@ const committedText = async (diaryId: string) => {
 };
 
 const version = async (diaryId: string) =>
-  (await query<{ version: string }>('select version from diaries where id = $1', [diaryId]))[0]!
+  (await query<{ version: string }>('select version from documents where id = $1', [diaryId]))[0]!
     .version;
 
 describe.runIf(testDatabaseUrl)('commit chain', () => {

@@ -21,7 +21,7 @@ afterEach(() => {
 /** Commits `text` through the store, as the commit service would after validation. */
 async function commitText(diaryId: string, clientID: number, text: string) {
   const update = edit(client(clientID), (t) => t.insert(0, text));
-  return store.withDiaryLock(diaryId, (locked) =>
+  return store.withDocumentLock(diaryId, (locked) =>
     locked.insertCommit({
       batchId: randomUUID(),
       authorId: locked.diary.ownerId,

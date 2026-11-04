@@ -43,7 +43,7 @@ const settledWithin = (promise: Promise<unknown>, ms: number) =>
 
 async function commitText(diaryId: string, text: string) {
   const update = edit(client(201), (t) => t.insert(0, text));
-  return store.withDiaryLock(diaryId, (locked) =>
+  return store.withDocumentLock(diaryId, (locked) =>
     locked.insertCommit({
       batchId: randomUUID(),
       authorId: locked.diary.ownerId,
@@ -112,7 +112,7 @@ describe.runIf(testDatabaseUrl)('commit lock', () => {
     async () => {
       const owner = await createUser();
       const { diaryId } = await open(owner);
-      const release = await holdLock('select 1 from diaries where id = $1 for update', [diaryId]);
+      const release = await holdLock('select 1 from documents where id = $1 for update', [diaryId]);
       const started = Date.now();
       try {
         await expect(commitText(diaryId, 'too late')).rejects.toThrow();
@@ -127,7 +127,7 @@ describe.runIf(testDatabaseUrl)('commit lock', () => {
   it('waits for a held diary row and commits after it is released', async () => {
     const owner = await createUser();
     const { diaryId } = await open(owner);
-    const release = await holdLock('select 1 from diaries where id = $1 for update', [diaryId]);
+    const release = await holdLock('select 1 from documents where id = $1 for update', [diaryId]);
     const committing = commitText(diaryId, 'after');
     try {
       expect(await settledWithin(committing, 300)).toBe(false);

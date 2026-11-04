@@ -5,6 +5,7 @@ import {
   activeBindings,
   backupOutbox,
   diaries,
+  documents,
   diaryCommits,
   diaryGenerations,
   shareEpochs,
@@ -49,8 +50,8 @@ const diaryColumns = {
   id: diaries.id,
   ownerId: diaries.ownerId,
   diaryDate: diaries.diaryDate,
-  generationId: diaries.generationId,
-  version: diaries.version,
+  generationId: documents.generationId,
+  version: documents.version,
 };
 
 const liveColumns = {
@@ -80,6 +81,7 @@ export class EpochQueries {
     return this.tx
       .select(diaryColumns)
       .from(diaries)
+      .innerJoin(documents, eq(documents.id, diaries.id))
       .where(eq(diaries.ownerId, ownerId))
       .orderBy(asc(diaries.diaryDate));
   }
@@ -266,13 +268,13 @@ export class LockedBoundaries extends EpochQueries {
           epochId: o.epochId,
         })),
       );
-      await this.tx.execute(sql`update ${diaries}
-        set version = ${diaries.version} + 1, generation_id = v.generation_id
+      await this.tx.execute(sql`update ${documents}
+        set version = ${documents.version} + 1, generation_id = v.generation_id
         from (values ${sql.join(
           part.map((o) => sql`(${o.diary.id}::uuid, ${o.generationId}::uuid)`),
           sql`, `,
         )}) as v(id, generation_id)
-        where ${diaries.id} = v.id`);
+        where ${documents.id} = v.id`);
       await this.tx.insert(backupOutbox).values(
         part.flatMap((o) => [
           { diaryId: o.diary.id, version: o.version, target: 'personal' as const },
@@ -299,9 +301,9 @@ export class LockedBoundaries extends EpochQueries {
   async freeze(epochIds: readonly string[], at: Date): Promise<void> {
     for (const part of chunks(epochIds)) {
       await this.tx.execute(sql`update ${shareEpochs}
-        set closed_at = ${at}, frozen_version = ${diaries.version}
-        from ${diaries}
-        where ${diaries.id} = ${shareEpochs.diaryId}
+        set closed_at = ${at}, frozen_version = ${documents.version}
+        from ${documents}
+        where ${documents.id} = ${shareEpochs.diaryId}
           and ${inArray(shareEpochs.id, part)} and ${isNull(shareEpochs.closedAt)}`);
       // Stopping writes no commit, yet the recipient's Google copy must show the share as
       // stopped (server-backup-and-google-docs D5, technical design step 2): the space task

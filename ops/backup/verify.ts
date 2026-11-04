@@ -77,7 +77,7 @@ export async function verify(options: {
     const store = createStore(database.db);
     const diaries = (
       await client.query<{ id: string; generation_id: string; version: string }>(
-        'select id, generation_id, version from diaries order by id',
+        'select d.id, c.generation_id, c.version from diaries d join documents c using (id) order by d.id',
       )
     ).rows;
     for (const diary of diaries) {

@@ -83,22 +83,32 @@ const int8multirange = customType<{ data: string }>({ dataType: () => 'int8multi
 // the flows that lock users FOR UPDATE before diary rows (kernel D9 lock order). Those IDs
 // come only from the session (authentication-and-sessions invariant 10).
 
-// One personal diary per owner and date (spaces-and-invitations D1, kernel D1). `version`
-// is the internal commit counter and never leaves the server (kernel D2).
-// `generation_id` points at the current generation; it has no foreign key because the
-// generation row references the diary, and both are written in the creating transaction.
+// What a commit chain hangs on (shared-pages D6): the `diary_*` tables below hold one
+// document's chain, and their `diary_id` means this ID. `version` is the internal commit
+// counter and never leaves the server (kernel D2). `generation_id` points at the current
+// generation; it has no foreign key because the generation row references the document,
+// and both are written in the creating transaction.
+export const documents = pgTable('documents', {
+  id: uuid('id').primaryKey(),
+  version: int8('version').notNull().default(0),
+  generationId: uuid('generation_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// One personal diary per owner and date (spaces-and-invitations D1, kernel D1); its ID is
+// its document's. Queries that start here cannot reach any other kind of document.
 export const diaries = pgTable(
   'diaries',
   {
-    id: uuid('id').primaryKey(),
+    id: uuid('id')
+      .primaryKey()
+      .references(() => documents.id),
     ownerId: uuid('owner_id')
       .notNull()
       .references(() => users.id),
     diaryDate: date('diary_date', { mode: 'string' }).notNull(),
     createdTimezone: text('created_timezone').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    version: int8('version').notNull().default(0),
-    generationId: uuid('generation_id').notNull(),
   },
   (t) => [unique('diaries_owner_date').on(t.ownerId, t.diaryDate)],
 );
@@ -111,7 +121,7 @@ export const diaryGenerations = pgTable(
     id: uuid('id').primaryKey(),
     diaryId: uuid('diary_id')
       .notNull()
-      .references(() => diaries.id),
+      .references(() => documents.id),
     sourceVersion: int8('source_version').notNull(),
     baseline: bytea('baseline').notNull(),
     baselineSha256: bytea('baseline_sha256').notNull(),
@@ -120,14 +130,14 @@ export const diaryGenerations = pgTable(
   (t) => [unique('diary_generations_diary_id').on(t.diaryId, t.id)],
 );
 
-// Which user each Yjs clientID belongs to, per diary; written only inside a commit
+// Which user each Yjs clientID belongs to, per document; written only inside a commit
 // transaction under the diary lock (kernel D3).
 export const diaryClientBindings = pgTable(
   'diary_client_bindings',
   {
     diaryId: uuid('diary_id')
       .notNull()
-      .references(() => diaries.id),
+      .references(() => documents.id),
     clientId: int8('client_id').notNull(),
     userId: uuid('user_id').notNull(),
   },

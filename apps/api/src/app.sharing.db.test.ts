@@ -69,7 +69,7 @@ async function diaryWith(owner: string, date: string, ...edits: ((t: Y.Text) => 
 
 async function write(owner: string, diaryId: string, writer: Y.Doc, change: (t: Y.Text) => void) {
   const [row] = await query<{ generation_id: string }>(
-    'select generation_id from diaries where id = $1',
+    'select generation_id from documents where id = $1',
     [diaryId],
   );
   const outcome = await commit.commit(owner, {
@@ -113,7 +113,7 @@ const epochsOf = (diaryId: string) =>
 const diaryRow = async (diaryId: string) =>
   (
     await query<{ generation_id: string; version: string }>(
-      'select generation_id, version from diaries where id = $1',
+      'select generation_id, version from documents where id = $1',
       [diaryId],
     )
   )[0]!;

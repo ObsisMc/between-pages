@@ -31,7 +31,7 @@ async function newDiary() {
 
 /** Commits one update through the store and backdates it to `minutes` after 08:00 UTC. */
 async function commitAt(diaryId: string, update: Uint8Array, clientID: number, minutes: number) {
-  const result = await store.withDiaryLock(diaryId, (locked) =>
+  const result = await store.withDocumentLock(diaryId, (locked) =>
     locked.insertCommit({
       batchId: randomUUID(),
       authorId: locked.diary.ownerId,

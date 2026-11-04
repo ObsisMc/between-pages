@@ -50,7 +50,7 @@ describe.runIf(testDatabaseUrl)('backup outbox', () => {
   it("registers the owner's personal backup as pending, bound to the committed version", async () => {
     const diaryId = await newDiary();
 
-    await store.withDiaryLock(diaryId, async (locked) => {
+    await store.withDocumentLock(diaryId, async (locked) => {
       const { version } = await emptyCommit(locked);
       await registerBackups(locked, version, null);
     });
@@ -65,7 +65,7 @@ describe.runIf(testDatabaseUrl)('backup outbox', () => {
   it('leaves no task when the commit transaction rolls back', async () => {
     const diaryId = await newDiary();
 
-    const failing = store.withDiaryLock(diaryId, async (locked) => {
+    const failing = store.withDocumentLock(diaryId, async (locked) => {
       const { version } = await emptyCommit(locked);
       await registerBackups(locked, version, null);
       throw new Error('a later write failed');
@@ -78,7 +78,7 @@ describe.runIf(testDatabaseUrl)('backup outbox', () => {
   it('refuses a second task for the same version and target', async () => {
     const diaryId = await newDiary();
 
-    const twice = store.withDiaryLock(diaryId, async (locked) => {
+    const twice = store.withDocumentLock(diaryId, async (locked) => {
       const { version } = await emptyCommit(locked);
       await registerBackups(locked, version, null);
       await registerBackups(locked, version, null);
