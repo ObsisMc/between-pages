@@ -4,7 +4,7 @@
 - 日期：2026-11-03
 - 决策者：Ray
 - 范围：领域
-- 关联：依赖 unread-and-day-page；依赖 partner-local-dates；依赖 ADR-0006；取代 opening-book-home 的D1 日期列表、D3 版式与D4 书签；取代 book-frontend-workspace 的D1 展开双页、D2 书签与目录呈现、D3 左右并排与D7 书页视觉
+- 关联：依赖 unread-and-day-page；依赖 partner-local-dates；依赖 ADR-0006；取代 opening-book-home 的D1 日期列表、D3 版式与D4 书签；取代 book-frontend-workspace 的D1 展开双页、D2 书签与目录呈现、D3 左右并排与D7 书页视觉；D4 团子造型被 soft-mascot 取代
 
 提议把前端调整为暖纸色、衬线标题与清晰操作组件组成的数字书页：顶栏四个入口，主页呈现此刻与日记入口，日记页由日期索引和一个可在「连续读」与「这一天」之间切换的主区组成，空间功能按内容排版。双窗采用轻拟物数字插画的材质方向，橙蓝团子保留五官和小手，轮廓变得饱满圆润。[设计包](../design/2026-11-03-digital-paper/README.md)收录可交互页面、逐页截图、最终一轮效果稿与实现约束。导航、主页、日记页形态与主页时间线已由 Ray 在 2026-11-03 确定（D1、D2），同日采纳本 ADR 并批准落地顺序第 2 步列出的依赖。
 
