@@ -713,15 +713,13 @@ export function createStore(db: Db) {
     },
 
     /**
-     * Runs `work` holding the diary row `FOR UPDATE`, the only lock a commit takes (kernel
-     * D9): it never waits on users, spaces or periods, so it cannot deadlock with flows
-     * that lock those first. Waiting longer than COMMIT_LOCK_TIMEOUT throws. `null` when
-     * the diary does not exist. A throw rolls everything back.
-     */
-    /**
-     * Runs `work` holding the document's row lock. For a shared page the open period comes
+     * Runs `work` holding the document's row `FOR UPDATE`. For a diary it is the only lock a
+     * commit takes (kernel D9): it never waits on users, spaces or periods, so it cannot
+     * deadlock with flows that lock those first. For a shared page the open period comes
      * first, FOR SHARE: the one lock order of shared-pages D7, also unbinding's, because a
      * waiting unbind queues a later FOR SHARE behind it and the reverse order could deadlock.
+     * Waiting longer than COMMIT_LOCK_TIMEOUT throws. `null` when the document does not
+     * exist. A throw rolls everything back.
      */
     withDocumentLock<T>(
       documentId: string,

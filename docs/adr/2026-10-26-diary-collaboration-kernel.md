@@ -4,7 +4,7 @@
 - 日期：2026-10-26
 - 决策者：Ray
 - 范围：协同
-- 关联：依赖 spaces-and-invitations；依赖 ADR-0002；依赖 ADR-0003；依赖 ADR-0006；依赖 authentication-and-sessions；取代 ADR-0006 的第 15、17 条；D16 快照内容与备份目标被 server-backup-and-google-docs 取代
+- 关联：依赖 spaces-and-invitations；依赖 ADR-0002；依赖 ADR-0003；依赖 ADR-0006；依赖 authentication-and-sessions；取代 ADR-0006 的第 15、17 条；D16 快照内容与备份目标被 server-backup-and-google-docs 取代；D9 版本与提交锁的位置被 shared-pages 取代
 
 每人每天一篇个人日记，文字作者只有主人与固定搭档。同一同步起点内用 Yjs 增量合并，服务端校验作者与授权，PG 提交后才确认保存；编辑先落本机日志，再按序组成发送批次，一批一个 PG 事务、一个版本，任一笔失败整批不提交。首次开放和重新开放时，在隔离副本里清除已删除内容，生成保留原字符 ID 的干净基线，只授权当时的已提交正文及本轮后续版本；面向搭档的一切输出只经一个获准状态读取入口，内部版本号不出服务端。停止共享保留只读冻结版本；跨边界未提交的输入保留为恢复草稿；历史只读，没有回滚。本文部分取代 ADR-0006 第 15、17 条（D12）。
 
@@ -188,7 +188,7 @@ Diary 保持 `diaryId`、`ownerId`、`diaryDate`、创建时区及 UTC 时间；
 
 | 表 | 内容 |
 | --- | --- |
-| `diaries` | owner/date 唯一、当前内部版本与当前起点指针 |
+| `diaries` | owner/date 唯一；当前内部版本与当前起点指针在 `documents`（shared-pages D6） |
 | `diary_generations` | 起点 ID、来源版本、干净基线快照与 sha256；旧起点只读归档 |
 | `diary_client_bindings` | `(diary_id, client_id)` → 用户 |
 | `diary_commits` | 主键 `(diary_id, version)`；`public_id`；`generation_id`、`seq`（唯一 `(diary_id, generation_id, seq)`）；`epoch_id`（私人期间为空）；`batch_id`、`author_id`（唯一 `(diary_id, batch_id)`，开放基线为空）；`batch_digest` 与摘要算法版本；服务端重新编码的 `delta` 与 `delta_sha256`；`committed_at`。一批一行，批回执即此行 |
@@ -207,7 +207,7 @@ Diary 保持 `diaryId`、`ownerId`、`diaryDate`、创建时区及 UTC 时间；
 
 | 流程 | 依次加锁 |
 | --- | --- |
-| 提交发送批次（主人或搭档） | 只锁日记行 `FOR UPDATE` |
+| 提交发送批次（主人或搭档） | 只锁文档行（`documents`）`FOR UPDATE` |
 | 新建日记 | 主人 users 行 `FOR KEY SHARE`，再插入；`(owner, date)` 唯一约束防重复 |
 | 开放第二阶段、修改范围、停止共享 | 主人 users 行 `FOR UPDATE` → space、period → 本人 policy → 范围内日记行按 ID 顺序 `FOR UPDATE` |
 | 绑定、解绑、重绑 | 双方 users 行按 UUID 顺序 `FOR UPDATE` → space → period → 有 live epoch 的日记行按 ID 顺序 |

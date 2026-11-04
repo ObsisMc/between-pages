@@ -217,7 +217,7 @@ MVP 包含：个人日记、固定唯一搭档绑定、邀请、自助解绑与�
 | AuthorizedViewVersion / ShareEpoch | 日记、空间、接收者、绑定期间、授权代次及主人+固定搭档正文版本；live 版本和不可变 frozen 版本分别寻址 |
 | AuthoredText / CollaborationState | 有序内容及稳定位置/元素标识、不可变 authorId、写入批次与 UTC 时间、恢复协同所需状态；允许压缩相邻区段 |
 | EditOperation | operationId、diaryId、认证 actor、设备/会话、目标稳定标识、载荷、客户端/服务端时间、提交版本；幂等 |
-| SharedPage | pageId、spaceId、不可变 authorId、标题及最后改它的人和时间、revision、软删除；正文走日记的提交链，归 Document，字符作者规则相同 |
+| SharedPage | pageId、spaceId、不可变 authorId、标题及最后改它的人和时间、revision、软删除；正文走日记的提交链，字符作者规则相同 |
 | ReadCoverage | 用户、日记、稳定文字范围/元素集合、已读合并信息；不得用一个最大序号代替 |
 | GoogleConnection / DayDoc | 每人自己的 Google 账号、加密的 refresh token 及密钥编号、连接状态；每人每天的 Doc ID、文件夹、应用上次写入的 revision、内容校验值与覆盖的版本 |
 | Outbox / DayWork | 提交时登记的目标版本与授权上下文；按"谁的 Drive、哪一天"合并的待写项、尝试次数、下次重试、错误状态 |

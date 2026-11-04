@@ -4,7 +4,7 @@
 - 日期：2026-11-04
 - 决策者：Ray
 - 范围：领域
-- 关联：依赖 space-records；依赖 diary-collaboration-kernel；依赖 digital-paper-interface；取代 space-records 的D3、D6 的作者限定与D8 的已读规则
+- 关联：依赖 space-records；依赖 diary-collaboration-kernel；依赖 digital-paper-interface；取代 space-records 的D3、D6 的作者限定与D8 的已读规则；取代 diary-collaboration-kernel 的D9 版本与提交锁的位置
 
 共享页面让两个人随时新建一页，一起写计划、清单和随手记。页面属于双人空间，第一版是平铺列表里的纯文字页面，没有目录。正文沿用日记的协同内核：字符级作者不可变，每人只能改自己写的字。标题和删除是页面级操作，两个人都能做，并记下是谁做的。解绑后两人只读，原来的两人重绑后恢复。页面不进 Google 可读副本，未读第一版只做页面级圆点。
 
@@ -225,7 +225,7 @@ share_epochs、diary_read_ranges → diaries.id：不变
 
 - 真实 PG、真实路由与同步连接：`apps/api/src/app.shared-pages.db.test.ts` 覆盖不变量 1～9、11，包括解绑与提交的并发、取锁顺序、第三人与已删除页面、`wrote` 的增长、页面不进日记接口与 `backup_outbox`。
 - 迁移：`apps/api/src/db/schema.db.test.ts` 在 `0010` 写入日记，升级后 `version`、代与创建时间不变。
-- 浏览器：`e2e/shared-pages.spec.ts` 两人同写一页、实时看到对方、拒绝删除对方的字、列表的未读标记，以及写字时页面被删和离线后页面已删时内容变成草稿（不变量 1、9、10）。
+- 浏览器：`e2e/shared-pages.spec.ts` 两人同写一页、实时看到对方、拒绝删除对方的字、列表的未读标记，以及写字时页面被删和离线后页面已删时内容变成草稿（不变量 1、9，不变量 10 的删除部分）。解绑时转为草稿没有自动测试，由手动清单第 18 项验证。不变量 11 的自动测试只覆盖提交路径，改标题和删除的取锁顺序靠读代码确认。
 - 组件测试：`apps/web/src/shared-pages/shared-pages.test.tsx` 列表、删除记录、只读与删除确认。
 - 手动验收：[清单](../validation/shared-pages-manual-2026-11-04.md)，Ray 执行。
 
