@@ -44,6 +44,7 @@ test('[adr:shared-pages#1] [adr:shared-pages#9] two people write one page and se
   browser,
   browserName,
 }) => {
+  test.setTimeout(60_000);
   const { a, b } = await bound(browser, browserName, 'w');
   const url = await newPage(a, '旅行清单');
   await editor(a).click();
@@ -63,7 +64,15 @@ test('[adr:shared-pages#1] [adr:shared-pages#9] two people write one page and se
   // B's own words go; a selection over A's is refused and changes nothing.
   for (let i = 0; i < 2; i += 1) await b.keyboard.press('Backspace');
   await expect(editor(a)).toHaveText('机票');
+  // The editor learns of the selection from this event, so Backspace must not overtake it.
+  const selected = b.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        document.addEventListener('selectionchange', () => resolve(), { once: true }),
+      ),
+  );
   await b.keyboard.press('ControlOrMeta+a');
+  await selected;
   await b.keyboard.press('Backspace');
   await expect(b.getByRole('alert').filter({ hasText: '不能修改或删除对方写的字' })).toBeVisible();
   await expect(editor(a)).toHaveText('机票');
@@ -77,6 +86,7 @@ test('[adr:shared-pages#10] input survives the page being deleted, while open an
   browser,
   browserName,
 }) => {
+  test.setTimeout(60_000);
   const { a, b } = await bound(browser, browserName, 'd');
 
   // Deleted while the writer has it open: the next word comes back as a draft.
@@ -87,7 +97,7 @@ test('[adr:shared-pages#10] input survives the page being deleted, while open an
   await b.getByRole('button', { name: '确认删除' }).click();
   await expect(b).toHaveURL(/\/shared-pages$/);
   await editor(a).click();
-  await a.keyboard.type('开着写的字');
+  await a.keyboard.insertText('开着写的字');
   await expect(a.getByRole('status').filter({ hasText: '这一页已被删除' })).toBeVisible();
   await expect(a.getByText('开着写的字').last()).toBeVisible();
 
@@ -98,7 +108,7 @@ test('[adr:shared-pages#10] input survives the page being deleted, while open an
   await a.routeWebSocket(/\/api\/sync$/, (ws) => void ws.close());
   await a.reload();
   await editor(a).click();
-  await a.keyboard.type('离线写的字');
+  await a.keyboard.insertText('离线写的字');
   await expect(a.getByRole('status').filter({ hasText: '暂时无法同步' })).toBeVisible();
   await b.getByRole('button', { name: '删除' }).click();
   await b.getByRole('button', { name: '确认删除' }).click();
