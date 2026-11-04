@@ -10,7 +10,7 @@ import {
 import type { ErrorCode } from '@between-pages/contracts';
 import type { CommittedEvent } from '../events/events.ts';
 import { registerBackups } from '../outbox/outbox.ts';
-import type { LockedDiary, Receipt, Store } from '../store/store.ts';
+import type { LockedDocument, Receipt, Store } from '../store/store.ts';
 
 export type SubmitBatch = {
   diaryId: string;
@@ -39,6 +39,7 @@ export type CommitOutcome =
         | 'OPERATION_ALREADY_COMMITTED'
         | 'STALE_CONTEXT'
         | 'EDIT_REJECTED'
+        | 'SPACE_READ_ONLY'
       >;
       reason?: RejectReason;
       index?: number;
@@ -58,8 +59,8 @@ type ActiveState = { version: number; doc: Y.Doc; bindings: Map<number, string> 
 export function createCommitService(store: Store) {
   const active = new Map<string, ActiveState>();
 
-  async function activeState(locked: LockedDiary): Promise<ActiveState> {
-    const { id, generationId, version } = locked.diary;
+  async function activeState(locked: LockedDocument): Promise<ActiveState> {
+    const { id, generationId, version } = locked.document;
     const cached = active.get(id);
     active.delete(id);
     if (cached?.version === version) return cached;
@@ -93,13 +94,16 @@ export function createCommitService(store: Store) {
 
       const outcome = await store
         .withDocumentLock(batch.diaryId, async (locked): Promise<CommitOutcome> => {
-          const { diary } = locked;
+          const { document: diary } = locked;
+          const { page } = diary;
           const isOwner = diary.ownerId === actor;
           // Someone the diary was never shared with sees it as missing (D10). A former
           // recipient keeps their receipts, so a batch of theirs committed before the
-          // share froze still replays below.
-          if (!isOwner && !(await locked.epochs.recipientEpochs(diary.id, actor)).length)
-            return { ok: false, code: 'NOT_FOUND' };
+          // share froze still replays below; so do the two people of a page.
+          const known = page
+            ? page.participants.includes(actor)
+            : isOwner || (await locked.epochs.recipientEpochs(diary.id, actor)).length > 0;
+          if (!known) return { ok: false, code: 'NOT_FOUND' };
 
           const committed = await locked.batch(diary.id, batch.batchId);
           if (committed) {
@@ -121,10 +125,17 @@ export function createCommitService(store: Store) {
           // they opened; an old share's request never turns into a personal one (D7). The
           // diary lock orders this check against freezing: a batch either commits inside
           // the epoch, before it froze, or is refused (invariant 16).
-          const live = (await locked.epochs.liveEpochs([diary.id])).get(diary.id) ?? null;
-          const allowed = isOwner
-            ? batch.epochId === undefined
-            : live?.recipientId === actor && batch.epochId === live.id;
+          // A page has no epochs: the open binding decides (shared-pages D7), and the lock
+          // order holds it, so a commit lands before unbinding or is refused.
+          if (page?.deleted) return { ok: false, code: 'NOT_FOUND' };
+          if (page && !page.open) return { ok: false, code: 'SPACE_READ_ONLY' };
+          const live = page
+            ? null
+            : ((await locked.epochs.liveEpochs([diary.id])).get(diary.id) ?? null);
+          const allowed =
+            page || isOwner
+              ? batch.epochId === undefined
+              : live?.recipientId === actor && batch.epochId === live.id;
           if (!allowed || batch.generationId !== diary.generationId)
             return { ok: false, code: 'STALE_CONTEXT' };
 
@@ -153,7 +164,8 @@ export function createCommitService(store: Store) {
             claimedClientIds: result.claimedClientIds,
             state: () => Y.encodeStateAsUpdate(state.doc),
           });
-          await registerBackups(locked, version, live);
+          if (page) await locked.notePageWritten(page, actor, batch.batchId, digest);
+          else await registerBackups(locked, version, live);
           for (const clientId of result.claimedClientIds) state.bindings.set(clientId, actor);
           accepted = { ...state, version };
           return {
@@ -192,13 +204,18 @@ export function createCommitService(store: Store) {
       lookup: ReceiptLookup,
     ): Promise<Receipt | null | 'NOT_FOUND'> {
       return store.read(async (queries) => {
-        const diary = await queries.findDiary(diaryId);
-        if (!diary) return 'NOT_FOUND';
-        if (
-          diary.ownerId !== actor &&
-          !(await queries.epochs.recipientEpochs(diaryId, actor)).length
-        )
-          return 'NOT_FOUND';
+        const participants = await queries.pageParticipants(diaryId);
+        if (participants) {
+          if (!participants.includes(actor)) return 'NOT_FOUND';
+        } else {
+          const diary = await queries.findDiary(diaryId);
+          if (!diary) return 'NOT_FOUND';
+          if (
+            diary.ownerId !== actor &&
+            !(await queries.epochs.recipientEpochs(diaryId, actor)).length
+          )
+            return 'NOT_FOUND';
+        }
         if ('operationId' in lookup)
           return queries.receiptByOperation(diaryId, actor, lookup.operationId);
         const committed = await queries.batch(diaryId, lookup.batchId);

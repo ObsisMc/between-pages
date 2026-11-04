@@ -2,6 +2,7 @@ import type { FastifyReply } from 'fastify';
 import type { AnniversaryService } from '../anniversaries/anniversaries.ts';
 import { sendError } from '../errors.ts';
 import type { Refusal, SpaceRecords } from '../space-records/space-records.ts';
+import type { SharedPageService } from '../shared-pages/shared-pages.ts';
 import type { WishService } from '../wishes/wishes.ts';
 import type { ContractRequest } from './contract.ts';
 
@@ -30,20 +31,30 @@ export function spaceRecordHandlers(services: {
   records: SpaceRecords;
   wishes: WishService;
   anniversaries: AnniversaryService;
+  sharedPages: SharedPageService;
 }) {
-  const { records, wishes, anniversaries } = services;
+  const { records, wishes, anniversaries, sharedPages } = services;
   return {
     async spaceUnread(request: ContractRequest<'spaceUnread'>, reply: FastifyReply) {
       const caller = userOf(request);
-      const [wishesUnread, anniversariesUnread] = await Promise.all([
+      const [wishesUnread, anniversariesUnread, sharedPagesUnread] = await Promise.all([
         wishes.unread(caller),
         anniversaries.unread(caller),
+        sharedPages.unread(caller),
       ]);
       return answer(
         reply,
-        wishesUnread === 'NOT_FOUND' || anniversariesUnread === 'NOT_FOUND'
+        wishesUnread === 'NOT_FOUND' ||
+          anniversariesUnread === 'NOT_FOUND' ||
+          sharedPagesUnread === 'NOT_FOUND'
           ? ('NOT_FOUND' as const)
-          : { features: { wishes: wishesUnread, anniversaries: anniversariesUnread } },
+          : {
+              features: {
+                wishes: wishesUnread,
+                anniversaries: anniversariesUnread,
+                sharedPages: sharedPagesUnread,
+              },
+            },
       );
     },
     async reportSeen(request: ContractRequest<'reportSeen'>, reply: FastifyReply) {

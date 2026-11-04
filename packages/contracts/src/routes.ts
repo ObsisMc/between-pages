@@ -68,6 +68,14 @@ import {
   WishesResponse,
 } from './wishes.ts';
 import {
+  CreateSharedPageRequest,
+  RenameSharedPageRequest,
+  SharedPageParams,
+  SharedPageResponse,
+  SharedPageStateResponse,
+  SharedPagesResponse,
+} from './shared-pages.ts';
+import {
   AcceptInvitationRequest,
   AcceptInvitationResponse,
   BindingResponse,
@@ -442,6 +450,47 @@ export const routes = {
     access: 'user',
     body: ReportSeenRequest,
     response: ReportSeenResponse,
+  },
+  sharedPages: {
+    method: 'GET',
+    path: '/api/shared-pages',
+    summary: 'Every page of the space, newest first, and deletion notes.',
+    access: 'user',
+    response: SharedPagesResponse,
+  },
+  createSharedPage: {
+    method: 'POST',
+    path: '/api/shared-pages',
+    summary: 'Start a new page of the space; its text is written over the sync socket.',
+    access: 'user',
+    body: CreateSharedPageRequest,
+    response: SharedPageResponse,
+  },
+  sharedPage: {
+    method: 'GET',
+    path: '/api/shared-pages/:pageId',
+    summary: 'One page as it opens, with its committed state.',
+    access: 'user',
+    params: SharedPageParams,
+    response: SharedPageStateResponse,
+  },
+  renameSharedPage: {
+    method: 'PUT',
+    path: '/api/shared-pages/:pageId/title',
+    summary: "Change a page's title, from the revision it was loaded at; either of the two may.",
+    access: 'user',
+    params: SharedPageParams,
+    body: RenameSharedPageRequest,
+    response: SharedPageResponse,
+  },
+  deleteSharedPage: {
+    method: 'POST',
+    path: '/api/shared-pages/:pageId/delete',
+    summary: 'Delete a page for both; either of the two may.',
+    access: 'user',
+    params: SharedPageParams,
+    body: ActionRequest,
+    response: DeletedResponse,
   },
   wishes: {
     method: 'GET',

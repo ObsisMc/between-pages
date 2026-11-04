@@ -44,6 +44,8 @@ import { anniversaryHandlers } from './routes/anniversaries.ts';
 import { createAnniversaryService } from './anniversaries/anniversaries.ts';
 import { createReminderStore } from './store/anniversaries.ts';
 import { createWishService } from './wishes/wishes.ts';
+import { sharedPageHandlers } from './routes/shared-pages.ts';
+import { createSharedPageService } from './shared-pages/shared-pages.ts';
 import { createBackupStore } from './store/backup.ts';
 import { createCopyStore } from './store/copy.ts';
 import { createClockStore } from './store/clocks.ts';
@@ -193,6 +195,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     records,
     wishes: createWishService(records),
     anniversaries: createAnniversaryService(records, createReminderStore(deps.db)),
+    sharedPages: createSharedPageService(records),
   };
   const space = spaceRecordHandlers(services);
   contractRoute('spaceUnread', space.spaceUnread);
@@ -219,6 +222,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   contractRoute('setAnniversaryDate', anniversaries.setAnniversaryDate);
   contractRoute('setAnniversaryCount', anniversaries.setAnniversaryCount);
   contractRoute('saveAnniversaryReminder', anniversaries.saveAnniversaryReminder);
+  const sharedPages = sharedPageHandlers(services);
+  contractRoute('sharedPages', sharedPages.sharedPages);
+  contractRoute('createSharedPage', sharedPages.createSharedPage);
+  contractRoute('sharedPage', sharedPages.sharedPage);
+  contractRoute('renameSharedPage', sharedPages.renameSharedPage);
+  contractRoute('deleteSharedPage', sharedPages.deleteSharedPage);
 
   const backup = backupHandlers(backupService);
   contractRoute('backup', backup.backup);
@@ -232,6 +241,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     publicOrigin: deps.publicOrigin,
     currentUser: deps.currentUser,
     diaries,
+    sharedPages: services.sharedPages,
     reader,
     commit,
     events,

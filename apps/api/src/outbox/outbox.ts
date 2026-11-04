@@ -1,5 +1,5 @@
 import type { LiveEpoch } from '../store/boundaries.ts';
-import type { LockedDiary } from '../store/store.ts';
+import type { LockedDocument } from '../store/store.ts';
 
 /**
  * Registers the backup tasks one commit needs, inside the commit's transaction, so a
@@ -9,7 +9,7 @@ import type { LockedDiary } from '../store/store.ts';
  * epoch did not authorize. Registering is not backing up: the worker records that.
  */
 export async function registerBackups(
-  locked: LockedDiary,
+  locked: LockedDocument,
   version: number,
   live: LiveEpoch | null,
 ): Promise<void> {

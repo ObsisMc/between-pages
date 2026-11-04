@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import * as Y from 'yjs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDiaryDoc } from '@between-pages/collab';
-import type { LockedDiary, Store } from '../store/store.ts';
+import type { LockedDocument, Store } from '../store/store.ts';
 import { openTestStore, query, testDatabaseUrl } from '../../test/db.ts';
 import { createUser } from '../../test/diary.ts';
 import { registerBackups } from './outbox.ts';
@@ -18,11 +18,11 @@ afterAll(async () => {
 
 const EMPTY = Y.encodeStateAsUpdate(createDiaryDoc());
 
-const emptyCommit = (locked: LockedDiary) =>
+const emptyCommit = (locked: LockedDocument) =>
   locked.insertCommit({
     batchId: randomUUID(),
-    authorId: locked.diary.ownerId,
-    generationId: locked.diary.generationId,
+    authorId: locked.document.ownerId!,
+    generationId: locked.document.generationId,
     epochId: null,
     batchDigest: new Uint8Array(32),
     digestAlgorithm: 1,

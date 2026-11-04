@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 /** Every record type of every space feature; a feature adds its own here (wishes-and-gifts). */
 export const SpaceRecordType = z
-  .enum(['wish', 'gift', 'gift_card', 'anniversary'])
+  .enum(['wish', 'gift', 'gift_card', 'anniversary', 'shared_page'])
   .meta({ id: 'SpaceRecordType' });
 export type SpaceRecordType = z.infer<typeof SpaceRecordType>;
 
@@ -30,6 +30,7 @@ export const SpaceUnreadResponse = z
     features: z.object({
       wishes: z.number().int().nonnegative(),
       anniversaries: z.number().int().nonnegative(),
+      sharedPages: z.number().int().nonnegative(),
     }),
   })
   .meta({ id: 'SpaceUnreadResponse' });
