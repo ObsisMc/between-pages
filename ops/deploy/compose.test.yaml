@@ -1,0 +1,11 @@
+# Test-only overlay on compose.production.yaml (deploy.docker.test.ts): other names, so the
+# test can run on a server where production is up.
+services:
+  api:
+    container_name: between-pages-deploy-test-api
+  web:
+    container_name: between-pages-deploy-test-web
+
+networks:
+  proxy:
+    name: between_pages_deploy_test_proxy

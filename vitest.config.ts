@@ -19,6 +19,8 @@ export default defineConfig({
       { test: { name: 'checks', root: 'checks', environment: 'node' } },
       // The server backup scripts; their Docker cycle runs only under `npm run test:backup`.
       { test: { name: 'ops', root: 'ops/backup', environment: 'node' } },
+      // The production stack; needs Docker and runs only under `npm run test:deploy`.
+      { test: { name: 'deploy', root: 'ops/deploy', environment: 'node' } },
     ],
     coverage: {
       provider: 'v8',

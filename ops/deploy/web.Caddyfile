@@ -1,0 +1,23 @@
+# Plain HTTP on 80: the site Caddy in front owns TLS (production-deployment D3).
+{
+	admin off
+	auto_https off
+}
+
+:80 {
+	root * /srv
+
+	# No fallback here: an asset an old page still asks for must be a 404, not index.html
+	# stored for a year under that name, by Cloudflare too.
+	handle /assets/* {
+		@hashed file
+		header @hashed Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	handle {
+		header Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}
