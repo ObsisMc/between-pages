@@ -6,7 +6,7 @@
 - 范围：技术栈
 - 关联：依赖 ADR-0003；依赖 ADR-0006；依赖 authentication-and-sessions；依赖 diary-collaboration-kernel；依赖 server-backup-and-google-docs
 
-Between Pages 部署到现有的美国 ARM 服务器：一个独立的 Docker compose 项目运行 PostgreSQL（带 WAL-G 备份）、一次性迁移、API、worker 和只发前端文件的 web 容器，服务器上已有的 Caddy 负责 HTTPS，把 `/api/*` 转给 API、其余转给 web。生产的目录、compose 项目、数据卷、端口和密码都与开发环境分开。更新是人工执行的一条命令，迁移失败时新版 API 不启动。本文回答路线图留给部署 ADR 的四件事：子域名、静态网页由谁提供、生产数据库放在哪里、Google 应用发布为正式。
+Between Pages 部署到现有的美国 ARM 服务器：一个独立的 Docker compose 项目运行 PostgreSQL（带 WAL-G 备份）、一次性迁移、API、worker 和只发前端文件的 web 容器，公网请求先经过 Cloudflare 代理，再到服务器上已有的 Caddy，由它负责到源站的 HTTPS，把 `/api/*` 转给 API、其余转给 web。生产的目录、compose 项目、数据卷、端口和密码都与开发环境分开。更新是人工执行的一条命令，迁移失败时新版 API 不启动。本文回答路线图留给部署 ADR 的四件事：子域名、静态网页由谁提供、生产数据库放在哪里、Google 应用发布为正式。
 
 本文不负责：邮件通知与发信域名（阶段 4 另写 ADR）；手机支持；多实例与零停机更新（kernel 已决定首版单实例）；Caddy 与服务器本身的运维。
 
@@ -67,7 +67,7 @@ COMPOSE_PROJECT_NAME=between-pages-prod
 Caddyfile 增加一个站点。它在仓库之外，手册写明这一段由 Ray 粘贴：
 
 ```caddy
-<域名> {
+missu.ruihaozhang.com {
     encode zstd gzip
     header Strict-Transport-Security "max-age=31536000"
     header X-Content-Type-Options nosniff
@@ -85,8 +85,9 @@ Caddyfile 增加一个站点。它在仓库之外，手册写明这一段由 Ray
 - 不写 `log`，Caddy 默认不记访问日志，这里保持不记。
 - `encode` 必须写：Caddy 默认不压缩，1 MB 的 JS 跨国传输会明显变慢。
 - WebSocket 走 `/api/*`，`reverse_proxy` 不用额外配置；Caddy 传递 `Origin` 和 `X-Forwarded-For`，同源校验和 Better Auth 的限流都能工作。
+- 服务器的 80/443 只放行 Cloudflare（`/etc/cf-origin-lock`），现有 Caddy 已信任它的 IP 段，并从 `CF-Connecting-IP` 取访客真实 IP，这里不用改。Cloudflare 默认按响应头缓存静态文件，所以 D3 的缓存头同样决定它的行为。
 
-子域名由 Ray 定，定下后 `PUBLIC_ORIGIN=https://<域名>`。理由：依据 2、6。
+子域名是 `missu.ruihaozhang.com`，`PUBLIC_ORIGIN=https://missu.ruihaozhang.com`。理由：依据 2、6。
 
 ### D3：前端文件由独立的 web 容器提供
 
@@ -144,7 +145,7 @@ web 镜像分两段：先在 Node 镜像里 `npm run build`，再把 `apps/web/d
 | --- | --- |
 | `HOST`、`PORT` | `0.0.0.0`、`3000`（容器内） |
 | `DATABASE_URL` | `postgresql://between_pages:<密码>@postgres:5432/between_pages` |
-| `PUBLIC_ORIGIN` | `https://<域名>` |
+| `PUBLIC_ORIGIN` | `https://missu.ruihaozhang.com` |
 | `AUTH_PROVIDER` | `google` |
 | `BETTER_AUTH_SECRET` | `openssl rand -base64 32` |
 | `GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET` | 与登录同一个客户端 |
@@ -174,8 +175,8 @@ API 的请求日志只记路径，不记 `?` 之后的内容。这在 `apps/api/
 
 同一个 Google Cloud 项目和 OAuth 客户端，增加生产地址：
 
-- 已获授权的 JavaScript 来源：`https://<域名>`
-- 重定向 URI：`https://<域名>/api/auth/callback/google`、`https://<域名>/backup/google/callback`
+- 已获授权的 JavaScript 来源：`https://missu.ruihaozhang.com`
+- 重定向 URI：`https://missu.ruihaozhang.com/api/auth/callback/google`、`https://missu.ruihaozhang.com/backup/google/callback`
 - OAuth 同意屏幕发布为“正式版”，Drive 授权不再 7 天过期，`GOOGLE_DRIVE_TESTING` 不设。
 
 `drive.file` 是 Google 列为非敏感的权限（server-backup-and-google-docs），预计不用审核；发布时要填写什么，以控制台提示为准。继续使用同一个 Google Cloud 项目，因为 `drive.file` 绑定客户端，换项目后应用读不到已有的 Doc。理由：依据 1。
@@ -224,6 +225,8 @@ API 的请求日志只记路径，不记 `?` 之后的内容。这在 `apps/api/
 ## 风险与代价
 
 - **生产和开发在同一台机器**：`ubuntu` 用户有 Docker 权限和免密 sudo，这台机器上以它运行的所有进程，包括 AI 编程工具，实际上都能读到生产库和密钥。root 600 只防普通误操作。Ray 于 2026-11-05 确认接受这一风险。缓解：生产目录和数据都与开发分开，开发工作不进入 `~/deploy`；开始写真实日记后，如果担心这一点，再迁到专用服务器。
+- **Cloudflare 能看到明文**：HTTPS 在 Cloudflare 边缘解密，再加密转发到源站，所以日记正文、登录 cookie 和 OAuth 回调都经过它的内存。备份的加密管不到这一段。服务器的其他站点也一样，不走代理就要放开源站锁（见“未解决的问题”）。
+- **Cloudflare 可能断开空闲的 WebSocket**：协议没有心跳，没人写字时连接上没有流量。客户端会在 1 秒后重连并补齐内容，写入不会丢，但编辑器可能短暂显示离线。Cloudflare 文档查到的超时数字不一致，以上线时实测为准；如果影响使用，再给协议加心跳。
 - **单点**：一台服务器坏了，服务就中断，靠恢复手册在新机器上恢复，备份和恢复时间由演练保证。
 - **没有可用性告警**：Healthchecks 只盯备份，API 挂了不会主动通知，要靠自己发现或看 beszel。两个人使用先接受。
 - **更新时有几秒中断**：所有连接断开，客户端自动重连。迁移期间旧版 API 还在运行，迁移如果不兼容旧版，这几秒里的写入可能报错，但不会误报"已保存"。
@@ -232,8 +235,7 @@ API 的请求日志只记路径，不记 `?` 之后的内容。这在 `apps/api/
 
 ## 未解决的问题
 
-- **子域名**：采纳前由 Ray 填入，本文里的 `<域名>` 全部替换。没有默认值。
-- **开发库的数据**：默认不迁移（D5）。如果 Ray 确认里面有要保留的内容，上线前另议迁移方式。
+- **是否继续走 Cloudflare 代理**：默认继续，和服务器上其他站点一样（见“风险与代价”）。不走的话要改 `/etc/cf-origin-lock`，让 80/443 对所有来源开放，影响其他六个站点，所以要 Ray 决定。
 - **上线的内容**：默认是 Ray 确认过的 main 提交。#76–#79 的共享页面在修完已知缺口并合并后，按 D9 正常更新上线。
 - **WAL 的实际用量**：`archive_timeout` 保持 60 秒，真实写作一段时间后按 server-backup-and-google-docs 的要求实测 R2 占用。
 
@@ -249,7 +251,7 @@ API 的请求日志只记路径，不记 `?` 之后的内容。这在 `apps/api/
 
 | 步骤 | 谁做 | 做完后 AI 检查什么 |
 | --- | --- | --- |
-| 1. DNS 指向 `137.131.26.106`，告诉 AI 域名 | Ray | 解析正确；`<域名>` 替换完 |
+| 1. 子域名 `missu.ruihaozhang.com` 走 Cloudflare 代理（DNS 记录已于 2026-11-05 配好） | Ray | 已解析到 Cloudflare；上线后不再返回 525 |
 | 2. 按 `ops/backup/README.md` 准备 R2、Healthchecks 和备份加密密钥 | Ray | 示例里的每个变量都有值（只查变量名） |
 | 3. 生成其余密钥，写入 `/etc/between-pages/` | Ray | 文件权限；不读取内容 |
 | 4. 按 D10 配置 Google 并发布 | Ray | 回调地址与本文一致（看截图） |
@@ -272,12 +274,13 @@ API 的请求日志只记路径，不记 `?` 之后的内容。这在 `apps/api/
 
 - 从空数据卷开始，一条 `sudo ops/deploy/up.sh` 把全部服务跑起来，第二次运行时数据不变、迁移跳过。
 - 不设 `POSTGRES_PASSWORD` 时，compose 报错并拒绝启动。
-- 从公网访问 `https://<域名>/days/2026-11-05` 能进入应用，`/api/health` 返回 200；公网和 `between_pages_proxy` 上都连不到数据库。
+- 从公网访问 `https://missu.ruihaozhang.com/days/2026-11-05` 能进入应用，`/api/health` 返回 200；公网和 `between_pages_proxy` 上都连不到数据库。
 - 登录回调请求之后，日志里没有 `code=`、`state=`。
 - 其他 6 个站点在上线前后都能正常访问。
 - 真实 Google 登录通过：cookie 带 `Secure` 和 `__Secure-` 前缀，退出后旧 cookie 返回 401（AUTH-01、AUTH-05）。
 - 两个账号同时写同一天的日记，WebSocket 经 Caddy 正常工作，手动断网再恢复后文字不丢。
 - `backup ok` 和 `drill ok` 都出现，Healthchecks 两项变绿（RELEASE-04）。
+- 打开日记后 10 分钟不操作，WebSocket 仍在线，或断开后自动恢复且内容不丢；再继续写能正常保存。
 
 ## 补充信息
 

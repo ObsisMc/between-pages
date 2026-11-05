@@ -33,7 +33,7 @@
 
 ## 部署（设计中）
 
-部署到现有的云服务器（美国，ARM），接入服务器上已有的 Caddy 反向代理和 HTTPS。[部署 ADR](./adr/2026-11-05-production-deployment.md) 已提议（2026-11-05，待 Ray 采纳并定下子域名），决定了静态网页由谁提供、生产数据库放在哪里（服务器备份的配置随之迁移，备份到 Cloudflare R2 已由阶段 3 决定），以及把 Google 应用发布为正式（之前 Drive 授权 7 天过期）。部署后完成认证 ADR 的阶段 4：HTTPS 下的真实 Google 联调。
+部署到现有的云服务器（美国，ARM），接入服务器上已有的 Caddy 反向代理和 HTTPS。[部署 ADR](./adr/2026-11-05-production-deployment.md) 已提议（2026-11-05，待 Ray 采纳），定了子域名 `missu.ruihaozhang.com`、静态网页由谁提供、生产数据库放在哪里（服务器备份的配置随之迁移，备份到 Cloudflare R2 已由阶段 3 决定），以及把 Google 应用发布为正式（之前 Drive 授权 7 天过期）。部署后完成认证 ADR 的阶段 4：HTTPS 下的真实 Google 联调。
 
 ## 阶段 2：可靠协同与阅读（已实现）
 
