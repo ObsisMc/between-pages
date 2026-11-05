@@ -93,7 +93,7 @@ missu.ruihaozhang.com {
 
 web 镜像分两段：先在 Node 镜像里 `npm run build`，再把 `apps/web/dist` 放进 `caddy:2.11.2-alpine`。这个容器只监听 80 端口，由站点 Caddy 转发，不处理 HTTPS。
 
-- 找不到文件的路径返回 `index.html`，直接打开或刷新 `/days/2026-11-05` 这样的地址才能进入应用。
+- 找不到文件的路径返回 `index.html`，直接打开或刷新 `/days/2026-11-05` 这样的地址才能进入应用。`/assets/*` 除外：旧页面请求已不存在的文件时返回 404，否则 HTML 会以这个文件名被缓存一年。
 - `/assets/*` 文件名带内容哈希，设一年 `immutable` 缓存；其余文件（`index.html`、字体）每次向服务器确认，新版本更新后不会卡在旧页面上。
 
 理由：依据 2、7。站点 Caddy 自己发文件需要加挂载，也就要重建容器，所有站点一起中断；API 发文件要加依赖，还多一项与它无关的职责。
@@ -148,7 +148,7 @@ web 镜像分两段：先在 Node 镜像里 `npm run build`，再把 `apps/web/d
 | `PUBLIC_ORIGIN` | `https://missu.ruihaozhang.com` |
 | `AUTH_PROVIDER` | `google` |
 | `BETTER_AUTH_SECRET` | `openssl rand -base64 32` |
-| `GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET` | 与登录同一个客户端 |
+| `GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET` | D10 的生产客户端，登录和 Drive 共用 |
 | `GOOGLE_TOKEN_KEY` | `openssl rand -base64 32` |
 
 `GOOGLE_DRIVE_TESTING`、`HISTORY_IDLE_MS` 不设。`/etc/between-pages` 下的文件只有 root 能读，所以部署命令用 `sudo` 运行。理由：依据 1、8。
@@ -173,13 +173,13 @@ API 的请求日志只记路径，不记 `?` 之后的内容。这在 `apps/api/
 
 ### D10：Google 应用在部署时发布为正式
 
-同一个 Google Cloud 项目和 OAuth 客户端，增加生产地址：
+同一个 Google Cloud 项目，新建一个生产用的 OAuth 客户端（类型 Web application），开发继续用原来的客户端，两边的 secret 互不影响（Ray 于 2026-11-05 决定）。生产客户端配置这些地址：
 
 - 已获授权的 JavaScript 来源：`https://missu.ruihaozhang.com`
 - 重定向 URI：`https://missu.ruihaozhang.com/api/auth/callback/google`、`https://missu.ruihaozhang.com/backup/google/callback`
 - OAuth 同意屏幕发布为“正式版”，Drive 授权不再 7 天过期，`GOOGLE_DRIVE_TESTING` 不设。
 
-`drive.file` 是 Google 列为非敏感的权限（server-backup-and-google-docs），预计不用审核；发布时要填写什么，以控制台提示为准。继续使用同一个 Google Cloud 项目，因为 `drive.file` 绑定客户端，换项目后应用读不到已有的 Doc。理由：依据 1。
+`drive.file` 是 Google 列为非敏感的权限（server-backup-and-google-docs），预计不用审核；发布时要填写什么，以控制台提示为准。继续使用同一个 Google Cloud 项目：`drive.file` 按项目生效，同一项目下换客户端不受影响，换项目后应用读不到已有的 Doc。同意屏幕属于项目，发布后开发客户端也一起变成正式状态。理由：依据 1。
 
 ## 失败与恢复
 
@@ -203,7 +203,7 @@ API 的请求日志只记路径，不记 `?` 之后的内容。这在 `apps/api/
 5. 生产站点的 `/api/*` 只转给 API，其余只转给 web，不经过 Authelia。
 6. 生产的 compose 项目名和数据卷名与开发环境不同。
 7. 迁移失败时，新版 `api` 和 `worker` 不启动。
-8. web 容器对未知路径返回 `index.html`，`index.html` 不被长期缓存。
+8. web 容器对 `/assets/` 之外的未知路径返回 `index.html`，`/assets/` 下不存在的文件返回 404，`index.html` 不被长期缓存。
 9. 密钥只存放在 `/etc/between-pages`，不进镜像、不进仓库、不进日志。
 10. 请求日志不包含查询串。
 11. 写入真实日记之前，生产库已完成首次备份和一次演练。
@@ -257,9 +257,9 @@ API 的请求日志只记路径，不记 `?` 之后的内容。这在 `apps/api/
 
 **阶段 3：上线（Ray 确认后，AI 或 Ray 执行）**
 
-1. 克隆到 `~/volumes/between-pages`，`sudo ops/deploy/up.sh`：确认归档成功，表已建好。
+1. 克隆到 `~/volumes/between-pages`，建 `between_pages_proxy` 网络，`sudo ops/deploy/up.sh`：确认归档成功，表已建好。
 2. 按 `ops/backup/README.md` 做首次备份，装定时器，演练一次。
-3. 建网络，接入 Caddy，加站点，`caddy reload`：其他站点不受影响，HTTPS 证书签发成功。
+3. 把 Caddy 接入网络，加站点，`caddy reload`：其他站点不受影响，HTTPS 证书签发成功。
 4. 做认证 ADR 阶段 4 的真实 Google 联调（第 1–6 步）。
 5. 两个账号绑定，一起写一篇日记，连接 Google Drive。
 

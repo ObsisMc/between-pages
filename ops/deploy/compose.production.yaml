@@ -1,0 +1,90 @@
+# Overlay for production (production-deployment D1), last in COMPOSE_FILE:
+#   COMPOSE_FILE=compose.yaml:ops/backup/compose.backup.yaml:ops/deploy/compose.production.yaml
+# Started with ops/deploy/up.sh, which reads those names from backup.env.
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: '3'
+
+x-app: &app
+  <<: *logging
+  image: between-pages-app
+  env_file: ${APP_ENV_FILE:-/etc/between-pages/app.env}
+
+services:
+  postgres:
+    <<: *logging
+    environment:
+      # Only used when the volume is first initialised; later changes need ALTER ROLE.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in backup.env}
+    networks:
+      - internal
+
+  migrate:
+    <<: *app
+    command: ['node', 'apps/api/scripts/migrate.ts']
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
+  api:
+    <<: *app
+    # The other two services use this image; `up --build` builds it before starting them.
+    build:
+      context: .
+      dockerfile: ops/deploy/Dockerfile
+    container_name: between-pages-api
+    # Node as PID 1 ignores SIGTERM and server.ts does not handle it.
+    init: true
+    command: ['node', 'apps/api/src/server.ts']
+    restart: unless-stopped
+    depends_on: &ready
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1:3000/api/health']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks:
+      - internal
+      - proxy
+
+  worker:
+    <<: *app
+    init: true
+    command: ['node', 'apps/api/src/worker/main.ts']
+    restart: unless-stopped
+    depends_on: *ready
+    networks:
+      - internal
+
+  web:
+    <<: *logging
+    image: between-pages-web
+    build:
+      context: .
+      dockerfile: ops/deploy/Dockerfile.web
+    container_name: between-pages-web
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1/']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks:
+      - proxy
+
+networks:
+  # Not `internal: true`: the worker reaches Google and WAL-G reaches R2 through it.
+  internal:
+  # Created by hand and joined by the site Caddy (ops/deploy/README.md); nothing else is on it.
+  proxy:
+    external: true
+    name: between_pages_proxy
