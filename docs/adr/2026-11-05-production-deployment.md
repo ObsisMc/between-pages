@@ -203,7 +203,7 @@ API 的请求日志只记路径，不记 `?` 之后的内容。这在 `apps/api/
 5. 生产站点的 `/api/*` 只转给 API，其余只转给 web，不经过 Authelia。
 6. 生产的 compose 项目名和数据卷名与开发环境不同。
 7. 迁移失败时，新版 `api` 和 `worker` 不启动。
-8. web 容器对未知路径返回 `index.html`，`index.html` 不被长期缓存。
+8. web 容器对 `/assets/` 之外的未知路径返回 `index.html`，`/assets/` 下不存在的文件返回 404，`index.html` 不被长期缓存。
 9. 密钥只存放在 `/etc/between-pages`，不进镜像、不进仓库、不进日志。
 10. 请求日志不包含查询串。
 11. 写入真实日记之前，生产库已完成首次备份和一次演练。
