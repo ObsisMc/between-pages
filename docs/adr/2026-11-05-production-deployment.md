@@ -37,7 +37,7 @@ Between Pages 部署到现有的美国 ARM 服务器：一个独立的 Docker co
 
 | 项目 | 生产 | 开发（不变） |
 | --- | --- | --- |
-| 目录 | `~/deploy/between-pages`，main 的干净克隆，只用于部署 | `~/codebase/between-pages` 与各 worktree |
+| 目录 | `~/volumes/between-pages`，main 的干净克隆，只用于部署；不放 `~/deploy`，它挂载在 OpenClaw 容器里 | `~/codebase/between-pages` 与各 worktree |
 | compose 项目名 | `between-pages-prod` | `between-pages` 或 worktree 名 |
 | 数据卷 | `between-pages-prod_pgdata` | `between-pages_pgdata` 等 |
 | 数据库端口 | `127.0.0.1:54330` | `127.0.0.1:54320` 等 |
@@ -121,7 +121,7 @@ web 镜像分两段：先在 Node 镜像里 `npm run build`，再把 `apps/web/d
 - `compose.production.yaml` 用 `${POSTGRES_PASSWORD:?}` 覆盖 `compose.yaml` 的开发密码，未设置时 compose 拒绝启动。这个密码只在数据卷首次初始化时生效，以后要改只能用 `ALTER ROLE`。
 - `POSTGRES_PASSWORD` 用 `openssl rand -hex 24` 生成，只含十六进制字符，放进连接地址不用转义。
 - `backup.env` 增加 `POSTGRES_PASSWORD`、`DB_PORT=54330`，`COMPOSE_PROJECT_NAME` 和 `COMPOSE_FILE` 改成 D1 的值，`LIVE_DATABASE_URL` 指向 `127.0.0.1:54330`；`app.env` 的 `DATABASE_URL` 指向 `postgres:5432`。
-- systemd 单元的 `WorkingDirectory` 改为 `~/deploy/between-pages`，恢复时 `--volume` 用 `between-pages-prod_pgdata`。`ops/backup/README.md` 随之更新。
+- systemd 单元的 `WorkingDirectory` 改为 `~/volumes/between-pages`，恢复时 `--volume` 用 `between-pages-prod_pgdata`。`ops/backup/README.md` 随之更新。
 - 生产库从空库开始，开发库的数据不迁移。开发库的账号来自开发登录，到生产换成 Google 登录后也对不上。
 
 理由：依据 1、3、4。备份加密、保留和恢复规则都不变，仍以 server-backup-and-google-docs 为准。
@@ -165,7 +165,7 @@ API 的请求日志只记路径，不记 `?` 之后的内容。这在 `apps/api/
 
 `ops/deploy/up.sh` 载入 `backup.env`，运行 `docker compose up -d --build --wait`，由 `depends_on` 保证先迁移、后启动新版 API。更新步骤：
 
-1. 在 `~/deploy/between-pages` 切到 Ray 确认过的 main 提交。
+1. 在 `~/volumes/between-pages` 切到 Ray 确认过的 main 提交。
 2. `sudo ops/deploy/up.sh`。
 3. 打开站点确认能登录，看 `docker compose ps`。
 
@@ -224,7 +224,7 @@ API 的请求日志只记路径，不记 `?` 之后的内容。这在 `apps/api/
 
 ## 风险与代价
 
-- **生产和开发在同一台机器**：`ubuntu` 用户有 Docker 权限和免密 sudo，这台机器上以它运行的所有进程，包括 AI 编程工具，实际上都能读到生产库和密钥。root 600 只防普通误操作。Ray 于 2026-11-05 确认接受这一风险。缓解：生产目录和数据都与开发分开，开发工作不进入 `~/deploy`；开始写真实日记后，如果担心这一点，再迁到专用服务器。
+- **生产和开发在同一台机器**：`ubuntu` 用户有 Docker 权限和免密 sudo，这台机器上以它运行的所有进程，包括 AI 编程工具，实际上都能读到生产库和密钥。root 600 只防普通误操作。Ray 于 2026-11-05 确认接受这一风险。缓解：生产目录和数据都与开发分开，开发工作不进入 `~/volumes/between-pages`；开始写真实日记后，如果担心这一点，再迁到专用服务器。
 - **Cloudflare 能看到明文**：HTTPS 在 Cloudflare 边缘解密，再加密转发到源站，所以日记正文、登录 cookie 和 OAuth 回调都经过它的内存。备份的加密管不到这一段。服务器的其他站点也一样，不走代理就要放开源站锁，影响其他六个站点并暴露服务器 IP。Ray 于 2026-11-05 决定继续走代理。
 - **Cloudflare 可能断开空闲的 WebSocket**：协议没有心跳，没人写字时连接上没有流量。客户端约 1 秒后重连并补齐内容，写入不会丢。状态行只看保存结果，所以空闲时断开用户看不出来；只有恰好在重连期间写字，才会短暂显示“暂时无法同步，已保存在本机”。Cloudflare 文档查到的超时数字不一致，以上线时实测为准；如果影响使用，再给协议加心跳。
 - **单点**：一台服务器坏了，服务就中断，靠恢复手册在新机器上恢复，备份和恢复时间由演练保证。
@@ -257,7 +257,7 @@ API 的请求日志只记路径，不记 `?` 之后的内容。这在 `apps/api/
 
 **阶段 3：上线（Ray 确认后，AI 或 Ray 执行）**
 
-1. 克隆到 `~/deploy/between-pages`，`sudo ops/deploy/up.sh`：确认归档成功，表已建好。
+1. 克隆到 `~/volumes/between-pages`，`sudo ops/deploy/up.sh`：确认归档成功，表已建好。
 2. 按 `ops/backup/README.md` 做首次备份，装定时器，演练一次。
 3. 建网络，接入 Caddy，加站点，`caddy reload`：其他站点不受影响，HTTPS 证书签发成功。
 4. 做认证 ADR 阶段 4 的真实 Google 联调（第 1–6 步）。
@@ -267,7 +267,7 @@ API 的请求日志只记路径，不记 `?` 之后的内容。这在 `apps/api/
 
 空环境恢复演练、真实输入法与剪贴板验证、书页手动验收、Google 副本清单。
 
-**自主实现约定**：预先批准新增 `ops/deploy/` 目录、把它加进 `checks/modules.json`、在 AGENTS.md 的 Layout 表和 architecture.md 的模块表各加一行。不新增 npm 依赖。服务器上的任何改动（`~/deploy`、`/etc/between-pages`、Caddy、Docker 网络）都要 Ray 确认后才做。不读取、不输出 `/etc/between-pages` 里的值。
+**自主实现约定**：预先批准新增 `ops/deploy/` 目录、把它加进 `checks/modules.json`、在 AGENTS.md 的 Layout 表和 architecture.md 的模块表各加一行。不新增 npm 依赖。服务器上的任何改动（`~/volumes/between-pages`、`/etc/between-pages`、Caddy、Docker 网络）都要 Ray 确认后才做。不读取、不输出 `/etc/between-pages` 里的值。
 
 ## 验收标准
 
