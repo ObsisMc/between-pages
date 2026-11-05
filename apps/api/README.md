@@ -119,6 +119,7 @@ Sub-modules of `src/` (kernel D11), top to bottom; each imports only from the la
 - Every route is registered from a `routes` entry in `@between-pages/contracts`; no path or response shape is written inline.
 - Responses are serialized through their Zod schema, so a handler cannot return a field the contract does not declare.
 - `openapi.json` equals `renderOpenApi()` output (`verify-openapi-current`).
+- The request log keeps the path and drops the query string, so the login callback's `code` and `state` never reach it ([production-deployment](../../docs/adr/2026-11-05-production-deployment.md) D8).
 - `access: 'user'` routes run the login guard and answer 401 without a session (invariant 13).
 - Only `src/auth/` and `src/db/` touch Better Auth or the `auth_*` tables; everything else gets the caller from `request.user` (invariant 10, `verify-auth-boundary`).
 - Better Auth's origin and CSRF checks are pinned on: it disables them by default when `NODE_ENV=test`, so tests would otherwise pass against weaker settings than production runs.

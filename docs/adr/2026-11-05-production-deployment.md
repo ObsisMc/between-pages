@@ -1,6 +1,6 @@
 # 生产环境用 Docker 跑在现有服务器上，由现有 Caddy 接入，数据与开发环境完全分开
 
-- 状态：已采纳
+- 状态：已实现
 - 日期：2026-11-05
 - 决策者：Ray
 - 范围：技术栈
@@ -93,7 +93,7 @@ missu.ruihaozhang.com {
 
 web 镜像分两段：先在 Node 镜像里 `npm run build`，再把 `apps/web/dist` 放进 `caddy:2.11.2-alpine`。这个容器只监听 80 端口，由站点 Caddy 转发，不处理 HTTPS。
 
-- 找不到文件的路径返回 `index.html`，直接打开或刷新 `/days/2026-11-05` 这样的地址才能进入应用。
+- 找不到文件的路径返回 `index.html`，直接打开或刷新 `/days/2026-11-05` 这样的地址才能进入应用。`/assets/*` 除外：旧页面请求已不存在的文件时返回 404，否则 HTML 会以这个文件名被缓存一年。
 - `/assets/*` 文件名带内容哈希，设一年 `immutable` 缓存；其余文件（`index.html`、字体）每次向服务器确认，新版本更新后不会卡在旧页面上。
 
 理由：依据 2、7。站点 Caddy 自己发文件需要加挂载，也就要重建容器，所有站点一起中断；API 发文件要加依赖，还多一项与它无关的职责。
@@ -148,7 +148,7 @@ web 镜像分两段：先在 Node 镜像里 `npm run build`，再把 `apps/web/d
 | `PUBLIC_ORIGIN` | `https://missu.ruihaozhang.com` |
 | `AUTH_PROVIDER` | `google` |
 | `BETTER_AUTH_SECRET` | `openssl rand -base64 32` |
-| `GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET` | 与登录同一个客户端 |
+| `GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET` | D10 的生产客户端，登录和 Drive 共用 |
 | `GOOGLE_TOKEN_KEY` | `openssl rand -base64 32` |
 
 `GOOGLE_DRIVE_TESTING`、`HISTORY_IDLE_MS` 不设。`/etc/between-pages` 下的文件只有 root 能读，所以部署命令用 `sudo` 运行。理由：依据 1、8。
@@ -173,13 +173,13 @@ API 的请求日志只记路径，不记 `?` 之后的内容。这在 `apps/api/
 
 ### D10：Google 应用在部署时发布为正式
 
-同一个 Google Cloud 项目和 OAuth 客户端，增加生产地址：
+同一个 Google Cloud 项目，新建一个生产用的 OAuth 客户端（类型 Web application），开发继续用原来的客户端，两边的 secret 互不影响（Ray 于 2026-11-05 决定）。生产客户端配置这些地址：
 
 - 已获授权的 JavaScript 来源：`https://missu.ruihaozhang.com`
 - 重定向 URI：`https://missu.ruihaozhang.com/api/auth/callback/google`、`https://missu.ruihaozhang.com/backup/google/callback`
 - OAuth 同意屏幕发布为“正式版”，Drive 授权不再 7 天过期，`GOOGLE_DRIVE_TESTING` 不设。
 
-`drive.file` 是 Google 列为非敏感的权限（server-backup-and-google-docs），预计不用审核；发布时要填写什么，以控制台提示为准。继续使用同一个 Google Cloud 项目，因为 `drive.file` 绑定客户端，换项目后应用读不到已有的 Doc。理由：依据 1。
+`drive.file` 是 Google 列为非敏感的权限（server-backup-and-google-docs），预计不用审核；发布时要填写什么，以控制台提示为准。继续使用同一个 Google Cloud 项目：`drive.file` 按项目生效，同一项目下换客户端不受影响，换项目后应用读不到已有的 Doc。同意屏幕属于项目，发布后开发客户端也一起变成正式状态。理由：依据 1。
 
 ## 失败与恢复
 
@@ -203,7 +203,7 @@ API 的请求日志只记路径，不记 `?` 之后的内容。这在 `apps/api/
 5. 生产站点的 `/api/*` 只转给 API，其余只转给 web，不经过 Authelia。
 6. 生产的 compose 项目名和数据卷名与开发环境不同。
 7. 迁移失败时，新版 `api` 和 `worker` 不启动。
-8. web 容器对未知路径返回 `index.html`，`index.html` 不被长期缓存。
+8. web 容器对 `/assets/` 之外的未知路径返回 `index.html`，`/assets/` 下不存在的文件返回 404，`index.html` 不被长期缓存。
 9. 密钥只存放在 `/etc/between-pages`，不进镜像、不进仓库、不进日志。
 10. 请求日志不包含查询串。
 11. 写入真实日记之前，生产库已完成首次备份和一次演练。
@@ -235,54 +235,32 @@ API 的请求日志只记路径，不记 `?` 之后的内容。这在 `apps/api/
 
 ## 未解决的问题
 
-- **上线的内容**：默认是 Ray 确认过的 main 提交。#76–#79 的共享页面在修完已知缺口并合并后，按 D9 正常更新上线。
+- **后续更新的内容**：2026-11-07 上线的是 main `302f306`。#76–#79 的共享页面在修完已知缺口并合并后，按 D9 正常更新上线。
 - **WAL 的实际用量**：`archive_timeout` 保持 60 秒，真实写作一段时间后按 server-backup-and-google-docs 的要求实测 R2 占用。
 
-## 落地顺序
+## 验证
 
-**阶段 1：配置（AI，一个 PR）**
+配置在 #83（2026-11-07 合并），上线和验收在同一天完成，服务器上的操作由 AI 执行、Ray 确认，密钥文件由 Ray 填写、AI 只核对变量名和权限。
 
-新增 `ops/deploy/`：`Dockerfile`、`Dockerfile.web`、`web.Caddyfile`、`compose.production.yaml`、`up.sh`、`app.env.example` 和 `README.md`（部署手册、Caddy 站点配置、Ray 的逐步操作），并在仓库根目录新增 `.dockerignore`。同一个 PR 实现 D8 的请求日志，更新 `ops/backup` 的示例与手册。
+不变量 2、3、4、6、7、8、10 有标题带 `[adr:production-deployment#N]` 的测试：`ops/deploy/deploy.docker.test.ts` 在一个临时 compose 项目里用测试密钥构建两个镜像、跑通迁移和四个服务，并在生产叠加上运行备份与演练脚本；`apps/api/src/app.test.ts` 覆盖请求日志。其余四条在上线时核对：
 
-完成条件：本地用测试密钥构建两个镜像，在一个临时 compose 项目里跑通迁移、`api`、`worker`、`web`，用 `docker compose config` 的结果和请求测试覆盖不变量 2–4、6–8、10。
+1. 生产 `api` 和 `worker` 容器的环境里 `NODE_ENV=production`、`AUTH_PROVIDER=google`。
+5. 站点块只有 `/api/*` 和兜底两条 `handle`，没有 `import auth`；公网 `/api/health` 与首页都 200。
+9. `/etc/between-pages` 下两个文件 root、600；示例文件里只有占位；登录回调之后日志里 `code=` 出现 0 次。
+11. 首次 `backup ok` 和 `drill ok`（恢复 11 秒）、Healthchecks 两项变绿，都在任何真实日记之前。
 
-**阶段 2：账号与密钥（Ray）**
+上线核对（2026-11-07）：
 
-| 步骤 | 谁做 | 做完后 AI 检查什么 |
-| --- | --- | --- |
-| 1. 子域名 `missu.ruihaozhang.com` 走 Cloudflare 代理（DNS 记录已于 2026-11-05 配好） | Ray | 已解析到 Cloudflare；上线后不再返回 525 |
-| 2. 按 `ops/backup/README.md` 准备 R2、Healthchecks 和备份加密密钥 | Ray | 示例里的每个变量都有值（只查变量名） |
-| 3. 生成其余密钥，写入 `/etc/between-pages/` | Ray | 文件权限；不读取内容 |
-| 4. 按 D10 配置 Google 并发布 | Ray | 回调地址与本文一致（看截图） |
+- 空数据卷上一条 `sudo ops/deploy/up.sh` 跑起全部服务，迁移 11 个、36 张表；归档从第一个 WAL 段起成功。
+- 公网 `https://missu.ruihaozhang.com/days/2026-11-05` 与 `/api/health` 返回 200，`/assets/` 下不存在的文件 404；`between_pages_proxy` 上解析不到也连不到 `postgres`，数据库只在 `127.0.0.1:54330`。
+- Caddy 加站点后 `caddy reload`，Let's Encrypt 证书经 http-01 在 3 秒内签发；其他 6 个站点在上线前后都正常。
+- 真实 Google：两个账号登录、绑定，同一天各写一篇并实时看到对方的字、作者归属正确；连接 Drive 时同意页是正式版、写出 Doc，断开后后台进程撤销授权并清掉密文；WebSocket 经 Cloudflare 与 Caddy 正常；API 与 worker 日志无告警。
+- 用测试账号验收后，按 Ray 的决定把生产整体重置：删数据卷、`wal-g delete everything`、重启、重新首次备份与演练，之后再交给两个真实账号。
 
-**阶段 3：上线（Ray 确认后，AI 或 Ray 执行）**
-
-1. 克隆到 `~/volumes/between-pages`，`sudo ops/deploy/up.sh`：确认归档成功，表已建好。
-2. 按 `ops/backup/README.md` 做首次备份，装定时器，演练一次。
-3. 建网络，接入 Caddy，加站点，`caddy reload`：其他站点不受影响，HTTPS 证书签发成功。
-4. 做认证 ADR 阶段 4 的真实 Google 联调（第 1–6 步）。
-5. 两个账号绑定，一起写一篇日记，连接 Google Drive。
-
-**阶段 4：发布前补做（路线图阶段 4 已列出）**
-
-空环境恢复演练、真实输入法与剪贴板验证、书页手动验收、Google 副本清单。
-
-**自主实现约定**：预先批准新增 `ops/deploy/` 目录、把它加进 `checks/modules.json`、在 AGENTS.md 的 Layout 表和 architecture.md 的模块表各加一行。不新增 npm 依赖。服务器上的任何改动（`~/volumes/between-pages`、`/etc/between-pages`、Caddy、Docker 网络）都要 Ray 确认后才做。不读取、不输出 `/etc/between-pages` 里的值。
-
-## 验收标准
-
-- 从空数据卷开始，一条 `sudo ops/deploy/up.sh` 把全部服务跑起来，第二次运行时数据不变、迁移跳过。
-- 不设 `POSTGRES_PASSWORD` 时，compose 报错并拒绝启动。
-- 从公网访问 `https://missu.ruihaozhang.com/days/2026-11-05` 能进入应用，`/api/health` 返回 200；公网和 `between_pages_proxy` 上都连不到数据库。
-- 登录回调请求之后，日志里没有 `code=`、`state=`。
-- 其他 6 个站点在上线前后都能正常访问。
-- 真实 Google 登录通过：cookie 带 `Secure` 和 `__Secure-` 前缀，退出后旧 cookie 返回 401（AUTH-01、AUTH-05）。
-- 两个账号同时写同一天的日记，WebSocket 经 Caddy 正常工作，手动断网再恢复后文字不丢。
-- `backup ok` 和 `drill ok` 都出现，Healthchecks 两项变绿（RELEASE-04）。
-- 打开日记后 10 分钟不操作，WebSocket 仍在线，或断开后自动恢复且内容不丢；再继续写能正常保存。
+未做，列入路线图阶段 4：cookie 的 `Secure` 与 `__Secure-` 前缀和退出后旧 cookie 返回 401（AUTH-01、AUTH-05）；手动断网再恢复后文字不丢；打开日记后 10 分钟不操作的 WebSocket 行为（Cloudflare 空闲超时实测）；第二次 `up.sh` 在生产里数据不变、迁移跳过（第一次更新时核对，测试已覆盖）。
 
 ## 补充信息
 
 - 重新评估条件：出现第二个 API 实例的需求；开始有两人以外的用户；服务器磁盘或内存明显吃紧；对生产数据和开发工具同机不放心时，迁到专用服务器。
-- 证据：本文“背景与问题”里的实测，2026-11-05 在这台服务器上完成。
+- 证据：本文“背景与问题”里的实测，2026-11-05 在这台服务器上完成；上线与验收记录见“验证”（2026-11-07）。
 - 相关：[服务器备份手册](../../ops/backup/README.md)、[认证 ADR 的阶段 4](./2026-10-24-authentication-and-sessions.md)。

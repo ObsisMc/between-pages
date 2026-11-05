@@ -1,7 +1,8 @@
+import { Writable } from 'node:stream';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { ApiErrorBody, routes } from '@between-pages/contracts';
-import { buildApp } from './app.ts';
+import { buildApp, requestLog } from './app.ts';
 import { createDb } from './db/client.ts';
 import { renderOpenApi } from './openapi.ts';
 
@@ -33,6 +34,32 @@ describe('health route', () => {
     const res = await signedOut.inject({ method: routes.health.method, url: routes.health.path });
     expect(res.statusCode).toBe(200);
     expect(routes.health.response.parse(res.json())).toEqual({ status: 'ok' });
+  });
+});
+
+describe('request log', () => {
+  it('[adr:production-deployment#10] keeps the path and drops the query string', async () => {
+    let logs = '';
+    const app = await buildApp({
+      publicOrigin: ORIGIN,
+      currentUser: async () => null,
+      db,
+      logger: {
+        ...requestLog,
+        stream: new Writable({
+          write(chunk, _encoding, done) {
+            logs += chunk;
+            done();
+          },
+        }),
+      },
+    });
+    await app.inject({ url: '/api/auth/callback/google?code=secret-code&state=secret-state' });
+    await app.close();
+
+    expect(logs).toContain('"url":"/api/auth/callback/google"');
+    expect(logs).not.toContain('secret-code');
+    expect(logs).not.toContain('secret-state');
   });
 });
 
