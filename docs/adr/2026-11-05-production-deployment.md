@@ -1,6 +1,6 @@
 # 生产环境用 Docker 跑在现有服务器上，由现有 Caddy 接入，数据与开发环境完全分开
 
-- 状态：已采纳
+- 状态：已实现
 - 日期：2026-11-05
 - 决策者：Ray
 - 范围：技术栈
@@ -235,54 +235,32 @@ API 的请求日志只记路径，不记 `?` 之后的内容。这在 `apps/api/
 
 ## 未解决的问题
 
-- **上线的内容**：默认是 Ray 确认过的 main 提交。#76–#79 的共享页面在修完已知缺口并合并后，按 D9 正常更新上线。
+- **后续更新的内容**：2026-11-07 上线的是 main `302f306`。#76–#79 的共享页面在修完已知缺口并合并后，按 D9 正常更新上线。
 - **WAL 的实际用量**：`archive_timeout` 保持 60 秒，真实写作一段时间后按 server-backup-and-google-docs 的要求实测 R2 占用。
 
-## 落地顺序
+## 验证
 
-**阶段 1：配置（AI，一个 PR）**
+配置在 #83（2026-11-06 合并），上线和验收于 2026-11-07 完成，服务器上的操作由 AI 执行、Ray 确认，密钥文件由 Ray 填写、AI 只核对变量名和权限。
 
-新增 `ops/deploy/`：`Dockerfile`、`Dockerfile.web`、`web.Caddyfile`、`compose.production.yaml`、`up.sh`、`app.env.example` 和 `README.md`（部署手册、Caddy 站点配置、Ray 的逐步操作），并在仓库根目录新增 `.dockerignore`。同一个 PR 实现 D8 的请求日志，更新 `ops/backup` 的示例与手册。
+不变量 2、3、4、6、7、8、10 有标题带 `[adr:production-deployment#N]` 的测试：`ops/deploy/deploy.docker.test.ts` 在一个临时 compose 项目里用测试密钥构建两个镜像、跑通迁移和四个服务，并在生产叠加上运行备份与演练脚本；`apps/api/src/app.test.ts` 覆盖请求日志。其余四条在上线时核对：
 
-完成条件：本地用测试密钥构建两个镜像，在一个临时 compose 项目里跑通迁移、`api`、`worker`、`web`，用 `docker compose config` 的结果和请求测试覆盖不变量 2–4、6–8、10。
+- 不变量 1：生产 `api` 和 `worker` 容器的环境里 `NODE_ENV=production`、`AUTH_PROVIDER=google`。
+- 不变量 5：站点块只有 `/api/*` 和兜底两条 `handle`，没有 `import auth`；公网 `/api/health` 与首页都 200。
+- 不变量 9：`/etc/between-pages` 下两个文件 root、600；示例文件里只有占位；登录回调之后日志里 `code=` 出现 0 次。
+- 不变量 11：首次 `backup ok` 和 `drill ok`（恢复 11 秒）、Healthchecks 两项变绿，都在任何真实日记之前。
 
-**阶段 2：账号与密钥（Ray）**
+上线核对（2026-11-07）：
 
-| 步骤 | 谁做 | 做完后 AI 检查什么 |
-| --- | --- | --- |
-| 1. 子域名 `missu.ruihaozhang.com` 走 Cloudflare 代理（DNS 记录已于 2026-11-05 配好） | Ray | 已解析到 Cloudflare；上线后不再返回 525 |
-| 2. 按 `ops/backup/README.md` 准备 R2、Healthchecks 和备份加密密钥 | Ray | 示例里的每个变量都有值（只查变量名） |
-| 3. 生成其余密钥，写入 `/etc/between-pages/` | Ray | 文件权限；不读取内容 |
-| 4. 按 D10 配置 Google 并发布 | Ray | 回调地址与本文一致（看截图） |
+- 空数据卷上一条 `sudo ops/deploy/up.sh` 跑起全部服务，迁移 11 个、36 张表；归档从第一个 WAL 段起成功。
+- 公网 `https://missu.ruihaozhang.com/days/2026-11-05` 与 `/api/health` 返回 200，`/assets/` 下不存在的文件 404；`between_pages_proxy` 上解析不到也连不到 `postgres`，数据库只在 `127.0.0.1:54330`。
+- Caddy 加站点后 `caddy reload`，Let's Encrypt 证书经 http-01 在 3 秒内签发；其他 6 个站点在上线前后都正常。
+- 真实 Google：两个账号登录、绑定，同一天各写一篇并实时看到对方的字、作者归属正确；连接 Drive 时同意页是正式版、写出 Doc，断开后后台进程撤销授权并清掉密文；WebSocket 经 Cloudflare 与 Caddy 正常；API 与 worker 日志无告警。
+- 验收写入的测试数据不保留，按 Ray 的决定把生产整体重置：删数据卷、`wal-g delete everything`、重启、重新首次备份与演练，之后再交给两个真实账号。
 
-**阶段 3：上线（Ray 确认后，AI 或 Ray 执行）**
-
-1. 克隆到 `~/volumes/between-pages`，建 `between_pages_proxy` 网络，`sudo ops/deploy/up.sh`：确认归档成功，表已建好。
-2. 按 `ops/backup/README.md` 做首次备份，装定时器，演练一次。
-3. 把 Caddy 接入网络，加站点，`caddy reload`：其他站点不受影响，HTTPS 证书签发成功。
-4. 做认证 ADR 阶段 4 的真实 Google 联调（第 1–6 步）。
-5. 两个账号绑定，一起写一篇日记，连接 Google Drive。
-
-**阶段 4：发布前补做（路线图阶段 4 已列出）**
-
-空环境恢复演练、真实输入法与剪贴板验证、书页手动验收、Google 副本清单。
-
-**自主实现约定**：预先批准新增 `ops/deploy/` 目录、把它加进 `checks/modules.json`、在 AGENTS.md 的 Layout 表和 architecture.md 的模块表各加一行。不新增 npm 依赖。服务器上的任何改动（`~/volumes/between-pages`、`/etc/between-pages`、Caddy、Docker 网络）都要 Ray 确认后才做。不读取、不输出 `/etc/between-pages` 里的值。
-
-## 验收标准
-
-- 从空数据卷开始，一条 `sudo ops/deploy/up.sh` 把全部服务跑起来，第二次运行时数据不变、迁移跳过。
-- 不设 `POSTGRES_PASSWORD` 时，compose 报错并拒绝启动。
-- 从公网访问 `https://missu.ruihaozhang.com/days/2026-11-05` 能进入应用，`/api/health` 返回 200；公网和 `between_pages_proxy` 上都连不到数据库。
-- 登录回调请求之后，日志里没有 `code=`、`state=`。
-- 其他 6 个站点在上线前后都能正常访问。
-- 真实 Google 登录通过：cookie 带 `Secure` 和 `__Secure-` 前缀，退出后旧 cookie 返回 401（AUTH-01、AUTH-05）。
-- 两个账号同时写同一天的日记，WebSocket 经 Caddy 正常工作，手动断网再恢复后文字不丢。
-- `backup ok` 和 `drill ok` 都出现，Healthchecks 两项变绿（RELEASE-04）。
-- 打开日记后 10 分钟不操作，WebSocket 仍在线，或断开后自动恢复且内容不丢；再继续写能正常保存。
+未做，列入路线图阶段 4：cookie 的 `Secure` 与 `__Secure-` 前缀和退出后旧 cookie 返回 401（AUTH-01、AUTH-05）；手动断网再恢复后文字不丢；打开日记后 10 分钟不操作的 WebSocket 行为（Cloudflare 空闲超时实测）；第二次 `up.sh` 在生产里数据不变、迁移跳过（第一次更新时核对，测试已覆盖）。
 
 ## 补充信息
 
 - 重新评估条件：出现第二个 API 实例的需求；开始有两人以外的用户；服务器磁盘或内存明显吃紧；对生产数据和开发工具同机不放心时，迁到专用服务器。
-- 证据：本文“背景与问题”里的实测，2026-11-05 在这台服务器上完成。
+- 证据：本文“背景与问题”里的实测，2026-11-05 在这台服务器上完成；上线与验收记录见“验证”（2026-11-07）。
 - 相关：[服务器备份手册](../../ops/backup/README.md)、[认证 ADR 的阶段 4](./2026-10-24-authentication-and-sessions.md)。
