@@ -240,14 +240,14 @@ API 的请求日志只记路径，不记 `?` 之后的内容。这在 `apps/api/
 
 ## 验证
 
-配置在 #83（2026-11-07 合并），上线和验收在同一天完成，服务器上的操作由 AI 执行、Ray 确认，密钥文件由 Ray 填写、AI 只核对变量名和权限。
+配置在 #83（2026-11-06 合并），上线和验收于 2026-11-07 完成，服务器上的操作由 AI 执行、Ray 确认，密钥文件由 Ray 填写、AI 只核对变量名和权限。
 
 不变量 2、3、4、6、7、8、10 有标题带 `[adr:production-deployment#N]` 的测试：`ops/deploy/deploy.docker.test.ts` 在一个临时 compose 项目里用测试密钥构建两个镜像、跑通迁移和四个服务，并在生产叠加上运行备份与演练脚本；`apps/api/src/app.test.ts` 覆盖请求日志。其余四条在上线时核对：
 
-1. 生产 `api` 和 `worker` 容器的环境里 `NODE_ENV=production`、`AUTH_PROVIDER=google`。
-5. 站点块只有 `/api/*` 和兜底两条 `handle`，没有 `import auth`；公网 `/api/health` 与首页都 200。
-9. `/etc/between-pages` 下两个文件 root、600；示例文件里只有占位；登录回调之后日志里 `code=` 出现 0 次。
-11. 首次 `backup ok` 和 `drill ok`（恢复 11 秒）、Healthchecks 两项变绿，都在任何真实日记之前。
+- 不变量 1：生产 `api` 和 `worker` 容器的环境里 `NODE_ENV=production`、`AUTH_PROVIDER=google`。
+- 不变量 5：站点块只有 `/api/*` 和兜底两条 `handle`，没有 `import auth`；公网 `/api/health` 与首页都 200。
+- 不变量 9：`/etc/between-pages` 下两个文件 root、600；示例文件里只有占位；登录回调之后日志里 `code=` 出现 0 次。
+- 不变量 11：首次 `backup ok` 和 `drill ok`（恢复 11 秒）、Healthchecks 两项变绿，都在任何真实日记之前。
 
 上线核对（2026-11-07）：
 
@@ -255,7 +255,7 @@ API 的请求日志只记路径，不记 `?` 之后的内容。这在 `apps/api/
 - 公网 `https://missu.ruihaozhang.com/days/2026-11-05` 与 `/api/health` 返回 200，`/assets/` 下不存在的文件 404；`between_pages_proxy` 上解析不到也连不到 `postgres`，数据库只在 `127.0.0.1:54330`。
 - Caddy 加站点后 `caddy reload`，Let's Encrypt 证书经 http-01 在 3 秒内签发；其他 6 个站点在上线前后都正常。
 - 真实 Google：两个账号登录、绑定，同一天各写一篇并实时看到对方的字、作者归属正确；连接 Drive 时同意页是正式版、写出 Doc，断开后后台进程撤销授权并清掉密文；WebSocket 经 Cloudflare 与 Caddy 正常；API 与 worker 日志无告警。
-- 用测试账号验收后，按 Ray 的决定把生产整体重置：删数据卷、`wal-g delete everything`、重启、重新首次备份与演练，之后再交给两个真实账号。
+- 验收写入的测试数据不保留，按 Ray 的决定把生产整体重置：删数据卷、`wal-g delete everything`、重启、重新首次备份与演练，之后再交给两个真实账号。
 
 未做，列入路线图阶段 4：cookie 的 `Secure` 与 `__Secure-` 前缀和退出后旧 cookie 返回 401（AUTH-01、AUTH-05）；手动断网再恢复后文字不丢；打开日记后 10 分钟不操作的 WebSocket 行为（Cloudflare 空闲超时实测）；第二次 `up.sh` 在生产里数据不变、迁移跳过（第一次更新时核对，测试已覆盖）。
 
