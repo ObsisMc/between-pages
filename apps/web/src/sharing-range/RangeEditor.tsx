@@ -48,8 +48,8 @@ function countText({ include, exclude }: DateSelection): string {
 
 function Chip({ text, onRemove }: { text: string; onRemove: () => void }) {
   return (
-    <li className="inline-flex h-9 max-w-full items-center gap-1 rounded-full border border-line pr-1 pl-3.5 text-sm">
-      <span className="truncate">{text}</span>
+    <li className="inline-flex min-h-9 max-w-full items-center gap-1 rounded-full border border-line py-0.5 pr-1 pl-3.5 text-sm">
+      <span className="min-w-0">{text}</span>
       <Button
         type="button"
         variant="ghost"
@@ -185,7 +185,7 @@ export function RangeEditor({
   const picked = ranges.include.length + ranges.exclude.length > 0;
 
   return (
-    <div className="@container grid min-w-0 gap-4 font-sans text-ink">
+    <div className="@container grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 font-sans text-ink">
       <div role="radiogroup" aria-label="共享日期" className="grid gap-2">
         <CheckboxLabel>
           <input type="radio" checked={mode === 'all'} onChange={() => update({ mode: 'all' })} />
@@ -213,9 +213,9 @@ export function RangeEditor({
       {mode !== 'custom' ? (
         summary
       ) : (
-        <div className="grid gap-6 @xl:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] @xl:items-start">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-6 @xl:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] @xl:items-start">
           <MonthView selection={ranges} today={today} anchor={anchor} onDayClick={pick} />
-          <div className="grid min-w-0 content-start gap-4">
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4">
             <ToggleGroup
               type="single"
               aria-label="点日历时"
