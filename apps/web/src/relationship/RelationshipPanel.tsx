@@ -1,18 +1,13 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router';
-import type { ResponseOf } from '@between-pages/contracts';
 import { callApi } from '../api/client.ts';
 import { ALL_DAYS, RangeEditor, type RangeChoice } from '../sharing-range/index.ts';
 import { Button, Input } from '../ui/index.ts';
+import { partnerOf } from './partner.ts';
 import { refreshRelationships, refusalText, useBinding, useSpaces } from './queries.ts';
 
-type Space = ResponseOf<'spaces'>['spaces'][number];
-
 const timeText = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-
-export const partnerOf = (space: Space, userId: string) =>
-  space.participants.find((p) => p.user.id !== userId)!.user;
 
 const linkClass = 'text-warm underline underline-offset-4';
 
@@ -20,9 +15,9 @@ const linkClass = 'text-warm underline underline-offset-4';
 const joinLink = (token: string) => `${window.location.origin}/join#token=${token}`;
 
 /**
- * The home page's relationship section (spaces-and-invitations D12): the current or archived
- * space, or an invitation to create, copy once, revoke or replace. Ranges set here are
- * configuration only; the panel always says diary sharing is not open yet.
+ * The invitation flow of the 设置 → 搭档 page (spaces-and-invitations D12): the current or
+ * archived space, or an invitation to create, copy once, revoke or replace. Ranges set here
+ * are configuration only; the panel always says diary sharing is not open yet.
  */
 export function RelationshipPanel({ userId }: { userId: string }) {
   const binding = useBinding();
@@ -106,13 +101,7 @@ export function RelationshipPanel({ userId }: { userId: string }) {
   };
 
   return (
-    <section className="grid gap-4" aria-labelledby="relationship-title">
-      <div>
-        <h2 id="relationship-title" className="font-serif text-xl font-medium">
-          双人空间
-        </h2>
-        <p className="mt-1 text-sm text-ink-soft">每人只共享自己确认过的日期</p>
-      </div>
+    <section className="grid gap-4" aria-label="双人空间">
       {current && (
         <p>
           <Link to={`/spaces/${current.space.id}`} className={linkClass}>
@@ -169,11 +158,11 @@ export function RelationshipPanel({ userId }: { userId: string }) {
       )}
       {!current && !pending && (
         <div className="grid gap-4">
-          <h3 className="font-serif text-lg font-medium">
+          <h2 className="font-serif text-xl font-medium">
             {archived.length ? '邀请原搭档恢复关系' : '邀请搭档'}
-          </h3>
+          </h2>
           <p className="text-sm leading-relaxed text-ink-soft">
-            首版绑定后搭档固定，不支持更换。选择你以后愿意共享的日期，对方看不到这个设置。
+            选择你以后愿意共享的日期，生成链接后发给对方。
           </p>
           <RangeEditor initial={ALL_DAYS} allowUnset onChange={setChoice} />
           <Button

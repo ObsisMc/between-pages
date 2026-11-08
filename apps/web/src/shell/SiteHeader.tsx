@@ -106,7 +106,7 @@ function Account({ name }: { name: string }) {
 }
 
 const TOGETHER = /^\/(clocks|wishes|anniversaries)(\/|$)/;
-const SETTINGS = /^\/(spaces|backup)(\/|$)/;
+const SETTINGS = /^\/(spaces|partner|backup)(\/|$)/;
 
 /** The site header, for a signed-in user only. */
 export function SiteHeader() {

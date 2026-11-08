@@ -22,8 +22,10 @@ async function signedIn(browser: Browser, name: string): Promise<Page> {
 
 async function pair(browser: Browser, prefix: string) {
   const a = await signedIn(browser, `${prefix}a`);
+  await a.getByRole('link', { name: '邀请搭档' }).click();
   await a.getByRole('button', { name: '生成邀请链接' }).click();
   const link = await a.getByLabel('邀请链接').inputValue();
+  await a.getByRole('navigation', { name: '主要' }).getByRole('link', { name: '此刻' }).click();
   const b = await signedIn(browser, `${prefix}b`);
   await b.goto(link);
   await b.getByLabel('暂不设置').check();

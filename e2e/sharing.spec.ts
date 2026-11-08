@@ -128,9 +128,11 @@ test('K8 K7 opening while another device is offline: committed input stays text,
 
   // A and B bind without sharing anything yet.
   const a2 = await signedIn(browser, name('a'));
+  await a2.getByRole('link', { name: '邀请搭档' }).click();
   await a2.getByLabel('暂不设置').check();
   await a2.getByRole('button', { name: '生成邀请链接' }).click();
   const link = await a2.getByLabel('邀请链接').inputValue();
+  await a2.getByRole('navigation', { name: '主要' }).getByRole('link', { name: '此刻' }).click();
   const b = await signedIn(browser, name('b'));
   await b.goto(link);
   await b.getByLabel('暂不设置').check();
@@ -193,8 +195,10 @@ test('EDIT-13 EDIT-14 TIME-03 K11 the partner reads and writes a shared diary in
 
   // A shares every date (the invitation default); B shares nothing.
   const a = await signedIn(browser, name('pa'));
+  await a.getByRole('link', { name: '邀请搭档' }).click();
   await a.getByRole('button', { name: '生成邀请链接' }).click();
   const link = await a.getByLabel('邀请链接').inputValue();
+  await a.getByRole('navigation', { name: '主要' }).getByRole('link', { name: '此刻' }).click();
   const b = await signedIn(browser, name('pb'));
   await b.goto(link);
   await b.getByLabel('暂不设置').check();
