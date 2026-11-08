@@ -114,7 +114,9 @@ for (const viewport of VIEWPORTS) {
     await a.getByRole('button', { name: '从这天起一直共享' }).click();
     await a.getByRole('radio', { name: '添加排除' }).click();
     await clickDay(a, '2026-10-10');
-    await expect(a.getByText('共享：2026-10-01 起持续；排除：2026-10-10')).toBeVisible();
+    await expect(a.getByText('共享 1 段 · 排除 1 天')).toHaveAccessibleDescription(
+      '共享：2026-10-01 起持续；排除：2026-10-10',
+    );
     expect(await outside(a), 'the range editor').toEqual([]);
 
     await a.getByRole('button', { name: '保存范围' }).click();

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { X } from 'lucide-react';
 import type { DateRange, DateSelection } from '@between-pages/contracts';
 import {
@@ -116,7 +116,8 @@ function ChipList({
  * end; in 排除 mode one click excludes a day (a second click on it takes that back). Beside
  * the calendar (under it on a narrow box): the click mode, a count, "清空共享" / "清空排除",
  * and each range as a removable chip, three per kind before "展开全部". Or, where
- * `allowUnset`, not setting a range now. Only 自选 shows a calendar. Only its owner ever
+ * `allowUnset`, not setting a range now. Only 自选 shows a calendar; the full sentence of the
+ * selection shows under 全部 and 暂不设置, and in 自选 is the count's accessible description. Only its owner ever
  * sees it. Confirming it is what shares the diaries of those dates (kernel D5); the caller
  * asks for that.
  */
@@ -143,6 +144,7 @@ export function RangeEditor({
   // The first day clicked while adding a shared range, until the range closes.
   const [anchor, setAnchor] = useState<string | null>(null);
   const choice = choiceOf(mode, ranges);
+  const sentenceId = useId();
 
   const update = (next: { mode?: Mode; ranges?: DateSelection }) => {
     const m = next.mode ?? mode;
@@ -266,7 +268,17 @@ export function RangeEditor({
             {picked && (
               <div role="group" aria-label="已选的日期段" className="grid gap-3">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <span className="text-sm font-medium">{countText(ranges)}</span>
+                  {/* The full sentence repeats every chip, so it is only the count's description. */}
+                  <span
+                    className="text-sm font-medium"
+                    aria-live="polite"
+                    aria-describedby={sentenceId}
+                  >
+                    {countText(ranges)}
+                  </span>
+                  <span id={sentenceId} hidden>
+                    {describeSelection(ranges)}
+                  </span>
                   {ranges.include.length > 0 && (
                     <Button type="button" variant="link" size="sm" onClick={() => clear('include')}>
                       清空共享
@@ -292,7 +304,7 @@ export function RangeEditor({
                 />
               </div>
             )}
-            {summary}
+            {!picked && <p className="text-sm text-ink-soft">{describeSelection(ranges)}</p>}
           </div>
         </div>
       )}

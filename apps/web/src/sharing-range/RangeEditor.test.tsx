@@ -101,11 +101,13 @@ describe('RangeEditor', () => {
     expect(day('10 月 5 日').getAttribute('aria-label')).toBe('10 月 5 日，共享');
     expect(day('10 月 11 日').getAttribute('aria-label')).toBe('10 月 11 日，已排除');
     expect(day('10 月 3 日').getAttribute('aria-label')).toBe('10 月 3 日，不共享');
-    expect(
-      screen.getByText(
-        '共享：2026-10-05；2026-10-10 至 2026-10-12；2026-10-20 起持续；排除：2026-10-11',
-      ),
-    ).toBeDefined();
+    // The sentence repeats every chip: in 自选 it describes the count and is not shown.
+    const count = screen.getByText('共享 3 段 · 排除 1 天');
+    const sentence = document.getElementById(count.getAttribute('aria-describedby')!)!;
+    expect(sentence.textContent).toBe(
+      '共享：2026-10-05；2026-10-10 至 2026-10-12；2026-10-20 起持续；排除：2026-10-11',
+    );
+    expect(sentence.hidden).toBe(true);
 
     expect(items('共享的日期段')).toEqual([
       '共享 2026-10-05',

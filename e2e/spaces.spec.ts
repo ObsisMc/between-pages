@@ -73,7 +73,7 @@ async function acceptSharingOneDay(page: Page) {
   await page.getByLabel('自选日期').check();
   await clickDay(page, '2026-10-05');
   await clickDay(page, '2026-10-05');
-  await expect(page.getByText('共享：2026-10-05')).toBeVisible();
+  await expect(page.getByText('共享 1 段')).toHaveAccessibleDescription('共享：2026-10-05');
   await page.getByRole('button', { name: '接受邀请' }).click();
   await expect(page).toHaveURL(/\/spaces\/[0-9a-f-]{36}$/);
   return new URL(page.url()).pathname;
