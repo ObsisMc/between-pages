@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { renderAt, signedIn, stubApi } from '../../test/render.tsx';
 import { BackupBanner } from './BackupBanner.tsx';
 import { BackupPage } from './BackupPage.tsx';
@@ -48,13 +48,12 @@ describe('BackupPage', () => {
     );
   });
 
-  it('says where the Docs are and that the folder may be moved, before and after connecting (F-07)', async () => {
-    const where = () => {
-      const paragraph = screen.getByText('我的云端硬盘 › Between Pages › 年 › 月').closest('p')!;
-      expect(paragraph.textContent).toContain(
-        '可以在 Drive 里移动或改名 Between Pages 文件夹，备份会跟着它',
-      );
-      expect(paragraph.textContent).toContain('删掉的话会在根目录重新建一个');
+  it('keeps where the Docs are behind an icon that opens on hover and on keyboard focus, before and after connecting (F-07)', async () => {
+    const PATH = '我的云端硬盘 › Between Pages › 年 › 月';
+    const shown = () => {
+      const text = screen.getByText(PATH).parentElement!.textContent!;
+      expect(text).toContain('可以在 Drive 里移动或改名 Between Pages 文件夹，备份会跟着它');
+      expect(text).toContain('删掉的话会在根目录重新建一个');
     };
     stubApi({
       'GET /api/me': signedIn(),
@@ -62,7 +61,12 @@ describe('BackupPage', () => {
     });
     renderAt('/backup', routesWith(vi.fn()));
     expect(await screen.findByText('未开启 Google 备份')).toBeDefined();
-    where();
+    expect(screen.queryByText(PATH)).toBeNull();
+    fireEvent.pointerEnter(screen.getByRole('button', { name: '备份存在哪里' }), {
+      pointerType: 'mouse',
+    });
+    await screen.findByText(PATH);
+    shown();
     cleanup();
 
     stubApi({
@@ -82,7 +86,10 @@ describe('BackupPage', () => {
     });
     renderAt('/backup', routesWith(vi.fn()));
     expect(await screen.findByText('已连接 ray@example.com')).toBeDefined();
-    where();
+    expect(screen.queryByText(PATH)).toBeNull();
+    act(() => screen.getByRole('button', { name: '备份存在哪里' }).focus());
+    await screen.findByText(PATH);
+    shown();
     expect(
       screen.getByRole('link', { name: '在 Google Drive 打开文件夹' }).getAttribute('href'),
     ).toBe('https://drive.google.com/drive/folders/f-root');
