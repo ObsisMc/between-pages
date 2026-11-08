@@ -8,6 +8,8 @@ The React single-page app (Vite, React Router, TanStack Query). Calls the API on
 | --- | --- |
 | `npm run dev -w @between-pages/web` | Vite dev server; proxies `/api`, the sync WebSocket included, to the API on the repo-root `.env` `PORT` (default 3000), so the app is same-origin. |
 | `npm run build -w @between-pages/web` | Static bundle in `dist/`. |
+| `public/favicon.svg`, `favicon.ico`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `manifest.webmanifest` | The tab icon (the two mascots side by side, the shapes and colours of `src/avatar/Mascot.tsx`), the home-screen icons with the paper colour behind them, and the web app manifest (`Between Pages`, `standalone`, paper `theme_color`), all linked from `index.html`. Files in `public/` are served at the site root as themselves, before the `index.html` fallback. |
+| `npm run icons -w @between-pages/web` | Renders the PNGs and `favicon.ico` from `favicon.svg` with Playwright's Chromium (`scripts/render-icons.ts`). Run it after changing the SVG and commit the outputs. |
 | `callApi(name, request?, fetch?)` (`src/api/client.ts`) | The only way to call the API: method and path come from the contract, the response is parsed with its schema. `request` is `{ params, query, body }` with exactly the inputs the route declares (`RequestOf<Name>`), required when it declares any; params fill the `:name` segments, the query skips undefined values, the body is sent as JSON. Throws `ApiError` (with `status`, the contract error `code`, `INTERNAL` when the body is unreadable, and `dates` for `SHARE_OPEN_FAILED`) on non-2xx and a Zod error on a shape mismatch. |
 | `signIn(provider, loginHint?)`, `signOut()` (`src/api/auth.ts`) | Better Auth's sign-in and sign-out. `signIn` returns the provider URL; success returns to `/`, failure to `/login?error=<code>`. |
 | `appRoutes` (`src/routes.tsx`) | `/login` (public; signed-in users go to `/`), `/join` (public; asks for a session itself), `/`, `/days/:date?` (one route for `/days` and `/days/:date`), `/spaces/:spaceId`, `/backup`, `/clocks`, `/wishes`, `/anniversaries` and `/anniversaries/:anniversaryId` (behind `RequireAuth`), anything else → `/`. All of them sit under `<SiteLayout>`, the site header over the page. |
@@ -115,6 +117,7 @@ npx vitest run --project web
 
 ## Known limitations
 
+- The tab icon shows two mascots, so at 16 px they are two coloured shapes without faces; the faces read from 32 px up (the `favicon.ico` size, the home-screen icons).
 - The windows are drawn in SVG to the approved effect image's direction, not a copy of it; the grain is one small noise filter per window.
 - Confirming a range on the space page opens and freezes diaries, but that page has no editor of its own to pause: a diary open in another tab or device reconciles on the `opened` notice or its next subscription (kernel D7), so opening never waits for other devices.
 - The wishes page holds every record in its four tabs, gift wall included, without paging; fine for two people's records. Its "跳到第一处" counts what was unread when the page opened, and the tabs open on "{partner} 的心愿" each time, not on the last one shown.

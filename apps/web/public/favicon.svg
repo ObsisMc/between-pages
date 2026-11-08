@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <!--
+    The two mascots side by side, the slot-1 one (orange) at the left, the slot-2 one (blue)
+    in front at the right, on one surface. Every shape and colour is copied from
+    src/avatar/Mascot.tsx (the 120 × 92 grid, idle face); keep them in step when that changes.
+    The rasters beside this file are rendered from it by `npm run icons -w @between-pages/web`.
+  -->
+  <defs>
+    <filter id="s" x="-20%" y="-200%" width="140%" height="500%">
+      <feGaussianBlur stdDeviation="1.6" />
+    </filter>
+    <clipPath id="clip">
+      <path d="M60 5C76 5 91 12 98.5 28.5 105 43 106.5 58 97 68.5 87 79 73 79 60 79S32 79 22.5 68.5C13 58 14.5 43 21.5 28.5 29 12 44 5 60 5Z" />
+    </clipPath>
+    <radialGradient id="p1"><stop offset="0" stop-color="#fbb492" /><stop offset="1" stop-color="#fbb492" stop-opacity="0" /></radialGradient>
+    <radialGradient id="d1"><stop offset="0" stop-color="#f4835a" /><stop offset="1" stop-color="#f4835a" stop-opacity="0" /></radialGradient>
+    <radialGradient id="c1"><stop offset="0" stop-color="#f26f44" /><stop offset="1" stop-color="#f26f44" stop-opacity="0" /></radialGradient>
+    <radialGradient id="p2"><stop offset="0" stop-color="#a1cbef" /><stop offset="1" stop-color="#a1cbef" stop-opacity="0" /></radialGradient>
+    <radialGradient id="d2"><stop offset="0" stop-color="#639fd8" /><stop offset="1" stop-color="#639fd8" stop-opacity="0" /></radialGradient>
+    <radialGradient id="c2"><stop offset="0" stop-color="#a89bd8" /><stop offset="1" stop-color="#a89bd8" stop-opacity="0" /></radialGradient>
+  </defs>
+
+  <!-- Slot 1, orange -->
+  <g transform="translate(-3.06 33) scale(0.62)">
+    <ellipse cx="60" cy="79" rx="42" ry="3.6" fill="#3b2a1e" opacity="0.22" filter="url(#s)" />
+    <path d="M60 5C76 5 91 12 98.5 28.5 105 43 106.5 58 97 68.5 87 79 73 79 60 79S32 79 22.5 68.5C13 58 14.5 43 21.5 28.5 29 12 44 5 60 5Z" fill="none" stroke="#f79a70" stroke-width="3" opacity="0.18" />
+    <path d="M60 5C76 5 91 12 98.5 28.5 105 43 106.5 58 97 68.5 87 79 73 79 60 79S32 79 22.5 68.5C13 58 14.5 43 21.5 28.5 29 12 44 5 60 5Z" fill="none" stroke="#f79a70" stroke-width="1.5" opacity="0.32" />
+    <path d="M60 5C76 5 91 12 98.5 28.5 105 43 106.5 58 97 68.5 87 79 73 79 60 79S32 79 22.5 68.5C13 58 14.5 43 21.5 28.5 29 12 44 5 60 5Z" fill="#f79a70" />
+    <g clip-path="url(#clip)">
+      <ellipse cx="44" cy="20" rx="30" ry="18" opacity="0.85" fill="url(#p1)" />
+      <ellipse cx="86" cy="30" rx="20" ry="18" opacity="0.95" fill="url(#p1)" />
+      <ellipse cx="33" cy="68" rx="28" ry="14" opacity="0.6" fill="url(#p1)" />
+      <ellipse cx="78" cy="66" rx="26" ry="13" opacity="0.55" fill="url(#p1)" />
+      <ellipse cx="60" cy="33" rx="26" ry="14" opacity="0.55" fill="url(#d1)" />
+      <ellipse cx="60" cy="62" rx="36" ry="12" opacity="0.35" fill="url(#d1)" />
+    </g>
+    <ellipse cx="33" cy="52" rx="15" ry="12" fill="url(#c1)" opacity="0.5" />
+    <ellipse cx="87" cy="52" rx="15" ry="12" fill="url(#c1)" opacity="0.5" />
+    <circle cx="47" cy="41" r="3.3" fill="#2b2420" />
+    <circle cx="73" cy="41" r="3.3" fill="#2b2420" />
+    <path d="M53 50q7 7.4 14 0" fill="none" stroke="#2b2420" stroke-width="2.4" stroke-linecap="round" />
+  </g>
+
+  <!-- Slot 2, blue -->
+  <g transform="translate(48.94 33) scale(0.62)">
+    <ellipse cx="60" cy="79" rx="42" ry="3.6" fill="#3b2a1e" opacity="0.22" filter="url(#s)" />
+    <path d="M60 5C76 5 91 12 98.5 28.5 105 43 106.5 58 97 68.5 87 79 73 79 60 79S32 79 22.5 68.5C13 58 14.5 43 21.5 28.5 29 12 44 5 60 5Z" fill="none" stroke="#7ab3e4" stroke-width="3" opacity="0.18" />
+    <path d="M60 5C76 5 91 12 98.5 28.5 105 43 106.5 58 97 68.5 87 79 73 79 60 79S32 79 22.5 68.5C13 58 14.5 43 21.5 28.5 29 12 44 5 60 5Z" fill="none" stroke="#7ab3e4" stroke-width="1.5" opacity="0.32" />
+    <path d="M60 5C76 5 91 12 98.5 28.5 105 43 106.5 58 97 68.5 87 79 73 79 60 79S32 79 22.5 68.5C13 58 14.5 43 21.5 28.5 29 12 44 5 60 5Z" fill="#7ab3e4" />
+    <g clip-path="url(#clip)">
+      <ellipse cx="44" cy="20" rx="30" ry="18" opacity="0.85" fill="url(#p2)" />
+      <ellipse cx="86" cy="30" rx="20" ry="18" opacity="0.95" fill="url(#p2)" />
+      <ellipse cx="33" cy="68" rx="28" ry="14" opacity="0.6" fill="url(#p2)" />
+      <ellipse cx="78" cy="66" rx="26" ry="13" opacity="0.55" fill="url(#p2)" />
+      <ellipse cx="60" cy="33" rx="26" ry="14" opacity="0.55" fill="url(#d2)" />
+      <ellipse cx="60" cy="62" rx="36" ry="12" opacity="0.35" fill="url(#d2)" />
+    </g>
+    <ellipse cx="33" cy="52" rx="15" ry="12" fill="url(#c2)" opacity="0.42" />
+    <ellipse cx="87" cy="52" rx="15" ry="12" fill="url(#c2)" opacity="0.42" />
+    <circle cx="47" cy="41" r="3.3" fill="#2b2420" />
+    <circle cx="73" cy="41" r="3.3" fill="#2b2420" />
+    <path d="M53 50q7 7.4 14 0" fill="none" stroke="#2b2420" stroke-width="2.4" stroke-linecap="round" />
+  </g>
+</svg>

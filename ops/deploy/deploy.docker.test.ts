@@ -54,9 +54,14 @@ const appEnvFile = (dbPassword: string) =>
 /** A request from inside the proxy network, where the site Caddy sits. */
 async function fromProxy(url: string) {
   const script = `fetch(${JSON.stringify(url)}, { redirect: 'manual' }).then(async (r) =>
-    console.log(JSON.stringify({ status: r.status, cache: r.headers.get('cache-control'), body: await r.text() })))`;
+    console.log(JSON.stringify({ status: r.status, cache: r.headers.get('cache-control'), type: r.headers.get('content-type'), body: await r.text() })))`;
   const out = await sh('docker', ['exec', API, 'node', '-e', script]);
-  return JSON.parse(out) as { status: number; cache: string | null; body: string };
+  return JSON.parse(out) as {
+    status: number;
+    cache: string | null;
+    type: string | null;
+    body: string;
+  };
 }
 
 /** The real production settings, from the examples Ray copies. */
@@ -187,6 +192,18 @@ describe.runIf(enabled)('production stack', () => {
     const gone = await fromProxy(`http://${WEB}/assets/gone.js`);
     expect(gone.status).toBe(404);
     expect(gone.cache ?? '').not.toContain('immutable');
+  }, 60_000);
+
+  it('serves the tab icon and the manifest as files, not as the page', async () => {
+    const icon = await fromProxy(`http://${WEB}/favicon.svg`);
+    expect(icon.status).toBe(200);
+    expect(icon.type).toContain('image/svg+xml');
+    expect(icon.body).toContain('<svg');
+
+    const manifest = await fromProxy(`http://${WEB}/manifest.webmanifest`);
+    expect(manifest.status).toBe(200);
+    expect(manifest.type).toContain('application/manifest+json');
+    expect(JSON.parse(manifest.body)).toMatchObject({ display: 'standalone' });
   }, 60_000);
 
   it('[adr:production-deployment#4] leaves no route from the proxy network to the database', async () => {

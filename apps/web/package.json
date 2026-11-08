@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "icons": "node scripts/render-icons.ts",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
