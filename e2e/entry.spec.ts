@@ -132,7 +132,7 @@ for (const viewport of VIEWPORTS) {
     await clickDay(b, '2026-10-31');
     await b.getByRole('radio', { name: '添加排除' }).click();
     await clickDay(b, '2026-10-10');
-    await expect(b.getByRole('list', { name: '已选的日期段' })).toContainText('排除 2026-10-10');
+    await expect(b.getByRole('group', { name: '排除的日期' })).toContainText('排除 2026-10-10');
     expect(await outside(b), '/join signed in').toEqual([]);
     expect(await cardPlace(b)).toBe(viewport.width < 768 ? 'above' : 'beside');
   });

@@ -46,13 +46,17 @@ describe('RangeEditor', () => {
   const day = (name: string) => screen.getByRole('button', { name: new RegExp(`^${name}，`) });
   const toOctober = () => fireEvent.click(screen.getByRole('button', { name: '上个月' }));
   const last = (onChange: ReturnType<typeof vi.fn>) => onChange.mock.lastCall![0] as RangeChoice;
+  const items = (list: string) =>
+    within(screen.getByRole('group', { name: list }))
+      .getAllByRole('listitem')
+      .map((li) => li.textContent);
 
   it('opens on the month of today, marks it, and shares no day in 自选 until one is picked', () => {
     const onChange = vi.fn<(choice: RangeChoice) => void>();
     render(<RangeEditor initial={ALL_DAYS} today={TODAY} onChange={onChange} />);
-    expect(screen.getByText('2026 年 11 月')).toBeDefined();
-
     fireEvent.click(screen.getByLabelText('自选日期'));
+
+    expect(screen.getByText('2026 年 11 月')).toBeDefined();
 
     expect(last(onChange)).toEqual({
       kind: 'selection',
@@ -103,13 +107,13 @@ describe('RangeEditor', () => {
       ),
     ).toBeDefined();
 
-    const chips = within(screen.getByRole('list', { name: '已选的日期段' }));
-    expect(chips.getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+    expect(items('共享的日期段')).toEqual([
       '共享 2026-10-05',
       '共享 2026-10-10 至 2026-10-12',
       '共享 2026-10-20 起持续',
-      '排除 2026-10-11',
     ]);
+    expect(items('排除的日期')).toEqual(['排除 2026-10-11']);
+    const chips = within(screen.getByRole('group', { name: '已选的日期段' }));
     fireEvent.click(chips.getByRole('button', { name: '删除 共享 2026-10-10 至 2026-10-12' }));
     expect(last(onChange).kind === 'selection' && last(onChange)).toMatchObject({
       selection: {
@@ -160,6 +164,84 @@ describe('RangeEditor', () => {
       kind: 'selection',
       selection: { include: [{ from: '2026-11-01', to: null }], exclude: [] },
     });
+  });
+
+  it('shows no calendar for 全部 or 暂不设置, only the line saying what is chosen', () => {
+    const onChange = vi.fn<(choice: RangeChoice) => void>();
+    render(<RangeEditor initial={ALL_DAYS} today={TODAY} allowUnset onChange={onChange} />);
+    expect(screen.queryByRole('grid')).toBeNull();
+    expect(screen.getByText('共享：全部历史与以后')).toBeDefined();
+
+    fireEvent.click(screen.getByLabelText('暂不设置'));
+    expect(screen.queryByRole('grid')).toBeNull();
+    fireEvent.click(screen.getByLabelText('自选日期'));
+    expect(screen.getByRole('grid')).toBeDefined();
+  });
+
+  it('clears every shared range, or every exclusion, at once', () => {
+    const onChange = vi.fn<(choice: RangeChoice) => void>();
+    render(
+      <RangeEditor
+        initial={{
+          include: [
+            { from: '2026-11-01', to: '2026-11-03' },
+            { from: '2026-11-10', to: null },
+          ],
+          exclude: [
+            { from: '2026-11-02', to: '2026-11-02' },
+            { from: '2026-11-12', to: '2026-11-12' },
+          ],
+        }}
+        today={TODAY}
+        onChange={onChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '清空共享' }));
+    expect(last(onChange)).toEqual({
+      kind: 'selection',
+      selection: {
+        include: [],
+        exclude: [
+          { from: '2026-11-02', to: '2026-11-02' },
+          { from: '2026-11-12', to: '2026-11-12' },
+        ],
+      },
+    });
+    expect(screen.queryByRole('button', { name: '清空共享' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: '清空排除' }));
+    expect(last(onChange)).toEqual({ kind: 'selection', selection: { include: [], exclude: [] } });
+    expect(screen.queryByRole('button', { name: '清空排除' })).toBeNull();
+  });
+
+  it('lists at most three items per kind under a count, the rest behind 展开全部', () => {
+    const onChange = vi.fn<(choice: RangeChoice) => void>();
+    const single = (d: string) => ({ from: `2026-11-${d}`, to: `2026-11-${d}` });
+    render(
+      <RangeEditor
+        initial={{
+          include: ['01', '03', '05', '07', '09'].map(single),
+          exclude: ['20', '21', '22', '23'].map(single),
+        }}
+        today={TODAY}
+        onChange={onChange}
+      />,
+    );
+    expect(screen.getByText('共享 5 段 · 排除 4 天')).toBeDefined();
+    expect(items('共享的日期段')).toEqual([
+      '共享 2026-11-01',
+      '共享 2026-11-03',
+      '共享 2026-11-05',
+    ]);
+    expect(items('排除的日期')).toHaveLength(3);
+
+    fireEvent.click(screen.getByRole('button', { name: '展开全部（5）' }));
+    expect(items('共享的日期段')).toHaveLength(5);
+    fireEvent.click(screen.getByRole('button', { name: '删除 共享 2026-11-09' }));
+    expect(last(onChange)).toMatchObject({ selection: { include: { length: 4 } } });
+    fireEvent.click(screen.getByRole('button', { name: '收起' }));
+    expect(items('共享的日期段')).toHaveLength(3);
   });
 
   it('[adr:spaces-and-invitations#5] offers not setting a range only where allowed', () => {
