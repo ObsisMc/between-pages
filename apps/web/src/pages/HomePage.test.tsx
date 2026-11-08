@@ -92,6 +92,19 @@ describe('HomePage', () => {
     expect(router.state.location.state).toEqual({ edit: true });
   });
 
+  it('fills the empty recent pages with a card that leads to writing today', async () => {
+    stubApi({ ...noRelationship, ...lists, 'GET /api/me': signedIn('alice') });
+    const { router } = renderAt('/');
+    const recent = await screen.findByRole('region', { name: '最近的几页' });
+    expect(await within(recent).findByText('还没有日记，从今天开始写吧')).toBeDefined();
+    const write = within(recent).getByRole('link', { name: '写今天' });
+    expect(write.getAttribute('href')).toBe(`/days/${today}`);
+
+    fireEvent.click(write);
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/days/${today}`));
+    expect(router.state.location.state).toEqual({ edit: true });
+  });
+
   it("opens all diaries at the partner's nearest unread date, only when there is one", async () => {
     stubApi({
       ...noRelationship,
