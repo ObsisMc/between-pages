@@ -137,6 +137,14 @@ export function BackupPage({ goTo = (url) => window.location.assign(url) }: Back
               <Cloud aria-hidden="true" className="mt-1 size-5 shrink-0 text-ink-soft" />
               <div className="grid min-w-0 flex-1 gap-3">
                 <h2 className="font-serif text-xl font-medium">我的 Google 可读副本</h2>
+                {google.state !== 'unavailable' && (
+                  <p className="text-sm leading-relaxed text-ink-soft">
+                    每天一份 Google Doc，存在你 Drive 的{' '}
+                    <span className="text-ink">我的云端硬盘 › Between Pages › 年 › 月</span>{' '}
+                    里。可以在 Drive 里移动或改名 Between Pages
+                    文件夹，备份会跟着它；删掉的话会在根目录重新建一个。
+                  </p>
+                )}
                 {google.state === 'unavailable' && (
                   <p className="text-ink-soft">这台服务器还没有配置 Google 备份</p>
                 )}
