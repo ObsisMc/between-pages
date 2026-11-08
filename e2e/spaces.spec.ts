@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
+import { clickDay } from './calendar.ts';
 
 // Spaces-and-invitations acceptance R7 through the real stack: independent accounts in their
 // own browser contexts, the mock issuer, the API and PostgreSQL. No diary text takes part;
@@ -70,10 +71,9 @@ async function inviteLink(page: Page, choose?: (page: Page) => Promise<void>) {
 /** On the join page: shares 2026-10-05 only and accepts; returns the space's path. */
 async function acceptSharingOneDay(page: Page) {
   await page.getByLabel('自选日期').check();
-  await page.getByRole('button', { name: '添加共享日期' }).click();
-  const day = page.getByRole('group', { name: '共享第 1 段' });
-  await day.getByLabel('开始').fill('2026-10-05');
-  await day.getByLabel('结束').fill('2026-10-05');
+  await clickDay(page, '2026-10-05');
+  await clickDay(page, '2026-10-05');
+  await expect(page.getByText('共享：2026-10-05')).toBeVisible();
   await page.getByRole('button', { name: '接受邀请' }).click();
   await expect(page).toHaveURL(/\/spaces\/[0-9a-f-]{36}$/);
   return new URL(page.url()).pathname;

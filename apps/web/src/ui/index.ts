@@ -1,5 +1,6 @@
 export { cn } from './cn.ts';
 export { Button, buttonVariants } from './button.tsx';
+export { Calendar, type CalendarProps } from './calendar.tsx';
 export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './card.tsx';
 export { Collapsible, CollapsibleContent, CollapsibleTrigger } from './collapsible.tsx';
 export {
