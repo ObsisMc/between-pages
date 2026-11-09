@@ -72,7 +72,7 @@
 
 ### F-05：未绑定时首页右列过长，邀请流程移到设置
 
-**状态**：已实现（#89，2026-11-09），见 [`apps/web` README](../apps/web/README.md) 的 `relationship` 与 `pages`。
+**状态**：已实现（#89，2026-11-09），见 [`apps/web` README](../apps/web/README.md) 的 `relationship`、`pages` 与 `shell`。
 
 **场景**：未绑定（含已解绑）时首页右列是"此刻"加整个 `RelationshipPanel`（范围编辑器、日历、生成链接），左列只有"最近的几页"，两列长短差很多。邀请一辈子只做一两次，不该常驻首页。
 
@@ -98,7 +98,7 @@
 
 ### F-08：写当天时头像变成空心圆（缺陷）
 
-**状态**：已修复（#88，2026-11-09），见 [`apps/web` README](../apps/web/README.md) 的 `day-feed`。
+**状态**：已修复（#88，2026-11-09），见 [`apps/web` README](../apps/web/README.md) 的 `day-feed` 与 `diary`。
 
 **场景**：Ray 在生产站点写今天的日记时，列表里自己的头像是空心圆（"有日记但还没有文字"），而不是实心的作者色。
 
