@@ -59,8 +59,9 @@ async function devLogin(page: Page, name: string) {
   await page.getByRole('button', { name: '开发登录' }).click();
 }
 
-/** Generates an invitation from the home page the page is on and returns its link. */
+/** Generates an invitation on the partner page (设置 → 搭档) and returns its link. */
 async function inviteLink(page: Page, choose?: (page: Page) => Promise<void>) {
+  await page.goto('/partner');
   await choose?.(page);
   await page.getByRole('button', { name: '生成邀请链接' }).click();
   return page.getByLabel('邀请链接').inputValue();
@@ -168,7 +169,6 @@ test('AUTH-08 AUTH-11 SHARE-03 restores the same space with the former partner w
   await unbind(a);
 
   // B invites A again without setting a range; A restores the same space without one.
-  await b.getByRole('navigation', { name: '主要' }).getByRole('link', { name: '此刻' }).click();
   const again = await inviteLink(b, (page) => page.getByLabel('暂不设置').check());
   await a.goto(again);
   await expect(a.getByText(`接受后恢复你和 ${name('b')} 原来的双人空间。`)).toBeVisible();

@@ -121,6 +121,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'pages',
         'diary',
         'join',
+        'relationship',
         'space',
         'backup',
         'two-clocks',
@@ -158,7 +159,8 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       // unread-and-day-page: the initial avatar knows no other module.
       avatar: [],
       'sharing-range': ['ui'],
-      relationship: ['api', 'sharing-range', 'ui'],
+      // spaces-and-invitations D12: the partner page sits in the shell's page container.
+      relationship: ['api', 'auth', 'sharing-range', 'shell', 'ui'],
       join: ['api', 'auth', 'relationship', 'sharing-range', 'ui', 'windows'],
       space: ['api', 'auth', 'relationship', 'sharing-range', 'shared-diaries', 'shell', 'ui'],
       'shared-diaries': ['api', 'ui'],

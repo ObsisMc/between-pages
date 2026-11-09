@@ -21,14 +21,17 @@ async function menu(name: string) {
 }
 
 describe('SiteHeader', () => {
-  it('[adr:space-records#10] [adr:book-frontend-workspace#2] lists only the diaries and backup for an account that was never bound', async () => {
+  it('[adr:space-records#10] [adr:book-frontend-workspace#2] lists only the diaries, the partner page and backup for an account that was never bound', async () => {
     stubApi({ ...noRelationship, 'GET /api/me': signedIn('alice') });
     renderAt('/');
     const bar = await nav();
     expect(within(bar).getByRole('link', { name: '此刻' }).getAttribute('href')).toBe('/');
     expect(within(bar).getByRole('link', { name: '日记' }).getAttribute('href')).toBe('/days');
     expect(within(bar).queryByRole('button', { name: /^一起/ })).toBeNull();
-    expect(await menu('设置')).toEqual([['备份', '/backup']]);
+    expect(await menu('设置')).toEqual([
+      ['搭档', '/partner'],
+      ['备份', '/backup'],
+    ]);
   });
 
   it('lists the clocks, the space features with their dots and the space while bound', async () => {
@@ -76,6 +79,12 @@ describe('SiteHeader', () => {
     expect(await menu('一起')).toEqual([
       ['心愿与礼物', '/wishes'],
       ['纪念日', '/anniversaries'],
+    ]);
+    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
+    expect(await menu('设置')).toEqual([
+      ['双人空间', `/spaces/${SPACE}`],
+      ['搭档', '/partner'],
+      ['备份', '/backup'],
     ]);
   });
 

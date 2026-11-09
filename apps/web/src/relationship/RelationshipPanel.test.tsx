@@ -32,9 +32,9 @@ describe('RelationshipPanel', () => {
       'GET /api/spaces': () => Response.json({ spaces: [] }),
       'POST /api/binding/invitations': created,
     });
-    renderAt('/');
+    renderAt('/partner');
 
-    expect(await screen.findByText('每人只共享自己确认过的日期')).toBeDefined();
+    expect(await screen.findByRole('heading', { level: 1, name: '搭档' })).toBeDefined();
     fireEvent.click(await screen.findByText('生成邀请链接'));
 
     const link = (await screen.findByLabelText('邀请链接')) as HTMLInputElement;
@@ -52,7 +52,7 @@ describe('RelationshipPanel', () => {
       'GET /api/spaces': () => Response.json({ spaces: [] }),
       'POST /api/binding/invitations': () => Response.json({ invitation: pending, token: null }),
     });
-    renderAt('/');
+    renderAt('/partner');
     fireEvent.click(await screen.findByText('暂不设置'));
     fireEvent.click(await screen.findByText('生成邀请链接'));
 
@@ -74,7 +74,7 @@ describe('RelationshipPanel', () => {
         return Response.json({ revoked: true });
       },
     });
-    renderAt('/');
+    renderAt('/partner');
     expect(await screen.findByText(/链接只在生成时显示/)).toBeDefined();
 
     fireEvent.click(screen.getByText('撤销邀请'));
@@ -90,9 +90,9 @@ describe('RelationshipPanel', () => {
         Response.json({ binding: { space: space(), periodId: SPACE }, invitation: null }),
       'GET /api/spaces': () => Response.json({ spaces: [space()] }),
     });
-    // The home shows the panel only while unbound; the panel itself still links a current space.
-    const { router } = renderAt('/', [
-      { path: '/', element: <RelationshipPanel userId={ME} /> },
+    // The header lists the page only while unbound; the panel itself still links a current space.
+    const { router } = renderAt('/partner', [
+      { path: '/partner', element: <RelationshipPanel userId={ME} /> },
       { path: '/spaces/:spaceId', element: <p>空间</p> },
     ]);
 
@@ -109,7 +109,7 @@ describe('RelationshipPanel', () => {
       'GET /api/spaces': () => Response.json({ spaces: [] }),
       'POST /api/binding/invitations': errorBody('ALREADY_BOUND', 409),
     });
-    renderAt('/');
+    renderAt('/partner');
     fireEvent.click(await screen.findByText('生成邀请链接'));
     expect((await screen.findByRole('alert')).textContent).toBe('你或对方已有当前绑定');
   });

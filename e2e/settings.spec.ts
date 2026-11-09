@@ -32,11 +32,13 @@ async function signedIn(
   return page;
 }
 
-/** A invites B and B accepts; A is left on the home page. */
+/** A invites B under 设置 → 搭档 and B accepts; A is left on the home page. */
 async function pair(browser: Browser, prefix: string, viewport: { width: number; height: number }) {
   const a = await signedIn(browser, `${prefix}a`, viewport);
+  await a.getByRole('link', { name: '邀请搭档' }).click();
   await a.getByRole('button', { name: '生成邀请链接' }).click();
   const link = await a.getByLabel('邀请链接').inputValue();
+  await a.getByRole('navigation', { name: '主要' }).getByRole('link', { name: '此刻' }).click();
   const b = await signedIn(browser, `${prefix}b`, viewport);
   await b.goto(link);
   await b.getByRole('button', { name: '接受邀请' }).click();
