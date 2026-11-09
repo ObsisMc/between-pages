@@ -5,6 +5,7 @@ import { DaysWorkspace } from './diary/index.ts';
 import { JoinPage } from './join/index.ts';
 import { HomePage } from './pages/HomePage.tsx';
 import { LoginPage } from './pages/LoginPage.tsx';
+import { PartnerPage } from './relationship/index.ts';
 import { SpacePage } from './space/index.ts';
 import { ClocksPage } from './two-clocks/index.ts';
 import { WishesPage } from './wishes/index.ts';
@@ -32,6 +33,15 @@ const pages: RouteObject[] = [
     element: (
       <RequireAuth>
         <DaysWorkspace />
+      </RequireAuth>
+    ),
+  },
+  // 设置 → 搭档: the invitation flow, away from the home (spaces-and-invitations D12).
+  {
+    path: '/partner',
+    element: (
+      <RequireAuth>
+        <PartnerPage />
       </RequireAuth>
     ),
   },

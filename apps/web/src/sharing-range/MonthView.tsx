@@ -1,76 +1,75 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import type { Modifiers } from 'react-day-picker';
 import type { DateSelection } from '@between-pages/contracts';
-import { Button, cn } from '../ui/index.ts';
-import { isShared } from './range.ts';
+import { Calendar } from '../ui/index.ts';
+import { toDate, toDay } from './day.ts';
+import { isExcluded, isShared } from './range.ts';
 
-const pad = (n: number) => String(n).padStart(2, '0');
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 
-/**
- * One calendar month marking the days a selection shares. Calendar days only: they are
- * diary dates, never instants, so no time zone is applied (D3).
- */
-export function MonthView({ selection }: { selection: DateSelection }) {
-  const today = new Date();
-  const [month, setMonth] = useState({ year: today.getFullYear(), month: today.getMonth() });
-  const first = new Date(Date.UTC(month.year, month.month, 1));
-  const days = new Date(Date.UTC(month.year, month.month + 1, 0)).getUTCDate();
-  const blanks = first.getUTCDay();
-  const shift = (by: number) =>
-    setMonth(({ year, month: m }) => {
-      const d = new Date(Date.UTC(year, m + by, 1));
-      return { year: d.getUTCFullYear(), month: d.getUTCMonth() };
-    });
+/** "10 月 5 日，共享" — what a screen reader hears for a day, and what tests click. */
+function dayLabel(day: string, modifiers: Modifiers): string {
+  const [, month, date] = day.split('-').map(Number) as [number, number, number];
+  const state = modifiers.anchor
+    ? '已点选'
+    : modifiers.excluded
+      ? '已排除'
+      : modifiers.shared
+        ? '共享'
+        : '不共享';
+  return `${month} 月 ${date} 日，${state}${modifiers.today ? '，今天' : ''}`;
+}
 
+/**
+ * One calendar month marking the days a selection shares (the warm fill) and excludes
+ * (struck through, faded). Calendar days only: they are diary dates, never instants, so
+ * the grid runs in UTC and every day in and out is a `YYYY-MM-DD` string (D3). The month
+ * opens on `today`. With `onDayClick` the days are buttons; `anchor` rings the day a range
+ * is being started from.
+ */
+export function MonthView({
+  selection,
+  today,
+  anchor = null,
+  onDayClick,
+}: {
+  selection: DateSelection;
+  /** The viewer's local today, `YYYY-MM-DD`; marks the day and opens its month. */
+  today: string;
+  anchor?: string | null;
+  onDayClick?: (day: string) => void;
+}) {
+  const [month, setMonth] = useState(today);
   return (
-    <div className="w-full max-w-sm font-sans text-ink">
-      <div className="mb-2 flex items-center justify-between">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => shift(-1)}
-          aria-label="上个月"
-        >
-          <ChevronLeft aria-hidden="true" />
-        </Button>
-        <span className="font-serif">
-          {month.year} 年 {month.month + 1} 月
-        </span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => shift(1)}
-          aria-label="下个月"
-        >
-          <ChevronRight aria-hidden="true" />
-        </Button>
-      </div>
-      <div className="grid grid-cols-7 gap-1 text-center text-sm">
-        {WEEKDAYS.map((w) => (
-          <span key={w} className="text-ink-soft">
-            {w}
-          </span>
-        ))}
-        {Array.from({ length: blanks }, (_, i) => (
-          <span key={`b${i}`} />
-        ))}
-        {Array.from({ length: days }, (_, i) => {
-          const day = `${month.year}-${pad(month.month + 1)}-${pad(i + 1)}`;
-          const shared = isShared(selection, day);
-          return (
-            <span
-              key={day}
-              className={cn('rounded-lg py-1 tabular-nums', shared && 'bg-warm text-paper')}
-              aria-label={`${month.month + 1} 月 ${i + 1} 日${shared ? '共享' : '不共享'}`}
-            >
-              {i + 1}
-            </span>
-          );
-        })}
-      </div>
-    </div>
+    <Calendar
+      timeZone="UTC"
+      today={toDate(today)}
+      month={toDate(month)}
+      onMonthChange={(m) => setMonth(toDay(m))}
+      modifiers={{
+        shared: (d) => isShared(selection, toDay(d)),
+        excluded: (d) => isExcluded(selection, toDay(d)),
+        anchor: (d) => toDay(d) === anchor,
+      }}
+      modifiersClassNames={{
+        shared: 'bg-warm text-paper',
+        excluded: 'text-ink-soft/60 line-through',
+        anchor: 'ring-2 ring-warm ring-inset',
+      }}
+      labels={{
+        labelPrevious: () => '上个月',
+        labelNext: () => '下个月',
+        labelDayButton: (d, modifiers) => dayLabel(toDay(d), modifiers),
+        labelGridcell: (d, modifiers) => dayLabel(toDay(d), modifiers ?? {}),
+      }}
+      formatters={{
+        formatCaption: (m) => {
+          const [year, month] = toDay(m).split('-').map(Number);
+          return `${year} 年 ${month} 月`;
+        },
+        formatWeekdayName: (d) => WEEKDAYS[d.getUTCDay()]!,
+      }}
+      {...(onDayClick && { onDayClick: (d: Date) => onDayClick(toDay(d)) })}
+    />
   );
 }

@@ -44,14 +44,16 @@ test('[adr:wishes-and-gifts#2] [adr:wishes-and-gifts#4] [adr:wishes-and-gifts#5]
   const name = (who: string) => `${who}${browserName}${run}wish`;
   const a = await signedIn(browser, name('a'));
   // Without a space the header has no 「一起」, so nothing lists the space features.
-  await expect(a.getByRole('button', { name: '生成邀请链接' })).toBeVisible();
+  await expect(a.getByRole('link', { name: '邀请搭档' })).toBeVisible();
   await expect(
     a.getByRole('navigation', { name: '主要' }).getByRole('button', { name: /^设置/ }),
   ).toBeVisible();
   await expect(together(a)).toHaveCount(0);
   await a.keyboard.press('Escape');
+  await a.getByRole('link', { name: '邀请搭档' }).click();
   await a.getByRole('button', { name: '生成邀请链接' }).click();
   const link = await a.getByLabel('邀请链接').inputValue();
+  await a.getByRole('navigation', { name: '主要' }).getByRole('link', { name: '此刻' }).click();
   const b = await signedIn(browser, name('b'));
   await b.goto(link);
   await b.getByRole('button', { name: '接受邀请' }).click();

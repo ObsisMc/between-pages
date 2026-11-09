@@ -40,13 +40,13 @@ The first-time setup and the restore runbook are below, in Chinese, for Ray.
 - While archiving fails, unarchived WAL stays in `pg_wal` and the disk fills slowly. The daily ping turns `fail` the same day.
 - The drill needs room for a second copy of the database for a few minutes.
 - Schema changes need nothing here: the backup is of the whole cluster, so a backup from before a migration restores the schema of that time, and `npm run db:migrate` brings it up to the code. Two changes do need a fresh start: re-creating the database from scratch (a new cluster: point `WALG_S3_PREFIX` at a new path, or delete the old backups first) and a PostgreSQL major upgrade (make a new full backup right after).
-- Restoring into the compose volume (`--volume between-pages_pgdata`) creates it outside compose. Compose may warn that it was not created by compose, and that is harmless.
+- Restoring into the compose volume (`--volume between-pages-prod_pgdata`) creates it outside compose. Compose may warn that it was not created by compose, and that is harmless.
 
 ---
 
 ## 首次配置（Ray 执行）
 
-下面的步骤需要你的账号或密钥，只能由你来做。完成后，开发服务器上的真实数据库就开始备份了。
+下面的步骤需要你的账号或密钥，只能由你来做，顺序见 [ops/deploy/README.md](../deploy/README.md)。完成后，生产数据库从第一次启动起就持续备份。开发库不走这里。
 
 1. **生成备份加密密钥**：运行 `openssl rand -hex 32`，把输出存进密码管理器，标题例如"Between Pages 备份密钥"。**这个密钥丢了，所有备份都打不开。**
 2. **Cloudflare R2**：
@@ -65,12 +65,12 @@ The first-time setup and the restore runbook are below, in Chinese, for Ray.
    sudo chmod 600 /etc/between-pages/backup.env
    ```
 
-   按注释填入第 1～3 步的值。`LIVE_DATABASE_URL` 填应用 `.env` 里的 `DATABASE_URL`。`/var/lib/between-pages` 要让运行定时器的用户可写。
-5. **切换数据库到带备份的镜像**（会重启数据库约十秒，数据卷不变）：
+   按注释填入第 1～3 步的值，`POSTGRES_PASSWORD` 用 `openssl rand -hex 24` 生成，`LIVE_DATABASE_URL` 里的 `<password>` 换成同一个值。`/var/lib/between-pages` 要让运行定时器的用户可写。
+5. **启动生产环境**：放好 `app.env` 后运行下面的命令，数据库带着归档一起启动。
 
    ```sh
-   cd ~/codebase/between-pages
-   COMPOSE_FILE=compose.yaml:ops/backup/compose.backup.yaml docker compose up -d --build postgres
+   cd ~/volumes/between-pages
+   sudo ops/deploy/up.sh
    ```
 
 6. **立即做第一次备份**，看到 `backup ok: …(full, permanent)` 即可：
@@ -96,17 +96,17 @@ The first-time setup and the restore runbook are below, in Chinese, for Ray.
 
 **在新机器上：**
 
-1. 装 Docker 和 Node 26，克隆仓库，执行 `npm ci`。
-2. 按上面第 4 步放好 `/etc/between-pages/backup.env`。密钥从密码管理器复制，R2 令牌可以沿用，也可以新建一个。另外放好应用的 `.env`。
+1. 装 Docker 和 Node 26，把仓库克隆到 `~/volumes/between-pages`，执行 `npm ci --omit=dev --ignore-scripts`。
+2. 按上面第 4 步放好 `/etc/between-pages/backup.env`。密钥从密码管理器复制，R2 令牌可以沿用，也可以新建一个。另外放好 `/etc/between-pages/app.env`。
 3. 构建镜像：`docker build -t between-pages-postgres-walg:3.0.9 ops/backup`。
 4. 恢复到数据库卷，并检查：
 
    ```sh
-   sudo "$(nvm which 26)" --env-file=/etc/between-pages/backup.env ops/backup/restore.ts --to latest --volume between-pages_pgdata
+   sudo "$(nvm which 26)" --env-file=/etc/between-pages/backup.env ops/backup/restore.ts --to latest --volume between-pages-prod_pgdata
    ```
 
    成功时输出用了哪份备份、恢复到哪里、用了多少秒，以及用户数、日记数和提交数。检查不通过会列出问题并以失败退出。这时不要启动应用，先查原因。
-5. 启动：`COMPOSE_FILE=compose.yaml:ops/backup/compose.backup.yaml docker compose up -d postgres`，然后照常启动 API 和后台进程。
+5. 先按 [ops/deploy/README.md](../deploy/README.md) 建好 `between_pages_proxy` 网络，再启动：`sudo ops/deploy/up.sh`。
 6. 立即做一次备份（第 6 步），让新机器从这一刻起有完整备份。再按第 7 步装好定时器。
 7. 告诉 TA：照常用 Google 登录就行，不需要做别的。
 

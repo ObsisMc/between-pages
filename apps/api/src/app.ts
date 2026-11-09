@@ -52,6 +52,22 @@ import { createRelationStore } from './store/relations.ts';
 import { createStore } from './store/store.ts';
 import { TRANSPORT_MAX_BYTES, registerSyncSocket } from './ws/sync.ts';
 
+/**
+ * Logger options for the running server (production-deployment D8). Fastify logs the whole
+ * URL by default, which would put Google's `code` and `state` from the login callback in
+ * the log. Everything else sensitive travels in a request body.
+ */
+export const requestLog = {
+  serializers: {
+    req: (request: FastifyRequest) => ({
+      method: request.method,
+      url: request.url.split('?')[0]!,
+      host: request.host,
+      remoteAddress: request.ip,
+    }),
+  },
+};
+
 export interface AppDeps {
   /** The site browsers use, e.g. http://localhost:5173; the only trusted Origin. */
   publicOrigin: string;

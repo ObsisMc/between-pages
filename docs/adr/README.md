@@ -34,6 +34,8 @@
 | [drop-single-diary-page](./2026-11-03-drop-single-diary-page.md) | 不再保留单篇日记页，每篇日记都在日记页的「这一天」里打开 | 已实现 | 领域 | 3/3 已完成 |
 | [window-mascots](./2026-11-03-window-mascots.md) | 主页窗里的团子可以戳和摸，对方在主页上看到，团子只按作息睡觉 | 已实现 | 领域 | 7/8 部分 |
 | [shared-pages](./2026-11-04-shared-pages.md) | 共享页面是两人一起写的纯文字页面，每人只改自己的字，标题与删除两人都能做 | 已采纳 | 领域 | 0/11 未开始 |
+| [soft-mascot](./2026-11-04-soft-mascot.md) | 团子改用视觉探索稿 32 号的柔软圆形，不再有手 | 已实现 | 领域 | 3/5 部分 |
+| [production-deployment](./2026-11-05-production-deployment.md) | 生产环境用 Docker 跑在现有服务器上，由现有 Caddy 接入，数据与开发环境完全分开 | 已实现 | 技术栈 | 7/11 部分 |
 <!-- adr-index:end -->
 
 ## 原则

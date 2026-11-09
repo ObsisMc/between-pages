@@ -54,8 +54,10 @@ test('K17 local input, remote text and caret latency at ~500 ms RTT per side', a
   test.setTimeout(20 * 60_000);
   const name = (who: string) => `${who}${browserName}${run}`;
   const a = await signedIn(browser, name('la'));
+  await a.getByRole('link', { name: '邀请搭档' }).click();
   await a.getByRole('button', { name: '生成邀请链接' }).click();
   const link = await a.getByLabel('邀请链接').inputValue();
+  await a.getByRole('navigation', { name: '主要' }).getByRole('link', { name: '此刻' }).click();
   const b = await signedIn(browser, name('lb'));
   await b.goto(link);
   await b.getByLabel('暂不设置').check();

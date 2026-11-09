@@ -32,10 +32,17 @@ function byMonth(entries: readonly Entry[]) {
   return months;
 }
 
-/** Who wrote on a date, by name: a diary someone wrote in, never one still blank. */
-function writersOf(day: Day | null, me: FeedPerson, partner: FeedPerson) {
-  if (!day) return [];
-  return [...(day.mine?.hasText ? [me] : []), ...(day.partner?.hasText ? [partner] : [])].sort(
+/** The caller's diary open in the editor beside the index: its date and whether it has text. */
+export type EditedDay = { date: string; hasText: boolean };
+
+/**
+ * Who wrote on a date, by name: a diary someone wrote in, never one still blank. For the
+ * date being edited, the editor's word on the own diary, which the list's `hasText` only
+ * catches up with at its next read.
+ */
+function writersOf(day: Day | null, edited: EditedDay | null, me: FeedPerson, partner: FeedPerson) {
+  const mine = edited ? edited.hasText : !!day?.mine?.hasText;
+  return [...(mine ? [me] : []), ...(day?.partner?.hasText ? [partner] : [])].sort(
     (a, b) => (a.slot ?? 1) - (b.slot ?? 1),
   );
 }
@@ -52,17 +59,20 @@ const edgeButton =
  * The index: `chosenDate`, the date the main area shows, is marked and kept in view, and is
  * jumped to when it is not loaded (two requests around it, never paging from the newest);
  * without one it starts from the newest. Choosing a date calls `onChoose`, else its link
- * navigates.
+ * navigates. `edited` is the own diary open beside the index, whose date shows what the
+ * editor says of it.
  */
 export function DateIndex({
   me,
   partner,
   chosenDate = null,
+  edited = null,
   onChoose,
 }: {
   me: FeedPerson;
   partner: FeedPerson;
   chosenDate?: string | null;
+  edited?: EditedDay | null;
   onChoose?: (date: string) => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
@@ -160,7 +170,8 @@ export function DateIndex({
               </h3>
               <ul className="space-y-0.5">
                 {days.map(({ date, day }) => {
-                  const writers = writersOf(day, me, partner);
+                  const editedHere = edited?.date === date ? edited : null;
+                  const writers = writersOf(day, editedHere, me, partner);
                   const unread = !failure && !!(day?.mine?.unread || day?.partner?.unread);
                   return (
                     <li key={date} data-date={date}>
@@ -185,7 +196,7 @@ export function DateIndex({
                                 </span>
                               </>
                             ) : (
-                              <span>{day ? '还没有写字' : '没有可以读的日记'}</span>
+                              <span>{day || editedHere ? '还没有写字' : '没有可以读的日记'}</span>
                             )}
                           </span>
                         </span>

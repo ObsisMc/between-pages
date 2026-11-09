@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
+import { clickDay } from './calendar.ts';
 
 // The redrawn pages before a space (digital-paper-interface D3, D4, 落地顺序 4 and 5): the
 // login page, the invitation signed out and signed in with its range editor, and the
@@ -96,16 +97,26 @@ for (const viewport of VIEWPORTS) {
     expect(await outside(login), '/login').toEqual([]);
     expect(await cardPlace(login)).toBe(viewport.width < 768 ? 'above' : 'beside');
 
+    // The home keeps only the partner card; the invitation is made under 设置 → 搭档.
     const a = await signedIn(browser, name('a'), viewport);
-    await expect(a.getByRole('heading', { name: '双人空间' })).toBeVisible();
+    const card = a.getByRole('region', { name: '搭档' });
+    await expect(card.getByText('还没有搭档')).toBeVisible();
+    await expect(a.getByRole('button', { name: '生成邀请链接' })).toHaveCount(0);
+    expect(await outside(a), 'the home unbound').toEqual([]);
+    await card.getByRole('link', { name: '邀请搭档' }).click();
+    await expect(a).toHaveURL(/\/partner$/);
+    await expect(a.getByRole('heading', { level: 1, name: '搭档' })).toBeVisible();
     await a.getByLabel('自选日期').check();
-    await a.getByRole('button', { name: '添加共享日期' }).click();
-    await a.getByRole('group', { name: '共享第 1 段' }).getByLabel('开始').fill('2026-10-01');
-    expect(await outside(a), 'the home with the range editor').toEqual([]);
+    await clickDay(a, '2026-10-01');
+    await expect(a.getByRole('button', { name: '从这天起一直共享' })).toBeVisible();
+    expect(await outside(a), 'the partner page with the range editor').toEqual([]);
     await a.getByLabel('全部历史与以后的日期').check();
     await a.getByRole('button', { name: '生成邀请链接' }).click();
     const link = await a.getByLabel('邀请链接').inputValue();
-    expect(await outside(a), 'the home with the link').toEqual([]);
+    expect(await outside(a), 'the partner page with the link').toEqual([]);
+    await a.goto('/');
+    await expect(card.getByText(/^已发出邀请，.+ 前有效$/)).toBeVisible();
+    expect(await outside(a), 'the home with an invitation out').toEqual([]);
 
     // B opens the link signed out, then signs in and comes back to it.
     const b = await (await browser.newContext({ viewport })).newPage();
@@ -117,8 +128,11 @@ for (const viewport of VIEWPORTS) {
     await b.getByRole('button', { name: '开发登录' }).click();
     await expect(b.getByRole('button', { name: '接受邀请' })).toBeVisible();
     await b.getByLabel('自选日期').check();
-    await b.getByRole('button', { name: '添加共享日期' }).click();
-    await b.getByRole('button', { name: '添加排除日期' }).click();
+    await clickDay(b, '2026-10-01');
+    await clickDay(b, '2026-10-31');
+    await b.getByRole('radio', { name: '添加排除' }).click();
+    await clickDay(b, '2026-10-10');
+    await expect(b.getByRole('group', { name: '排除的日期' })).toContainText('排除 2026-10-10');
     expect(await outside(b), '/join signed in').toEqual([]);
     expect(await cardPlace(b)).toBe(viewport.width < 768 ? 'above' : 'beside');
   });
