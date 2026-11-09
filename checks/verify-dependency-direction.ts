@@ -139,6 +139,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'relationship',
         'shared-diaries',
         'space-common',
+        'today',
         'two-clocks',
         'ui',
         'windows',
@@ -158,11 +159,23 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       history: ['api', 'ui'],
       // unread-and-day-page: the initial avatar knows no other module.
       avatar: [],
+      // The viewer's local today as a day string, for day links and the sharing calendars'
+      // opening month; knows no other module.
+      today: [],
       'sharing-range': ['ui'],
       // spaces-and-invitations D12: the partner page sits in the shell's page container.
-      relationship: ['api', 'auth', 'sharing-range', 'shell', 'ui'],
-      join: ['api', 'auth', 'relationship', 'sharing-range', 'ui', 'windows'],
-      space: ['api', 'auth', 'relationship', 'sharing-range', 'shared-diaries', 'shell', 'ui'],
+      relationship: ['api', 'auth', 'sharing-range', 'shell', 'today', 'ui'],
+      join: ['api', 'auth', 'relationship', 'sharing-range', 'today', 'ui', 'windows'],
+      space: [
+        'api',
+        'auth',
+        'relationship',
+        'sharing-range',
+        'shared-diaries',
+        'shell',
+        'today',
+        'ui',
+      ],
       'shared-diaries': ['api', 'ui'],
       // server-backup-and-google-docs D9: the backup page, the Google callback and the home banner.
       backup: ['api', 'shell', 'ui'],

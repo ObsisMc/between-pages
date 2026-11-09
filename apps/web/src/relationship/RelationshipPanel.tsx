@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { callApi } from '../api/client.ts';
 import { ALL_DAYS, RangeEditor, type RangeChoice } from '../sharing-range/index.ts';
+import { localToday } from '../today/index.ts';
 import { Button, Input } from '../ui/index.ts';
 import { partnerOf } from './partner.ts';
 import { refreshRelationships, refusalText, useBinding, useSpaces } from './queries.ts';
@@ -53,7 +54,6 @@ export function RelationshipPanel({ userId }: { userId: string }) {
   const pending = binding.data.invitation?.state === 'pending' ? binding.data.invitation : null;
 
   const create = async () => {
-    if (choice.kind === 'invalid') return;
     const id = requestId ?? crypto.randomUUID();
     setRequestId(id);
     setBusy(true);
@@ -164,11 +164,11 @@ export function RelationshipPanel({ userId }: { userId: string }) {
           <p className="text-sm leading-relaxed text-ink-soft">
             选择你以后愿意共享的日期，生成链接后发给对方。
           </p>
-          <RangeEditor initial={ALL_DAYS} allowUnset onChange={setChoice} />
+          <RangeEditor initial={ALL_DAYS} today={localToday()} allowUnset onChange={setChoice} />
           <Button
             type="button"
             className="justify-self-start"
-            disabled={busy || choice.kind === 'invalid'}
+            disabled={busy}
             onClick={() => void create()}
           >
             生成邀请链接

@@ -19,7 +19,7 @@ import {
 import { Button } from '../ui/index.ts';
 import { PairedWindows } from '../windows/index.ts';
 import { RecentDays, type HomePerson } from './RecentDays.tsx';
-import { localToday } from './today.ts';
+import { localToday } from '../today/index.ts';
 
 // The home (digital-paper-interface D2): the paired windows, a greeting, "继续写今天" and the
 // partner's new content, the recent dates without any diary text, and both local times with

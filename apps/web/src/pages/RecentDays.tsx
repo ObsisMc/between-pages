@@ -4,8 +4,8 @@ import { ArrowRight, ChevronRight, PenLine } from 'lucide-react';
 import type { Day } from '@between-pages/contracts';
 import { callApi } from '../api/client.ts';
 import { Mascot, type MascotTone } from '../avatar/index.ts';
+import { localToday } from '../today/index.ts';
 import { Card } from '../ui/index.ts';
-import { localToday } from './today.ts';
 
 // The home's recent dates (digital-paper-interface D2, invariant 9): for each, the date, who
 // wrote and whether the partner left something unread, and never any diary text: the day

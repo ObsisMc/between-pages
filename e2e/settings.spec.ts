@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
+import { clickDay } from './calendar.ts';
 
 // The redrawn 「设置」 pages through the real stack (digital-paper-interface D3, 落地顺序 4
 // and 5): the space page with its range editor unfolded, the range confirmation and the
@@ -109,14 +110,13 @@ for (const viewport of VIEWPORTS) {
     await expect(fold).toHaveAttribute('aria-expanded', 'false');
     await fold.click();
     await a.getByLabel('自选日期').check();
-    await a.getByRole('button', { name: '添加共享日期' }).click();
-    const first = a.getByRole('group', { name: '共享第 1 段' });
-    await first.getByLabel('开始').fill('2026-10-01');
-    await first.getByLabel('以后持续').check();
-    await a.getByRole('button', { name: '添加排除日期' }).click();
-    const skip = a.getByRole('group', { name: '排除第 1 段' });
-    await skip.getByLabel('开始').fill('2026-10-10');
-    await skip.getByLabel('结束').fill('2026-10-10');
+    await clickDay(a, '2026-10-01');
+    await a.getByRole('button', { name: '从这天起一直共享' }).click();
+    await a.getByRole('radio', { name: '添加排除' }).click();
+    await clickDay(a, '2026-10-10');
+    await expect(a.getByText('共享 1 段 · 排除 1 天')).toHaveAccessibleDescription(
+      '共享：2026-10-01 起持续；排除：2026-10-10',
+    );
     expect(await outside(a), 'the range editor').toEqual([]);
 
     await a.getByRole('button', { name: '保存范围' }).click();
