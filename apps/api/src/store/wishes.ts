@@ -102,7 +102,7 @@ export class WishQueries {
     return row ?? null;
   }
 
-  /** The gift a wish became on the wall, for replaying "收到了". */
+  /** The gift a wish became on the wall, for answering "收到了" on a wish already received. */
   async revealedFor(spaceId: string, wishId: string): Promise<GiftRow | null> {
     const [row] = await this.tx
       .select()

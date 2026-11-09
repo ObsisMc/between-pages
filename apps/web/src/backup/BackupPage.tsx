@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ResponseOf } from '@between-pages/contracts';
-import { Cloud, ExternalLink, RefreshCw, Server } from 'lucide-react';
+import { Cloud, ExternalLink, Info, RefreshCw, Server } from 'lucide-react';
 import { ApiError, callApi } from '../api/client.ts';
 import { Page, PageHeader, SectionTitle } from '../shell/index.ts';
-import { Button } from '../ui/index.ts';
+import { Button, Popover, PopoverContent, PopoverTrigger } from '../ui/index.ts';
 
 // The backup page (server-backup-and-google-docs D9): the caller's own Google Drive
 // connection and the problems worth knowing. Nothing here is visible to the partner. What
@@ -63,6 +63,72 @@ export const backupQuery = () => ({
 export interface BackupPageProps {
   /** Sends the browser to Google's consent page; replaced in tests. */
   goTo?: (url: string) => void;
+}
+
+/** How long the mouse may be between the icon and the text before it closes. */
+const HOVER_CLOSE_MS = 150;
+
+/**
+ * Where the Docs go, behind an information icon beside the section title (F-07, Ray
+ * 2026-11-08): the text opens on hover, on keyboard focus and on a tap, since touch has no
+ * hover. Focus opens it only when it came from the keyboard: a click or tap focuses the
+ * button too, and would otherwise open it and at once toggle it shut.
+ */
+function WhereDocsGo() {
+  const [open, setOpen] = useState(false);
+  const closing = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelClose = () => {
+    if (closing.current) clearTimeout(closing.current);
+    closing.current = null;
+  };
+  const hoverIn = (pointerType: string) => {
+    if (pointerType === 'touch') return;
+    cancelClose();
+    setOpen(true);
+  };
+  const hoverOut = (pointerType: string) => {
+    if (pointerType === 'touch') return;
+    cancelClose();
+    closing.current = setTimeout(() => setOpen(false), HOVER_CLOSE_MS);
+  };
+  // A pointer going down on the button focuses it too; only a focus with no pointer before
+  // it came from the keyboard.
+  const pointerDown = useRef(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label="备份存在哪里"
+          className="rounded-full text-ink-soft hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-warm [&_svg]:size-4"
+          onPointerEnter={(e) => hoverIn(e.pointerType)}
+          onPointerLeave={(e) => hoverOut(e.pointerType)}
+          onPointerDown={() => {
+            pointerDown.current = true;
+          }}
+          onFocus={() => {
+            if (!pointerDown.current) setOpen(true);
+            pointerDown.current = false;
+          }}
+        >
+          <Info aria-hidden="true" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="text-ink-soft"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        // Focus never moved into the text, so nothing is handed back on close; handing it to
+        // the button would count as a keyboard focus and open the text again.
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        onPointerEnter={(e) => hoverIn(e.pointerType)}
+        onPointerLeave={(e) => hoverOut(e.pointerType)}
+      >
+        每天一份 Google Doc，存在你 Drive 的{' '}
+        <span className="text-ink">我的云端硬盘 › Between Pages › 年 › 月</span> 里。可以在 Drive
+        里移动或改名 Between Pages 文件夹，备份会跟着它；删掉的话会在根目录重新建一个。
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 export function BackupPage({ goTo = (url) => window.location.assign(url) }: BackupPageProps) {
@@ -136,7 +202,10 @@ export function BackupPage({ goTo = (url) => window.location.assign(url) }: Back
             <section aria-label="Google Drive" className="flex gap-4">
               <Cloud aria-hidden="true" className="mt-1 size-5 shrink-0 text-ink-soft" />
               <div className="grid min-w-0 flex-1 gap-3">
-                <h2 className="font-serif text-xl font-medium">我的 Google 可读副本</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-serif text-xl font-medium">我的 Google 可读副本</h2>
+                  {google.state !== 'unavailable' && <WhereDocsGo />}
+                </div>
                 {google.state === 'unavailable' && (
                   <p className="text-ink-soft">这台服务器还没有配置 Google 备份</p>
                 )}

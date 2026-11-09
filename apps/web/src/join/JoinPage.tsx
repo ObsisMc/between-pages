@@ -6,6 +6,7 @@ import { callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
 import { isFinalRefusal, refreshRelationships, refusalText } from '../relationship/index.ts';
 import { ALL_DAYS, RangeEditor, type RangeChoice } from '../sharing-range/index.ts';
+import { localToday } from '../today/index.ts';
 import { Button } from '../ui/index.ts';
 import { WelcomeLayout } from '../windows/index.ts';
 import {
@@ -96,7 +97,7 @@ export function JoinPage() {
     );
 
   const accept = async () => {
-    if (!token || choice.kind === 'invalid') return;
+    if (!token) return;
     setBusy(true);
     setError(null);
     try {
@@ -144,13 +145,8 @@ export function JoinPage() {
             邀请 {timeText.format(new Date(preview.expiresAt))} 前有效。选择你以后愿意共享的日期，
             对方看不到这个设置；接受后，你选择的日期里的日记会共享给对方并持续更新。
           </p>
-          <RangeEditor initial={ALL_DAYS} allowUnset onChange={setChoice} />
-          <Button
-            type="button"
-            className="w-full"
-            disabled={busy || choice.kind === 'invalid'}
-            onClick={() => void accept()}
-          >
+          <RangeEditor initial={ALL_DAYS} today={localToday()} allowUnset onChange={setChoice} />
+          <Button type="button" className="w-full" disabled={busy} onClick={() => void accept()}>
             接受邀请
           </Button>
         </div>

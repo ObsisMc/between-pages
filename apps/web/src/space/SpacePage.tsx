@@ -13,6 +13,7 @@ import {
 } from '../relationship/index.ts';
 import { SharedDiaryList } from '../shared-diaries/index.ts';
 import { Page, PageHeader, SectionTitle } from '../shell/index.ts';
+import { localToday } from '../today/index.ts';
 import {
   MonthView,
   NO_DAYS,
@@ -145,7 +146,7 @@ function MyRange({
       </p>
       {periodId === null ? (
         <div className="mt-4">
-          <MonthView selection={mine.selection} />
+          <MonthView selection={mine.selection} today={localToday()} />
         </div>
       ) : (
         <Collapsible open={editing} onOpenChange={setEditing} className="mt-4">
@@ -162,6 +163,7 @@ function MyRange({
           <CollapsibleContent forceMount hidden={!editing} className="mt-4 grid gap-4">
             <RangeEditor
               initial={mine.selection}
+              today={localToday()}
               onChange={(c) => {
                 setChoice(c);
                 setSaved(false);

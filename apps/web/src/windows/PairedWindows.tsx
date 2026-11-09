@@ -1,11 +1,5 @@
 import { useId, useRef, useState, type PointerEvent } from 'react';
-import {
-  MascotBody,
-  MascotPaws,
-  MascotShadow,
-  type MascotMood,
-  type MascotTone,
-} from '../avatar/index.ts';
+import { MascotBody, MascotShadow, type MascotMood, type MascotTone } from '../avatar/index.ts';
 import './windows.css';
 
 // The paired windows (digital-paper-interface D4): frame, sill, sky, light and mascot are
@@ -243,8 +237,7 @@ function WindowArt({ side, pet }: { side: WindowSide; pet: Pet }) {
         />
         <rect x="12" y="245" width="176" height="3" rx="1.5" fill="#fff" opacity="0.35" />
         {/* The mascot sits on the sill: its surface line (y 78 on the mascot's grid) is the
-            sill's top. Only the body moves; the shadow and paws stay put, except that a
-            hop lifts the paws with it and shrinks the shadow. */}
+            sill's top. Only the body moves; a hop shrinks the shadow under it. */}
         {!side.empty && (
           <g transform="translate(50 179) scale(0.8333)">
             <g
@@ -272,12 +265,6 @@ function WindowArt({ side, pet }: { side: WindowSide; pet: Pet }) {
               >
                 <MascotBody tone={side.tone} mood={side.mood ?? 'idle'} />
               </g>
-            </g>
-            <g
-              key={`p${side.bounce?.at ?? 0}`}
-              className={side.bounce?.kind === 'hop' ? 'mascot-paws-hop' : undefined}
-            >
-              <MascotPaws tone={side.tone} />
             </g>
           </g>
         )}

@@ -6,7 +6,7 @@ import { callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
 import { BackupBanner } from '../backup/index.ts';
 import { pendingInvite } from '../join/index.ts';
-import { RelationshipPanel, useBinding, useSpaces } from '../relationship/index.ts';
+import { PartnerCard, useBinding, useSpaces } from '../relationship/index.ts';
 import { usePokes, receivedText } from '../pokes/index.ts';
 import {
   asleepAt,
@@ -19,12 +19,12 @@ import {
 import { Button } from '../ui/index.ts';
 import { PairedWindows } from '../windows/index.ts';
 import { RecentDays, type HomePerson } from './RecentDays.tsx';
-import { localToday } from './today.ts';
+import { localToday } from '../today/index.ts';
 
 // The home (digital-paper-interface D2): the paired windows, a greeting, "继续写今天" and the
 // partner's new content, the recent dates without any diary text, and both local times with
-// their waking overlap (opening-book-home D2). Unbound, the invitation takes the partner's
-// place (opening-book-home D5).
+// their waking overlap (opening-book-home D2). Unbound, a small partner card takes the
+// partner's place (opening-book-home D5); the invitation itself lives under 设置 → 搭档.
 
 const dateLine = (now: number) => {
   const part = Object.fromEntries(
@@ -166,7 +166,7 @@ export function HomePage() {
         <RecentDays me={self} partner={partner} />
         <div className="space-y-10">
           <HomeClocks />
-          {!bound && <RelationshipPanel userId={user.id} />}
+          {!bound && <PartnerCard userId={user.id} />}
         </div>
       </div>
     </main>

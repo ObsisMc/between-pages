@@ -56,7 +56,65 @@
 
 具体权限和算法均未决定，未来需要另行 ADR；当前只读规则见[内核 ADR D6](./adr/2026-10-26-diary-collaboration-kernel.md#d6历史版本只按已有授权读取重开不补授私人历史)。
 
-## F-04：共享页面的后续能力
+## 2026-11-07 讨论的界面改进
+
+上线当天 Ray 用生产站点提出的六项改动，方向都在讨论中定下，每项一个 PR、一个会话。F-04、F-05、F-07、F-08、F-09 已于 2026-11-09 合入，条目只保留场景和当时的结论作为决策入口，现行行为以所链模块的 README 为准；F-06 尚未开始，它涉及接口和 ADR 决策，先补 ADR。
+
+### F-04：共享日期直接在日历上选
+
+**状态**：已实现（#90，2026-11-09），见 [`apps/web` README](../apps/web/README.md) 的 `sharing-range`。
+
+**场景**：`RangeEditor` 现在是"加一段 → 两个日期输入框 + 两个勾选框"的表单，日历只是只读预览，手机上尤其难用。Ray 希望像酒店应用那样在日历上点两下选一段。
+
+**结论**：改用 shadcn 的 Calendar（`react-day-picker`），Ray 于 2026-11-07 批准这个依赖（连同它的 `date-fns`、`@date-fns/tz`），实现时精确锁版本。交互：三选一（全部 / 自选 / 暂不设置）不变；自选时日历上方一个"添加共享 | 添加排除"切换，点两天成一段、同一天两次为单日，点第一天后给出"从这天起一直共享 / 到这天为止"的开放端入口；排除模式下单击即排除一天；日历下列出各段的 chip 可删。排除日画成删除线淡色。数据模型、`range.ts`、contracts 与服务端不动。
+
+**边界**：日历日是字符串，不换时区（[关系 ADR D3](./adr/2026-10-25-spaces-and-invitations.md#d3共享日期是包含集合减去排除集合不按创建时间筛选)）。Calendar 固定 `timeZone="UTC"`，`Date` 只出现在 `sharing-range/day.ts` 的 `toDate` / `toDay` 两个函数里，其余文件用 ESLint 禁 `new Date(`；"今天"用现有的 `localToday()` 传入。测试里用 UTC+14 与 UTC−11 两个时区各跑一遍。
+
+### F-05：未绑定时首页右列过长，邀请流程移到设置
+
+**状态**：已实现（#89，2026-11-09），见 [`apps/web` README](../apps/web/README.md) 的 `relationship`、`pages` 与 `shell`。
+
+**场景**：未绑定（含已解绑）时首页右列是"此刻"加整个 `RelationshipPanel`（范围编辑器、日历、生成链接），左列只有"最近的几页"，两列长短差很多。邀请一辈子只做一两次，不该常驻首页。
+
+**结论**：首页右列只留一张小卡——一行状态（还没有搭档 / 与 TA 的空间（已解绑）/ 已发出邀请，某日前有效）加一个"邀请搭档 →"。整个邀请流程（选范围、生成、撤销、恢复原空间）移到"设置 → 搭档"页。不违反[关系 ADR D12](./adr/2026-10-25-spaces-and-invitations.md#d12桌面交互呈现范围冻结与确认退出清理凭证)的不变量，但要同步 D12 的落地说明和 `relationship`、`pages`、`shell` 的 README。与 F-04 都改 `RelationshipPanel`，不并行。
+
+### F-06：站内邀请，不靠链接
+
+**状态**：未开始；Ray 于 2026-11-08 把它排除在这一批之外。
+
+**场景**：邀请只能是 `/join#token=…` 链接。对方在聊天软件里点开的是系统浏览器而不是已安装的 PWA，登录态不共享，要再登录一次。Ray 希望对方登录后在应用里直接看到邀请并接受。
+
+**结论**：按对方的 Google 邮箱定向邀请。发起方填邮箱（可同时选范围），服务端存一条定向邀请（收件邮箱、范围、七天过期），**不发邮件**；对方用该邮箱的 Google 账号登录后，`GET /api/binding` 多返回"给我的待处理邀请"，首页横幅"某某邀请你一起写日记 · 查看"，点开复用现有 `/join` 确认页与接受逻辑。发起方看到"已邀请某邮箱，等 TA 登录"，可撤销、可重发。链接方式先保留作备用。
+
+**边界**：不能泄露某个邮箱有没有账号——无论是否注册都显示同一句"已发出邀请"；只按 Google 返回的已验证邮箱精确匹配。这改了[关系 ADR D8](./adr/2026-10-25-spaces-and-invitations.md#d8邀请七天有效可撤销一次性不绑定邮箱)的"不绑定邮箱"，不变量 3（七天、可撤销、至多成功一次）不变，所以先写新 ADR 或带 `adr-amend` 的修订，Ray 确认后再动 contracts → API → 迁移（邀请表加收件邮箱）→ 前端。三项里最大。
+
+### F-07：备份页说清 Google Doc 存在哪里
+
+**状态**：已实现（#87，2026-11-09），见 [`apps/web` README](../apps/web/README.md) 与 [`apps/api` README](../apps/api/README.md) 的 `backup`。
+
+**场景**：[备份 ADR D6](./adr/2026-10-28-server-backup-and-google-docs.md#d6每天一份-doc和日期页一样上下排列按年月分文件夹) 定的位置是 `我的云端硬盘 › Between Pages › 年 › 月`，但备份页连接前一个字都没说，连接后只有"在 Google Drive 打开文件夹"，而且要等第一份 Doc 写出来文件夹才存在。Ray 问能不能让用户设置路径。
+
+**结论**：不做应用内选路径（`drive.file` 看不到用户已有文件夹，要选只能接 Google Picker，不值）。worker 的 `monthFolder` 按 Drive 文件 ID 找文件夹、只查是否进回收站，所以用户在 Drive 里改名或移动 `Between Pages` 文件夹，备份会跟着它；删掉才在根目录重建。要做的是：连接前后都写明默认位置和"可以在 Drive 里移动或改名，备份会跟着；删掉会在根目录重建"；连接成功时就建好根文件夹，让"打开文件夹"链接立刻可用（行为改动，同步 `backup` 模块 README 与 ADR D7 的落地说明，不碰 D6 的决策）。
+
+### F-08：写当天时头像变成空心圆（缺陷）
+
+**状态**：已修复（#88，2026-11-09），见 [`apps/web` README](../apps/web/README.md) 的 `day-feed` 与 `diary`。
+
+**场景**：Ray 在生产站点写今天的日记时，列表里自己的头像是空心圆（"有日记但还没有文字"），而不是实心的作者色。
+
+**判断**（已在真实栈中复现）：空心来自 `GET /api/days` 的 `hasText`，列表只在打开、聚焦和每 45 秒刷新时读它。开始写今天时日记行一建出来就被列表读到（当时没字），之后的输入和提交走编辑器自己的通道，列表的 `hasText` 没人更新，要等下一次刷新才变实心。`DaysWorkspace` 已经拿到编辑器的实时 `BlockReport.hasText`（用于 `bothWrote`），只是没喂给列表的头像；首页"最近的几页"和日期索引用同一个字段，延迟相同。
+
+**修法**：正在编辑的那一天，列表头像以编辑器的实时上报为准；其他设备上的变化仍靠现有刷新。按 AGENTS.md 先在开发环境复现，再写一个先红后绿的组件测试。
+
+### F-09：浏览器标签页图标与 PWA 清单
+
+**状态**：已实现（#86，2026-11-09），见 [`apps/web` README](../apps/web/README.md)。
+
+**场景**：`apps/web/index.html` 的 `<head>` 只有 title，`public/` 里只有字体。线上 `/favicon.ico` 命中 `try_files` 的兜底，返回 200 加 `index.html`，浏览器拿不到图标。
+
+**结论**：用现有的团子（`Mascot` 是 SVG）做图标，放进 `apps/web/public/`：`favicon.svg`、`favicon.ico`（32px）、`apple-touch-icon.png`（180px）、`icon-192.png`、`icon-512.png` 和 `manifest.webmanifest`（名字、纸色 `theme-color`、`display: standalone`），顺手让站点可以装成 PWA。`index.html` 加对应 `<link>`；`ops/deploy` 的 Docker 测试加一条"`/favicon.svg` 返回 `image/svg+xml`"。`public/` 的文件在 `/srv` 根下先于兜底命中，不影响 `/assets/` 规则和[部署 ADR 不变量 8](./adr/2026-11-05-production-deployment.md)。Ray 于 2026-11-08 定为两个团子并排。
+
+## F-10：共享页面的后续能力
 
 **场景**：用共享页面写清单和计划时，可能需要勾掉或改掉对方写的一条、把页面分到目录里、找回误删的页面，或定位长页面中间的新内容。
 

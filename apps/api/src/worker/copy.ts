@@ -1,9 +1,9 @@
 import type { DriveConfig } from '../backup/backup.ts';
 import type { CopyService } from '../backup/copy.ts';
+import { ensureFolders } from '../backup/folders.ts';
 import { replacedTitle, type DayDoc } from '../backup/render.ts';
 import {
   DOC_TYPE,
-  FOLDER_TYPE,
   createFile,
   docRevision,
   fileState,
@@ -39,36 +39,6 @@ class DocUnavailable extends Error {
 
 export type CopyDeps = { copy: CopyService; store: CopyStore; drive: DriveConfig };
 
-/**
- * The month's folder of `Between Pages / YYYY / MM`, checking the known ones are still
- * there: a folder deleted or in the bin is made again, and so is everything below it.
- */
-async function monthFolder(
-  deps: CopyDeps,
-  connection: ConnectionRow,
-  token: string,
-  doc: DayDoc,
-): Promise<string> {
-  const endpoints = deps.drive.client.endpoints;
-  const known = await deps.store.folders(connection.userId, connection.googleUserId);
-  let parentId: string | null = null;
-  let path = '';
-  let rebuilt = false;
-  for (const name of doc.folders) {
-    path = path ? `${path}/${name}` : name;
-    let folderId = rebuilt ? undefined : known.get(path);
-    if (folderId && (await fileState(endpoints, token, folderId)) !== 'present')
-      folderId = undefined;
-    if (!folderId) {
-      folderId = await createFile(endpoints, token, { name, type: FOLDER_TYPE, parentId });
-      await deps.store.saveFolder(connection.userId, connection.googleUserId, path, folderId);
-      rebuilt = true;
-    }
-    parentId = folderId;
-  }
-  return parentId!;
-}
-
 /** The day's current Doc, created (and recorded before any write) when there is none. */
 async function currentOrNew(
   deps: CopyDeps,
@@ -84,7 +54,13 @@ async function currentOrNew(
   const docId = await createFile(deps.drive.client.endpoints, token, {
     name: doc.title,
     type: DOC_TYPE,
-    parentId: await monthFolder(deps, connection, token, doc),
+    parentId: await ensureFolders(
+      deps.drive.client.endpoints,
+      deps.store,
+      connection,
+      token,
+      doc.folders,
+    ),
   });
   await deps.store.createdDoc({
     docId,

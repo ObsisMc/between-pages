@@ -43,8 +43,10 @@ async function signedIn(
 /** A invites B; B accepts with the default range, so each shares every date with the other. */
 async function pair(browser: Browser, prefix: string, viewport = WIDE) {
   const a = await signedIn(browser, `${prefix}a`, viewport);
+  await a.getByRole('link', { name: '邀请搭档' }).click();
   await a.getByRole('button', { name: '生成邀请链接' }).click();
   const link = await a.getByLabel('邀请链接').inputValue();
+  await a.getByRole('navigation', { name: '主要' }).getByRole('link', { name: '此刻' }).click();
   const b = await signedIn(browser, `${prefix}b`, viewport);
   await b.goto(link);
   await b.getByRole('button', { name: '接受邀请' }).click();
@@ -325,8 +327,11 @@ test('[adr:opening-book-home#1] [adr:digital-paper-interface#9] the home shows n
   await expect(page.getByRole('menu')).toHaveCount(0);
   await expect(menuButton(page, '设置')).toBeFocused();
 
-  // An entry by keyboard leads on, and the menu holding the page showing is marked current.
+  // An entry by keyboard leads on (the first is 搭档, since this account is unbound; the
+  // arrow keys move), and the menu holding the page showing is marked current.
   await page.keyboard.press('Enter');
+  await expect(page.getByRole('menuitem', { name: '搭档' })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
   await expect(page.getByRole('menuitem', { name: '备份' })).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/backup$/);
@@ -367,8 +372,10 @@ test('[adr:opening-book-home#5] [adr:book-frontend-workspace#7] home and navigat
   await expect(alone.getByRole('heading', { name: '此刻' })).toBeVisible();
   await expect(alone.getByText('TA 那边')).toHaveCount(0);
   await expect(alone.getByText(/共同醒着|按作息推算/)).toHaveCount(0);
-  await expect(alone.getByRole('button', { name: '生成邀请链接' })).toBeVisible();
-  expect(await entries(alone)).toEqual(['备份']);
+  await expect(alone.getByText('还没有搭档')).toBeVisible();
+  await expect(alone.getByRole('link', { name: '邀请搭档' })).toBeVisible();
+  await expect(alone.getByRole('button', { name: '生成邀请链接' })).toHaveCount(0);
+  expect(await entries(alone)).toEqual(['搭档', '备份']);
 
   // Bound, neither has a sleep schedule: both clocks, an entry to set one, no made-up hours.
   const { a, b, space } = await pair(browser, prefix);
@@ -403,9 +410,17 @@ test('[adr:opening-book-home#5] [adr:book-frontend-workspace#7] home and navigat
     await expect(page.getByRole('heading', { name: '此刻' })).toBeVisible();
     await expect(page.getByText('TA 那边')).toHaveCount(0);
     await expect(page.getByText(/共同醒着|按作息推算|设置作息/)).toHaveCount(0);
-    await expect(page.getByRole('heading', { name: '邀请原搭档恢复关系' })).toBeVisible();
+    await expect(page.getByRole('link', { name: /^与 .+ 的空间（已解绑）$/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: '邀请搭档' })).toBeVisible();
     // The archived space and its records stay reachable; the clocks do not.
-    expect(await entries(page)).toEqual(['心愿与礼物', '纪念日', '共享页面', '双人空间', '备份']);
+    expect(await entries(page)).toEqual([
+      '心愿与礼物',
+      '纪念日',
+      '共享页面',
+      '双人空间',
+      '搭档',
+      '备份',
+    ]);
   }
   await untilRead(b, '/days', date, '绑定时写的');
   await expect(dateIn(b, date)).toContainText('已停止共享');

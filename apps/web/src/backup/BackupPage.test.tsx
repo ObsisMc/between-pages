@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { renderAt, signedIn, stubApi } from '../../test/render.tsx';
 import { BackupBanner } from './BackupBanner.tsx';
 import { BackupPage } from './BackupPage.tsx';
@@ -46,6 +46,53 @@ describe('BackupPage', () => {
     await waitFor(() =>
       expect(goTo).toHaveBeenCalledWith('https://accounts.google.com/o/oauth2/v2/auth?state=s'),
     );
+  });
+
+  it('keeps where the Docs are behind an icon that opens on hover and on keyboard focus, before and after connecting (F-07)', async () => {
+    const PATH = '我的云端硬盘 › Between Pages › 年 › 月';
+    const shown = () => {
+      const text = screen.getByText(PATH).parentElement!.textContent!;
+      expect(text).toContain('可以在 Drive 里移动或改名 Between Pages 文件夹，备份会跟着它');
+      expect(text).toContain('删掉的话会在根目录重新建一个');
+    };
+    stubApi({
+      'GET /api/me': signedIn(),
+      'GET /api/backup': () => Response.json(google('disconnected')),
+    });
+    renderAt('/backup', routesWith(vi.fn()));
+    expect(await screen.findByText('未开启 Google 备份')).toBeDefined();
+    expect(screen.queryByText(PATH)).toBeNull();
+    fireEvent.pointerEnter(screen.getByRole('button', { name: '备份存在哪里' }), {
+      pointerType: 'mouse',
+    });
+    await screen.findByText(PATH);
+    shown();
+    cleanup();
+
+    stubApi({
+      'GET /api/me': signedIn(),
+      'GET /api/backup': () =>
+        Response.json({
+          backup: {
+            ...google('connected', { email: 'ray@example.com' }).backup,
+            progress: {
+              waitingDays: 0,
+              failing: [],
+              backedUpTo: null,
+              folderUrl: 'https://drive.google.com/drive/folders/f-root',
+            },
+          },
+        }),
+    });
+    renderAt('/backup', routesWith(vi.fn()));
+    expect(await screen.findByText('已连接 ray@example.com')).toBeDefined();
+    expect(screen.queryByText(PATH)).toBeNull();
+    act(() => screen.getByRole('button', { name: '备份存在哪里' }).focus());
+    await screen.findByText(PATH);
+    shown();
+    expect(
+      screen.getByRole('link', { name: '在 Google Drive 打开文件夹' }).getAttribute('href'),
+    ).toBe('https://drive.google.com/drive/folders/f-root');
   });
 
   it('shows the account, the Testing expiry and disconnects keeping Drive files', async () => {
