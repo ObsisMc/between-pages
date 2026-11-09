@@ -275,6 +275,29 @@ describe.runIf(testDatabaseUrl)('space records and wishes', () => {
     expect(codeOf(await receive(a, wish.id))).toBe('NOT_FOUND');
   });
 
+  it('[adr:wishes-and-gifts#3] "揭晓" after "收到了" answers the gift as it is and changes nothing', async () => {
+    const { a, b } = await pair();
+    const wish = await createWish(a);
+    const gift = await prepare(b, { wishId: wish.id });
+    // The other order the concurrent case can take: the wisher's "收到了" commits first.
+    const got = ok(await receive(a, wish.id), (v) => routes.receiveWish.response.parse(v));
+    expect(got.giftId).toBe(gift.id);
+    const [revealed] = (await view(a)).wall;
+    expect(revealed!.revealed!.by).toBe(a.id);
+
+    const late = ok(await reveal(b, gift.id), (v) => routes.revealGift.response.parse(v));
+    expect(late.gift.revealed).toEqual(revealed!.revealed);
+    expect((await view(a)).wall).toEqual([revealed]);
+    const actions = await query<{ kind: string; n: number }>(
+      "select kind, count(*)::int as n from space_actions where record_id = any($1) and kind in ('receive', 'reveal') group by kind order by kind",
+      [[wish.id, gift.id]],
+    );
+    expect(actions).toEqual([
+      { kind: 'receive', n: 1 },
+      { kind: 'reveal', n: 1 },
+    ]);
+  });
+
   it('[adr:wishes-and-gifts#4] [adr:wishes-and-gifts#5] the three ways to reveal, and who sees the card', async () => {
     const { a, b } = await pair();
     // 1. The giver reveals a gift for a wish: it leaves the list, the card arrives with it.
