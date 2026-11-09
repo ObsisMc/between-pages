@@ -1,4 +1,4 @@
-import { buildApp } from './app.ts';
+import { buildApp, requestLog } from './app.ts';
 import { createAuth } from './auth/auth.ts';
 import { createCurrentUser } from './auth/current-user.ts';
 import { driveConfig } from './backup/drive-config.ts';
@@ -16,7 +16,7 @@ const app = await buildApp({
   db: database.db,
   authHandler: (request) => auth.handler(request),
   sessionEnded: (listener) => auth.onSessionEnded(listener),
-  logger: true,
+  logger: requestLog,
   onClose: () => database.close(),
   ...(config.HISTORY_IDLE_MS ? { historyIdleMs: config.HISTORY_IDLE_MS } : {}),
   ...(driveConfig(config) ? { drive: driveConfig(config)! } : {}),

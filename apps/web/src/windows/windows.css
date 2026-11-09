@@ -23,11 +23,6 @@
 .mascot-hop {
   animation: mascot-hop 0.9s ease-out 2;
 }
-/* The paws ride along with a hop (without its squash) and the shadow shrinks under it. Hops
-   move in px, the grid's units, so body and paws rise by the same amount. */
-.mascot-paws-hop {
-  animation: mascot-paws-hop 0.9s ease-out 2;
-}
 .mascot-window .mascot-shadow-hop {
   animation: mascot-shadow-hop 0.9s ease-out 2;
   transform-origin: 50% 50%;
@@ -98,17 +93,6 @@
   }
   75% {
     transform: translateY(0) scale(1.06, 0.94);
-  }
-}
-@keyframes mascot-paws-hop {
-  0%,
-  15%,
-  75%,
-  100% {
-    transform: translateY(0);
-  }
-  45% {
-    transform: translateY(-9px);
   }
 }
 @keyframes mascot-shadow-hop {

@@ -1,0 +1,16 @@
+# The built frontend behind a small Caddy (production-deployment D3).
+FROM node:26.12.1-alpine3.24 AS build
+WORKDIR /app
+COPY package.json package-lock.json tsconfig.base.json ./
+COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
+COPY packages/collab/package.json packages/collab/
+COPY packages/contracts/package.json packages/contracts/
+RUN npm ci --ignore-scripts
+COPY apps/web apps/web
+COPY packages packages
+RUN npm run build
+
+FROM caddy:2.11.2-alpine
+COPY ops/deploy/web.Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /app/apps/web/dist /srv

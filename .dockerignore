@@ -1,0 +1,15 @@
+# Keeps secrets and local state out of the images (production-deployment D6).
+.git
+.env
+.env.*
+**/node_modules
+**/dist
+**/coverage
+.claude
+docs
+e2e
+prototypes
+playwright-report
+test-results
+**/*.test.ts
+**/*.test.tsx

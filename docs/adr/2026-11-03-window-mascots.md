@@ -111,7 +111,7 @@ PokesResponse = { received: { pokes: number; pets: number; lastAt: string } | nu
 
 | 位置 | 职责 | 可引用 |
 | --- | --- | --- |
-| `apps/web/src/avatar` | `Mascot` 拆成影子、身子、手三层，增加 `idle`、`poked`、`happy`、`asleep` 四种表情；只负责画，不知道手势 | 不变（无） |
+| `apps/web/src/avatar` | `Mascot` 拆成影子、身子两层（soft-mascot 去掉了手），增加 `idle`、`poked`、`happy`、`asleep` 四种表情；只负责画，不知道手势 | 不变（无） |
 | `apps/web/src/windows` | 团子上的可聚焦按钮、轻点与拖动的区分、倾斜、气泡、爱心、减少动态效果；只发出 `onPoke`、`onPet`，不调用接口 | 不变（`avatar`） |
 | `apps/web/src/pokes`（新） | 询问、发送与确认的查询；连戳计数；把收到的次数写成中文；只在绑定中启用 | `api`、`windows`（只用类型） |
 | `apps/web/src/pages/HomePage.tsx` | 组装：自己的窗只播放，对方的窗发送，按 `asleepAt` 决定睡着 | 增加 `pokes` |
