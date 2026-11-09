@@ -1,14 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
-import { ArrowRight, ChevronRight } from 'lucide-react';
+import { ArrowRight, ChevronRight, PenLine } from 'lucide-react';
 import type { Day } from '@between-pages/contracts';
 import { callApi } from '../api/client.ts';
 import { Mascot, type MascotTone } from '../avatar/index.ts';
-import { localToday } from './today.ts';
+import { localToday } from '../today/index.ts';
+import { Card } from '../ui/index.ts';
 
 // The home's recent dates (digital-paper-interface D2, invariant 9): for each, the date, who
 // wrote and whether the partner left something unread, and never any diary text: the day
 // list's excerpts are not rendered here. Opening a date is the explicit entry to its text.
+// With nothing written, a card fills the column to the height of the one beside it, so the
+// two lower columns of the home read as a pair (Ray, 2026-11-08).
 
 export const RECENT_DAYS = 3;
 
@@ -51,7 +54,7 @@ export function RecentDays({ me, partner }: { me: HomePerson; partner: HomePerso
   const today = localToday();
   const recent = days.data?.days.slice(0, RECENT_DAYS) ?? [];
   return (
-    <section aria-labelledby="recent-days-title">
+    <section aria-labelledby="recent-days-title" className="flex flex-col">
       <div className="flex items-baseline justify-between">
         <h2 id="recent-days-title" className="font-serif text-2xl text-ink">
           最近的几页
@@ -67,7 +70,19 @@ export function RecentDays({ me, partner }: { me: HomePerson; partner: HomePerso
       {days.isError ? (
         <p className="mt-6 text-sm text-ink-soft">暂时读不到日记列表，稍后再看</p>
       ) : days.data && recent.length === 0 ? (
-        <p className="mt-6 text-sm text-ink-soft">还没有日记，从今天开始写吧</p>
+        <Card className="mt-4 min-h-56 flex-1 items-center justify-center gap-3 text-center md:min-h-0">
+          {/* The viewer's color, as their window shows it before they have a slot. */}
+          <Mascot tone={me.tone ?? 1} size={56} />
+          <p className="text-sm text-ink-soft">还没有日记，从今天开始写吧</p>
+          <Link
+            to={`/days/${today}`}
+            state={{ edit: true }}
+            className="inline-flex items-center gap-1 text-warm underline-offset-4 hover:underline"
+          >
+            <PenLine aria-hidden="true" className="size-4" />
+            写今天
+          </Link>
+        </Card>
       ) : (
         <ul className="mt-4 divide-y divide-line">
           {recent.map((day) => {

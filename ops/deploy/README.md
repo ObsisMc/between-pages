@@ -12,7 +12,7 @@ The go-live steps and the update are below, in Chinese, for Ray.
 | `compose.production.yaml` | Overlay, last in `COMPOSE_FILE`: `postgres`, one-shot `migrate`, `api`, `worker`, `web`. Reads `POSTGRES_PASSWORD` and `APP_ENV_FILE` (default `/etc/between-pages/app.env`). |
 | `Dockerfile` → image `between-pages-app` | API, worker and migrations, production dependencies only, `NODE_ENV=production`, runs as `node`. |
 | `Dockerfile.web` → image `between-pages-web` | The built frontend behind Caddy on port 80. |
-| `web.Caddyfile` | Unknown paths get `index.html`, `no-cache`; files in `/assets/` are `immutable` for a year; a missing one is a 404. |
+| `web.Caddyfile` | A file under `/srv` (the icons, the manifest, the fonts) is served as itself; any other path gets `index.html`, `no-cache`; files in `/assets/` are `immutable` for a year; a missing one is a 404. |
 | `app.env.example` | Every variable the app containers read, with names only. |
 | `/.dockerignore` | Keeps `.env`, `.git` and local files out of the build context. |
 
@@ -31,7 +31,7 @@ Docker and Compose on the host. The test may use `ops/backup/lib.ts` and its tes
 
 ## How to test
 
-`npm run test:deploy` (needs Docker; the first run builds WAL-G and takes about ten minutes). It starts the real overlay through `up.sh` as a disposable project with its own network and container names, so it is safe beside production. It covers a failed migration, a clean start from an empty volume, the web cache rules, the log without query strings, an update that keeps data, and a real backup and drill on the production overlay. Run it after changing anything here.
+`npm run test:deploy` (needs Docker; the first run builds WAL-G and takes about ten minutes). It starts the real overlay through `up.sh` as a disposable project with its own network and container names, so it is safe beside production. It covers a failed migration, a clean start from an empty volume, the web cache rules, the tab icon and manifest served as files with their own types, the log without query strings, an update that keeps data, and a real backup and drill on the production overlay. Run it after changing anything here.
 
 ## Known limitations
 

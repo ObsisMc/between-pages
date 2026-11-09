@@ -7,6 +7,7 @@ import { buildApp } from './app.ts';
 import type { DriveConfig } from './backup/backup.ts';
 import { createCopyService } from './backup/copy.ts';
 import { createDb, type Database } from './db/client.ts';
+import { FOLDER_TYPE } from './google/docs.ts';
 import { createReader } from './reader/reader.ts';
 import { createCopyStore } from './store/copy.ts';
 import { createStore } from './store/store.ts';
@@ -580,5 +581,53 @@ describe.runIf(testDatabaseUrl)('Docs changed or deleted in Google', () => {
     expect(google.state.files.get(earlier.id)!.text.endsWith('Earlier day. Edited.')).toBe(true);
     expect(await events(a)).toEqual(expect.arrayContaining(['doc_recreated', 'doc_replaced']));
     neverDeleted();
+  });
+});
+
+describe.runIf(testDatabaseUrl)('the Drive folder on connect', () => {
+  const folders = (who: Person) =>
+    [...google.state.files.values()].filter(
+      (f) => f.owner === who.permissionId && f.mimeType === FOLDER_TYPE && !f.trashed,
+    );
+  const folderUrlOf = (id: string) => `https://drive.google.com/drive/folders/${id}`;
+
+  it('makes the Between Pages folder when the connection is made, so its link works before any Doc (F-07)', async () => {
+    const a = await person('Ann');
+    await connect(a);
+    const [root, ...more] = folders(a);
+    expect(more).toEqual([]);
+    expect(root).toMatchObject({ name: 'Between Pages', parents: [] });
+    expect((await backup(a)).progress!.folderUrl).toBe(folderUrlOf(root!.id));
+  });
+
+  it('keeps the folder across a reconnect with the same account and makes a new one once it is in the bin', async () => {
+    const a = await person('Ann');
+    await connect(a);
+    const [root] = folders(a);
+    await connect(a);
+    expect(folders(a).map((f) => f.id)).toEqual([root!.id]);
+
+    google.trash(root!.id);
+    await connect(a);
+    const [made, ...more] = folders(a);
+    expect(more).toEqual([]);
+    expect(made!.id).not.toBe(root!.id);
+    expect((await backup(a)).progress!.folderUrl).toBe(folderUrlOf(made!.id));
+  });
+
+  it('[adr:server-backup-and-google-docs#10] connects without the folder while Drive is down; the worker makes it at the first Doc', async () => {
+    const a = await person('Ann');
+    google.state.down = true;
+    await connect(a);
+    expect((await backup(a)).progress!.folderUrl).toBeNull();
+    expect(folders(a)).toEqual([]);
+
+    google.state.down = false;
+    const diaryId = await ownDiary(a);
+    await write(a, diaryId, (t) => t.insert(0, 'Later.'));
+    await settle(diaryId);
+    await drain(a);
+    const [root] = folders(a).filter((f) => f.name === 'Between Pages');
+    expect((await backup(a)).progress!.folderUrl).toBe(folderUrlOf(root!.id));
   });
 });

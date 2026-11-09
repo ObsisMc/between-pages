@@ -13,6 +13,10 @@ const covers = (range: DateRange, day: string) =>
 export const isShared = (selection: DateSelection, day: string) =>
   selection.include.some((r) => covers(r, day)) && !selection.exclude.some((r) => covers(r, day));
 
+/** A day an exclude range covers, whether or not an include range does too. */
+export const isExcluded = (selection: DateSelection, day: string) =>
+  selection.exclude.some((r) => covers(r, day));
+
 export const isAllDays = (selection: DateSelection) =>
   selection.exclude.length === 0 && selection.include.some((r) => r.from === null && r.to === null);
 

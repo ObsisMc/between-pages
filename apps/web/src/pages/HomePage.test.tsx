@@ -92,6 +92,19 @@ describe('HomePage', () => {
     expect(router.state.location.state).toEqual({ edit: true });
   });
 
+  it('fills the empty recent pages with a card that leads to writing today', async () => {
+    stubApi({ ...noRelationship, ...lists, 'GET /api/me': signedIn('alice') });
+    const { router } = renderAt('/');
+    const recent = await screen.findByRole('region', { name: '最近的几页' });
+    expect(await within(recent).findByText('还没有日记，从今天开始写吧')).toBeDefined();
+    const write = within(recent).getByRole('link', { name: '写今天' });
+    expect(write.getAttribute('href')).toBe(`/days/${today}`);
+
+    fireEvent.click(write);
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/days/${today}`));
+    expect(router.state.location.state).toEqual({ edit: true });
+  });
+
   it("opens all diaries at the partner's nearest unread date, only when there is one", async () => {
     stubApi({
       ...noRelationship,
@@ -114,15 +127,17 @@ describe('HomePage', () => {
     expect(screen.queryByRole('link', { name: /新内容/ })).toBeNull();
   });
 
-  it('[adr:opening-book-home#5] offers the invitation instead of the partner while unbound', async () => {
+  it('[adr:opening-book-home#5] offers the way to invite instead of the partner while unbound, without the invitation form', async () => {
     stubApi({ ...noRelationship, ...lists, 'GET /api/me': signedIn('alice') });
     renderAt('/');
-    expect(await screen.findByText('生成邀请链接')).toBeDefined();
+    expect(await screen.findByText('还没有搭档')).toBeDefined();
+    expect(screen.getByRole('link', { name: '邀请搭档' }).getAttribute('href')).toBe('/partner');
+    expect(screen.queryByText('生成邀请链接')).toBeNull();
     expect(await screen.findByText('我这边')).toBeDefined();
     expect(screen.queryByText(/TA 那边|醒着/)).toBeNull();
   });
 
-  it('[adr:opening-book-home#5] keeps the archived space and the restore invitation after unbinding, without the partner', async () => {
+  it('[adr:opening-book-home#5] keeps the archived space and the way to invite after unbinding, without the partner', async () => {
     stubApi({
       ...noRelationship,
       ...lists,
@@ -130,10 +145,10 @@ describe('HomePage', () => {
       'GET /api/spaces': () => Response.json({ spaces: [space('archived')] }),
     });
     renderAt('/');
-    expect(await screen.findByText('邀请原搭档恢复关系')).toBeDefined();
-    expect(screen.getByRole('link', { name: '与 bob 的空间' }).getAttribute('href')).toBe(
-      `/spaces/${SPACE}`,
-    );
+    expect(
+      (await screen.findByRole('link', { name: '与 bob 的空间（已解绑）' })).getAttribute('href'),
+    ).toBe(`/spaces/${SPACE}`);
+    expect(screen.getByRole('link', { name: '邀请搭档' }).getAttribute('href')).toBe('/partner');
     expect(screen.queryByText(/TA 那边|醒着/)).toBeNull();
   });
 
