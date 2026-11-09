@@ -330,7 +330,8 @@ export function createWishService(records: SpaceRecords) {
     /**
      * "收到了" (D4): the partner's gift in preparation is revealed with its card, or, if none,
      * a gift from the partner goes on the wall. Either way the answer names a gift the
-     * caller had never seen.
+     * caller had never seen. On a wish already received it answers that wish's gift and
+     * changes nothing: the giver's "揭晓" may have committed first (D4, 失败与恢复).
      */
     receiveWish(
       caller: string,
@@ -345,8 +346,13 @@ export function createWishService(records: SpaceRecords) {
         async (ctx) => {
           const w = writes(ctx);
           const wish = await w.lockWish(ctx.spaceId, wishId);
-          if (!wish || wish.receivedAt) throw new Refused('NOT_FOUND');
+          if (!wish) throw new Refused('NOT_FOUND');
           authorOnly(caller, wish);
+          if (wish.receivedAt) {
+            const gift = await w.revealedFor(ctx.spaceId, wish.id);
+            if (!gift || gift.deletedAt) throw new Refused('NOT_FOUND');
+            return { giftId: gift.id };
+          }
           await w.updateWish(wish.id, { receivedAt: now, receivedBy: caller });
           await ctx.acted(wishRef(wish.id), 'receive', null, request);
           const preparing = await w.preparingFor(wish.id);

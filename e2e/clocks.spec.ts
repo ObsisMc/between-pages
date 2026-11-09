@@ -31,12 +31,17 @@ test('[adr:two-clocks#2] shows the partner the zone their browser reports, and f
   browser,
   browserName,
 }) => {
+  // Two accounts through several pages: 29–31 s on the dev machine (2026-11-08), over the
+  // default budget before the invitation moved; 60 s as the wishes test has.
+  test.setTimeout(60_000);
   const name = (who: string) => `${who}${browserName}${run}clock`;
   const a = await signedIn(browser, name('a'), 'America/Los_Angeles');
   await expect(a.getByText(/TA 那边/)).toHaveCount(0);
 
+  await a.getByRole('link', { name: '邀请搭档' }).click();
   await a.getByRole('button', { name: '生成邀请链接' }).click();
   const link = await a.getByLabel('邀请链接').inputValue();
+  await a.getByRole('navigation', { name: '主要' }).getByRole('link', { name: '此刻' }).click();
   const b = await signedIn(browser, name('b'), 'Asia/Tokyo');
   await b.goto(link);
   await b.getByRole('button', { name: '接受邀请' }).click();

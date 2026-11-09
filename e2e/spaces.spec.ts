@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
+import { clickDay } from './calendar.ts';
 
 // Spaces-and-invitations acceptance R7 through the real stack: independent accounts in their
 // own browser contexts, the mock issuer, the API and PostgreSQL. No diary text takes part;
@@ -59,8 +60,9 @@ async function devLogin(page: Page, name: string) {
   await page.getByRole('button', { name: '开发登录' }).click();
 }
 
-/** Generates an invitation from the home page the page is on and returns its link. */
+/** Generates an invitation on the partner page (设置 → 搭档) and returns its link. */
 async function inviteLink(page: Page, choose?: (page: Page) => Promise<void>) {
+  await page.goto('/partner');
   await choose?.(page);
   await page.getByRole('button', { name: '生成邀请链接' }).click();
   return page.getByLabel('邀请链接').inputValue();
@@ -69,10 +71,9 @@ async function inviteLink(page: Page, choose?: (page: Page) => Promise<void>) {
 /** On the join page: shares 2026-10-05 only and accepts; returns the space's path. */
 async function acceptSharingOneDay(page: Page) {
   await page.getByLabel('自选日期').check();
-  await page.getByRole('button', { name: '添加共享日期' }).click();
-  const day = page.getByRole('group', { name: '共享第 1 段' });
-  await day.getByLabel('开始').fill('2026-10-05');
-  await day.getByLabel('结束').fill('2026-10-05');
+  await clickDay(page, '2026-10-05');
+  await clickDay(page, '2026-10-05');
+  await expect(page.getByText('共享 1 段')).toHaveAccessibleDescription('共享：2026-10-05');
   await page.getByRole('button', { name: '接受邀请' }).click();
   await expect(page).toHaveURL(/\/spaces\/[0-9a-f-]{36}$/);
   return new URL(page.url()).pathname;
@@ -168,7 +169,6 @@ test('AUTH-08 AUTH-11 SHARE-03 restores the same space with the former partner w
   await unbind(a);
 
   // B invites A again without setting a range; A restores the same space without one.
-  await b.getByRole('navigation', { name: '主要' }).getByRole('link', { name: '此刻' }).click();
   const again = await inviteLink(b, (page) => page.getByLabel('暂不设置').check());
   await a.goto(again);
   await expect(a.getByText(`接受后恢复你和 ${name('b')} 原来的双人空间。`)).toBeVisible();

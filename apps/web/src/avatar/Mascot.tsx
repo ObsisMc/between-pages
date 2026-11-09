@@ -13,58 +13,74 @@ export type MascotMood = 'idle' | 'poked' | 'happy' | 'asleep';
 const INK = '#2b2420';
 
 function Face({ mood }: { mood: MascotMood }) {
-  const line = { fill: 'none', stroke: INK, strokeWidth: 2.6, strokeLinecap: 'round' } as const;
+  const line = { fill: 'none', stroke: INK, strokeWidth: 2.4, strokeLinecap: 'round' } as const;
   switch (mood) {
     case 'poked':
       return (
         <g>
-          <path d="M41 41l8 5-8 5" {...line} />
-          <path d="M79 41l-8 5 8 5" {...line} />
-          <ellipse cx="60" cy="59" rx="4" ry="4.6" fill={INK} />
+          <path d="M44 37l7 4.5-7 4.5" {...line} />
+          <path d="M76 37l-7 4.5 7 4.5" {...line} />
+          <ellipse cx="60" cy="53" rx="3.4" ry="4" fill={INK} />
         </g>
       );
     case 'happy':
       return (
         <g>
-          <path d="M40 48q6-8 12 0" {...line} />
-          <path d="M68 48q6-8 12 0" {...line} />
-          <path d="M50 55q10 11 20 0" {...line} />
+          <path d="M43 43q5-7 10 0" {...line} />
+          <path d="M67 43q5-7 10 0" {...line} />
+          <path d="M52 50q8 9 16 0" {...line} />
         </g>
       );
     case 'asleep':
       return (
         <g>
-          <path d="M40 46q6 5 12 0" {...line} />
-          <path d="M68 46q6 5 12 0" {...line} />
-          <ellipse cx="60" cy="59" rx="2.6" ry="2.2" fill={INK} opacity="0.75" />
+          <path d="M43 41q5 4.5 10 0" {...line} />
+          <path d="M67 41q5 4.5 10 0" {...line} />
+          <ellipse cx="60" cy="53" rx="2.3" ry="2" fill={INK} opacity="0.75" />
         </g>
       );
     default:
       return (
         <g>
           <g className="mascot-blink">
-            <ellipse cx="46" cy="46" rx="3.4" ry="4.4" fill={INK} />
-            <ellipse cx="74" cy="46" rx="3.4" ry="4.4" fill={INK} />
+            <circle cx="47" cy="41" r="3.3" fill={INK} />
+            <circle cx="73" cy="41" r="3.3" fill={INK} />
           </g>
-          <path d="M52 56q8 7 16 0" {...line} strokeWidth={2.4} />
+          <path d="M53 50q7 7.4 14 0" {...line} />
         </g>
       );
   }
 }
 
-const BODY: Record<'1' | '2' | 'none', { light: string; base: string; edge: string }> = {
-  '1': { light: '#fcd2b2', base: '#f3a676', edge: '#df8a58' },
-  '2': { light: '#c6e3fb', base: '#8fc3ee', edge: '#6aa5d8' },
-  none: { light: '#ece3d8', base: '#d6c8b8', edge: '#bfae9b' },
+const BODY: Record<
+  '1' | '2' | 'none',
+  { base: string; pale: string; deep: string; cheek: string; blush: number }
+> = {
+  '1': { base: '#f79a70', pale: '#fbb492', deep: '#f4835a', cheek: '#f26f44', blush: 0.5 },
+  '2': { base: '#7ab3e4', pale: '#a1cbef', deep: '#639fd8', cheek: '#a89bd8', blush: 0.42 },
+  none: { base: '#d6c8b8', pale: '#ece3d8', deep: '#c4b4a2', cheek: '#c9a79a', blush: 0.4 },
 };
 
-type Color = (typeof BODY)['1'];
-const colorOf = (tone: MascotTone): Color =>
-  BODY[tone === null ? 'none' : (String(tone) as '1' | '2')];
+const colorOf = (tone: MascotTone) => BODY[tone === null ? 'none' : (String(tone) as '1' | '2')];
 
-// The mascot is drawn in three layers on a 120 × 92 grid whose line y = 78 is the surface it
-// sits on: a shadow on that surface, the body with its face, and the paws resting over the
-// surface's front edge. A window moves only the body; the shadow and the paws stay on the sill.
+// The mascot is drawn on a 120 × 92 grid whose line y = 78 is the surface it sits on: a shadow
+// on that surface, then the body with its face. A window moves only the body.
+
+const SILHOUETTE =
+  'M60 5C76 5 91 12 98.5 28.5 105 43 106.5 58 97 68.5 87 79 73 79 60 79S32 79 22.5 68.5C13 58 14.5 43 21.5 28.5 29 12 44 5 60 5Z';
+
+// The washes that mottle the body. Gradients fading to nothing rather than blur filters: the
+// date index shows dozens of mascots, and that many blurred layers would slow every repaint.
+const PALE_WASHES = [
+  { cx: 44, cy: 20, rx: 30, ry: 18, opacity: 0.85 },
+  { cx: 86, cy: 30, rx: 20, ry: 18, opacity: 0.95 },
+  { cx: 33, cy: 68, rx: 28, ry: 14, opacity: 0.6 },
+  { cx: 78, cy: 66, rx: 26, ry: 13, opacity: 0.55 },
+];
+const DEEP_WASHES = [
+  { cx: 60, cy: 33, rx: 26, ry: 14, opacity: 0.55 },
+  { cx: 60, cy: 62, rx: 36, ry: 12, opacity: 0.35 },
+];
 
 /** A soft shadow on the surface, mostly hidden behind the body. */
 export function MascotShadow() {
@@ -79,7 +95,7 @@ export function MascotShadow() {
       <ellipse
         cx="60"
         cy="79"
-        rx="47"
+        rx="42"
         ry="3.6"
         fill="#3b2a1e"
         opacity="0.22"
@@ -89,72 +105,49 @@ export function MascotShadow() {
   );
 }
 
-/** The plump body, cheeks and face; its bottom rests on the surface line. */
+/** The soft body, cheeks and face; its bottom rests on the surface line. */
 export function MascotBody({ tone, mood = 'idle' }: { tone: MascotTone; mood?: MascotMood }) {
   const id = useId();
   const color = colorOf(tone);
+  const wash = (name: string, stop: string) => (
+    <radialGradient id={`${id}${name}`}>
+      <stop offset="0" stopColor={stop} />
+      <stop offset="1" stopColor={stop} stopOpacity="0" />
+    </radialGradient>
+  );
   return (
     <g>
       <defs>
-        <radialGradient id={`${id}b`} cx="38%" cy="30%" r="75%">
-          <stop offset="0" stopColor={color.light} />
-          <stop offset="0.55" stopColor={color.base} />
-          <stop offset="1" stopColor={color.edge} />
-        </radialGradient>
+        {wash('pale', color.pale)}
+        {wash('deep', color.deep)}
+        {wash('cheek', color.cheek)}
+        <clipPath id={`${id}clip`}>
+          <path d={SILHOUETTE} />
+        </clipPath>
       </defs>
-      <path
-        d="M11 58C9 28 32 9 60 9s51 19 49 49c-1 14-18 21-49 21S12 72 11 58Z"
-        fill={`url(#${id}b)`}
-      />
-      <ellipse cx="38" cy="56" rx="7.5" ry="4.5" fill="#f08a8a" opacity="0.38" />
-      <ellipse cx="82" cy="56" rx="7.5" ry="4.5" fill="#f08a8a" opacity="0.38" />
-      <g transform="translate(0 -2)">
-        <Face mood={mood} />
+      {/* Faint strokes under the fill feather the edge, as ink does on damp paper. */}
+      <path d={SILHOUETTE} fill="none" stroke={color.base} strokeWidth="3" opacity="0.18" />
+      <path d={SILHOUETTE} fill="none" stroke={color.base} strokeWidth="1.5" opacity="0.32" />
+      <path d={SILHOUETTE} fill={color.base} />
+      <g clipPath={`url(#${id}clip)`}>
+        {PALE_WASHES.map((w) => (
+          <ellipse key={`${w.cx}-${w.cy}`} {...w} fill={`url(#${id}pale)`} />
+        ))}
+        {DEEP_WASHES.map((w) => (
+          <ellipse key={`${w.cx}-${w.cy}`} {...w} fill={`url(#${id}deep)`} />
+        ))}
       </g>
-    </g>
-  );
-}
-
-/** Two small mitts over the surface's front edge, lit from above like the body. */
-export function MascotPaws({ tone }: { tone: MascotTone }) {
-  const id = useId();
-  const color = colorOf(tone);
-  const paw = (x: number) => (
-    <g key={x}>
-      {/* Its own small shadow on the front face below. */}
-      <ellipse cx={x} cy="86.5" rx="8" ry="1.8" fill="#3b2a1e" opacity="0.14" />
-      <path
-        d={`M${x - 9} 79.5c0-4 4-6.5 9-6.5s9 2.5 9 6.5c0 3.6-4 6-9 6s-9-2.4-9-6Z`}
-        fill={`url(#${id}p)`}
-      />
-      <path
-        d={`M${x - 2.6} 81.2v2.6M${x + 2.6} 81.2v2.6`}
-        stroke={color.edge}
-        strokeWidth="1.1"
-        strokeLinecap="round"
-        opacity="0.6"
-      />
-    </g>
-  );
-  return (
-    <g>
-      <defs>
-        <linearGradient id={`${id}p`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={color.light} />
-          <stop offset="0.6" stopColor={color.base} />
-          <stop offset="1" stopColor={color.edge} />
-        </linearGradient>
-      </defs>
-      {paw(40)}
-      {paw(80)}
+      <ellipse cx="33" cy="52" rx="15" ry="12" fill={`url(#${id}cheek)`} opacity={color.blush} />
+      <ellipse cx="87" cy="52" rx="15" ry="12" fill={`url(#${id}cheek)`} opacity={color.blush} />
+      <Face mood={mood} />
     </g>
   );
 }
 
 /**
- * The round mascot (digital-paper-interface D4): a plump, slightly squashed body with small
- * paws, eyes, a smile and cheeks, in the slot's color. Decoration only: hidden from
- * assistive technology, so whoever it stands for is always named in text beside it.
+ * The mascot: a soft, slightly lopsided round body with eyes, a smile and cheeks, in the
+ * slot's color. Decoration only: hidden from assistive technology, so whoever it stands for
+ * is always named in text beside it.
  */
 export function Mascot({
   tone,
@@ -167,16 +160,15 @@ export function Mascot({
 }) {
   return (
     <svg
-      viewBox="0 0 120 92"
+      viewBox="8 0 104 84"
       width={size}
-      height={(size * 92) / 120}
+      height={(size * 84) / 104}
       aria-hidden="true"
       focusable="false"
       className="shrink-0"
     >
       <MascotShadow />
       <MascotBody tone={tone} mood={mood} />
-      <MascotPaws tone={tone} />
     </svg>
   );
 }

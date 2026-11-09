@@ -14,6 +14,7 @@ Between Pages is a shared diary for two people: each character has an immutable 
 | `docs/` | Spec, acceptance, ADRs, standards ([index](docs/README.md)) |
 | `checks/` | Verify scripts; `npm run check -- <group>` runs them |
 | `ops/backup/` | Server backup of the real database: WAL-G image, backup, restore, drill, runbook |
+| `ops/deploy/` | Production images, compose overlay, the update command, runbook |
 
 ## Commands
 
