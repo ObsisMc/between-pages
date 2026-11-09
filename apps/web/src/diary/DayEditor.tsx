@@ -72,10 +72,20 @@ function combined(reports: (BlockReport | undefined)[]): Unread | undefined {
  * One date's day editor, the diary page's "这一天" view (digital-paper-interface D2); a new
  * date is a new editor. `focus` asks ("编辑" in the
  * feed, "写今天") for the caller's diary to take the focus once open, or "写这天" without
- * one; a new value asks again.
+ * one; a new value asks again. `onOwnText` hears whether the caller's own diary has
+ * non-blank text as the editor has it: once it is open and after each change, so a list
+ * beside the page need not wait for the server's day list.
  */
-export function DayEditor({ date, focus = null }: { date: string; focus?: string | null }) {
-  return <DayView key={date} date={date} focus={focus} />;
+export function DayEditor({
+  date,
+  focus = null,
+  onOwnText,
+}: {
+  date: string;
+  focus?: string | null;
+  onOwnText?: (hasText: boolean) => void;
+}) {
+  return <DayView key={date} date={date} focus={focus} onOwnText={onOwnText} />;
 }
 
 /**
@@ -88,7 +98,15 @@ export function DayEditor({ date, focus = null }: { date: string; focus?: string
  * Without the caller's diary, "写这天" starts it in place, unless the date has not begun
  * here yet. The page never changes its layout by itself (invariant 13).
  */
-function DayView({ date, focus }: { date: string; focus: string | null }) {
+function DayView({
+  date,
+  focus,
+  onOwnText,
+}: {
+  date: string;
+  focus: string | null;
+  onOwnText: ((hasText: boolean) => void) | undefined;
+}) {
   const titleId = useId();
   const user = useMe().data?.user;
   const { people, known } = usePeople();
@@ -210,6 +228,12 @@ function DayView({ date, focus }: { date: string; focus: string | null }) {
     setReports((all) => ({ ...all, [side]: report }));
 
   const bothWrote = !!theirs && !!reports.mine?.hasText && !!reports.theirs?.hasText;
+
+  // The own text as the editor has it, once open: a diary still opening never reads as blank.
+  const ownText = reports.mine?.state.phase === 'open' ? reports.mine.hasText : undefined;
+  useEffect(() => {
+    if (ownText !== undefined) onOwnText?.(ownText);
+  }, [ownText, onOwnText]);
   const sharedNow = reports.mine?.state.shared ?? day?.mine?.sharedWithPartner ?? false;
   const unread = combined(shown.map((side) => reports[side]));
   const ready = !!user && known && !!day;

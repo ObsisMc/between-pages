@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Day } from '@between-pages/contracts';
-import { FakeSocket, GENERATION } from '../../test/diary.ts';
+import { FakeSocket, GENERATION, stubLocks } from '../../test/diary.ts';
 import { stateOf, type Turn } from '../../test/day-text.ts';
 import { renderAt, signedIn, stubApi } from '../../test/render.tsx';
 import { ME, space } from '../../test/relationship.ts';
@@ -352,6 +352,52 @@ describe('DaysWorkspace', () => {
       '离线时无法确认要打开的日记，请联网后再试',
     );
     expect(router.state.location.pathname).toBe('/days');
+  });
+
+  it('shows the day being written in the index as the editor has it, before the list reads again', async () => {
+    // A deep link to a date the list has no diary for: the index asks around it and finds nothing.
+    vi.stubGlobal('WebSocket', FakeSocket);
+    vi.stubGlobal('navigator', { locks: stubLocks() });
+    const created = {
+      diaryId: id(1),
+      diaryDate: '2026-10-27',
+      ownerId: ME,
+      generationId: GENERATION,
+      seq: 0,
+    };
+    stubApi({
+      'GET /api/me': signedIn('alice'),
+      'GET /api/spaces': () => Response.json({ spaces: [space()] }),
+      'GET /api/days?before=2026-10-28': page([]),
+      'GET /api/days?after=2026-10-27': page([]),
+      ...emptyDay('2026-10-27'),
+      'POST /api/diaries': () =>
+        Response.json({ created: true, diary: { ...created, ...stateOf([]) } }),
+      [`GET /api/diaries/${id(1)}`]: () =>
+        Response.json({ diary: { ...created, ...stateOf([]), bindings: [] } }),
+      [`GET /api/diaries/${id(1)}/read`]: () => Response.json({ ranges: [] }),
+    });
+    renderAt('/days/2026-10-27');
+    const nav = await index();
+    const row = () => nav.querySelector<HTMLElement>('[data-date="2026-10-27"]')!;
+    await waitFor(() => expect(row().textContent).toContain('没有可以读的日记'));
+
+    // 写这天 creates the diary: the index knows it at once, still blank.
+    fireEvent.click(await screen.findByRole('button', { name: '写这天' }));
+    const editor = await within(await screen.findByRole('region', { name: '我的日记' })).findByRole(
+      'textbox',
+    );
+    await waitFor(() => expect(row().textContent).toContain('还没有写字'));
+    expect(within(nav).queryByText('alice')).toBeNull();
+
+    // Writing in it: the index shows the writer without any read of the day list.
+    const event = new Event('paste', { bubbles: true, cancelable: true });
+    Object.defineProperty(event, 'clipboardData', {
+      value: { getData: (type: string) => (type === 'text/plain' ? '今天写了一点' : '') },
+    });
+    editor.dispatchEvent(event);
+    await waitFor(() => expect(within(row()).getByText('alice')).toBeDefined());
+    expect(row().textContent).not.toContain('还没有写字');
   });
 
   it('sends an address that is not a date to the feed', async () => {

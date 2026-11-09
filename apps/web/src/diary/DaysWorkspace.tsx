@@ -1,9 +1,22 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type MouseEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type MouseEvent,
+} from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router';
 import { CalendarDays, ChevronDown, PenLine } from 'lucide-react';
 import { ApiError, callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
-import { DateIndex, DayFeed, type FeedPerson, type FeedPosition } from '../day-feed/index.ts';
+import {
+  DateIndex,
+  DayFeed,
+  type EditedDay,
+  type FeedPerson,
+  type FeedPosition,
+} from '../day-feed/index.ts';
 import { Button, cn, Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/index.ts';
 import { DayEditor, timezone, todayHere } from './DayEditor.tsx';
 import { usePeople } from './people.tsx';
@@ -75,6 +88,21 @@ export function DaysWorkspace() {
   useEffect(() => {
     if (date === undefined) leaving.current = false;
   }, [date, location.key]);
+  /**
+   * The own diary as the day editor last reported it, for the index: its row follows the
+   * editor while the day is open and keeps that word after, since the index's own window of
+   * the day list learns of the text only at its next read (F-08).
+   */
+  const [edited, setEdited] = useState<EditedDay | null>(null);
+  const reportOwnText = useCallback(
+    (hasText: boolean) => {
+      if (date === undefined) return;
+      setEdited((known) =>
+        known?.date === date && known.hasText === hasText ? known : { date, hasText },
+      );
+    },
+    [date],
+  );
   if (date !== undefined && !DATE.test(date)) return <Navigate to="/days" replace />;
   if (!user) return null;
 
@@ -139,7 +167,15 @@ export function DaysWorkspace() {
       </Link>
     </nav>
   );
-  const index = <DateIndex me={me} partner={partner} chosenDate={date ?? null} onChoose={choose} />;
+  const index = (
+    <DateIndex
+      me={me}
+      partner={partner}
+      chosenDate={date ?? null}
+      edited={edited}
+      onChoose={choose}
+    />
+  );
   const writeToday = <WriteToday onOpened={(diaryDate) => openDay(diaryDate, true)} />;
 
   const feed = (
@@ -206,7 +242,7 @@ export function DaysWorkspace() {
         </Collapsible>
         {date ? (
           <div className="px-4 py-5">
-            <DayEditor date={date} focus={focus} />
+            <DayEditor date={date} focus={focus} onOwnText={reportOwnText} />
           </div>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 pt-4">{feedView}</div>
@@ -237,7 +273,7 @@ export function DaysWorkspace() {
             <ScrollBox value={dayBox}>
               <div className="mx-auto max-w-(--measure) px-(--measure-pad) py-6">
                 <div className="mb-6">{views}</div>
-                <DayEditor date={date} focus={focus} />
+                <DayEditor date={date} focus={focus} onOwnText={reportOwnText} />
               </div>
             </ScrollBox>
           </div>
