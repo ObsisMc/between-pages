@@ -19,6 +19,7 @@ async function signedIn(browser: Browser, name: string): Promise<Page> {
 
 async function bound(browser: Browser, browserName: string, tag: string) {
   const a = await signedIn(browser, `a${browserName}${run}${tag}`);
+  await a.goto('/partner');
   await a.getByRole('button', { name: '生成邀请链接' }).click();
   const link = await a.getByLabel('邀请链接').inputValue();
   const b = await signedIn(browser, `b${browserName}${run}${tag}`);
