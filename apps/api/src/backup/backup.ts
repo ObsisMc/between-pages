@@ -11,7 +11,8 @@ import { docUrl, folderUrl } from '../google/docs.ts';
 import { keyIdOf, sealToken } from '../google/tokens.ts';
 import type { BackupStore } from '../store/backup.ts';
 import type { ConnectionRow } from '../store/backup.ts';
-import type { CopyStore, WorkFailure } from '../store/copy.ts';
+import { ROOT_FOLDER, type CopyStore, type WorkFailure } from '../store/copy.ts';
+import { ensureFolders } from './folders.ts';
 
 // The Drive connection and the readable copy's progress as the API serves them
 // (server-backup-and-google-docs D9, D10). The API seals the refresh token it receives and
@@ -186,13 +187,15 @@ export function createBackupService(
       if (!drive) return 'GOOGLE_UNAVAILABLE';
       const codeVerifier = await store.takeAuthorization(userId, stateSha256(state), now);
       if (!codeVerifier) return 'GOOGLE_STATE_INVALID';
-      let grant: { refreshToken: string; googleUserId: string; email: string };
+      let grant: {
+        refreshToken: string;
+        accessToken: string;
+        googleUserId: string;
+        email: string;
+      };
       try {
         const tokens = await exchangeCode(drive.client, code, codeVerifier);
-        grant = {
-          refreshToken: tokens.refreshToken,
-          ...(await driveAccount(drive.client, tokens.accessToken)),
-        };
+        grant = { ...tokens, ...(await driveAccount(drive.client, tokens.accessToken)) };
       } catch (error) {
         if (error instanceof GoogleError) return 'GOOGLE_EXCHANGE_FAILED';
         throw error;
@@ -209,6 +212,23 @@ export function createBackupService(
         connectedAt: now,
       });
       if (outcome === 'disconnecting') return 'GOOGLE_DISCONNECTING';
+      // The `Between Pages` folder is made now, with the access token the exchange returned,
+      // so "在 Google Drive 打开文件夹" works before the first Doc is written (D7 落地说明,
+      // F-07). Not making it is no reason to refuse the connection: the worker makes it
+      // before its first Doc anyway.
+      try {
+        await ensureFolders(
+          drive.client.endpoints,
+          copy,
+          { userId, googleUserId: grant.googleUserId },
+          grant.accessToken,
+          [ROOT_FOLDER],
+        );
+      } catch (error) {
+        const detail =
+          error instanceof GoogleError ? `${error.status} ${error.code}` : (error as Error).name;
+        console.warn(`backup: making the Drive folder on connect failed: ${detail}`);
+      }
       return status(userId, now);
     },
 
