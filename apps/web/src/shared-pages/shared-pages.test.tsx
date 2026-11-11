@@ -182,6 +182,28 @@ describe('shared pages', () => {
     expect(screen.queryByRole('button', { name: '删除' })).toBeNull();
   });
 
+  it('says the page cannot open when the space cannot be read, and opens it on retry', async () => {
+    let online = false;
+    vi.stubGlobal('WebSocket', FakeSocket);
+    vi.stubGlobal('navigator', { locks: stubLocks() });
+    stubApi({
+      ...fixed,
+      [LIST]: () =>
+        online
+          ? Response.json(view({ pages: [page()] }))
+          : Promise.reject(new TypeError('offline')),
+      [`GET /api/shared-pages/${ID}`]: json(opened()),
+      'GET /api/space/unread': json({ features: { wishes: 0, anniversaries: 0, sharedPages: 0 } }),
+    });
+    renderAt(`/shared-pages/${ID}`);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain('打不开这一页');
+    online = true;
+    fireEvent.click(screen.getByRole('button', { name: '重试' }));
+    await waitFor(() => expect(editable()).toBe('true'));
+  });
+
   it('asks the server who wrote in the page before confirming its deletion', async () => {
     let partnerWrote = false;
     openPage(() =>

@@ -187,6 +187,19 @@ export function SharedPageScreen() {
             if (!view?.readOnly) void client.invalidateQueries({ queryKey: sharedPagesKey });
           }}
         />
+      ) : list.isError ? (
+        // Without the space the page has no writer to open as; say so rather than wait.
+        <div className={alertClass} role="alert">
+          打不开这一页，请联网后重试。
+          <Button
+            type="button"
+            variant="link"
+            className="text-warm underline"
+            onClick={() => void list.refetch()}
+          >
+            重试
+          </Button>
+        </div>
       ) : (
         <p className="text-ink-soft">正在打开…</p>
       )}
