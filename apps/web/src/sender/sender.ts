@@ -42,6 +42,11 @@ export type SenderOptions<Intent> = {
 export type Sender = {
   /** Something may be waiting: an operation was appended, or the connection came back. */
   wake(): void;
+  /**
+   * The document ended for good outside a submit (its subscription was refused with `code`):
+   * what waits is settled as if a submit had been refused with it, without sending.
+   */
+  close(code: ErrorCode): void;
   stop(): void;
 };
 
@@ -66,6 +71,8 @@ export function createSender<Intent>({
   let running = false;
   let again = false;
   let retryMs = RETRY_FIRST_MS;
+  /** Set by `close`: every batch from then on is answered with this refusal. */
+  let closedWith: ErrorCode | null = null;
   /** Set while the server asked for a pause; new input does not cut it short. */
   let timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -144,7 +151,9 @@ export function createSender<Intent>({
         continue;
       }
       status('syncing');
-      const result = await transport.submit(batch);
+      const result: SubmitResult = closedWith
+        ? { type: 'error', code: closedWith }
+        : await transport.submit(batch);
       if (halted) return;
       if (!(await settle(batch, result))) return;
     }
@@ -177,6 +186,12 @@ export function createSender<Intent>({
 
   return {
     wake,
+    close(code) {
+      closedWith = code;
+      clearTimeout(timer);
+      timer = undefined;
+      wake();
+    },
     stop() {
       halted = 'stopped';
       clearTimeout(timer);

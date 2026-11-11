@@ -413,6 +413,8 @@ export function createDiarySession({
         if (status === 'live') sender?.wake();
         // The generation changed while this device was away (kernel D7, D14).
         if (status === 'refused' && code === 'STALE_CONTEXT') void switchGeneration();
+        // A page deleted or unbound while away ends as a refused submit would (shared-pages D4).
+        if (status === 'refused' && code && page && closeOn(code)) sender?.close(code);
       },
       onShared: (shared) => set({ shared }),
       onCaret: (user, caret) =>

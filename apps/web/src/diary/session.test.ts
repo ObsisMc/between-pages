@@ -1,8 +1,9 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DIARY, FakeSocket, diaryResponse, stubLocks } from '../../test/diary.ts';
+import { PROTOCOL_VERSION } from '@between-pages/contracts';
+import { DIARY, FakeSocket, GENERATION, diaryResponse, stubLocks } from '../../test/diary.ts';
 import { stubApi } from '../../test/render.tsx';
-import { createDiarySession, type DiaryState } from './session.ts';
+import { createDiarySession, type DiaryState, type PageSource } from './session.ts';
 
 const sessions: { destroy(): void }[] = [];
 afterEach(() => {
@@ -13,10 +14,19 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
+/** A shared page as the session loads it: empty, writable. */
+const page: PageSource = {
+  async load() {
+    const { diary } = (await diaryResponse().json()) as { diary: { state: string } };
+    return { readOnly: false, generationId: GENERATION, seq: 0, state: diary.state, bindings: [] };
+  },
+};
+
 function open({
   userId = crypto.randomUUID() as string,
   server = diaryResponse as () => Response | Promise<Response>,
   locks = true,
+  asPage = false,
 } = {}) {
   vi.stubGlobal('WebSocket', FakeSocket);
   vi.stubGlobal('navigator', locks ? { locks: stubLocks() } : {});
@@ -28,6 +38,7 @@ function open({
     place,
     userId,
     diaryId: DIARY,
+    ...(asPage ? { page } : {}),
     onChange: (state) => states.push(state),
   });
   sessions.push(session);
@@ -117,6 +128,38 @@ describe('diary session', () => {
     await diary.session.deleteDrafts([diary.state()!.drafts[0]!.draftId]);
     expect(diary.state()?.drafts).toEqual([]);
   });
+
+  for (const [code, why] of [
+    ['NOT_FOUND', 'deleted'],
+    ['SPACE_READ_ONLY', 'unbound'],
+  ] as const)
+    it(`[adr:shared-pages#10] closes a shared page ${why} while away, its waiting text a draft`, async () => {
+      const shared = open({ asPage: true });
+      await vi.waitFor(() => expect(shared.state()?.save).toBe('saved'));
+      FakeSocket.answer = () => 'hold';
+      shared.paste('没发出去的');
+      await vi.waitFor(() =>
+        expect(FakeSocket.all[0]!.sent.some((m) => m.type === 'submit')).toBe(true),
+      );
+
+      // The subscription, not a submit, learns it: the page went while this device was away.
+      FakeSocket.all[0]!.push({
+        v: PROTOCOL_VERSION,
+        type: 'error',
+        diaryId: DIARY,
+        code,
+        message: 'no',
+      });
+
+      await vi.waitFor(() => expect(shared.state()?.closed).toBe(code));
+      expect(shared.place.querySelector('.ProseMirror')!.getAttribute('contenteditable')).toBe(
+        'false',
+      );
+      await vi.waitFor(() => expect(shared.state()?.drafts).toHaveLength(1));
+      expect(shared.state()!.drafts[0]).toMatchObject({
+        intent: [{ kind: 'insert', text: '没发出去的' }],
+      });
+    });
 
   it('keeps text it could not store on screen, guards leaving, and stores it once storage works', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
