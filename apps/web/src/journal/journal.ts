@@ -25,6 +25,11 @@ export type Baseline = {
   epochId?: string;
   /** A shared page's document, which can be deleted under its writer (shared-pages D7). */
   page?: true;
+  /**
+   * A shared page's binding period, absent while unbound. Part of the context: input
+   * written in one period is never sent in another, it becomes drafts (shared-pages D4).
+   */
+  periodId?: string;
   seq: number;
   /** A Yjs update holding the whole state. */
   state: Uint8Array;
@@ -545,13 +550,22 @@ function draftOf<Intent>(
 }
 
 function baselineFrom(record: BaselineRecord): Baseline {
-  const { diaryId, generationId, epochId, seq, state, bindings } = record;
-  return { diaryId, generationId, ...(epochId ? { epochId } : {}), seq, state, bindings };
+  const { diaryId, generationId, epochId, periodId, seq, state, bindings } = record;
+  return {
+    diaryId,
+    generationId,
+    ...(epochId ? { epochId } : {}),
+    ...(periodId ? { periodId } : {}),
+    seq,
+    state,
+    bindings,
+  };
 }
 
 /** One generation and the same epoch (or none): the same context, where input merges (D7). */
+// A shared page's binding period counts too (shared-pages D4).
 const sameContext = (a: Baseline, b: Baseline) =>
-  a.generationId === b.generationId && a.epochId === b.epochId;
+  a.generationId === b.generationId && a.epochId === b.epochId && a.periodId === b.periodId;
 
 function unionBindings(a: ClientBinding[], b: ClientBinding[]): ClientBinding[] {
   const byClient = new Map(a.map((binding) => [binding.clientId, binding]));

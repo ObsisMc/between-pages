@@ -117,6 +117,8 @@ const CARET_EVERY_MS = 100;
 export type PageSource = {
   load(): Promise<{
     readOnly: boolean;
+    /** The binding period read with it, null while unbound. */
+    periodId: string | null;
     generationId: string;
     seq: number;
     state: string;
@@ -186,6 +188,12 @@ export function createDiarySession({
   let read: ReadRange[] | null = null;
   let unreadAtOpen: number | undefined;
   let generationId = '';
+  /** A page's binding period its baseline belongs to (shared-pages D4). */
+  let periodId: string | undefined;
+  /** Set while a page that came back online checks its period; nothing is sent meanwhile. */
+  let checkingPeriod = false;
+  /** A page lost its connection since it last caught up. */
+  let wasOffline = false;
   const authors = new Map<number, string>();
   /** Operations waiting to be stored, in order; a failed one blocks the rest (D7 order). */
   const unstored: EditorOperation[] = [];
@@ -324,6 +332,7 @@ export function createDiarySession({
         return {
           diaryId,
           page: true,
+          ...(view.periodId ? { periodId: view.periodId } : {}),
           generationId: view.generationId,
           seq: view.seq,
           state: bytes(view.state),
@@ -410,7 +419,11 @@ export function createDiarySession({
       },
       onStatus: (status, code) => {
         set({ sync: status });
-        if (status === 'live') sender?.wake();
+        if (status === 'offline') wasOffline = true;
+        if (status === 'live' && page && wasOffline) {
+          wasOffline = false;
+          void recheckPeriod();
+        } else if (status === 'live') sender?.wake();
         // The generation changed while this device was away (kernel D7, D14).
         if (status === 'refused' && code === 'STALE_CONTEXT') void switchGeneration();
         // A page deleted or unbound while away ends as a refused submit would (shared-pages D4).
@@ -434,11 +447,17 @@ export function createDiarySession({
         if (change === 'opened' && next !== generationId) void switchGeneration();
       },
     });
+    const transport = sync;
     sender = createSender({
       journal: journal!,
       userId,
       diaryId,
-      transport: sync,
+      // Held back while a page that came back online checks its period (shared-pages D4).
+      transport: {
+        submit: (batch) =>
+          checkingPeriod ? Promise.resolve({ type: 'offline' }) : transport.submit(batch),
+        receipt: (id, batchId) => transport.receipt(id, batchId),
+      },
       onStatus: (save) => {
         if (save === 'readonly' || save === 'upgrade') editor?.setEditable(false);
         set({ save });
@@ -457,6 +476,29 @@ export function createDiarySession({
     editor?.setEditable(false);
     set({ closed: code });
     return true;
+  }
+
+  /**
+   * A page back online: the two may have unbound and bound again meanwhile, and input from
+   * the old period must not be sent in the new one (shared-pages D4). Nothing is sent until
+   * the server says which period it is; a new one switches the context, settling that input.
+   */
+  async function recheckPeriod() {
+    checkingPeriod = true;
+    const server = await serverBaseline();
+    if (destroyed) return;
+    if (typeof server !== 'object') {
+      if (server === 'offline') {
+        switchTimer = setTimeout(() => void recheckPeriod(), STORE_RETRY_MS);
+        return;
+      }
+      checkingPeriod = false;
+      if (closeOn(server)) sender?.close(server);
+      return;
+    }
+    if (server.periodId !== periodId) return void switchGeneration();
+    checkingPeriod = false;
+    sender?.wake();
   }
 
   /**
@@ -494,9 +536,11 @@ export function createDiarySession({
       const { baseline } = await journal.load(diaryId);
       if (destroyed || !baseline) return;
       generationId = baseline.generationId;
+      periodId = baseline.periodId;
       await mount();
       connect(baseline.seq);
       await refreshDrafts();
+      checkingPeriod = false;
       sender?.wake();
     } catch {
       // A receipt that could not be fetched: the journal is unchanged; try again later.
@@ -524,6 +568,7 @@ export function createDiarySession({
     const { baseline } = await journal.load(diaryId);
     if (!baseline) return set({ phase: 'failed', failure: 'offline' });
     generationId = baseline.generationId;
+    periodId = baseline.periodId;
     await mount();
     if (destroyed) return;
     connect(baseline.seq);

@@ -75,6 +75,7 @@ async function rebind(a: Person, b: Person) {
     sharingSelection: null,
   });
   expect(accepted.statusCode, accepted.body).toBe(200);
+  return routes.acceptInvitation.response.parse(accepted.json()).binding;
 }
 
 const create = async (who: Person, title = '旅行清单'): Promise<Page> => {
@@ -192,10 +193,13 @@ describe.runIf(testDatabaseUrl)('shared pages', () => {
   it('[adr:shared-pages#2] unbinding keeps a page, and the two get it back writable on rebinding', async () => {
     const { a, b, binding } = await pair();
     const page = await create(a);
+    expect((await open(a, page.id)).periodId).toBe(binding.periodId);
     await unbind(b, binding);
     expect((await list(a)).readOnly).toBe(true);
-    expect((await open(b, page.id)).readOnly).toBe(true);
-    await rebind(a, b);
+    expect(await open(b, page.id)).toMatchObject({ readOnly: true, periodId: null });
+    const rebound = await rebind(a, b);
+    expect(rebound.periodId).not.toBe(binding.periodId);
+    expect((await open(a, page.id)).periodId).toBe(rebound.periodId);
     expect((await list(b)).pages.map((p) => p.id)).toEqual([page.id]);
     const again = await writer(b, page.id, 303);
     expect((await again.submit((t) => t.insert(0, '回来了'))).type).toBe('ack');

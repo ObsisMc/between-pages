@@ -9,18 +9,41 @@ const sessions: { destroy(): void }[] = [];
 afterEach(() => {
   for (const session of sessions.splice(0)) session.destroy();
   FakeSocket.reset();
+  period = FIRST_PERIOD;
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   document.body.replaceChildren();
 });
 
+const FIRST_PERIOD = '3e9a1c55-0000-4000-8000-000000000001';
+const NEXT_PERIOD = '3e9a1c55-0000-4000-8000-000000000002';
+/** The binding period the server reports; a test moves it to stand for unbinding and rebinding. */
+let period = FIRST_PERIOD;
+
 /** A shared page as the session loads it: empty, writable. */
 const page: PageSource = {
   async load() {
     const { diary } = (await diaryResponse().json()) as { diary: { state: string } };
-    return { readOnly: false, generationId: GENERATION, seq: 0, state: diary.state, bindings: [] };
+    return {
+      readOnly: false,
+      periodId: period,
+      generationId: GENERATION,
+      seq: 0,
+      state: diary.state,
+      bindings: [],
+    };
   },
 };
+
+/** The batch the page sent last, and the server's answer that it never committed. */
+function uncommitted() {
+  const submit = FakeSocket.all.flatMap((s) => s.sent).findLast((m) => m.type === 'submit')!;
+  const batchId = (submit as { batchId: string }).batchId;
+  return {
+    [`GET /api/diaries/${DIARY}/receipt?batchId=${batchId}`]: () =>
+      Response.json({ receipt: null }),
+  };
+}
 
 function open({
   userId = crypto.randomUUID() as string,
@@ -160,6 +183,55 @@ describe('diary session', () => {
         intent: [{ kind: 'insert', text: '没发出去的' }],
       });
     });
+
+  it('[adr:shared-pages#10] does not send input from before an unbind and rebind, the page left open', async () => {
+    const shared = open({ asPage: true });
+    await vi.waitFor(() => expect(shared.state()?.save).toBe('saved'));
+    FakeSocket.answer = () => 'hold';
+    shared.paste('解绑前写的');
+    await vi.waitFor(() =>
+      expect(FakeSocket.all[0]!.sent.some((m) => m.type === 'submit')).toBe(true),
+    );
+
+    // Away while the two unbind and bind again; then the connection comes back.
+    period = NEXT_PERIOD;
+    FakeSocket.answer = () => 'ack';
+    stubApi(uncommitted());
+    FakeSocket.all[0]!.onclose?.({ code: 1006 });
+
+    await vi.waitFor(() => expect(shared.state()?.drafts).toHaveLength(1), { timeout: 4000 });
+    expect(shared.state()!.drafts[0]).toMatchObject({
+      intent: [{ kind: 'insert', text: '解绑前写的' }],
+    });
+    await vi.waitFor(() => expect(shared.session.text()).toBe(''));
+    expect(FakeSocket.seq).toBe(0);
+  });
+
+  it('[adr:shared-pages#10] does not send input left on this device before an unbind and rebind', async () => {
+    const userId = crypto.randomUUID();
+    const first = open({ userId, asPage: true });
+    await vi.waitFor(() => expect(first.state()?.save).toBe('saved'));
+    FakeSocket.answer = () => 'hold';
+    first.paste('关掉前写的');
+    await vi.waitFor(() =>
+      expect(FakeSocket.all[0]!.sent.some((m) => m.type === 'submit')).toBe(true),
+    );
+    const receipts = uncommitted();
+    first.session.destroy();
+
+    // Reopened after the two unbound and bound again.
+    period = NEXT_PERIOD;
+    FakeSocket.answer = () => 'ack';
+    const second = open({ userId, asPage: true });
+    stubApi(receipts);
+
+    await vi.waitFor(() => expect(second.state()?.drafts).toHaveLength(1));
+    expect(second.state()!.drafts[0]).toMatchObject({
+      intent: [{ kind: 'insert', text: '关掉前写的' }],
+    });
+    expect(second.session.text()).toBe('');
+    expect(FakeSocket.seq).toBe(0);
+  });
 
   it('keeps text it could not store on screen, guards leaving, and stores it once storage works', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });

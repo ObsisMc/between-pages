@@ -33,6 +33,7 @@ const LIST = 'GET /api/shared-pages';
 const opened = (over: object = {}, bindings: object[] = []) => ({
   page: page(),
   readOnly: false,
+  periodId: '0d0d0d0d-0000-4000-8000-000000000003',
   generationId: '0d0d0d0d-0000-4000-8000-000000000002',
   seq: 0,
   state: 'AAA=',
