@@ -107,6 +107,11 @@ export type DiarySession = {
    * first. False when there is none to go to. Changes no text and sends nothing.
    */
   jumpToUnread(which: 'first' | 'next', wrap?: boolean): boolean;
+  /**
+   * The screen learned a shared page is gone: it ends here as a refused submit would, its
+   * waiting input becoming drafts shown with it (shared-pages D4). A diary ignores it.
+   */
+  closePage(code: PageClosed): void;
   destroy(): void;
 };
 
@@ -744,6 +749,9 @@ export function createDiarySession({
 
   return {
     text: () => editor?.view.state.doc.textContent ?? '',
+    closePage(code) {
+      if (page && !state.closed && closeOn(code)) sender?.close(code);
+    },
     setOwnTextOnly(on, keep = true) {
       // Anchored on a character that stays visible after the switch (D5).
       const held = keep ? holdPosition(on ? visibleUnderFilter : undefined) : null;

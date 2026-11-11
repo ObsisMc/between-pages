@@ -172,10 +172,20 @@ describe('shared pages', () => {
     expect(screen.getByLabelText('页面标题')).toHaveProperty('disabled', false);
   });
 
-  it('takes away the title and deletion once the page is gone', async () => {
+  it('takes away the title and deletion once the page is gone, its unsent words still there to copy', async () => {
     let deleted = false;
     const { client } = openPage(() => (deleted ? gone() : Response.json(opened())));
     await screen.findByRole('button', { name: '删除' });
+    await waitFor(() => expect(editable()).toBe('true'));
+    FakeSocket.answer = () => 'hold';
+    const paste = new Event('paste', { bubbles: true, cancelable: true });
+    Object.defineProperty(paste, 'clipboardData', {
+      value: { getData: (type: string) => (type === 'text/plain' ? '没发出去的字' : '') },
+    });
+    document.querySelector('.ProseMirror')!.dispatchEvent(paste);
+    await waitFor(() =>
+      expect(FakeSocket.all.at(-1)!.sent.some((m) => m.type === 'submit')).toBe(true),
+    );
 
     deleted = true;
     await client.invalidateQueries({ queryKey: ['shared-pages'] });
@@ -183,6 +193,8 @@ describe('shared pages', () => {
     await screen.findByText('这一页已被删除');
     expect(screen.queryByLabelText('页面标题')).toBeNull();
     expect(screen.queryByRole('button', { name: '删除' })).toBeNull();
+    await waitFor(() => expect(screen.getAllByText(/没发出去的字/).length).toBeGreaterThan(0));
+    expect(editable()).toBe('false');
   });
 
   it('gives back only the input of pages the server says are gone, not of ones a stale list leaves out', async () => {

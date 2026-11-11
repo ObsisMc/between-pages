@@ -121,6 +121,7 @@ export function DiaryBlock({
   onReport,
   onReopen,
   onClosed,
+  closed,
 }: {
   userId: string;
   diaryId: string;
@@ -139,6 +140,8 @@ export function DiaryBlock({
   onReopen?: () => void;
   /** A shared page stopped taking input here: unbound or deleted (shared-pages D4). */
   onClosed?: () => void;
+  /** The screen learned the shared page is gone; the open session ends, drafts shown. */
+  closed?: PageClosed | undefined;
 }) {
   const peopleRef = useRef(people);
   const keepRef = useRef(keepPosition);
@@ -192,10 +195,15 @@ export function DiaryBlock({
     };
   }, [userId, diaryId, epochId, scrollBox]);
 
-  const closed = state?.closed;
+  const closedHere = state?.closed;
   useEffect(() => {
-    if (closed) closedRef.current?.();
-  }, [closed]);
+    if (closedHere) closedRef.current?.();
+  }, [closedHere]);
+  // Only once the session is open: one still opening learns it from the server itself.
+  const opened = state?.phase === 'open';
+  useEffect(() => {
+    if (closed && opened) session.current?.closePage(closed);
+  }, [closed, opened]);
 
   useEffect(() => {
     if (state)

@@ -151,8 +151,9 @@ export function SharedPageScreen() {
 
   const gone = opened.error instanceof ApiError && opened.error.code === 'NOT_FOUND';
   const view = gone ? undefined : opened.data;
-  // The editor follows the page: unbound, bound again or deleted, it opens anew (D4).
-  const reopened = useReopenCount(gone ? 'gone' : view && (view.periodId ?? 'unbound'));
+  // The editor follows the page (D4): unbound or bound again, it opens anew in that period;
+  // deleted, the open one ends where it is, so its drafts stay on screen to copy.
+  const reopened = useReopenCount(view && (view.periodId ?? 'unbound'));
   const unread = view?.page.unread;
   const mark = view?.page.mark;
   useEffect(() => {
@@ -182,6 +183,7 @@ export function SharedPageScreen() {
           diaryId={pageId}
           page={source}
           people={people}
+          closed={gone ? 'NOT_FOUND' : undefined}
           // The editor learned it first: the title, deletion and list follow it now.
           onClosed={() => {
             if (!view?.readOnly) void client.invalidateQueries({ queryKey: sharedPagesKey });
