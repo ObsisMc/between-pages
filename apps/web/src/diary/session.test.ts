@@ -156,6 +156,29 @@ describe('diary session', () => {
     ['NOT_FOUND', 'deleted'],
     ['SPACE_READ_ONLY', 'unbound'],
   ] as const)
+    it(`[adr:shared-pages#10] closes a shared page ${why} under its writer, the refused text a draft`, async () => {
+      const shared = open({ asPage: true });
+      await vi.waitFor(() => expect(shared.state()?.save).toBe('saved'));
+      FakeSocket.answer = () => code;
+
+      shared.paste('被拒的字');
+
+      await vi.waitFor(() => expect(shared.state()?.closed).toBe(code));
+      expect(shared.place.querySelector('.ProseMirror')!.getAttribute('contenteditable')).toBe(
+        'false',
+      );
+      await vi.waitFor(() => expect(shared.state()?.drafts).toHaveLength(1));
+      expect(shared.state()!.drafts[0]).toMatchObject({
+        reason: 'rejected',
+        intent: [{ kind: 'insert', text: '被拒的字' }],
+      });
+      expect(FakeSocket.seq).toBe(0);
+    });
+
+  for (const [code, why] of [
+    ['NOT_FOUND', 'deleted'],
+    ['SPACE_READ_ONLY', 'unbound'],
+  ] as const)
     it(`[adr:shared-pages#10] closes a shared page ${why} while away, its waiting text a draft`, async () => {
       const shared = open({ asPage: true });
       await vi.waitFor(() => expect(shared.state()?.save).toBe('saved'));
