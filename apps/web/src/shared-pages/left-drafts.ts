@@ -1,9 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
-import { callApi } from '../api/client.ts';
+import { ApiError, callApi } from '../api/client.ts';
 import type { DiaryDraft } from '../diary/index.ts';
 import { openJournal, type Journal } from '../journal/index.ts';
 
 type Editing = DiaryDraft['intent'];
+
+/**
+ * Whether the server says the page is gone. A list, even a fresh one, can leave out a page
+ * just made in another tab, whose input must still be sent; nothing else settles it.
+ */
+async function goneOnServer(pageId: string) {
+  try {
+    await callApi('sharedPage', { params: { pageId } });
+    return false;
+  } catch (error) {
+    return error instanceof ApiError && error.code === 'NOT_FOUND';
+  }
+}
 
 /**
  * Input left on this device for pages the server no longer lists (shared-pages 失败与恢复):
@@ -21,6 +34,7 @@ export function useLeftDrafts(userId: string | undefined, listed: readonly strin
       const gone = (await journal.pages()).filter((id) => !kept.has(id));
       const left: DiaryDraft[] = [];
       for (const pageId of gone) {
+        if (!(await goneOnServer(pageId))) continue;
         await journal.retire(pageId, async (batchId) => {
           const query = { batchId };
           return (await callApi('receipt', { params: { diaryId: pageId }, query })).receipt;

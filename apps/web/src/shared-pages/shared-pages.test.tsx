@@ -1,8 +1,11 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { BODY, createDiaryDoc } from '@between-pages/collab';
 import { PROTOCOL_VERSION } from '@between-pages/contracts';
+import * as Y from 'yjs';
 import { FakeSocket, stubLocks } from '../../test/diary.ts';
+import { openJournal } from '../journal/index.ts';
 import { renderAt, stubApi } from '../../test/render.tsx';
 
 // The shared pages list, the deletion dialog (shared-pages D1, D3) and how the page's
@@ -180,6 +183,50 @@ describe('shared pages', () => {
     await screen.findByText('这一页已被删除');
     expect(screen.queryByLabelText('页面标题')).toBeNull();
     expect(screen.queryByRole('button', { name: '删除' })).toBeNull();
+  });
+
+  it('gives back only the input of pages the server says are gone, not of ones a stale list leaves out', async () => {
+    const STILL_THERE = '0d0d0d0d-0000-4000-8000-000000000005';
+    const DELETED = '0d0d0d0d-0000-4000-8000-000000000006';
+    const GENERATION = '0d0d0d0d-0000-4000-8000-000000000002';
+    // Input this device holds for two pages, neither in the list it is shown.
+    const journal = await openJournal(ME.id);
+    for (const [pageId, words] of [
+      [STILL_THERE, '还开着的页'],
+      [DELETED, '删掉的页'],
+    ] as const) {
+      const doc = createDiaryDoc();
+      await journal.install({
+        diaryId: pageId,
+        page: true,
+        generationId: GENERATION,
+        seq: 0,
+        state: Y.encodeStateAsUpdate(doc),
+        bindings: [],
+      });
+      let update: Uint8Array = new Uint8Array();
+      doc.once('update', (u: Uint8Array) => (update = u));
+      doc.getText(BODY).insert(0, words);
+      await journal.append(pageId, GENERATION, {
+        operationId: crypto.randomUUID(),
+        update,
+        writtenAt: new Date(),
+        intent: [{ kind: 'insert', text: words }],
+      });
+    }
+    journal.close();
+    stubApi({
+      ...fixed,
+      [LIST]: json(view()),
+      [`GET /api/shared-pages/${STILL_THERE}`]: json(opened({ page: page({ id: STILL_THERE }) })),
+      [`GET /api/shared-pages/${DELETED}`]: gone,
+      [`GET /api/shared-pages/${ID}`]: json(opened()),
+    });
+    renderAt('/shared-pages');
+
+    const left = await screen.findByRole('region', { name: '已删除页面里没保存的内容' });
+    expect(left.textContent).toContain('删掉的页');
+    expect(left.textContent).not.toContain('还开着的页');
   });
 
   it('says the page cannot open when the space cannot be read, and opens it on retry', async () => {
