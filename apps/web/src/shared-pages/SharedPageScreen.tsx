@@ -73,6 +73,17 @@ function DeletePage({ view, partner }: { view: SharedPageView; partner: string }
   const navigate = useNavigate();
   const [requestId] = useState(() => crypto.randomUUID());
   const [error, setError] = useState<string | null>(null);
+  // Who wrote in the page is read again on opening: the partner may have just begun (D3).
+  const [checking, setChecking] = useState(false);
+  const check = async (open: boolean) => {
+    if (!open) return;
+    setChecking(true);
+    try {
+      await client.refetchQueries({ queryKey: [...sharedPagesKey, view.page.id], exact: true });
+    } finally {
+      setChecking(false);
+    }
+  };
   const partnerWrote = view.bindings.some((b) => b.userId === partner);
   const remove = async () => {
     setError(null);
@@ -85,7 +96,7 @@ function DeletePage({ view, partner }: { view: SharedPageView; partner: string }
     }
   };
   return (
-    <Dialog>
+    <Dialog onOpenChange={(open) => void check(open)}>
       <DialogTrigger asChild>
         <Button type="button" variant="outline">
           删除
@@ -106,7 +117,7 @@ function DeletePage({ view, partner }: { view: SharedPageView; partner: string }
               取消
             </Button>
           </DialogClose>
-          <Button type="button" onClick={() => void remove()}>
+          <Button type="button" disabled={checking} onClick={() => void remove()}>
             确认删除
           </Button>
         </div>

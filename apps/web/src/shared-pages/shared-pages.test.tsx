@@ -182,6 +182,21 @@ describe('shared pages', () => {
     expect(screen.queryByRole('button', { name: '删除' })).toBeNull();
   });
 
+  it('asks the server who wrote in the page before confirming its deletion', async () => {
+    let partnerWrote = false;
+    openPage(() =>
+      Response.json(opened({}, partnerWrote ? [{ clientId: 7, userId: PARTNER.id }] : [])),
+    );
+    await screen.findByRole('button', { name: '删除' });
+
+    // The partner's first words arrive after the page was last read.
+    partnerWrote = true;
+    fireEvent.click(screen.getByRole('button', { name: '删除' }));
+
+    await screen.findByText('TA 写的内容也会一起消失。');
+    expect(screen.getByRole('button', { name: '确认删除' })).toHaveProperty('disabled', false);
+  });
+
   it('warns before deleting a page the partner wrote in, and reports the page seen on opening', async () => {
     const api = stubApi({
       ...fixed,
