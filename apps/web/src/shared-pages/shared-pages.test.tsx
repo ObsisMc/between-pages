@@ -1,9 +1,13 @@
+import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { PROTOCOL_VERSION } from '@between-pages/contracts';
+import { FakeSocket, stubLocks } from '../../test/diary.ts';
 import { renderAt, stubApi } from '../../test/render.tsx';
 
-// The shared pages list and the deletion dialog (shared-pages D1, D3). Writing itself is a
-// diary session, tested through a real browser in e2e/shared-pages.spec.ts.
+// The shared pages list, the deletion dialog (shared-pages D1, D3) and how the page's
+// controls follow its editor. Writing itself is a diary session, tested through a real
+// browser in e2e/shared-pages.spec.ts.
 
 const ME = { id: '6f1c1d0e-0000-4000-8000-000000000001', displayName: 'alice' };
 const PARTNER = { id: '6f1c1d0e-0000-4000-8000-000000000002', displayName: 'bo' };
@@ -59,8 +63,26 @@ beforeEach(() =>
 );
 afterEach(() => {
   cleanup();
+  FakeSocket.reset();
   vi.unstubAllGlobals();
 });
+
+/** The open page with a live editor; `server` answers the page as it is now. */
+function openPage(server: () => Response) {
+  vi.stubGlobal('WebSocket', FakeSocket);
+  vi.stubGlobal('navigator', { locks: stubLocks() });
+  stubApi({
+    ...fixed,
+    [LIST]: json(view({ pages: [page()] })),
+    [`GET /api/shared-pages/${ID}`]: server,
+    'GET /api/space/unread': json({ features: { wishes: 0, anniversaries: 0, sharedPages: 0 } }),
+  });
+  return renderAt(`/shared-pages/${ID}`);
+}
+const editable = () => document.querySelector('.ProseMirror')?.getAttribute('contenteditable');
+const NEXT_PERIOD = '0d0d0d0d-0000-4000-8000-000000000004';
+const gone = () =>
+  Response.json({ error: { code: 'NOT_FOUND', message: 'No such page' } }, { status: 404 });
 
 describe('shared pages', () => {
   it('lists pages with what is new, and untitled ones by a stand-in name', async () => {
@@ -106,6 +128,58 @@ describe('shared pages', () => {
     renderAt('/shared-pages');
     await screen.findByText('已解绑，记录只读');
     expect(screen.queryByRole('button', { name: '新建一页' })).toBeNull();
+  });
+
+  it('closes the title and deletion with the editor when it learns of the unbinding', async () => {
+    let unbound = false;
+    openPage(() => Response.json(unbound ? opened({ readOnly: true, periodId: null }) : opened()));
+    await screen.findByRole('button', { name: '删除' });
+    await waitFor(() => expect(editable()).toBe('true'));
+    await waitFor(() => expect(FakeSocket.all.length).toBeGreaterThan(0));
+
+    unbound = true;
+    FakeSocket.all.at(-1)!.push({
+      v: PROTOCOL_VERSION,
+      type: 'error',
+      diaryId: ID,
+      code: 'SPACE_READ_ONLY',
+      message: 'no',
+    });
+
+    await waitFor(() => expect(screen.getByLabelText('页面标题')).toHaveProperty('disabled', true));
+    expect(screen.queryByRole('button', { name: '删除' })).toBeNull();
+    // The editor opened anew from the server, which says the space is unbound.
+    await screen.findByText('已解绑，记录只读');
+  });
+
+  it('opens the editor writable again when the two bind again', async () => {
+    let periodId: string | null = null;
+    const { client } = openPage(() =>
+      Response.json(opened({ readOnly: periodId === null, periodId })),
+    );
+    await screen.findByText('已解绑，记录只读');
+    await waitFor(() => expect(editable()).toBe('false'));
+
+    // Bound again; the page's next refresh sees the new period.
+    periodId = NEXT_PERIOD;
+    await client.invalidateQueries({ queryKey: ['shared-pages'] });
+
+    await waitFor(() => expect(editable()).toBe('true'));
+    expect(screen.queryByText('已解绑，记录只读')).toBeNull();
+    expect(screen.getByLabelText('页面标题')).toHaveProperty('disabled', false);
+  });
+
+  it('takes away the title and deletion once the page is gone', async () => {
+    let deleted = false;
+    const { client } = openPage(() => (deleted ? gone() : Response.json(opened())));
+    await screen.findByRole('button', { name: '删除' });
+
+    deleted = true;
+    await client.invalidateQueries({ queryKey: ['shared-pages'] });
+
+    await screen.findByText('这一页已被删除');
+    expect(screen.queryByLabelText('页面标题')).toBeNull();
+    expect(screen.queryByRole('button', { name: '删除' })).toBeNull();
   });
 
   it('warns before deleting a page the partner wrote in, and reports the page seen on opening', async () => {

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { callApi } from '../api/client.ts';
+import { ApiError, callApi } from '../api/client.ts';
 import { DiaryBlock, usePeople, type PageSource } from '../diary/index.ts';
 import { Page } from '../shell/index.ts';
 import { refusalText, useSeenReporter } from '../space-common/index.ts';
@@ -115,6 +115,17 @@ function DeletePage({ view, partner }: { view: SharedPageView; partner: string }
   );
 }
 
+/**
+ * How many times what the editor opened under changed: the binding period, or the page
+ * being gone. The first value known is the one it opened with, so it counts nothing.
+ */
+function useReopenCount(context: string | undefined) {
+  const [seen, setSeen] = useState({ context, count: 0 });
+  if (context !== undefined && context !== seen.context)
+    setSeen({ context, count: seen.context === undefined ? seen.count : seen.count + 1 });
+  return seen.count;
+}
+
 export function SharedPageScreen() {
   const { pageId = '' } = useParams();
   const client = useQueryClient();
@@ -127,7 +138,10 @@ export function SharedPageScreen() {
     [pageId],
   );
 
-  const view = opened.data;
+  const gone = opened.error instanceof ApiError && opened.error.code === 'NOT_FOUND';
+  const view = gone ? undefined : opened.data;
+  // The editor follows the page: unbound, bound again or deleted, it opens anew (D4).
+  const reopened = useReopenCount(gone ? 'gone' : view && (view.periodId ?? 'unbound'));
   const unread = view?.page.unread;
   const mark = view?.page.mark;
   useEffect(() => {
@@ -151,7 +165,17 @@ export function SharedPageScreen() {
         </div>
       )}
       {me && known ? (
-        <DiaryBlock key={pageId} userId={me} diaryId={pageId} page={source} people={people} />
+        <DiaryBlock
+          key={`${pageId}:${reopened}`}
+          userId={me}
+          diaryId={pageId}
+          page={source}
+          people={people}
+          // The editor learned it first: the title, deletion and list follow it now.
+          onClosed={() => {
+            if (!view?.readOnly) void client.invalidateQueries({ queryKey: sharedPagesKey });
+          }}
+        />
       ) : (
         <p className="text-ink-soft">正在打开…</p>
       )}

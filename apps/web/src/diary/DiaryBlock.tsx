@@ -120,6 +120,7 @@ export function DiaryBlock({
   onSession,
   onReport,
   onReopen,
+  onClosed,
 }: {
   userId: string;
   diaryId: string;
@@ -136,17 +137,21 @@ export function DiaryBlock({
   onReport?: (report: BlockReport) => void;
   /** The partner shared this diary again while it was open; the page opens the new epoch. */
   onReopen?: () => void;
+  /** A shared page stopped taking input here: unbound or deleted (shared-pages D4). */
+  onClosed?: () => void;
 }) {
   const peopleRef = useRef(people);
   const keepRef = useRef(keepPosition);
   const pageRef = useRef(page);
   const reportRef = useRef(onReport);
   const sessionRef = useRef(onSession);
+  const closedRef = useRef(onClosed);
   useEffect(() => {
     peopleRef.current = people;
     keepRef.current = keepPosition;
     reportRef.current = onReport;
     sessionRef.current = onSession;
+    closedRef.current = onClosed;
   });
   const [origin, setOrigin] = useState<Origin | null>(null);
   const place = useRef<HTMLDivElement>(null);
@@ -186,6 +191,11 @@ export function DiaryBlock({
       sessionRef.current?.(null);
     };
   }, [userId, diaryId, epochId, scrollBox]);
+
+  const closed = state?.closed;
+  useEffect(() => {
+    if (closed) closedRef.current?.();
+  }, [closed]);
 
   useEffect(() => {
     if (state)
