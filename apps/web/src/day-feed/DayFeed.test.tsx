@@ -313,6 +313,32 @@ describe('DayFeed', () => {
     expect(within(region).getByText('你在别处正在写')).toBeDefined();
   });
 
+  it('[adr:book-frontend-workspace#9] refreshes on a focus that comes the moment the first page shows', async () => {
+    let writing = true;
+    stubApi({
+      ...signedInWithSpace,
+      'GET /api/days': () =>
+        page([
+          {
+            diaryDate: '2026-10-27',
+            mine: null,
+            partner: shared(2, writing ? { writing } : { updatedAt: '2026-10-27T09:05:00Z' }),
+          },
+        ])(),
+      ...sharedDiary(2, [theySay('写完了')]),
+    });
+    renderAt('/', feedAlone());
+    const region = await feed();
+    // The focus lands in the same task as the render that showed the page, before any
+    // effect after it has run; the feed must already count as loaded.
+    await waitFor(() => {
+      within(region).getByText('TA 正在写');
+      writing = false;
+      window.dispatchEvent(new Event('focus'));
+    });
+    await within(region).findByText('写完了');
+  });
+
   it('[adr:unread-and-day-page#2] lights a date’s dot from the loaded text and coverage, not the list, once both are known', async () => {
     stubApi({
       ...signedInWithSpace,
