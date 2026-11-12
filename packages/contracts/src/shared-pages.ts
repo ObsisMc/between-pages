@@ -69,6 +69,11 @@ export const SharedPageStateResponse = z
   .object({
     page: SharedPage,
     readOnly: z.boolean(),
+    /**
+     * The binding period this state was read in, null while unbound. Input written in one
+     * period is never sent in another: it becomes drafts (shared-pages D4).
+     */
+    periodId: Uuid.nullable(),
     generationId: Uuid,
     seq: z.int().nonnegative(),
     state: z.base64(),

@@ -6,7 +6,13 @@ import { HistoryPanel, HistoryPreview, type HistoryPointView } from '../history/
 import { Button, cn } from '../ui/index.ts';
 import { DraftList } from './DraftList.tsx';
 import { ScrollBox } from './scroll-box.ts';
-import { createDiarySession, type DiarySession, type DiaryState } from './session.ts';
+import {
+  createDiarySession,
+  type DiarySession,
+  type DiaryState,
+  type PageClosed,
+  type PageSource,
+} from './session.ts';
 import { failureText, refusalText, statusLine } from './status.ts';
 import './diary-block.css';
 
@@ -90,6 +96,11 @@ function GoogleCopyLine({ copy }: { copy: GoogleCopy }) {
   return <p className="text-sm text-ink-soft">{backedUp || '等待备份到 Google'}</p>;
 }
 
+const CLOSED_TEXT: Record<PageClosed, string> = {
+  SPACE_READ_ONLY: '已解绑，记录只读',
+  NOT_FOUND: '这一页已被删除',
+};
+
 const noticeClass = 'mt-3 rounded-xl bg-notice px-4 py-3 text-sm text-ink';
 const TONE: Record<'calm' | 'busy' | 'warn', string> = {
   calm: 'font-medium text-done',
@@ -101,6 +112,7 @@ export function DiaryBlock({
   userId,
   diaryId,
   epochId,
+  page,
   people,
   title,
   googleCopy,
@@ -108,10 +120,14 @@ export function DiaryBlock({
   onSession,
   onReport,
   onReopen,
+  onClosed,
+  closed,
 }: {
   userId: string;
   diaryId: string;
   epochId?: string | undefined;
+  /** Opens a shared page instead of a diary; it has no history or per-character origin. */
+  page?: PageSource | undefined;
   /** Shown beside the save status once known; "已备份到 Google" never means more than the Doc holds. */
   googleCopy?: GoogleCopy | undefined;
   /** By user ID; author colors follow the space's slots, so one person has one color. */
@@ -122,16 +138,23 @@ export function DiaryBlock({
   onReport?: (report: BlockReport) => void;
   /** The partner shared this diary again while it was open; the page opens the new epoch. */
   onReopen?: () => void;
+  /** A shared page stopped taking input here: unbound or deleted (shared-pages D4). */
+  onClosed?: () => void;
+  /** The screen learned the shared page is gone; the open session ends, drafts shown. */
+  closed?: PageClosed | undefined;
 }) {
   const peopleRef = useRef(people);
   const keepRef = useRef(keepPosition);
+  const pageRef = useRef(page);
   const reportRef = useRef(onReport);
   const sessionRef = useRef(onSession);
+  const closedRef = useRef(onClosed);
   useEffect(() => {
     peopleRef.current = people;
     keepRef.current = keepPosition;
     reportRef.current = onReport;
     sessionRef.current = onSession;
+    closedRef.current = onClosed;
   });
   const [origin, setOrigin] = useState<Origin | null>(null);
   const place = useRef<HTMLDivElement>(null);
@@ -150,6 +173,7 @@ export function DiaryBlock({
       userId,
       diaryId,
       epochId,
+      page: pageRef.current,
       authorClass: (author) => {
         const slot = peopleRef.current.get(author)?.slot;
         return slot ? `author-slot-${slot}` : null;
@@ -171,6 +195,16 @@ export function DiaryBlock({
     };
   }, [userId, diaryId, epochId, scrollBox]);
 
+  const closedHere = state?.closed;
+  useEffect(() => {
+    if (closedHere) closedRef.current?.();
+  }, [closedHere]);
+  // Only once the session is open: one still opening learns it from the server itself.
+  const opened = state?.phase === 'open';
+  useEffect(() => {
+    if (closed && opened) session.current?.closePage(closed);
+  }, [closed, opened]);
+
   useEffect(() => {
     if (state)
       reportRef.current?.({
@@ -182,6 +216,7 @@ export function DiaryBlock({
 
   // A click on a character asks the server who wrote it and when; the name comes from the space.
   const showOrigin = async (event: MouseEvent) => {
+    if (page) return;
     const hit = session.current?.characterAt(event.clientX, event.clientY);
     if (!hit) return setOrigin(null);
     try {
@@ -242,14 +277,14 @@ export function DiaryBlock({
     <div>
       <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
         {title}
-        {open && status && (
+        {open && status && !state.closed && (
           // `save-status` and its tone name the line for its check mark (diary-block.css).
           <p className={cn('save-status text-sm', status.tone, TONE[status.tone])} role="status">
             {status.text}
           </p>
         )}
         {open && googleCopy && <GoogleCopyLine copy={googleCopy} />}
-        {open && (
+        {open && !page && (
           <Button
             type="button"
             variant="outline"
@@ -265,6 +300,11 @@ export function DiaryBlock({
           </Button>
         )}
       </div>
+      {state?.closed && (
+        <p className={noticeClass} role="status">
+          {CLOSED_TEXT[state.closed]}
+        </p>
+      )}
       {state?.share === 'frozen' && (
         <p className={noticeClass} role="status">
           已停止共享，内容不再更新
@@ -289,7 +329,9 @@ export function DiaryBlock({
       )}
       {state?.phase === 'failed' && (
         <p className={noticeClass} role="alert">
-          {failureText(state.failure)}
+          {page && state.failure === 'NOT_FOUND'
+            ? CLOSED_TEXT.NOT_FOUND
+            : failureText(state.failure)}
         </p>
       )}
       {state?.storeFailed && (

@@ -54,6 +54,8 @@ export type DiaryState = {
    * catch-up said, until a `stopped` notice. Undefined until the server has said so.
    */
   shared?: boolean;
+  /** A shared page can no longer be written here, and why. */
+  closed?: PageClosed;
   /** The owner shared this diary again as this new epoch; the frozen one stays as it is. */
   reopened?: string;
   /** "只看我的文字" is on: the other person's text is hidden and nothing can be edited. */
@@ -105,11 +107,32 @@ export type DiarySession = {
    * first. False when there is none to go to. Changes no text and sends nothing.
    */
   jumpToUnread(which: 'first' | 'next', wrap?: boolean): boolean;
+  /**
+   * The screen learned a shared page is gone: it ends here as a refused submit would, its
+   * waiting input becoming drafts shown with it (shared-pages D4). A diary ignores it.
+   */
+  closePage(code: PageClosed): void;
   destroy(): void;
 };
 
 const STORE_RETRY_MS = 5_000;
 const CARET_EVERY_MS = 100;
+
+/** What a shared page opens from (shared-pages D7). */
+export type PageSource = {
+  load(): Promise<{
+    readOnly: boolean;
+    /** The binding period read with it, null while unbound. */
+    periodId: string | null;
+    generationId: string;
+    seq: number;
+    state: string;
+    bindings: ClientBinding[];
+  }>;
+};
+
+/** Refusals that end a page's writing here: unbound or deleted (shared-pages 失败与恢复). */
+export type PageClosed = 'SPACE_READ_ONLY' | 'NOT_FOUND';
 
 export type DiarySessionOptions = {
   place: HTMLElement;
@@ -117,6 +140,11 @@ export type DiarySessionOptions = {
   diaryId: string;
   /** Opens the partner's shared diary as this epoch instead of the own diary (kernel D10). */
   epochId?: string | undefined;
+  /**
+   * Opens this document as a shared page instead of a diary: from `load`, read by both from
+   * the first word, with no read tracking (shared-pages D5, D7).
+   */
+  page?: PageSource | undefined;
   /** The class coloring an author's text (EDIT-13), by their slot in the space. */
   authorClass?: (author: string) => string | null;
   /** The name shown on another person's caret. */
@@ -139,6 +167,7 @@ export function createDiarySession({
   userId,
   diaryId,
   epochId,
+  page,
   authorClass,
   nameOf,
   onChange,
@@ -152,6 +181,7 @@ export function createDiarySession({
     storeFailed: false,
     drafts: [],
     remoteChanges: 0,
+    ...(page ? { shared: true } : {}),
   };
   let destroyed = false;
   let journal: Journal<EditIntent[]> | undefined;
@@ -163,6 +193,12 @@ export function createDiarySession({
   let read: ReadRange[] | null = null;
   let unreadAtOpen: number | undefined;
   let generationId = '';
+  /** A page's binding period its baseline belongs to (shared-pages D4). */
+  let periodId: string | undefined;
+  /** Set while a page that came back online checks its period; nothing is sent meanwhile. */
+  let checkingPeriod = false;
+  /** A page lost its connection since it last caught up. */
+  let wasOffline = false;
   const authors = new Map<number, string>();
   /** Operations waiting to be stored, in order; a failed one blocks the rest (D7 order). */
   const unstored: EditorOperation[] = [];
@@ -231,7 +267,7 @@ export function createDiarySession({
     for (const op of pending) editor.applyUpdate(op.update, authors);
     for (const delta of arriving) editor.applyUpdate(delta, authors);
     arriving = null;
-    editor.setEditable(state.save !== 'readonly' && state.save !== 'upgrade');
+    editor.setEditable(state.save !== 'readonly' && state.save !== 'upgrade' && !state.closed);
   }
 
   /** After drafts were made the editor still shows their text, so it is rebuilt, but only once
@@ -295,6 +331,20 @@ export function createDiarySession({
   > {
     const bytes = (state: string) => Uint8Array.from(atob(state), (c) => c.charCodeAt(0));
     try {
+      if (page) {
+        const view = await page.load();
+        if (view.readOnly) set({ closed: 'SPACE_READ_ONLY' });
+        return {
+          diaryId,
+          page: true,
+          ...(view.periodId ? { periodId: view.periodId } : {}),
+          generationId: view.generationId,
+          seq: view.seq,
+          state: bytes(view.state),
+          bindings: view.bindings,
+          diaryDate: '',
+        };
+      }
       if (epochId) {
         const { diary } = await callApi('sharedDiary', { params: { diaryId, epochId } });
         return {
@@ -374,9 +424,15 @@ export function createDiarySession({
       },
       onStatus: (status, code) => {
         set({ sync: status });
-        if (status === 'live') sender?.wake();
+        if (status === 'offline') wasOffline = true;
+        if (status === 'live' && page && wasOffline) {
+          wasOffline = false;
+          void recheckPeriod();
+        } else if (status === 'live') sender?.wake();
         // The generation changed while this device was away (kernel D7, D14).
         if (status === 'refused' && code === 'STALE_CONTEXT') void switchGeneration();
+        // A page deleted or unbound while away ends as a refused submit would (shared-pages D4).
+        if (status === 'refused' && code && page && closeOn(code)) sender?.close(code);
       },
       onShared: (shared) => set({ shared }),
       onCaret: (user, caret) =>
@@ -396,11 +452,17 @@ export function createDiarySession({
         if (change === 'opened' && next !== generationId) void switchGeneration();
       },
     });
+    const transport = sync;
     sender = createSender({
       journal: journal!,
       userId,
       diaryId,
-      transport: sync,
+      // Held back while a page that came back online checks its period (shared-pages D4).
+      transport: {
+        submit: (batch) =>
+          checkingPeriod ? Promise.resolve({ type: 'offline' }) : transport.submit(batch),
+        receipt: (id, batchId) => transport.receipt(id, batchId),
+      },
       onStatus: (save) => {
         if (save === 'readonly' || save === 'upgrade') editor?.setEditable(false);
         set({ save });
@@ -409,7 +471,39 @@ export function createDiarySession({
         void refreshDrafts();
         void remountWhenStored();
       },
+      ...(page ? { closes: closeOn } : {}),
     });
+  }
+
+  /** Unbound or deleted: nothing more goes in, and what waits becomes drafts (shared-pages D4). */
+  function closeOn(code: ErrorCode) {
+    if (code !== 'SPACE_READ_ONLY' && code !== 'NOT_FOUND') return false;
+    editor?.setEditable(false);
+    set({ closed: code });
+    return true;
+  }
+
+  /**
+   * A page back online: the two may have unbound and bound again meanwhile, and input from
+   * the old period must not be sent in the new one (shared-pages D4). Nothing is sent until
+   * the server says which period it is; a new one switches the context, settling that input.
+   */
+  async function recheckPeriod() {
+    checkingPeriod = true;
+    const server = await serverBaseline();
+    if (destroyed) return;
+    if (typeof server !== 'object') {
+      if (server === 'offline') {
+        switchTimer = setTimeout(() => void recheckPeriod(), STORE_RETRY_MS);
+        return;
+      }
+      checkingPeriod = false;
+      if (closeOn(server)) sender?.close(server);
+      return;
+    }
+    if (server.periodId !== periodId) return void switchGeneration();
+    checkingPeriod = false;
+    sender?.wake();
   }
 
   /**
@@ -447,9 +541,11 @@ export function createDiarySession({
       const { baseline } = await journal.load(diaryId);
       if (destroyed || !baseline) return;
       generationId = baseline.generationId;
+      periodId = baseline.periodId;
       await mount();
       connect(baseline.seq);
       await refreshDrafts();
+      checkingPeriod = false;
       sender?.wake();
     } catch {
       // A receipt that could not be fetched: the journal is unchanged; try again later.
@@ -477,6 +573,7 @@ export function createDiarySession({
     const { baseline } = await journal.load(diaryId);
     if (!baseline) return set({ phase: 'failed', failure: 'offline' });
     generationId = baseline.generationId;
+    periodId = baseline.periodId;
     await mount();
     if (destroyed) return;
     connect(baseline.seq);
@@ -638,7 +735,7 @@ export function createDiarySession({
 
   open()
     .then(() => {
-      if (!destroyed && state.phase === 'open')
+      if (!destroyed && state.phase === 'open' && !page)
         reads = createReadTracker({
           diaryId,
           visible: onScreen,
@@ -652,6 +749,9 @@ export function createDiarySession({
 
   return {
     text: () => editor?.view.state.doc.textContent ?? '',
+    closePage(code) {
+      if (page && !state.closed && closeOn(code)) sender?.close(code);
+    },
     setOwnTextOnly(on, keep = true) {
       // Anchored on a character that stays visible after the switch (D5).
       const held = keep ? holdPosition(on ? visibleUnderFilter : undefined) : null;

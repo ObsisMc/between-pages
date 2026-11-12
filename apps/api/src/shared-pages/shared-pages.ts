@@ -29,6 +29,7 @@ type Present = {
 export type PageView = {
   page: Page;
   readOnly: boolean;
+  periodId: string | null;
   generationId: string;
   seq: number;
   state: Uint8Array;
@@ -120,6 +121,7 @@ export function createSharedPageService(records: SpaceRecords) {
         return {
           page: await pageOut(ctx, row),
           readOnly: ctx.readOnly,
+          periodId: ctx.periodId,
           generationId: row.generationId,
           seq: await queries.seq(row.id, row.generationId),
           state: Y.encodeStateAsUpdate(doc),

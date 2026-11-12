@@ -3,10 +3,11 @@ import { useSpaceUnread } from '../space-common/index.ts';
 
 // Which pages the navigation lists (digital-paper-interface D1, the visibility rules of
 // book-frontend-workspace D2): only pages the caller can reach now. The two clocks need a
-// current binding; the space, wishes and anniversaries need a space, which stays readable
-// after unbinding (space-records D5, invariant 10); the partner page, where an invitation is
-// made, only while there is no current binding (spaces-and-invitations D12). An entry's count
-// is the server's unread count, which never counts the partner's unrevealed preparations.
+// current binding; the space, wishes, anniversaries and shared pages need a space, which stays
+// readable after unbinding (space-records D5, invariant 10); the partner page, where an
+// invitation is made, only while there is no current binding (spaces-and-invitations D12). An
+// entry's count is the server's unread count, which never counts the partner's unrevealed
+// preparations.
 
 export type SiteEntry = { to: string; label: string; unread?: number | undefined };
 
@@ -29,6 +30,7 @@ export function useSiteEntries(): SiteEntries {
           ...(current ? [{ to: '/clocks', label: '两地时间' }] : []),
           { to: '/wishes', label: '心愿与礼物', unread: unread?.wishes },
           { to: '/anniversaries', label: '纪念日', unread: unread?.anniversaries },
+          { to: '/shared-pages', label: '共享页面', unread: unread?.sharedPages },
         ]
       : [],
     settings: [

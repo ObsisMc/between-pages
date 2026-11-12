@@ -46,12 +46,13 @@ export class SpaceRecordQueries {
     return row ? { spaceId: row.id, partnerId: row.low === userId ? row.high : row.low } : null;
   }
 
-  async hasOpenPeriod(spaceId: string): Promise<boolean> {
+  /** The space's binding period that has not ended, if any. */
+  async openPeriod(spaceId: string): Promise<string | null> {
     const [row] = await this.tx
       .select({ id: bindingPeriods.id })
       .from(bindingPeriods)
       .where(and(eq(bindingPeriods.spaceId, spaceId), isNull(bindingPeriods.endedAt)));
-    return row !== undefined;
+    return row?.id ?? null;
   }
 
   /**

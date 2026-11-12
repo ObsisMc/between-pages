@@ -386,7 +386,14 @@ test('[adr:opening-book-home#5] [adr:book-frontend-workspace#7] home and navigat
   await expect(a.locator('.clock-face', { hasText: 'TA 那边' })).toBeVisible();
   await expect(a.getByRole('link', { name: '设置作息' })).toBeVisible();
   await expect(a.getByText(/共同醒着/)).toHaveCount(0);
-  expect(await entries(a)).toEqual(['两地时间', '心愿与礼物', '纪念日', '双人空间', '备份']);
+  expect(await entries(a)).toEqual([
+    '两地时间',
+    '心愿与礼物',
+    '纪念日',
+    '共享页面',
+    '双人空间',
+    '备份',
+  ]);
 
   // A writes a shared diary, then unbinds; B keeps it read-only and nothing of A's later.
   const date = '2026-09-10';
@@ -406,7 +413,14 @@ test('[adr:opening-book-home#5] [adr:book-frontend-workspace#7] home and navigat
     await expect(page.getByRole('link', { name: /^与 .+ 的空间（已解绑）$/ })).toBeVisible();
     await expect(page.getByRole('link', { name: '邀请搭档' })).toBeVisible();
     // The archived space and its records stay reachable; the clocks do not.
-    expect(await entries(page)).toEqual(['心愿与礼物', '纪念日', '双人空间', '搭档', '备份']);
+    expect(await entries(page)).toEqual([
+      '心愿与礼物',
+      '纪念日',
+      '共享页面',
+      '双人空间',
+      '搭档',
+      '备份',
+    ]);
   }
   await untilRead(b, '/days', date, '绑定时写的');
   await expect(dateIn(b, date)).toContainText('已停止共享');

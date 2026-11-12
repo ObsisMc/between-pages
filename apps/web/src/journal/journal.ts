@@ -23,6 +23,13 @@ export type Baseline = {
   generationId: string;
   /** The partner's live epoch this copy belongs to; absent on the owner's own diary. */
   epochId?: string;
+  /** A shared page's document, which can be deleted under its writer (shared-pages D7). */
+  page?: true;
+  /**
+   * A shared page's binding period, absent while unbound. Part of the context: input
+   * written in one period is never sent in another, it becomes drafts (shared-pages D4).
+   */
+  periodId?: string;
   seq: number;
   /** A Yjs update holding the whole state. */
   state: Uint8Array;
@@ -137,6 +144,8 @@ export type Journal<Intent = unknown> = {
    */
   reject(diaryId: string, batchId: string, reason: DraftReason): Promise<Draft<Intent>[]>;
   drafts(diaryId: string): Promise<Draft<Intent>[]>;
+  /** The shared pages this device holds a copy of, for input left on a deleted one. */
+  pages(): Promise<string[]>;
   deleteDraft(draftId: string): Promise<void>;
   close(): void;
 };
@@ -457,6 +466,12 @@ export async function openJournal<Intent = unknown>(userId: string): Promise<Jou
         return drafts.sort((a, b) => a.localSequence - b.localSequence);
       }),
 
+    pages: () =>
+      run([BASELINES], 'readonly', async (tx) => {
+        const baselines = await request<Baseline[]>(tx.objectStore(BASELINES).getAll());
+        return baselines.filter((b) => b.page).map((b) => b.diaryId);
+      }),
+
     deleteDraft: (draftId) =>
       run([DRAFTS], 'readwrite', async (tx) => {
         tx.objectStore(DRAFTS).delete(draftId);
@@ -535,13 +550,22 @@ function draftOf<Intent>(
 }
 
 function baselineFrom(record: BaselineRecord): Baseline {
-  const { diaryId, generationId, epochId, seq, state, bindings } = record;
-  return { diaryId, generationId, ...(epochId ? { epochId } : {}), seq, state, bindings };
+  const { diaryId, generationId, epochId, periodId, seq, state, bindings } = record;
+  return {
+    diaryId,
+    generationId,
+    ...(epochId ? { epochId } : {}),
+    ...(periodId ? { periodId } : {}),
+    seq,
+    state,
+    bindings,
+  };
 }
 
 /** One generation and the same epoch (or none): the same context, where input merges (D7). */
+// A shared page's binding period counts too (shared-pages D4).
 const sameContext = (a: Baseline, b: Baseline) =>
-  a.generationId === b.generationId && a.epochId === b.epochId;
+  a.generationId === b.generationId && a.epochId === b.epochId && a.periodId === b.periodId;
 
 function unionBindings(a: ClientBinding[], b: ClientBinding[]): ClientBinding[] {
   const byClient = new Map(a.map((binding) => [binding.clientId, binding]));

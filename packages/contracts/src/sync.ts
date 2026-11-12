@@ -26,6 +26,7 @@ const Version = z.literal(PROTOCOL_VERSION);
 export const SubscribeMessage = z.strictObject({
   v: Version,
   type: z.literal('subscribe'),
+  /** Any document's ID: a diary's, or a shared page's (shared-pages D6). */
   diaryId: Uuid,
   generationId: Uuid,
   /**

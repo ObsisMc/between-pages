@@ -105,7 +105,7 @@ function Account({ name }: { name: string }) {
   );
 }
 
-const TOGETHER = /^\/(clocks|wishes|anniversaries)(\/|$)/;
+const TOGETHER = /^\/(clocks|wishes|anniversaries|shared-pages)(\/|$)/;
 const SETTINGS = /^\/(spaces|partner|backup)(\/|$)/;
 
 /** The site header, for a signed-in user only. */

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ApiError, callApi } from '../api/client.ts';
 import type { Anchor } from './anchor.ts';
 import {
@@ -41,7 +41,9 @@ export function useDayFeed(nearDates: () => readonly string[]) {
   const epoch = useRef(0);
   const refreshes = useRef(0);
 
-  useEffect(() => {
+  // In the commit itself: a focus or timer in the task that shows a page must see it loaded,
+  // or its refresh is dropped as if the page were still coming.
+  useLayoutEffect(() => {
     current.current = feedWindow;
     loadingRef.current = loading;
   });

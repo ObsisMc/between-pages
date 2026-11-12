@@ -41,7 +41,8 @@ describe('SiteHeader', () => {
       'GET /api/binding': () =>
         Response.json({ binding: { space: space(), periodId: SPACE }, invitation: null }),
       'GET /api/spaces': () => Response.json({ spaces: [space()] }),
-      'GET /api/space/unread': () => Response.json({ features: { wishes: 2, anniversaries: 0 } }),
+      'GET /api/space/unread': () =>
+        Response.json({ features: { wishes: 2, anniversaries: 0, sharedPages: 0 } }),
     });
     renderAt('/wishes');
     const bar = await nav();
@@ -52,6 +53,7 @@ describe('SiteHeader', () => {
       ['两地时间', '/clocks'],
       ['心愿与礼物', '/wishes'],
       ['纪念日', '/anniversaries'],
+      ['共享页面', '/shared-pages'],
     ]);
     const wishes = screen.getByRole('menuitem', { name: /心愿与礼物/ });
     expect(within(wishes).queryByLabelText('有新内容')).not.toBeNull();
@@ -65,12 +67,32 @@ describe('SiteHeader', () => {
     ]);
   });
 
+  it('marks 一起 current on a shared page', async () => {
+    stubApi({
+      ...noRelationship,
+      'GET /api/me': signedIn('alice'),
+      'GET /api/binding': () =>
+        Response.json({ binding: { space: space(), periodId: SPACE }, invitation: null }),
+      'GET /api/spaces': () => Response.json({ spaces: [space()] }),
+      'GET /api/space/unread': () =>
+        Response.json({ features: { wishes: 0, anniversaries: 0, sharedPages: 0 } }),
+    });
+    renderAt('/shared-pages');
+    const bar = await nav();
+    const together = await within(bar).findByRole('button', { name: /^一起/ });
+    expect(together.getAttribute('aria-current')).toBe('page');
+    expect(
+      within(bar).getByRole('button', { name: /^设置/ }).getAttribute('aria-current'),
+    ).toBeNull();
+  });
+
   it('[adr:book-frontend-workspace#7] keeps the read-only space and its records after unbinding, without the clocks', async () => {
     stubApi({
       ...noRelationship,
       'GET /api/me': signedIn('alice'),
       'GET /api/spaces': () => Response.json({ spaces: [space('archived')] }),
-      'GET /api/space/unread': () => Response.json({ features: { wishes: 0, anniversaries: 0 } }),
+      'GET /api/space/unread': () =>
+        Response.json({ features: { wishes: 0, anniversaries: 0, sharedPages: 0 } }),
     });
     renderAt('/');
     await waitFor(async () =>
@@ -79,6 +101,7 @@ describe('SiteHeader', () => {
     expect(await menu('一起')).toEqual([
       ['心愿与礼物', '/wishes'],
       ['纪念日', '/anniversaries'],
+      ['共享页面', '/shared-pages'],
     ]);
     fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
     expect(await menu('设置')).toEqual([

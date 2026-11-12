@@ -105,7 +105,8 @@ describe('AnniversariesPage', () => {
     stubApi({
       [LIST]: () => Response.json(view({ readOnly: true })),
       [`PUT /api/anniversaries/${ID}/reminder?timezone=${ZONE}`]: saved,
-      'GET /api/space/unread': () => Response.json({ features: { wishes: 0, anniversaries: 0 } }),
+      'GET /api/space/unread': () =>
+        Response.json({ features: { wishes: 0, anniversaries: 0, sharedPages: 0 } }),
     });
     renderAt('/anniversaries', routes);
     expect(await screen.findByText('已解绑，记录只读')).toBeDefined();
@@ -129,7 +130,8 @@ describe('AnniversariesPage', () => {
             })
           : Response.json({ error: { code: 'RECORD_EXISTS', message: 'x' } }, { status: 409 });
       },
-      'GET /api/space/unread': () => Response.json({ features: { wishes: 0, anniversaries: 0 } }),
+      'GET /api/space/unread': () =>
+        Response.json({ features: { wishes: 0, anniversaries: 0, sharedPages: 0 } }),
     });
     renderAt('/anniversaries', routes);
     fireEvent.click(await screen.findByRole('button', { name: '记下一天' }));

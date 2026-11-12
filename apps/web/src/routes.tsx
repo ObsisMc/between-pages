@@ -8,6 +8,7 @@ import { LoginPage } from './pages/LoginPage.tsx';
 import { PartnerPage } from './relationship/index.ts';
 import { SpacePage } from './space/index.ts';
 import { ClocksPage } from './two-clocks/index.ts';
+import { SharedPageScreen, SharedPagesPage } from './shared-pages/index.ts';
 import { WishesPage } from './wishes/index.ts';
 import { AnniversariesPage, AnniversaryPage } from './anniversaries/index.ts';
 import { SiteLayout } from './shell/index.ts';
@@ -94,6 +95,23 @@ const pages: RouteObject[] = [
     element: (
       <RequireAuth>
         <WishesPage />
+      </RequireAuth>
+    ),
+  },
+  // Pages the two write together (shared-pages ADR).
+  {
+    path: '/shared-pages',
+    element: (
+      <RequireAuth>
+        <SharedPagesPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/shared-pages/:pageId',
+    element: (
+      <RequireAuth>
+        <SharedPageScreen />
       </RequireAuth>
     ),
   },

@@ -47,6 +47,8 @@ export type ReadContext = Membership & {
   caller: string;
   tx: Tx;
   readOnly: boolean;
+  /** The open binding period this snapshot saw; null exactly when `readOnly`. */
+  periodId: string | null;
   unseen(refs: readonly RecordRef[]): Promise<Map<string, Unseen>>;
   /** Deleted records of these types the viewer had acted on (D6). */
   deletionNotes(types: readonly string[]): Promise<DeletionNote[]>;
@@ -139,9 +141,11 @@ export function createSpaceRecords(store: SpaceRecordStore) {
       return store.read(async (q) => {
         const base = await context(q, caller);
         if (!base) return 'NOT_FOUND' as const;
+        const periodId = await q.openPeriod(base.spaceId);
         return fn({
           ...base,
-          readOnly: !(await q.hasOpenPeriod(base.spaceId)),
+          readOnly: periodId === null,
+          periodId,
           unseen: (refs) => unseenOf(q, caller, base.spaceId, refs),
           async deletionNotes(types) {
             const deleted = await q.deletionsByOthers(caller, base.spaceId, types);
