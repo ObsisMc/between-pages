@@ -24,8 +24,8 @@ async function commitText(diaryId: string, clientID: number, text: string) {
   return store.withDocumentLock(diaryId, (locked) =>
     locked.insertCommit({
       batchId: randomUUID(),
-      authorId: locked.diary.ownerId,
-      generationId: locked.diary.generationId,
+      authorId: locked.document.ownerId!,
+      generationId: locked.document.generationId,
       epochId: null,
       batchDigest: new Uint8Array(32),
       digestAlgorithm: 1,

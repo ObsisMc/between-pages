@@ -25,6 +25,7 @@ import {
   AnniversaryKind,
   GiftActionKind,
   GiftOccasion,
+  SharedPageActionKind,
   SpaceRecordType,
   WishActionKind,
   type DateSelection,
@@ -659,6 +660,7 @@ const ACTION_KINDS: Record<string, readonly string[]> = {
   wish: WishActionKind.options,
   gift: GiftActionKind.options,
   anniversary: AnniversaryActionKind.options,
+  shared_page: SharedPageActionKind.options,
 };
 const recordSeq = () =>
   int8('seq')
@@ -767,6 +769,27 @@ const previewColumns = () => ({
   previewImage: text('preview_image'),
   previewReadAt: timestamp('preview_read_at', { withTimezone: true }),
 });
+
+// A page two people write together (shared-pages D1), on its own document. `title_*` is the
+// current state of the "renamed" action (D3); `revision` counts renames, not text.
+export const sharedPages = pgTable(
+  'shared_pages',
+  {
+    ...spaceRecordColumns(),
+    id: uuid('id')
+      .primaryKey()
+      .references(() => documents.id),
+    title: text('title').notNull().default(''),
+    titleBy: uuid('title_by'),
+    titleAt: timestamp('title_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('shared_pages_space').on(t.spaceId),
+    check('shared_pages_deletion', deletionCheck(t)),
+    check('shared_pages_title', sql`char_length(${t.title}) <= 60`),
+    check('shared_pages_title_stamp', sql`num_nulls(${t.titleBy}, ${t.titleAt}) in (0, 2)`),
+  ],
+);
 
 // Wishes (wishes-and-gifts D1). `received_*` is the current state of the wisher's "收到了"
 // (D4): the wish has then left the list for the gift wall.

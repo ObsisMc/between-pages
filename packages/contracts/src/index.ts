@@ -152,6 +152,17 @@ export {
   WishesResponse,
 } from './wishes.ts';
 export {
+  CreateSharedPageRequest,
+  RenameSharedPageRequest,
+  SharedPage,
+  SharedPageActionKind,
+  SharedPageNote,
+  SharedPageParams,
+  SharedPageResponse,
+  SharedPageStateResponse,
+  SharedPagesResponse,
+} from './shared-pages.ts';
+export {
   AnniversariesQuery,
   AnniversariesResponse,
   Anniversary,

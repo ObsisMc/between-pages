@@ -15,6 +15,7 @@ import type { DiaryService } from '../diaries/diaries.ts';
 import type { CommittedEvent, DiaryEvent, Events } from '../events/events.ts';
 import { VersionUnreadable } from '../errors.ts';
 import type { Reader, Subscription } from '../reader/reader.ts';
+import type { SharedPageService } from '../shared-pages/shared-pages.ts';
 
 /** Fallback session check per connection (kernel D10), for sessions that end without an event (expiry, another instance). */
 export const SESSION_RECHECK_MS = 60_000;
@@ -30,6 +31,7 @@ type Deps = {
   publicOrigin: string;
   currentUser: CurrentUser;
   diaries: DiaryService;
+  sharedPages: SharedPageService;
   reader: Reader;
   commit: CommitService;
   events: Events;
@@ -218,10 +220,14 @@ function serve(socket: WebSocket, request: FastifyRequest, deps: Deps) {
         sendEvent(event);
       }),
     );
-    const result =
+    const own =
       epochId === undefined
         ? await deps.diaries.catchUp(user.id, diaryId, generationId, knownSeq)
         : await deps.reader.catchUp(user.id, diaryId, generationId, epochId, knownSeq);
+    const result =
+      own === 'NOT_FOUND' && epochId === undefined
+        ? await deps.sharedPages.catchUp(user.id, diaryId, generationId, knownSeq)
+        : own;
     if (result === 'NOT_FOUND' || result === 'STALE_CONTEXT') {
       subscriptions.get(diaryId)?.();
       subscriptions.delete(diaryId);
@@ -229,6 +235,7 @@ function serve(socket: WebSocket, request: FastifyRequest, deps: Deps) {
         diaryId,
       });
     }
+    // Both people of a shared page follow it as an owner does (shared-pages D7).
     sub.owner = epochId === undefined;
     send({
       v: PROTOCOL_VERSION,

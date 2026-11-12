@@ -7,6 +7,7 @@ import {
   gt,
   inArray,
   isNotNull,
+  isNull,
   lt,
   lte,
   ne,
@@ -22,6 +23,7 @@ import { coverage, coverageIn, type ClockRange } from './reading.ts';
 import { VersionUnreadable } from '../errors.ts';
 import {
   backupOutbox,
+  bindingPeriods,
   diaries,
   documents,
   diaryCharacterRanges,
@@ -30,6 +32,10 @@ import {
   diaryGenerations,
   diaryOperations,
   diarySnapshots,
+  sharedPages,
+  spaceActions,
+  spaceReads,
+  spaces,
   users,
 } from '../db/schema.ts';
 
@@ -366,6 +372,16 @@ export class DiaryQueries {
     return rows.map((row) => row.operationId);
   }
 
+  /** The two people of a shared page's space, deleted or not; null for any other document. */
+  async pageParticipants(documentId: string): Promise<[string, string] | null> {
+    const [row] = await this.tx
+      .select({ low: spaces.userLow, high: spaces.userHigh })
+      .from(sharedPages)
+      .innerJoin(spaces, eq(spaces.id, sharedPages.spaceId))
+      .where(eq(sharedPages.id, documentId));
+    return row ? [row.low, row.high] : null;
+  }
+
   /** The diaries of `ids` that exist, by ID. */
   async findDiaries(ids: readonly string[]): Promise<Map<string, DiaryRow>> {
     const rows = await this.tx
@@ -525,12 +541,30 @@ export class DiaryQueries {
   }
 }
 
-/** Reads and writes while holding the diary row lock; the only way to change a diary's commits. */
-export class LockedDiary extends DiaryQueries {
-  readonly diary: DiaryRow;
-  constructor(tx: Tx, diary: DiaryRow) {
+/** A shared page as its commit sees it, read under the locks (shared-pages D7). */
+export type LockedPage = {
+  spaceId: string;
+  participants: [string, string];
+  /** The space has an open period, held FOR SHARE until commit. */
+  open: boolean;
+  deleted: boolean;
+};
+
+/** The locked document; `ownerId` is null and `page` set for a shared page. */
+export type DocumentRow = {
+  id: string;
+  ownerId: string | null;
+  generationId: string;
+  version: number;
+  page: LockedPage | null;
+};
+
+/** Reads and writes while holding the document lock; the only way to change a document's commits. */
+export class LockedDocument extends DiaryQueries {
+  readonly document: DocumentRow;
+  constructor(tx: Tx, document: DocumentRow) {
     super(tx);
-    this.diary = diary;
+    this.document = document;
   }
 
   /**
@@ -540,8 +574,8 @@ export class LockedDiary extends DiaryQueries {
    * this transaction (invariants 6, 8).
    */
   async insertCommit(commit: NewCommit): Promise<{ version: number; receipt: Receipt }> {
-    const { id: diaryId } = this.diary;
-    const version = this.diary.version + 1;
+    const { id: diaryId } = this.document;
+    const version = this.document.version + 1;
     const seq = (await this.seq(diaryId, commit.generationId)) + 1;
     const [row] = await this.tx
       .insert(diaryCommits)
@@ -609,13 +643,61 @@ export class LockedDiary extends DiaryQueries {
     };
   }
 
+  /**
+   * After a commit of a shared page: raises the page's update time and, when the partner
+   * has seen the writer's last "wrote" or there is none, appends a new one, so a page's
+   * history grows by one row per round of unread however much is written (shared-pages D5).
+   */
+  async notePageWritten(page: LockedPage, writer: string, batchId: string, digest: Uint8Array) {
+    const { id } = this.document;
+    await this.tx.update(sharedPages).set({ updatedAt: new Date() }).where(eq(sharedPages.id, id));
+    const partner = page.participants.find((p) => p !== writer)!;
+    const [last] = await this.tx
+      .select({ seq: spaceActions.seq })
+      .from(spaceActions)
+      .where(
+        and(
+          eq(spaceActions.recordType, 'shared_page'),
+          eq(spaceActions.recordId, id),
+          eq(spaceActions.actorId, writer),
+          eq(spaceActions.kind, 'wrote'),
+        ),
+      )
+      .orderBy(desc(spaceActions.seq))
+      .limit(1);
+    if (last) {
+      const [seen] = await this.tx
+        .select({ seq: spaceReads.seq })
+        .from(spaceReads)
+        .where(
+          and(
+            eq(spaceReads.userId, partner),
+            eq(spaceReads.recordType, 'shared_page'),
+            eq(spaceReads.recordId, id),
+          ),
+        );
+      if (!seen || seen.seq < last.seq) return;
+    }
+    await this.tx.insert(spaceActions).values({
+      spaceId: page.spaceId,
+      recordType: 'shared_page',
+      recordId: id,
+      kind: 'wrote',
+      actorId: writer,
+      requestId: batchId,
+      requestDigest: Buffer.from(digest).toString('base64url'),
+    });
+  }
+
   /** The owner's personal task, and the space task while an epoch is live (kernel D16). */
   async insertBackupTasks(version: number, live: { spaceId: string; epochId: string } | null) {
     await this.tx
       .insert(backupOutbox)
       .values([
-        { diaryId: this.diary.id, version, target: 'personal' as const },
-        ...(live ? [{ diaryId: this.diary.id, version, target: 'space' as const, ...live }] : []),
+        { diaryId: this.document.id, version, target: 'personal' as const },
+        ...(live
+          ? [{ diaryId: this.document.id, version, target: 'space' as const, ...live }]
+          : []),
       ]);
   }
 }
@@ -636,19 +718,57 @@ export function createStore(db: Db) {
      * that lock those first. Waiting longer than COMMIT_LOCK_TIMEOUT throws. `null` when
      * the diary does not exist. A throw rolls everything back.
      */
+    /**
+     * Runs `work` holding the document's row lock. For a shared page the open period comes
+     * first, FOR SHARE: the one lock order of shared-pages D7, also unbinding's, because a
+     * waiting unbind queues a later FOR SHARE behind it and the reverse order could deadlock.
+     */
     withDocumentLock<T>(
-      diaryId: string,
-      work: (locked: LockedDiary) => Promise<T>,
+      documentId: string,
+      work: (locked: LockedDocument) => Promise<T>,
     ): Promise<T | null> {
       return db.transaction(async (tx) => {
         await tx.execute(sql.raw(`set local lock_timeout = '${COMMIT_LOCK_TIMEOUT}'`));
-        const [diary] = await tx
-          .select(diaryColumns)
-          .from(diaries)
-          .innerJoin(documents, ofDiary)
-          .where(eq(diaries.id, diaryId))
+        const [space] = await tx
+          .select({ id: sharedPages.spaceId, low: spaces.userLow, high: spaces.userHigh })
+          .from(sharedPages)
+          .innerJoin(spaces, eq(spaces.id, sharedPages.spaceId))
+          .where(eq(sharedPages.id, documentId));
+        const [period] = space
+          ? await tx
+              .select({ id: bindingPeriods.id })
+              .from(bindingPeriods)
+              .where(and(eq(bindingPeriods.spaceId, space.id), isNull(bindingPeriods.endedAt)))
+              .for('share')
+          : [];
+        const [document] = await tx
+          .select({
+            id: documents.id,
+            ownerId: diaries.ownerId,
+            generationId: documents.generationId,
+            version: documents.version,
+          })
+          .from(documents)
+          .leftJoin(diaries, ofDiary)
+          .where(eq(documents.id, documentId))
           .for('update', { of: documents });
-        return diary ? work(new LockedDiary(tx, diary)) : null;
+        if (!document) return null;
+        // Its own statement, so it sees a deletion this lock waited for.
+        const [state] = space
+          ? await tx
+              .select({ deletedAt: sharedPages.deletedAt })
+              .from(sharedPages)
+              .where(eq(sharedPages.id, documentId))
+          : [];
+        const page: LockedPage | null = space
+          ? {
+              spaceId: space.id,
+              participants: [space.low, space.high],
+              open: period !== undefined,
+              deleted: state!.deletedAt !== null,
+            }
+          : null;
+        return work(new LockedDocument(tx, { ...document, page }));
       });
     },
 

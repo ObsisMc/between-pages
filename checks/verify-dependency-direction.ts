@@ -69,8 +69,9 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'space-records',
         'wishes',
         'anniversaries',
+        'shared-pages',
       ],
-      ws: ['auth', 'errors', 'commit', 'diaries', 'reader', 'events'],
+      ws: ['auth', 'errors', 'commit', 'diaries', 'reader', 'events', 'shared-pages'],
       // server-backup-and-google-docs: `google` calls Google and seals or opens tokens, knowing
       // no database; `backup` is the Drive connection and what each day's Doc holds, reading
       // text only through `reader` and history points through `history`; `worker` is the
@@ -98,6 +99,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       'space-records': ['store'],
       wishes: ['space-records', 'store'],
       anniversaries: ['space-records', 'store'],
+      'shared-pages': ['space-records', 'store'],
       'link-preview': [],
       store: ['db', 'errors'],
     },
