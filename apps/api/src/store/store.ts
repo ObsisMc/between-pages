@@ -23,6 +23,7 @@ import { VersionUnreadable } from '../errors.ts';
 import {
   backupOutbox,
   diaries,
+  documents,
   diaryCharacterRanges,
   diaryClientBindings,
   diaryCommits,
@@ -102,9 +103,10 @@ const diaryColumns = {
   id: diaries.id,
   ownerId: diaries.ownerId,
   diaryDate: diaries.diaryDate,
-  generationId: diaries.generationId,
-  version: diaries.version,
+  generationId: documents.generationId,
+  version: documents.version,
 };
+const ofDiary = eq(documents.id, diaries.id);
 
 const receiptColumns = {
   version: diaryCommits.version,
@@ -118,7 +120,7 @@ const receiptColumns = {
   committedAt: diaryCommits.committedAt,
 };
 
-/** Reads inside one transaction: one snapshot when run by `read`, the lock holder's view in `withDiaryLock`. */
+/** Reads inside one transaction: one snapshot when run by `read`, the lock holder's view in `withDocumentLock`. */
 export class DiaryQueries {
   protected readonly tx: Tx;
   constructor(tx: Tx) {
@@ -131,7 +133,11 @@ export class DiaryQueries {
   }
 
   async findDiary(diaryId: string): Promise<DiaryRow | null> {
-    const [row] = await this.tx.select(diaryColumns).from(diaries).where(eq(diaries.id, diaryId));
+    const [row] = await this.tx
+      .select(diaryColumns)
+      .from(diaries)
+      .innerJoin(documents, ofDiary)
+      .where(eq(diaries.id, diaryId));
     return row ?? null;
   }
 
@@ -174,6 +180,7 @@ export class DiaryQueries {
         ),
       })
       .from(diaries)
+      .innerJoin(documents, ofDiary)
       .where(and(eq(diaries.ownerId, ownerId), dated))
       .orderBy(order)
       .limit(limit);
@@ -364,6 +371,7 @@ export class DiaryQueries {
     const rows = await this.tx
       .select(diaryColumns)
       .from(diaries)
+      .innerJoin(documents, ofDiary)
       .where(inArray(diaries.id, [...ids]));
     return new Map(rows.map((row) => [row.id, row]));
   }
@@ -552,7 +560,7 @@ export class LockedDiary extends DiaryQueries {
         epochId: commit.epochId,
       })
       .returning({ publicId: diaryCommits.publicId, committedAt: diaryCommits.committedAt });
-    await this.tx.update(diaries).set({ version }).where(eq(diaries.id, diaryId));
+    await this.tx.update(documents).set({ version }).where(eq(documents.id, diaryId));
     await this.tx.insert(diaryOperations).values(
       commit.operations.map((op, batchIndex) => ({
         authorId: commit.authorId,
@@ -628,7 +636,7 @@ export function createStore(db: Db) {
      * that lock those first. Waiting longer than COMMIT_LOCK_TIMEOUT throws. `null` when
      * the diary does not exist. A throw rolls everything back.
      */
-    withDiaryLock<T>(
+    withDocumentLock<T>(
       diaryId: string,
       work: (locked: LockedDiary) => Promise<T>,
     ): Promise<T | null> {
@@ -637,8 +645,9 @@ export function createStore(db: Db) {
         const [diary] = await tx
           .select(diaryColumns)
           .from(diaries)
+          .innerJoin(documents, ofDiary)
           .where(eq(diaries.id, diaryId))
-          .for('update');
+          .for('update', { of: documents });
         return diary ? work(new LockedDiary(tx, diary)) : null;
       });
     },
@@ -667,6 +676,7 @@ export function createStore(db: Db) {
           .for('key share');
         const diaryId = randomUUID();
         const generationId = randomUUID();
+        await tx.insert(documents).values({ id: diaryId, generationId });
         const inserted = await tx
           .insert(diaries)
           .values({
@@ -674,7 +684,6 @@ export function createStore(db: Db) {
             ownerId: input.ownerId,
             diaryDate: input.diaryDate,
             createdTimezone: input.timezone,
-            generationId,
           })
           .onConflictDoNothing({ target: [diaries.ownerId, diaries.diaryDate] })
           .returning({ id: diaries.id });
@@ -706,6 +715,7 @@ export function createStore(db: Db) {
             );
           return { created: true, diaryId };
         }
+        await tx.delete(documents).where(eq(documents.id, diaryId));
         const [existing] = await tx
           .select({ id: diaries.id })
           .from(diaries)

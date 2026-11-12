@@ -35,6 +35,51 @@ describe.runIf(testDatabaseUrl)('database schema', () => {
     await expect(runMigrations(testDatabaseUrl!)).resolves.toBeUndefined();
   });
 
+  it('moves every diary onto its document without changing its commit chain', async () => {
+    const scratch = await scratchDatabase();
+    const database = createDb(scratch.url);
+    try {
+      await migrate(database.db, { migrationsFolder: migrationsUpTo('0010_mascot_pokes') });
+      const [userId, diaryId, generationId] = [randomUUID(), randomUUID(), randomUUID()];
+      await database.pool.query(`insert into users (id, display_name) values ($1, 'writer')`, [
+        userId,
+      ]);
+      await database.pool.query(
+        `insert into diaries (id, owner_id, diary_date, created_timezone, version, generation_id, created_at)
+         values ($1, $2, '2026-10-26', 'Asia/Shanghai', 7, $3, '2026-10-26T01:00:00Z')`,
+        [diaryId, userId, generationId],
+      );
+      await database.pool.query(
+        `insert into diary_generations (id, diary_id, source_version, baseline, baseline_sha256)
+         values ($1, $2, 0, '\\x00', '\\x00')`,
+        [generationId, diaryId],
+      );
+
+      await runMigrations(scratch.url);
+
+      const moved = await database.pool.query(
+        `select c.version, c.generation_id, c.created_at = d.created_at as same_time, g.id as generation
+         from diaries d
+         join documents c on c.id = d.id
+         join diary_generations g on g.diary_id = c.id`,
+      );
+      expect(moved.rows).toEqual([
+        { version: '7', generation_id: generationId, same_time: true, generation: generationId },
+      ]);
+      // A diary cannot exist without its document (shared-pages D6).
+      await expect(
+        database.pool.query(
+          `insert into diaries (id, owner_id, diary_date, created_timezone)
+           values ($1, $2, '2026-10-27', 'Asia/Shanghai')`,
+          [randomUUID(), userId],
+        ),
+      ).rejects.toThrow(/diaries_id_documents_id_fk/);
+    } finally {
+      await database.close();
+      await scratch.drop();
+    }
+  });
+
   it('adds the relationship tables to a database that already has users and diaries', async () => {
     const scratch = await scratchDatabase();
     const older = migrationsUpTo('0002_personal_diaries');

@@ -92,7 +92,7 @@ export function createCommitService(store: Store) {
       let accepted: ActiveState | undefined;
 
       const outcome = await store
-        .withDiaryLock(batch.diaryId, async (locked): Promise<CommitOutcome> => {
+        .withDocumentLock(batch.diaryId, async (locked): Promise<CommitOutcome> => {
           const { diary } = locked;
           const isOwner = diary.ownerId === actor;
           // Someone the diary was never shared with sees it as missing (D10). A former

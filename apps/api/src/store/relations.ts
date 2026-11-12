@@ -7,6 +7,7 @@ import {
   bindingInvitations,
   bindingPeriods,
   diaries,
+  documents,
   sharingPolicies,
   sharingPolicyChanges,
   spaces,
@@ -245,13 +246,14 @@ export class LockedRelations extends RelationQueries {
             id: diaries.id,
             ownerId: diaries.ownerId,
             diaryDate: diaries.diaryDate,
-            generationId: diaries.generationId,
-            version: diaries.version,
+            generationId: documents.generationId,
+            version: documents.version,
           })
           .from(diaries)
+          .innerJoin(documents, eq(documents.id, diaries.id))
           .where(inArray(diaries.id, [...diaryIds]))
           .orderBy(asc(diaries.id))
-          .for('update')
+          .for('update', { of: documents })
       : [];
     return { rows, queries: new DiaryQueries(this.tx), boundaries: new LockedBoundaries(this.tx) };
   }

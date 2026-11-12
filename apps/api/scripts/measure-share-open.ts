@@ -47,9 +47,10 @@ async function user(name: string) {
 
 async function write(owner: string, diaryId: string, doc: Y.Doc, change: (t: Y.Text) => void) {
   const generationId = (
-    await database.pool.query<{ g: string }>('select generation_id g from diaries where id = $1', [
-      diaryId,
-    ])
+    await database.pool.query<{ g: string }>(
+      'select generation_id g from documents where id = $1',
+      [diaryId],
+    )
   ).rows[0]!.g;
   let update: Uint8Array | undefined;
   doc.once('update', (u: Uint8Array) => (update = u));
