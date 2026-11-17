@@ -6,6 +6,7 @@ COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 COPY packages/collab/package.json packages/collab/
 COPY packages/contracts/package.json packages/contracts/
+COPY packages/time/package.json packages/time/
 RUN npm ci --ignore-scripts
 COPY apps/web apps/web
 COPY packages packages

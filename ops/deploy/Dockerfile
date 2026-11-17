@@ -9,6 +9,7 @@ COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 COPY packages/collab/package.json packages/collab/
 COPY packages/contracts/package.json packages/contracts/
+COPY packages/time/package.json packages/time/
 RUN npm ci --omit=dev --ignore-scripts
 COPY apps/api apps/api
 COPY packages packages

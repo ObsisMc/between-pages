@@ -8,14 +8,8 @@ import { BackupBanner } from '../backup/index.ts';
 import { pendingInvite } from '../join/index.ts';
 import { PartnerCard, useBinding, useSpaces } from '../relationship/index.ts';
 import { usePokes, receivedText } from '../pokes/index.ts';
-import {
-  asleepAt,
-  browserZone,
-  dayPeriod,
-  HomeClocks,
-  useClocks,
-  useNow,
-} from '../two-clocks/index.ts';
+import { asleepAt } from '@between-pages/time';
+import { browserZone, dayPeriod, HomeClocks, useClocks, useNow } from '../two-clocks/index.ts';
 import { Button } from '../ui/index.ts';
 import { PairedWindows } from '../windows/index.ts';
 import { RecentDays, type HomePerson } from './RecentDays.tsx';

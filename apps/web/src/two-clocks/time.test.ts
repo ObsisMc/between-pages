@@ -1,13 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-  asleepAt,
-  awakeTogether,
-  clockText,
-  dayPeriod,
-  localDay,
-  localToInstant,
-  regionName,
-} from './time.ts';
+import { asleepAt, localToInstant } from '@between-pages/time';
+import { awakeTogether, clockText, dayPeriod, localDay, regionName } from './time.ts';
 
 const HOUR = 3_600_000;
 const utc = (...fields: [number, number, number, number, number?]) =>

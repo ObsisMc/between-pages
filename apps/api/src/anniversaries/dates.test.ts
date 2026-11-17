@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { dateIn, dayCount, inYear, isoDate, nextOccurrence, startOf, years } from './dates.ts';
+import { dateIn, isoDate, startOf } from '@between-pages/time';
+import { dayCount, inYear, nextOccurrence, years } from './dates.ts';
 
 // Calendar math of anniversaries (anniversaries D1–D3, partner-local-dates D1, D3).
 

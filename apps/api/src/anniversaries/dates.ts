@@ -1,8 +1,8 @@
-// Calendar math of anniversaries (anniversaries D1–D3), counted in one basis zone
-// (partner-local-dates D1). Dates are compared as calendar days; only the start of a day is
-// an instant, found through Intl so daylight-saving days come out right.
+// Calendar rules of anniversaries (anniversaries D1–D3), counted in one basis zone
+// (partner-local-dates D1); the zone and day math itself is `@between-pages/time`.
 
-export type LocalDate = { year: number; month: number; day: number };
+import { addDays, daysBetween, type LocalDate } from '@between-pages/time';
+
 export type Repeating = {
   year: number | null;
   month: number;
@@ -15,63 +15,6 @@ export type Occurrence = {
   years: number | null;
   count: number | null;
 };
-
-const DAY = 86_400_000;
-const formatters = new Map<string, Intl.DateTimeFormat>();
-const partsFormat = (zone: string) => {
-  let format = formatters.get(zone);
-  if (!format) {
-    format = new Intl.DateTimeFormat('en-US', {
-      timeZone: zone,
-      hourCycle: 'h23',
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: 'numeric',
-      second: 'numeric',
-    });
-    formatters.set(zone, format);
-  }
-  return format;
-};
-const wallOf = (instant: number, zone: string) =>
-  Object.fromEntries(
-    partsFormat(zone)
-      .formatToParts(instant)
-      .map((part) => [part.type, Number(part.value)]),
-  ) as Record<'year' | 'month' | 'day' | 'hour' | 'minute' | 'second', number>;
-const offsetAt = (instant: number, zone: string) => {
-  const p = wallOf(instant, zone);
-  return (
-    Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) -
-    Math.floor(instant / 1000) * 1000
-  );
-};
-
-/** The calendar date at `instant` in `zone`. */
-export function dateIn(instant: number, zone: string): LocalDate {
-  const p = wallOf(instant, zone);
-  return { year: p.year, month: p.month, day: p.day };
-}
-
-/** The first instant of `date` in `zone`; after the gap when midnight is skipped. */
-export function startOf(date: LocalDate, zone: string): number {
-  const wall = Date.UTC(date.year, date.month - 1, date.day);
-  const first = wall - offsetAt(wall, zone);
-  const second = wall - offsetAt(first, zone);
-  return offsetAt(second, zone) === offsetAt(first, zone) ? second : Math.max(first, second);
-}
-
-const serial = (d: LocalDate) => Date.UTC(d.year, d.month - 1, d.day) / DAY;
-const fromSerial = (n: number): LocalDate => {
-  const at = new Date(n * DAY);
-  return { year: at.getUTCFullYear(), month: at.getUTCMonth() + 1, day: at.getUTCDate() };
-};
-export const addDays = (d: LocalDate, days: number) => fromSerial(serial(d) + days);
-export const daysBetween = (from: LocalDate, to: LocalDate) => serial(to) - serial(from);
-export const isoDate = (d: LocalDate) =>
-  `${d.year}-${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`;
 
 const isLeap = (year: number) => (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 

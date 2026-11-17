@@ -8,9 +8,10 @@ import { read, repoFiles, report } from './lib.ts';
 
 /** Workspaces, the other workspaces each may import, and for packages the only externals. */
 const WORKSPACES: { dir: string; imports: string[]; externals?: string[] }[] = [
-  { dir: 'apps/api', imports: ['packages/contracts', 'packages/collab'] },
-  { dir: 'apps/web', imports: ['packages/contracts', 'packages/collab'] },
+  { dir: 'apps/api', imports: ['packages/contracts', 'packages/collab', 'packages/time'] },
+  { dir: 'apps/web', imports: ['packages/contracts', 'packages/collab', 'packages/time'] },
   { dir: 'packages/collab', imports: [], externals: ['yjs'] },
+  { dir: 'packages/time', imports: [], externals: [] },
   { dir: 'packages/contracts', imports: [], externals: ['zod'] },
 ];
 const TEST_EXTERNALS = ['vitest'];

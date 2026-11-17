@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 
 import { flushSync } from 'react-dom';
 import { PenLine } from 'lucide-react';
 import type { Day, ResponseOf } from '@between-pages/contracts';
+import { isoDateIn } from '@between-pages/time';
 import { ApiError, callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
 import { Avatar } from '../avatar/index.ts';
@@ -38,8 +39,7 @@ function storeSwap(swapped: boolean) {
 /** The device's IANA zone decides which date "today" is (spec §4); the server checks it. */
 export const timezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 /** Today's date in the device's zone, as the server would decide it. */
-export const todayHere = () =>
-  new Intl.DateTimeFormat('en-CA', { timeZone: timezone() }).format(new Date());
+export const todayHere = () => isoDateIn(Date.now(), timezone());
 
 // A diary date is a calendar day, not an instant: shown as written, in no time zone.
 const dateText = new Intl.DateTimeFormat(undefined, {
