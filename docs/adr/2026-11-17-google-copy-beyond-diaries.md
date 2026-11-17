@@ -90,9 +90,9 @@ Between Pages/
 
 ```
 旅行清单                                         ← 标题 1：页面标题
+（已解绑，内容不再更新）                          ← 仅解绑后，紧跟标题，D7；四种 Doc 都一样
 ■ Ray   ■ TA                                     ← 图例，作者颜色与应用一致
 （正文，每个字用作者的颜色）
-（已解绑，内容不再更新）                          ← 仅解绑后，D7
 
 心愿单                                           ← Wishes
 Ray 的心愿                                        ← 标题 2，本人在上
@@ -144,7 +144,7 @@ TA 的心愿                                         ← 标题 2
 | 页面在应用里被删除（谁删的都一样） | Doc 内容不动，改名为"<标题>（已在应用中删除）"，不再更新；之后它在 Drive 里被删也不重建 |
 | 心愿、礼物、卡片、纪念日被删除 | 从汇总 Doc 里消失；版本历史里还能找到 |
 | 心愿"收到了" | 从心愿单移到礼物墙 |
-| 解绑 | 所有 `Together` 下的 Doc 保留，开头注明"（已解绑，内容不再更新）"；空间记录本来就只读，此后不再变化 |
+| 解绑 | 所有 `Together` 下的 Doc 保留，标题下面注明"（已解绑，内容不再更新）"；空间记录本来就只读，此后不再变化 |
 | 原来的两人重新绑定 | 去掉这行说明，继续更新 |
 | 断开 Google 连接 | 与日记相同：不删除任何文件；重新连接后续传 |
 
@@ -152,11 +152,11 @@ TA 的心愿                                         ← 标题 2
 
 ### D8：备份页按类显示进度，共享页面显示备份状态
 
-- **备份页**：进度从"全部日记已备份到 9:22 的版本"改为按类列出：日记、共享页面、心愿单、礼物墙、纪念日，每类显示"已备份到 9:22"或"还有 N 项等待"。问题记录写出是哪一页或哪份汇总（"共享页面「旅行清单」的 Doc 被改过，已另存一份新的"），页面名称在显示时按页面 ID 取当前标题。
+- **备份页**：进度从"全部日记已备份到 9:22 的版本"改为按类列出：日记、共享页面、心愿单、礼物墙、纪念日，每类显示"已备份到 9:22"或"还有 N 项等待"。问题记录写出是哪一页或哪份汇总（"共享页面「旅行清单」的 Doc 被改过，已另存一份新的"），页面名称在显示时按页面 ID 取当前标题；页面已删除、读不到时，用这份 Doc 上次写入时记下的标题。
 - **共享页面**：在页面上与日记一样显示"已备份到 Google 9:22"与"在 Google Docs 打开"，失败时说明原因；未连接时显示"未开启 Google 备份"。
 - **心愿、礼物墙、纪念日页**：不加状态，只在备份页看。
-- **首页横条与邮件**：规则不变（需要重新连接、空间已满、连续失败满一天），这些 Doc 的失败与日记的一样计入。
-- **说明**：备份页的 Google 副本部分写明"共享页面、心愿、礼物墙与纪念日会进你们两人各自的 Drive（各自连接后）；在应用里删除，不会从对方 Drive 的版本历史里消失"。心愿、纪念日、共享页面与已揭晓礼物的删除确认框各加一行"已经备份到对方 Google Drive 的内容不会因此删除"。不加"不进对方 Drive"的开关。
+- **首页横条与邮件**：规则不变（需要重新连接、空间已满、连续失败满一天），这些 Doc 的失败与日记的一样计入：首页横条与邮件提醒（email-reminders D7）共用的 `BackupAttention` 同时读日记待写与 `google_item_work`，任一项空间已满或连续失败满一天都算。
+- **说明**：备份页的 Google 副本部分写明"共享页面、心愿、礼物墙与纪念日会进你们两人各自的 Drive（各自连接后）；在应用里删除，不会从对方 Drive 的版本历史里消失"。心愿、纪念日、共享页面、已揭晓的礼物和已揭晓礼物的卡片，删除确认框各加一行"已经备份到对方 Google Drive 的内容不会因此删除"；准备中的礼物和卡片只在自己的 Drive 里，删除时不加。不加"不进对方 Drive"的开关。
 - 备份状态只对本人可见：对方的任何接口都不反映你是否连接、何时备份、有几项等待（server-backup-and-google-docs D9）。
 
 原因：依据 1、2（Ray 于 2026-11-17 确认）。共享页面像日记一样会长时间写，值得在页面上看到是否已备份；三份汇总是条目，按类的总览就够了。日记只在主人选了共享日期后才进对方 Drive，而这些内容一写下就会进两人的 Drive，删除也收不回（Google Docs 的版本历史归对方所有，应用不删 Drive 文件），所以要在用户删除和查看备份时说清楚。
@@ -169,7 +169,7 @@ TA 的心愿                                         ← 标题 2
 
 提示不说"TA"：能看到这句提示的人本来就登录着那个 Google 账号，所以只告诉他"有另一位用户"，不透露对方是否连接（D8，server-backup-and-google-docs 不变量 14）。
 
-实现：`google_connections` 的 Google 账号 ID 加唯一约束，"撤销中"的连接也占用这个账号，直到撤销完成、行被删除；`POST /api/backup/google/finish` 遇到冲突时返回新错误码 `GOOGLE_ACCOUNT_IN_USE`，只丢弃刚拿到的令牌，不保存、不撤销：同一个 Google 账号对同一个 OAuth 客户端的授权是一份，撤销会连带断掉已连接那位用户的授权。迁移前若已有重复连接，按连接时间保留最早的一条，其余整行删除（相当于未连接，同样不向 Google 撤销；令牌列不能为空，所以不留"需要重新连接"的空壳），并各记一条备份记录；这些人 Drive 里已写的 Doc 不动，换自己的账号重新连接即可。
+实现：`google_connections` 的 Google 账号 ID 加唯一约束，"撤销中"的连接也占用这个账号，直到撤销完成、行被删除；`POST /api/backup/google/finish` 遇到冲突时返回新错误码 `GOOGLE_ACCOUNT_IN_USE`，只丢弃刚拿到的令牌，不保存、不撤销：同一个 Google 账号对同一个 OAuth 客户端的授权是一份，撤销会连带断掉已连接那位用户的授权。迁移前若已有重复连接，按连接时间保留最早的一条，其余整行删除（相当于未连接，同样不向 Google 撤销；令牌列不能为空，所以不留"需要重新连接"的空壳），并各记一条备份记录。应用不删 Drive 文件，所以被删掉连接的那个人以前写进那个共用 Drive 的 Doc（可能含他没共享的日记）仍在那里；这条备份记录写明"之前写进 <Google 邮箱> 的副本仍在那个 Drive 里，需要的话请自己删除"，他换自己的账号重新连接即可。
 
 原因：依据 2、3。
 
@@ -182,9 +182,9 @@ TA 的心愿                                         ← 标题 2
 | `space-records` 共用服务 | 每次新建、修改、删除或动作 | 空间、记录类型、记录 ID、`private_to`（照抄这次写入的） |
 | `commit`（页面分支） | 每次页面提交，与 `notePageWritten` 同一事务 | 空间、`shared_page`、页面 ID |
 | `bindings` | 解绑与重新绑定的事务 | 空间，记录类型为空（表示这个空间的全部 `Together` Doc） |
-| `link-preview` 的写回 | worker 把读到的预览写回心愿或礼物时，同一事务 | 空间、记录类型、记录 ID、记录的 `private_to` |
+| 链接预览的写回（`store` 的写回函数） | worker 把读到的预览写回心愿或礼物时，同一事务 | 空间、记录类型、记录 ID、记录的 `private_to` |
 
-`space-records` 只照抄 `private_to`，不认识任何功能，所以它仍"不知道功能"。表没有外键：写入时持有绑定期间共享锁或文档锁，外键检查会去锁 `spaces`/`users` 行，与关系流程的锁顺序冲突（与 `backup_outbox` 相同的理由）。
+`space-records` 只照抄 `private_to`，不认识任何功能，所以它仍"不知道功能"。链接预览那一行写在 `store` 的写回函数里，`link-preview` 模块仍不 import 任何东西，依赖方向不变。表没有外键：写入时持有绑定期间共享锁或文档锁，外键检查会去锁 `spaces`/`users` 行，与关系流程的锁顺序冲突（与 `backup_outbox` 相同的理由）。
 
 worker 的转换步骤（与 `backup_outbox` 的转换并列）把每行转成 `google_item_work`：`private_to` 为空时给每个已连接的成员，不为空时只给 `private_to` 那个人（D3）；`wish` → `wishes`；`gift`、`gift_card` → `gifts`；`anniversary` → `anniversaries` 和 `gifts`（礼物墙显示纪念日的现名）；`shared_page` → `page:<页面 ID>`；记录类型为空 → 这个空间的全部项。转完标为已处理。
 
@@ -196,9 +196,9 @@ worker 的转换步骤（与 `backup_outbox` 的转换并列）把每行转成 `
 | --- | --- |
 | `space_copy_outbox`（新） | ID、空间、记录类型（可空）、记录 ID（可空）、状态（待处理 / 已处理）、登记时间、处理时间 |
 | `google_item_work`（新） | 用户、项（`page:<ID>`、`wishes`、`gifts`、`anniversaries`）、最早可处理时间、本批第一次登记时间（D5 的 10 分钟上限）、"现在备份"标记、尝试次数、最近错误；主键为用户与项，没有外键 |
-| `google_item_docs`（新） | Doc ID、用户、Google 账号 ID、项、状态（当前 / 已另存 / 已在应用中删除）、上次写入的修订号、内容校验值、覆盖到的时间、写入时间；每人每账号每项至多一份"当前" |
+| `google_item_docs`（新） | Doc ID、用户、Google 账号 ID、项、状态（当前 / 已另存 / 已在应用中删除）、上次写入的标题（页面 Doc 用，页面删除后问题记录与改名都靠它）、上次写入的修订号、内容校验值、覆盖到的时间、写入时间；每人每账号每项至多一份"当前" |
 | `google_folders`（不改结构） | 新路径 `Between Pages/Together`、`Between Pages/Together/Shared pages` |
-| `backup_events`（改） | 增加可空的"项"列，问题记录指向页面或汇总；新类型"Google 账号已被另一位用户连接"（迁移处理重复连接时用） |
+| `backup_events`（改） | 增加可空的"项"列，问题记录指向页面或汇总；新类型"Google 账号已被另一位用户连接"（迁移处理重复连接时用），带一个可空的 Google 邮箱列，因为连接行删掉后只剩这里记着是哪个账号 |
 | `google_connections`（改） | Google 账号 ID 唯一（D9） |
 
 迁移同时为每个已连接、有空间的人登记全部 `Together` 项（D5 的上线补写）。
@@ -207,13 +207,13 @@ worker 的转换步骤（与 `backup_outbox` 的转换并列）把每行转成 `
 
 - 页面：经共享页面服务按本人读取页面；页面已删除则只做 D7 的改名并把记录标为"已在应用中删除"；否则取最新历史版本（`history` 判断，与日记相同；"现在备份"取最新提交）的正文与作者，渲染标题、图例与着色正文。还有版本在形成时，在那一段结束时再看一次。
 - 汇总：经 `wishes`、`anniversaries` 服务按本人读取当前列表，渲染 D4 的版式；送的人自己的准备中礼物只出现在他的"准备中"一节。
-- 空间已解绑时加上 D7 的说明行。
+- 空间已解绑时在标题下面加上 D7 的说明行。
 
 之后与日记 Doc 相同：校验值未变就只更新覆盖时间；否则开令牌、按需建 Doc（`files.create` 直接放进文件夹，建好先记库）、带 `requiredRevisionId` 整体替换、记下新修订号。页面标题变了另调一次 Drive 改名。被改另存、被删重建、每日检查都覆盖 `google_item_docs`；状态为"已在应用中删除"的 Doc 不再写、不重建。
 
 **模块**（`apps/api/src`）：渲染放在 `backup`（新文件 `render-together.ts`，纯函数）；`backup` 新增对 `shared-pages`、`wishes`、`anniversaries` 三个服务只读入口的依赖，在 `checks/verify-dependency-direction.ts` 登记（本文预先批准）；三个功能互不依赖的规则不变。`google` 模块不变。
 
-**接口**（contracts 与 OpenAPI 随实现）：`GET /api/backup` 增加按类的进度（类、等待数、覆盖到的时间）与问题记录的项；`GET /api/shared-pages/:id` 增加本人的 `google`（Doc 链接、覆盖到的时间、失败原因），与 `GET /api/days/:date` 的形状相同；`POST /api/backup/run` 同时处理 `google_item_work`。
+**接口**（contracts 与 OpenAPI 随实现）：`GET /api/backup` 增加按类的进度（类、等待数、覆盖到的时间）与问题记录的项；`GET /api/shared-pages/:id` 增加本人的 `google`（Doc 链接、覆盖到的时间、失败原因），与 `GET /api/days/:date` 的形状相同；`POST /api/backup/run` 同时处理 `google_item_work`；`BackupAttention`（首页横条与备份邮件共用）把 `google_item_work` 的空间已满与连续失败计入（D8）。
 
 ## 失败与恢复
 
@@ -279,19 +279,19 @@ worker 的转换步骤（与 `backup_outbox` 的转换并列）把每行转成 `
 ## 落地顺序
 
 0. **采纳**：Ray 采纳本文时，同一 PR 改写 `docs/architecture.md` Current decisions 里领域行的"they stay out of Google copies"与备份行，指向本文。
-1. **服务端**（API、contracts）：迁移（三张新表、`backup_events` 的项列、`google_connections` 的唯一约束与重复连接的处理、上线补写的登记）；D9 的连接冲突与错误码；`space-records`、`commit` 页面分支、`bindings` 的登记点；worker 的转换与处理、`render-together.ts`、页面改名与删除改名、每日检查覆盖新 Doc；`GET /api/backup`、`GET /api/shared-pages/:id`、`POST /api/backup/run` 的扩展，`npm run openapi`；依赖方向登记；`backup`、`worker`、`space-records`、`shared-pages` 模块 README；[功能规格](../diary-spec.md)第 1、9 节与[验收清单](../acceptance.md)的 GOOGLE 新条目。完成条件：不变量 1～12 有真实 PG 测试（Google 用本地假 Drive/Docs 服务），其中不变量 2 覆盖准备、改卡片、取消、揭晓的每一步，检查收的人的 Drive 写入、待写项、进度与问题记录在揭晓前都不变、送的人的"准备中"一节随之变化。
+1. **服务端**（API、contracts）：迁移（三张新表、`backup_events` 的项列、`google_connections` 的唯一约束与重复连接的处理、上线补写的登记）；D9 的连接冲突与错误码；`space-records`、`commit` 页面分支、`bindings`、链接预览写回的登记点；`BackupAttention` 计入新的待写项；worker 的转换与处理、`render-together.ts`、页面改名与删除改名、每日检查覆盖新 Doc；`GET /api/backup`、`GET /api/shared-pages/:id`、`POST /api/backup/run` 的扩展，`npm run openapi`；依赖方向登记；`backup`、`worker`、`space-records`、`shared-pages` 模块 README；[功能规格](../diary-spec.md)第 1、9 节与[验收清单](../acceptance.md)的 GOOGLE 新条目。完成条件：不变量 1～12 有真实 PG 测试（Google 用本地假 Drive/Docs 服务），其中不变量 2 覆盖准备、改卡片、取消、揭晓的每一步，检查收的人的 Drive 写入、待写项、进度与问题记录在揭晓前都不变、送的人的"准备中"一节随之变化。
 2. **网页**：备份页按类的进度、问题记录与 D8 的说明，删除确认框的提示，共享页面的备份状态、链接与失败提示。完成条件：web 测试与 e2e 覆盖；不变量 9 的网页侧检查。
 3. **收尾**：用真实 Google 账号走一遍（建页面、改标题、删页面、许愿、准备并揭晓礼物、记纪念日、解绑与重绑、在 Google 改一份汇总，检查收的人在揭晓前什么都看不到），结果写入 `docs/validation/`；核对 Google 同意页面链接的隐私说明（如在仓库之外），补上共享页面、心愿、礼物与纪念日也会写进各自 Drive 的说明；本文转为已实现，更新路线图与 README 状态。
 
-**自主实现约定**：本文采纳后，以下改动无需再问——上面的一次迁移（含 D9 的唯一约束与重复连接的处理）；D9 的错误码 `GOOGLE_ACCOUNT_IN_USE`；`backup` 对三个功能服务的只读依赖及其在依赖方向检查中的登记；列出的接口扩展与 contracts；`space-records`、`commit`、`bindings` 中登记 outbox 的那几行。必须停下来问的情况：需要新的 Google 权限或 npm 依赖；需要往 Drive 写 Doc 与文件夹以外的东西；需要改协同内核的校验或页面的锁顺序；某个功能的读取入口无法保证私密过滤（不变量 1、2）；需要删除现有公开接口；改 CI 或 hooks。每一阶段一个 PR，按顺序叠放，Ray 确认后再合并。
+**自主实现约定**：本文采纳后，以下改动无需再问——上面的一次迁移（含 D9 的唯一约束与重复连接的处理）；D9 的错误码 `GOOGLE_ACCOUNT_IN_USE`；`backup` 对三个功能服务的只读依赖及其在依赖方向检查中的登记；列出的接口扩展与 contracts；`space-records`、`commit`、`bindings` 与链接预览写回（`store`）中登记 outbox 的那几行。必须停下来问的情况：需要新的 Google 权限或 npm 依赖；需要往 Drive 写 Doc 与文件夹以外的东西；需要改协同内核的校验或页面的锁顺序；某个功能的读取入口无法保证私密过滤（不变量 1、2）；需要删除现有公开接口；改 CI 或 hooks。每一阶段一个 PR，按顺序叠放，Ray 确认后再合并。
 
 ## 验收标准
 
 - 两个账号都连接 Google：建一个共享页面、两人各写几句，2～5 分钟后两人的 `Between Pages/Together/Shared pages/` 里各有一份同名 Doc，作者颜色与应用一致；改标题后 Doc 跟着改名；删除页面后 Doc 改名为"（已在应用中删除）"、内容不变。
 - 许愿、改心愿、记纪念日后约 2 分钟，两人的 Wishes、Anniversaries 更新；删除一条后它从汇总里消失。
 - 为对方准备一份礼物并写卡片：约 2 分钟后送的人的 Gifts 出现"准备中"一节、Wishes 里那条心愿标出"我在准备"；收的人的 Drive、备份页的进度与问题记录都没有变化；取消后从送的人的"准备中"消失；揭晓后两人的 Gifts 礼物墙都有这份礼物与卡片。
-- 备份页写明这些内容进两人各自的 Drive、删除收不回；心愿、纪念日、共享页面与礼物的删除确认框有那一行提示。
-- 解绑后两人的 `Together` Doc 开头注明已解绑；重绑后继续更新。
+- 备份页写明这些内容进两人各自的 Drive、删除收不回；心愿、纪念日、共享页面、已揭晓的礼物与卡片的删除确认框有那一行提示，准备中的没有。
+- 解绑后两人的 `Together` Doc 标题下面注明已解绑；重绑后继续更新。
 - 备份页按类显示进度；共享页面显示"已备份到 Google"与 Doc 链接。
 - B 用 A 已连接的 Google 账号连接时被拒绝，提示里没有 A 的名字，B 的连接没有保存令牌。
 - 不变量 1～12 由 API 的真实 PG 测试（Google 接口用本地假服务）与 web 测试验证，测试标题带 `[adr:google-copy-beyond-diaries#N]`。
