@@ -4,7 +4,7 @@
 - 日期：2026-10-28
 - 决策者：Ray
 - 范围：备份
-- 关联：依赖 ADR-0003；依赖 unread-and-day-page；取代 ADR-0004 的数据快照与恢复要求；取代 diary-collaboration-kernel 的D16 快照内容与备份目标
+- 关联：依赖 ADR-0003；依赖 unread-and-day-page；取代 ADR-0004 的数据快照与恢复要求；取代 diary-collaboration-kernel 的D16 快照内容与备份目标；D5 与不变量 5 中 Drive 只放日记的部分被 google-copy-beyond-diaries 取代
 
 备份分两层，各管一件事。**服务器备份**负责"服务器坏了数据能找回来"：PostgreSQL 的修改日志大约每分钟一次、在服务器上加密后增量上传到 Cloudflare R2，每天一次完整备份；30 天内可恢复到任意一分钟，每月第一份完整备份永久保留。每周在临时数据库里自动恢复一遍并检查，备份或演练没有按时成功时，由 Healthchecks.io 发邮件通知 Ray。恢复是一条命令，由 Ray 在新机器上执行；两个用户什么都不用做，重新登录即可。**Google 可读副本**负责"在 Google 里直接读、服务不在了也能读"：每人连接自己的 Google Drive，应用每形成一个历史版本，就把那一天写成一份 Google Doc，两篇上下排列、自己的在上面、每人的字用各自的颜色，和应用的日期页一致；Drive 里只有本人能在应用里看到的内容。
 

@@ -4,7 +4,7 @@
 - 日期：2026-11-04
 - 决策者：Ray
 - 范围：领域
-- 关联：依赖 space-records；依赖 diary-collaboration-kernel；依赖 digital-paper-interface；取代 space-records 的D3、D6 的作者限定与D8 的已读规则；取代 diary-collaboration-kernel 的D9 版本与提交锁的位置
+- 关联：依赖 space-records；依赖 diary-collaboration-kernel；依赖 digital-paper-interface；取代 space-records 的D3、D6 的作者限定与D8 的已读规则；取代 diary-collaboration-kernel 的D9 版本与提交锁的位置；D4 与不变量 7 中不进 Google 可读副本的部分被 google-copy-beyond-diaries 取代；不变量 5 中已删除页面对 Google 副本也按不存在处理的部分被 google-copy-beyond-diaries 取代
 
 共享页面让两个人随时新建一页，一起写计划、清单和随手记。页面属于双人空间，第一版是平铺列表里的纯文字页面，没有目录。正文沿用日记的协同内核：字符级作者不可变，每人只能改自己写的字。标题和删除是页面级操作，两个人都能做，并记下是谁做的。解绑后两人只读，原来的两人重绑后恢复。页面不进 Google 可读副本，未读第一版只做页面级圆点。
 
