@@ -119,7 +119,7 @@ Docker and Compose on the host. The test may use `ops/backup/lib.ts` and its tes
    等 Resend 显示 Verified 再往下走。主域名现有的邮件设置不受影响。
 3. **API 密钥**：Resend → API Keys → Create，权限选 Sending access，域名限定为上面那个。只显示一次，存进密码管理器。
 4. **退订签名密钥**：`openssl rand -base64 32`，同样存进密码管理器。以后换掉它，已发出邮件里的退订链接就失效了（设置页照常可用）。
-5. **写进环境文件**：`sudoedit /etc/between-pages/app.env`，把末尾三行的 `#` 去掉并填上：
+5. **写进环境文件**：`sudoedit /etc/between-pages/app.env`，填上末尾三行（不用加引号）：
 
    ```sh
    RESEND_API_KEY=re_...
