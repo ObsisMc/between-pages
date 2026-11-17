@@ -52,6 +52,10 @@ import { createClockStore } from './store/clocks.ts';
 import { createPokeStore } from './store/pokes.ts';
 import { createRelationStore } from './store/relations.ts';
 import { createStore } from './store/store.ts';
+import { createAddresses } from './auth/email.ts';
+import { createMailSettings } from './notify/settings.ts';
+import { mailHandlers } from './routes/mail.ts';
+import { createMailStore } from './store/mail.ts';
 import { TRANSPORT_MAX_BYTES, registerSyncSocket } from './ws/sync.ts';
 
 /**
@@ -87,6 +91,8 @@ export interface AppDeps {
   sessionEnded?: (listener: (sessionId: string) => void) => void;
   /** Google Drive for the readable copy; without it the backup page says "unavailable". */
   drive?: DriveConfig;
+  /** `MAIL_TOKEN_KEY`: verifies unsubscribe links; without it every link is 404. */
+  mailTokenKey?: Buffer;
 }
 
 // Builds the app without listening so tests and the OpenAPI generator use the exact
@@ -120,9 +126,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const contractRoute = <Name extends RouteName>(
     name: Name,
     handler: (request: ContractRequest<Name>, reply: FastifyReply) => unknown,
+    scope: FastifyInstance = app,
   ) => {
     const route = routes[name];
-    app.route({
+    scope.route({
       method: route.method,
       url: route.path,
       schema: {
@@ -251,6 +258,29 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   contractRoute('finishGoogleConnection', backup.finishGoogleConnection);
   contractRoute('disconnectGoogle', backup.disconnectGoogle);
   contractRoute('runBackup', backup.runBackup);
+
+  const mailStore = createMailStore(deps.db);
+  const mail = mailHandlers(
+    createMailSettings({
+      store: mailStore,
+      addresses: createAddresses(deps.db),
+      tokenKey: deps.mailTokenKey ?? null,
+    }),
+    deps.publicOrigin,
+  );
+  contractRoute('mail', mail.mail);
+  contractRoute('saveMail', mail.saveMail);
+  contractRoute('unsubscribeLink', mail.unsubscribeLink);
+  contractRoute('unsubscribeCategory', mail.unsubscribeCategory);
+  // RFC 8058's one-click body is a form; it is parsed for this route alone (D8).
+  await app.register(async (scope) => {
+    scope.addContentTypeParser(
+      'application/x-www-form-urlencoded',
+      { parseAs: 'string', bodyLimit: 1024 },
+      (_request, body, done) => done(null, Object.fromEntries(new URLSearchParams(body as string))),
+    );
+    contractRoute('unsubscribe', mail.unsubscribe, scope);
+  });
 
   await app.register(websocket, { options: { maxPayload: TRANSPORT_MAX_BYTES } });
   registerSyncSocket(app, {

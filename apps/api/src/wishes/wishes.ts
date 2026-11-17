@@ -10,6 +10,7 @@ import {
   type RecordRef,
   type Refusal,
   type SpaceRecords,
+  type UnreadItem,
   type Unseen,
   type WriteContext,
 } from '../space-records/space-records.ts';
@@ -241,18 +242,32 @@ export function createWishService(records: SpaceRecords) {
       );
     },
 
-    /** Records holding something the caller has not seen, for the entry dot (space-records D8). */
-    async unread(caller: string): Promise<number | 'NOT_FOUND'> {
+    /**
+     * Every record holding something the caller has not seen (space-records D8): wishes,
+     * gifts in preparation and on the wall, their cards, and deletion notes.
+     */
+    async unreadItems(caller: string): Promise<UnreadItem[] | 'NOT_FOUND'> {
       const view = await this.view(caller);
       if (view === 'NOT_FOUND') return view;
       const gifts = [...view.preparing, ...view.wall];
+      const item = (type: string, r: { id: string; unread: Unseen['unread']; mark: number }) =>
+        r.unread === null ? [] : [{ type, id: r.id, mark: r.mark, unread: r.unread }];
       return [
-        ...view.mine,
-        ...view.theirs,
-        ...gifts,
-        ...gifts.flatMap((g) => (g.card ? [g.card] : [])),
-        ...view.notes,
-      ].filter((r) => r.unread !== null).length;
+        ...[...view.mine, ...view.theirs].flatMap((w) => item('wish', w)),
+        ...gifts.flatMap((g) => item('gift', g)),
+        ...gifts.flatMap((g) => (g.card ? item('gift_card', g.card) : [])),
+        ...view.notes.flatMap((n) =>
+          n.unread === null
+            ? []
+            : [{ type: n.type, id: n.id, mark: n.mark, unread: 'deleted' as const }],
+        ),
+      ];
+    },
+
+    /** How many records the entry dot counts: `unreadItems`. */
+    async unread(caller: string): Promise<number | 'NOT_FOUND'> {
+      const items = await this.unreadItems(caller);
+      return items === 'NOT_FOUND' ? items : items.length;
     },
 
     createWish(caller: string, body: BodyOf<'createWish'>): Promise<Wish | Refusal> {

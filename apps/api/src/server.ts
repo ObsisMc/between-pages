@@ -20,5 +20,6 @@ const app = await buildApp({
   onClose: () => database.close(),
   ...(config.HISTORY_IDLE_MS ? { historyIdleMs: config.HISTORY_IDLE_MS } : {}),
   ...(driveConfig(config) ? { drive: driveConfig(config)! } : {}),
+  ...(config.MAIL_TOKEN_KEY ? { mailTokenKey: Buffer.from(config.MAIL_TOKEN_KEY, 'base64') } : {}),
 });
 await app.listen({ port: config.PORT, host: config.HOST });

@@ -95,6 +95,15 @@ import {
   UnbindRequest,
   UnbindResponse,
 } from './spaces.ts';
+import {
+  MailResponse,
+  SaveMailRequest,
+  UnsubscribeCategoryResponse,
+  UnsubscribeQuery,
+  UnsubscribeRedirect,
+  UnsubscribeRequest,
+  UnsubscribeResponse,
+} from './mail.ts';
 import { UserSummary } from './users.ts';
 
 // Every HTTP route the web client may call. The API registers handlers from these
@@ -678,6 +687,50 @@ export const routes = {
     query: AnniversariesQuery,
     body: SaveReminderRequest,
     response: AnniversaryResponse,
+  },
+  mail: {
+    method: 'GET',
+    path: '/api/mail',
+    summary:
+      "The caller's own email reminder switches, the address mails go to, and whether the home notice was closed.",
+    access: 'user',
+    response: MailResponse,
+  },
+  saveMail: {
+    method: 'PUT',
+    path: '/api/mail',
+    summary: "Change the caller's own reminder switches, or close the home notice for good.",
+    access: 'user',
+    body: SaveMailRequest,
+    response: MailResponse,
+  },
+  unsubscribeLink: {
+    method: 'GET',
+    path: '/api/mail/unsubscribe',
+    summary:
+      'The List-Unsubscribe address opened in a browser: 303 to the unsubscribe page with the same token; changes nothing.',
+    access: 'public',
+    query: UnsubscribeQuery,
+    response: UnsubscribeRedirect,
+  },
+  unsubscribeCategory: {
+    method: 'GET',
+    path: '/api/mail/unsubscribe/category',
+    summary:
+      'Which category an unsubscribe token turns off; 404 for an invalid token. Changes nothing.',
+    access: 'public',
+    query: UnsubscribeQuery,
+    response: UnsubscribeCategoryResponse,
+  },
+  unsubscribe: {
+    method: 'POST',
+    path: '/api/mail/unsubscribe',
+    summary:
+      "Turn off the token's category for its user (RFC 8058 one-click, or the unsubscribe page); the only write without an Origin check; 404 for an invalid token.",
+    access: 'public',
+    query: UnsubscribeQuery,
+    body: UnsubscribeRequest,
+    response: UnsubscribeResponse,
   },
 } as const satisfies Record<string, RouteDefinition>;
 

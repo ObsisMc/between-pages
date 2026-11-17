@@ -976,5 +976,107 @@ export const mascotPokes = pgTable(
   ],
 );
 
+// Email reminders (email-reminders 技术设计). Settings default to on: no row is all three on.
+// `hint_dismissed_at` is when the person closed the home notice that reminders are on (D8).
+export const mailSettings = pgTable('mail_settings', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id),
+  newContent: boolean('new_content').notNull().default(true),
+  anniversary: boolean('anniversary').notNull().default(true),
+  backup: boolean('backup').notNull().default(true),
+  hintDismissedAt: timestamp('hint_dismissed_at', { withTimezone: true }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// One row per person and source (D3, D4): a diary, a space record (a deletion note keeps
+// its record's type and ID), an anniversary, or the backup (empty source ID). First seen
+// is when something new there was first found, in the binding period it was found in, so
+// a rebind starts the hour again. The notified mark is the record's `mark` a mail was
+// accepted with; the key is an anniversary's target date or a backup reason, with when.
+// The backup's first seen is when its current attention began, with no period.
+export const mailMarks = pgTable(
+  'mail_marks',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    source: text('source').notNull(),
+    sourceId: text('source_id').notNull(),
+    firstSeenAt: timestamp('first_seen_at', { withTimezone: true }),
+    firstSeenPeriod: uuid('first_seen_period'),
+    notifiedMark: integer('notified_mark'),
+    notifiedKey: text('notified_key'),
+    notifiedAt: timestamp('notified_at', { withTimezone: true }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.source, t.sourceId] }),
+    check(
+      'mail_marks_source',
+      sql`${t.source} in ('diary', 'shared_page', 'wish', 'gift', 'gift_card', 'anniversary', 'backup')`,
+    ),
+  ],
+);
+
+// The characters of a diary an accepted mail already reported to its reader (D3): the same
+// form and merging as `diary_read_ranges`.
+export const mailNotifiedRanges = pgTable(
+  'mail_notified_ranges',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    diaryId: uuid('diary_id')
+      .notNull()
+      .references(() => diaries.id),
+    clientId: int8('client_id').notNull(),
+    clocks: int8multirange('clocks').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.diaryId, t.clientId] })],
+);
+
+// One mail (D10). Its ID is Resend's idempotency key. The rendering is written before the
+// first request and cleared once accepted or stopped; `marks` are what acceptance writes.
+// At most one `sending` row per person and category, whoever creates it.
+export const mailSends = pgTable(
+  'mail_sends',
+  {
+    id: uuid('id').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    category: text('category').notNull(),
+    localDate: date('local_date', { mode: 'string' }).notNull(),
+    status: text('status').notNull().default('sending'),
+    subject: text('subject'),
+    html: text('html'),
+    textBody: text('text_body'),
+    headers: jsonb('headers').$type<Record<string, string>>(),
+    marks: jsonb('marks'),
+    requested: boolean('requested').notNull().default(false),
+    lastRequestedAt: timestamp('last_requested_at', { withTimezone: true }),
+    attempts: integer('attempts').notNull().default(0),
+    nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).notNull().defaultNow(),
+    errorCode: text('error_code'),
+    providerId: text('provider_id'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    sentAt: timestamp('sent_at', { withTimezone: true }),
+  },
+  (t) => [
+    check('mail_sends_category', sql`${t.category} in ('new_content', 'anniversary', 'backup')`),
+    check(
+      'mail_sends_status',
+      sql`${t.status} in ('sending', 'sent', 'cancelled', 'unknown', 'failed', 'abandoned')`,
+    ),
+    uniqueIndex('mail_sends_one_sending')
+      .on(t.userId, t.category)
+      .where(sql`${t.status} = 'sending'`),
+    index('mail_sends_due')
+      .on(t.nextAttemptAt)
+      .where(sql`${t.status} = 'sending'`),
+    index('mail_sends_recent').on(t.userId, t.category, t.createdAt),
+  ],
+);
+
 // Auth layer tables, owned by Better Auth; exported so drizzle-kit migrates them with ours.
 export * from './auth-schema.ts';

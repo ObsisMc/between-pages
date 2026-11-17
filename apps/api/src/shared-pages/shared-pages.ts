@@ -9,6 +9,7 @@ import {
   type RecordRef,
   type Refusal,
   type SpaceRecords,
+  type UnreadItem,
   type Unseen,
   type WriteContext,
 } from '../space-records/space-records.ts';
@@ -99,16 +100,28 @@ export function createSharedPageService(records: SpaceRecords) {
       });
     },
 
-    async unread(caller: string): Promise<number | 'NOT_FOUND'> {
+    /** Every page holding something the caller has not seen, and unread deletion notes (D3). */
+    async unreadItems(caller: string): Promise<UnreadItem[] | 'NOT_FOUND'> {
       return records.read(caller, async (ctx) => {
         const rows = await new SharedPageQueries(ctx.tx).list(ctx.spaceId);
         const unseen = await ctx.unseen(rows.map((r) => ref(r.id)));
         const notes = await ctx.deletionNotes(['shared_page']);
-        return (
-          [...unseen.values()].filter((u) => u.unread !== null).length +
-          notes.filter((n) => n.unread).length
-        );
+        return [
+          ...rows.flatMap((row) => {
+            const u = unseen.get(keyOf(ref(row.id)));
+            return u?.unread ? [{ ...ref(row.id), mark: u.mark, unread: u.unread }] : [];
+          }),
+          ...notes
+            .filter((n) => n.unread)
+            .map((n) => ({ ...n.ref, mark: n.mark, unread: 'deleted' as const })),
+        ];
       });
+    },
+
+    /** How many records the entry dot counts: `unreadItems`. */
+    async unread(caller: string): Promise<number | 'NOT_FOUND'> {
+      const items = await this.unreadItems(caller);
+      return items === 'NOT_FOUND' ? items : items.length;
     },
 
     /** The page as it opens; a deleted page is gone for both (invariant 5). */
