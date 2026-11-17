@@ -64,6 +64,13 @@ describe('parseConfig', () => {
       MAIL_TOKEN_KEY: key,
     });
     expect(config.MAIL_TOKEN_KEY).toBe(key);
+    // Lines left empty, as in ops/deploy/app.env.example, are unset: no reminders, no error.
+    const empty = parseConfig({ ...local, RESEND_API_KEY: '', MAIL_FROM: '', MAIL_TOKEN_KEY: '' });
+    expect([empty.RESEND_API_KEY, empty.MAIL_FROM, empty.MAIL_TOKEN_KEY]).toEqual([
+      undefined,
+      undefined,
+      undefined,
+    ]);
     // Without Resend the token key alone is fine: the API still checks unsubscribe links.
     expect(parseConfig({ ...local, MAIL_TOKEN_KEY: key }).RESEND_API_KEY).toBeUndefined();
   });

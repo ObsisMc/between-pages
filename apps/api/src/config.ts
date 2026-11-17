@@ -2,6 +2,10 @@ import { z } from 'zod';
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1']);
 
+/** An empty value counts as unset, so a template line left as `NAME=` changes nothing. */
+const unsetIfEmpty = <T extends z.ZodType>(schema: T) =>
+  z.preprocess((value) => (value === '' ? undefined : value), schema.optional());
+
 const Env = z
   .object({
     NODE_ENV: z.string().default('development'),
@@ -19,13 +23,13 @@ const Env = z
     /** The Google app is in Testing, so Drive grants expire after seven days (D9). */
     GOOGLE_DRIVE_TESTING: z.enum(['true', 'false']).default('false'),
     /** Resend's API key; without it no reminder is sent (email-reminders 技术设计). */
-    RESEND_API_KEY: z.string().min(1).optional(),
+    RESEND_API_KEY: unsetIfEmpty(z.string()),
     /** The sender, e.g. `Between Pages <remind@mail.ruihaozhang.com>`. */
-    MAIL_FROM: z.string().min(1).optional(),
+    MAIL_FROM: unsetIfEmpty(z.string()),
     /** 32 bytes, base64; signs unsubscribe links (D8). */
-    MAIL_TOKEN_KEY: z.base64().optional(),
+    MAIL_TOKEN_KEY: unsetIfEmpty(z.base64()),
     /** Tests only: a stand-in for Resend; passed to the SDK, never read by it from the environment. */
-    RESEND_BASE_URL: z.url().optional(),
+    RESEND_BASE_URL: unsetIfEmpty(z.url()),
     /** End-to-end tests only: closes history points sooner than the two-minute rule. */
     HISTORY_IDLE_MS: z.coerce.number().int().positive().optional(),
   })
