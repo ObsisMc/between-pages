@@ -149,6 +149,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'wishes',
         'anniversaries',
         'shared-pages',
+        'mail',
       ],
       api: [],
       auth: ['api', 'ui'],
@@ -166,6 +167,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'ui',
         'windows',
         'pokes',
+        'mail',
       ],
       // digital-paper-interface 落地顺序 2: the shadcn components know no other module.
       ui: [],
@@ -201,6 +203,8 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       'shared-diaries': ['api', 'ui'],
       // server-backup-and-google-docs D9: the backup page, the Google callback and the home banner.
       backup: ['api', 'shell', 'ui'],
+      // email-reminders D8: the settings page, the public unsubscribe page and the home notice.
+      mail: ['api', 'shell', 'ui'],
       // two-clocks: the home time area, the clocks page and the browser's zone report; the
       // page sits in the shell's page container (digital-paper-interface 落地顺序 4).
       'two-clocks': ['api', 'shell', 'ui'],

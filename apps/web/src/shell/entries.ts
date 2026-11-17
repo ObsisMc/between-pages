@@ -37,6 +37,7 @@ export function useSiteEntries(): SiteEntries {
       ...(space ? [{ to: `/spaces/${space.id}`, label: '双人空间' }] : []),
       ...(current ? [] : [{ to: '/partner', label: '搭档' }]),
       { to: '/backup', label: '备份' },
+      { to: '/mail', label: '邮件提醒' },
     ],
   };
 }
