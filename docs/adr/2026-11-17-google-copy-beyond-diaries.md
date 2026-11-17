@@ -175,7 +175,7 @@ TA 的心愿                                         ← 标题 2
 
 ## 技术设计
 
-**登记待写：一个与功能无关的空间副本 outbox。** 新表 `space_copy_outbox` 记"某个空间的某条记录变了"，由三处在各自的事务里写入：
+**登记待写：一个与功能无关的空间副本 outbox。** 新表 `space_copy_outbox` 记"某个空间的某条记录变了"，由下面四处在各自的事务里写入：
 
 | 谁写 | 什么时候 | 记什么 |
 | --- | --- | --- |
@@ -186,7 +186,7 @@ TA 的心愿                                         ← 标题 2
 
 `space-records` 只照抄 `private_to`，不认识任何功能，所以它仍"不知道功能"。链接预览那一行写在 `store` 的写回函数里，`link-preview` 模块仍不 import 任何东西，依赖方向不变。表没有外键：写入时持有绑定期间共享锁或文档锁，外键检查会去锁 `spaces`/`users` 行，与关系流程的锁顺序冲突（与 `backup_outbox` 相同的理由）。
 
-worker 的转换步骤（与 `backup_outbox` 的转换并列）把每行转成 `google_item_work`：`private_to` 为空时给每个已连接的成员，不为空时只给 `private_to` 那个人（D3）；`wish` → `wishes`；`gift`、`gift_card` → `gifts`；`anniversary` → `anniversaries` 和 `gifts`（礼物墙显示纪念日的现名）；`shared_page` → `page:<页面 ID>`；记录类型为空 → 这个空间的全部项。转完标为已处理。
+worker 的转换步骤（与 `backup_outbox` 的转换并列）把每行转成 `google_item_work`：`private_to` 为空时给每个已连接的成员，不为空时只给 `private_to` 那个人（D3）；`wish` → `wishes` 和 `gifts`（送的人"准备中"一节显示关联的心愿）；`gift`、`gift_card` → `gifts`；`anniversary` → `anniversaries` 和 `gifts`（礼物墙显示纪念日的现名）；`shared_page` → `page:<页面 ID>`；记录类型为空 → 这个空间的全部项。转完标为已处理。
 
 不用 worker 按 `space_changes`/`space_actions` 的序号扫描：序号在事务开始时分配，提交顺序可能与序号不同，按游标扫描会漏掉晚提交的小序号；outbox 的"待处理"状态没有这个问题。
 
@@ -194,7 +194,7 @@ worker 的转换步骤（与 `backup_outbox` 的转换并列）把每行转成 `
 
 | 表 | 内容 |
 | --- | --- |
-| `space_copy_outbox`（新） | ID、空间、记录类型（可空）、记录 ID（可空）、状态（待处理 / 已处理）、登记时间、处理时间 |
+| `space_copy_outbox`（新） | ID、空间、记录类型（可空）、记录 ID（可空）、`private_to`（可空，照抄写入时的；不为空时只为这个人登记，D3）、状态（待处理 / 已处理）、登记时间、处理时间 |
 | `google_item_work`（新） | 用户、项（`page:<ID>`、`wishes`、`gifts`、`anniversaries`）、最早可处理时间、本批第一次登记时间（D5 的 10 分钟上限）、"现在备份"标记、尝试次数、最近错误；主键为用户与项，没有外键 |
 | `google_item_docs`（新） | Doc ID、用户、Google 账号 ID、项、状态（当前 / 已另存 / 已在应用中删除）、上次写入的标题（页面 Doc 用，页面删除后问题记录与改名都靠它）、上次写入的修订号、内容校验值、覆盖到的时间、写入时间；每人每账号每项至多一份"当前" |
 | `google_folders`（不改结构） | 新路径 `Between Pages/Together`、`Between Pages/Together/Shared pages` |
