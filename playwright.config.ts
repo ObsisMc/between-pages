@@ -21,6 +21,8 @@ const env = {
   DEV_OIDC_ISSUER: ISSUER,
   // History points close after 3 s instead of two minutes, so EDIT-16 needs no long wait.
   HISTORY_IDLE_MS: '3000',
+  // Signs unsubscribe links, so e2e/mail.spec.ts can make one; no RESEND_API_KEY, no mail.
+  MAIL_TOKEN_KEY: 'ZTJlLW9ubHktbWFpbC10b2tlbi1rZXktMzItYnl0ZXM=',
 };
 
 export default defineConfig({

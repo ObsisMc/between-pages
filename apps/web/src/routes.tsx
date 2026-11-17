@@ -11,6 +11,7 @@ import { ClocksPage } from './two-clocks/index.ts';
 import { SharedPageScreen, SharedPagesPage } from './shared-pages/index.ts';
 import { WishesPage } from './wishes/index.ts';
 import { AnniversariesPage, AnniversaryPage } from './anniversaries/index.ts';
+import { MailPage, UnsubscribePage } from './mail/index.ts';
 import { SiteLayout } from './shell/index.ts';
 
 // authentication-and-sessions D10: /login is public, / and diaries need a session,
@@ -115,6 +116,17 @@ const pages: RouteObject[] = [
       </RequireAuth>
     ),
   },
+  // 设置 → 邮件提醒: the caller's own reminder switches (email-reminders D8).
+  {
+    path: '/mail',
+    element: (
+      <RequireAuth>
+        <MailPage />
+      </RequireAuth>
+    ),
+  },
+  // A mail's unsubscribe link: public, the token alone decides (email-reminders D8).
+  { path: '/unsubscribe', element: <UnsubscribePage /> },
   { path: '/join', element: <JoinPage /> },
   {
     path: '/spaces/:spaceId',
