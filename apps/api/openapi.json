@@ -3787,6 +3787,111 @@
           "changeId"
         ]
       },
+      "MailCategoryInput": {
+        "type": "string",
+        "enum": [
+          "new_content",
+          "anniversary",
+          "backup"
+        ]
+      },
+      "MailSettingsInput": {
+        "type": "object",
+        "properties": {
+          "newContent": {
+            "type": "boolean"
+          },
+          "anniversary": {
+            "type": "boolean"
+          },
+          "backup": {
+            "type": "boolean"
+          },
+          "address": {
+            "type": "string"
+          },
+          "hintDismissed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "newContent",
+          "anniversary",
+          "backup",
+          "address",
+          "hintDismissed"
+        ]
+      },
+      "MailResponseInput": {
+        "type": "object",
+        "properties": {
+          "mail": {
+            "$ref": "#/components/schemas/MailSettingsInput"
+          }
+        },
+        "required": [
+          "mail"
+        ]
+      },
+      "SaveMailRequestInput": {
+        "type": "object",
+        "properties": {
+          "newContent": {
+            "type": "boolean"
+          },
+          "anniversary": {
+            "type": "boolean"
+          },
+          "backup": {
+            "type": "boolean"
+          },
+          "dismissHint": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UnsubscribeCategoryResponseInput": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/MailCategoryInput"
+          }
+        },
+        "required": [
+          "category"
+        ]
+      },
+      "UnsubscribeRequestInput": {
+        "type": "object",
+        "properties": {
+          "List-Unsubscribe": {
+            "type": "string",
+            "const": "One-Click"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UnsubscribeResponseInput": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/MailCategoryInput"
+          },
+          "unsubscribed": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "category",
+          "unsubscribed"
+        ]
+      },
+      "UnsubscribeRedirectInput": {
+        "type": "null"
+      },
       "HealthResponseInput": {
         "type": "object",
         "properties": {
@@ -7675,6 +7780,115 @@
         ],
         "additionalProperties": false
       },
+      "MailCategory": {
+        "type": "string",
+        "enum": [
+          "new_content",
+          "anniversary",
+          "backup"
+        ]
+      },
+      "MailSettings": {
+        "type": "object",
+        "properties": {
+          "newContent": {
+            "type": "boolean"
+          },
+          "anniversary": {
+            "type": "boolean"
+          },
+          "backup": {
+            "type": "boolean"
+          },
+          "address": {
+            "type": "string"
+          },
+          "hintDismissed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "newContent",
+          "anniversary",
+          "backup",
+          "address",
+          "hintDismissed"
+        ],
+        "additionalProperties": false
+      },
+      "MailResponse": {
+        "type": "object",
+        "properties": {
+          "mail": {
+            "$ref": "#/components/schemas/MailSettings"
+          }
+        },
+        "required": [
+          "mail"
+        ],
+        "additionalProperties": false
+      },
+      "SaveMailRequest": {
+        "type": "object",
+        "properties": {
+          "newContent": {
+            "type": "boolean"
+          },
+          "anniversary": {
+            "type": "boolean"
+          },
+          "backup": {
+            "type": "boolean"
+          },
+          "dismissHint": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UnsubscribeCategoryResponse": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/MailCategory"
+          }
+        },
+        "required": [
+          "category"
+        ],
+        "additionalProperties": false
+      },
+      "UnsubscribeRequest": {
+        "type": "object",
+        "properties": {
+          "List-Unsubscribe": {
+            "type": "string",
+            "const": "One-Click"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UnsubscribeResponse": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/MailCategory"
+          },
+          "unsubscribed": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "category",
+          "unsubscribed"
+        ],
+        "additionalProperties": false
+      },
+      "UnsubscribeRedirect": {
+        "type": "null"
+      },
       "HealthResponse": {
         "type": "object",
         "properties": {
@@ -10384,6 +10598,163 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mail": {
+      "get": {
+        "summary": "The caller's own email reminder switches, the address mails go to, and whether the home notice was closed.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Change the caller's own reminder switches, or close the home notice for good.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveMailRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mail/unsubscribe": {
+      "get": {
+        "summary": "The List-Unsubscribe address opened in a browser: 303 to the unsubscribe page with the same token; changes nothing.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "token",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnsubscribeRedirect"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Turn off the token's category for its user (RFC 8058 one-click, or the unsubscribe page); the only write without an Origin check; 404 for an invalid token.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnsubscribeRequestInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "token",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnsubscribeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mail/unsubscribe/category": {
+      "get": {
+        "summary": "Which category an unsubscribe token turns off; 404 for an invalid token. Changes nothing.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "token",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnsubscribeCategoryResponse"
                 }
               }
             }

@@ -22,6 +22,17 @@ export {
   SleepSchedule,
 } from './clocks.ts';
 export { PokeKind, PokesResponse, SeenPokesRequest, SendPokeRequest } from './pokes.ts';
+export {
+  MailCategory,
+  MailResponse,
+  MailSettings,
+  SaveMailRequest,
+  UnsubscribeCategoryResponse,
+  UnsubscribeQuery,
+  UnsubscribeRedirect,
+  UnsubscribeRequest,
+  UnsubscribeResponse,
+} from './mail.ts';
 export { UserSummary } from './users.ts';
 export type {
   BodyOf,

@@ -7,15 +7,18 @@ import { createBackupStore } from '../store/backup.ts';
 import { createCopyStore } from '../store/copy.ts';
 import { createStore } from '../store/store.ts';
 import { createPreviewStore } from '../store/wishes.ts';
+import { JUDGE_EVERY_MS } from '../notify/rules.ts';
 import { checkDrives } from './check.ts';
 import { copyNext } from './copy.ts';
+import { reminders } from './notify.ts';
 import { previewNext } from './preview.ts';
 import { revokeNext } from './revoke.ts';
 
 // The worker process (ADR-0006 item 20, server-backup-and-google-docs): same code base as the
 // API, started on its own (`npm run start:worker`). It is the only process that opens Drive
-// tokens. It also reads wish links for their previews (wishes-and-gifts D7), with or
-// without Drive. It logs what it did, never a token, code, link or diary text.
+// tokens. It also reads wish links for their previews (wishes-and-gifts D7) and sends email
+// reminders (email-reminders D10), with or without Drive. It logs what it did, never a
+// token, code, link, address or diary text.
 
 const POLL_MS = 5_000;
 /** The daily check runs at start and then once a day (D8). */
@@ -33,11 +36,20 @@ const copy = createCopyService(
   createReader(createStore(database.db)),
   config.HISTORY_IDLE_MS,
 );
+const notify = reminders(config, database.db, drive);
 let stopping = false;
 let checkedAt = 0;
+let judgedAt = 0;
 
 async function tick() {
   while (!stopping && (await previewNext(previews)) > 0);
+  if (notify) {
+    if (!stopping && Date.now() - judgedAt >= JUDGE_EVERY_MS) {
+      judgedAt = Date.now();
+      await notify.judge(new Date());
+    }
+    while (!stopping && (await notify.sendNext(new Date())));
+  }
   if (!drive) return;
   while (!stopping && (await revokeNext(backup, drive)))
     console.log('worker: revoked a Drive grant');
@@ -57,6 +69,7 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
 console.log(
   drive ? 'worker: started' : 'worker: Google Drive is not configured; reading link previews only',
 );
+if (!notify) console.log('worker: RESEND_API_KEY is not set; email reminders are off');
 while (!stopping) {
   try {
     await tick();

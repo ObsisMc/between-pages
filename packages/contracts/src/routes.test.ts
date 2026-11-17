@@ -21,10 +21,16 @@ describe('route contracts', () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  it('[adr:authentication-and-sessions#13] declares access on every route; only health is public', () => {
+  it('[adr:authentication-and-sessions#13] declares access on every route; only health and the token-only unsubscribe are public', () => {
     for (const route of Object.values(routes)) expect(['public', 'user']).toContain(route.access);
     const publicRoutes = Object.entries(routes).filter(([, route]) => route.access === 'public');
-    expect(publicRoutes.map(([name]) => name)).toEqual(['health']);
+    // email-reminders D8: authenticated by the signed token in each mail, never a cookie.
+    expect(publicRoutes.map(([name]) => name)).toEqual([
+      'health',
+      'unsubscribeLink',
+      'unsubscribeCategory',
+      'unsubscribe',
+    ]);
   });
 
   it('[adr:authentication-and-sessions#9] exposes no last-seen time in any response', () => {

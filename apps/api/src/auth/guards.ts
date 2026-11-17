@@ -20,6 +20,13 @@ declare module 'fastify' {
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
+/**
+ * The one write without an Origin check (email-reminders D8, invariant 13): a mail
+ * provider's one-click unsubscribe comes from its own servers. It reads no cookie and only
+ * turns a category off for the user its token names.
+ */
+const ORIGIN_EXEMPT = '/api/mail/unsubscribe';
+
 // Better Auth checks Origin only on /api/auth/*; every other state-changing /api/* request
 // must come from the site itself, and a missing Origin is refused too
 // (authentication-and-sessions D7, invariant 7). Runs for unknown routes as well.
@@ -28,6 +35,7 @@ export function registerOriginGuard(app: FastifyInstance, publicOrigin: string) 
   app.addHook('onRequest', async (request, reply) => {
     if (SAFE_METHODS.has(request.method)) return;
     if (!request.url.startsWith('/api/') || request.url.startsWith('/api/auth/')) return;
+    if (request.method === 'POST' && request.url.split('?')[0] === ORIGIN_EXEMPT) return;
     return check(request, reply);
   });
 }

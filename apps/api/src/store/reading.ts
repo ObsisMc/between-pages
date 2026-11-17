@@ -11,7 +11,8 @@ export type ClockRange = { clientId: number; from: number; to: number };
 
 const RANGE = /\[(\d+),(\d+)\)/g;
 
-function parse(clientId: number, clocks: string): ClockRange[] {
+/** One clientID's ranges from PG's int8multirange text. */
+export function parse(clientId: number, clocks: string): ClockRange[] {
   return [...clocks.matchAll(RANGE)].map(([, from, to]) => ({
     clientId,
     from: Number(from),
@@ -20,7 +21,7 @@ function parse(clientId: number, clocks: string): ClockRange[] {
 }
 
 /** PG's multirange text for these ranges; PG merges any that overlap or touch. */
-const literal = (ranges: readonly ClockRange[]) =>
+export const literal = (ranges: readonly ClockRange[]) =>
   `{${ranges.map((r) => `[${r.from},${r.to})`).join(',')}}`;
 
 /** The reader's coverage of the diary, by clientID; in `tx`'s snapshot when given one. */

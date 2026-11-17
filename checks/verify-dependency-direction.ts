@@ -71,6 +71,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'wishes',
         'anniversaries',
         'shared-pages',
+        'notify',
       ],
       ws: ['auth', 'errors', 'commit', 'diaries', 'reader', 'events', 'shared-pages'],
       // server-backup-and-google-docs: `google` calls Google and seals or opens tokens, knowing
@@ -102,6 +103,23 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       anniversaries: ['space-records', 'store'],
       'shared-pages': ['space-records', 'store'],
       'link-preview': [],
+      // email-reminders D10: `mail` sends and renders one mail and signs links, knowing no
+      // database; `notify` decides who gets one from the services that own each unread
+      // rule, and reads addresses only through `auth`.
+      mail: [],
+      notify: [
+        'store',
+        'reader',
+        'history',
+        'wishes',
+        'shared-pages',
+        'anniversaries',
+        'backup',
+        'auth',
+        'mail',
+        'config',
+        'errors',
+      ],
       store: ['db', 'errors'],
     },
   },

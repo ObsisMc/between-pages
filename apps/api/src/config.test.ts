@@ -49,6 +49,25 @@ describe('parseConfig', () => {
     throw new Error('expected parseConfig to throw');
   };
 
+  it('[adr:email-reminders#11] refuses Resend without a sender and a token key', () => {
+    const key = Buffer.alloc(32, 1).toString('base64');
+    expect(() => parseConfig({ ...local, RESEND_API_KEY: 're_x' })).toThrow(
+      /MAIL_FROM: required when RESEND_API_KEY is set[\s\S]*MAIL_TOKEN_KEY: required/,
+    );
+    expect(() => parseConfig({ ...local, MAIL_TOKEN_KEY: 'c2hvcnQ=' })).toThrow(
+      /MAIL_TOKEN_KEY: must be 32 bytes/,
+    );
+    const config = parseConfig({
+      ...local,
+      RESEND_API_KEY: 're_x',
+      MAIL_FROM: 'Between Pages <remind@mail.test>',
+      MAIL_TOKEN_KEY: key,
+    });
+    expect(config.MAIL_TOKEN_KEY).toBe(key);
+    // Without Resend the token key alone is fine: the API still checks unsubscribe links.
+    expect(parseConfig({ ...local, MAIL_TOKEN_KEY: key }).RESEND_API_KEY).toBeUndefined();
+  });
+
   it('names every missing or invalid variable', () => {
     const message = messageOf({ AUTH_PROVIDER: 'google', BETTER_AUTH_SECRET: 'short' });
     for (const name of ['DATABASE_URL', 'PUBLIC_ORIGIN', 'BETTER_AUTH_SECRET'])

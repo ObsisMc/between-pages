@@ -33,6 +33,16 @@ export class Refused extends Error {
 /** A record's state for one viewer (D8): what is new to them, and the mark a seen report sends back. */
 export type Unseen = { unread: 'new' | 'edited' | 'acted' | null; mark: number };
 
+/**
+ * One record a feature's entry dot counts (D8): its reference, its current `mark`, and
+ * whether it is new, changed, acted on, or a deletion note. Email reminders read the same
+ * list (email-reminders D3), so the dot and a mail never disagree.
+ */
+export type UnreadItem = RecordRef & {
+  mark: number;
+  unread: 'new' | 'edited' | 'acted' | 'deleted';
+};
+
 export type DeletionNote = {
   ref: RecordRef;
   deletedBy: string;

@@ -57,6 +57,21 @@ export type SharedSummary = {
 
 export type CharacterInfo = { author: string; writtenAt: Date; clockAdjusted: boolean };
 
+/** Characters of one writer instance with their text, in document order. */
+export type TextRun = ClockRange & { text: string };
+
+/**
+ * A diary the viewer may read that holds another author's text (email-reminders D3):
+ * `fresh` is its list unread minus what mails already reported, `others` all of that
+ * author's visible text, read or not.
+ */
+export type FreshDiary = {
+  diaryId: string;
+  diaryDate: string;
+  fresh: TextRun[];
+  others: TextRun[];
+};
+
 /** The caller's own diary on the day list (unread-and-day-page D3). */
 export type OwnDayCard = {
   diaryId: string;
@@ -130,25 +145,33 @@ function bindingsIn(doc: Y.Doc, all: Map<number, string>): Map<number, string> {
   return out;
 }
 
-/** Whether some clock in `[from, to)` lies outside every range of `covered`, sorted by `from`. */
-function uncovered(from: number, to: number, covered: readonly ClockRange[]): boolean {
+/** The parts of `[from, to)` outside every range of `covered`, sorted by `from`. */
+function uncoveredParts(
+  from: number,
+  to: number,
+  covered: readonly ClockRange[],
+): [number, number][] {
+  const parts: [number, number][] = [];
   let at = from;
   for (const range of covered) {
     if (range.to <= at) continue;
-    if (range.from > at) return true;
+    if (range.from >= to) break;
+    if (range.from > at) parts.push([at, range.from]);
     at = range.to;
-    if (at >= to) return false;
+    if (at >= to) return parts;
   }
-  return at < to;
+  if (at < to) parts.push([at, to]);
+  return parts;
 }
 
 /**
- * Whether `viewer` has list unread in `doc` (unread-and-day-page D2): a visible character
- * another author wrote that is neither in the viewer's read coverage nor inserted after
- * `cutoff`, the version of the newest history point. Character identity decides, never a
- * version or time comparison of the whole diary (invariant 2).
+ * `viewer`'s list unread in `doc` (unread-and-day-page D2) as character runs in document
+ * order: visible characters another author wrote that are neither in the viewer's read
+ * coverage nor inserted after `cutoff`, the version of the newest history point. Character
+ * identity decides, never a version or time comparison of the whole diary (invariant 2).
+ * `others` is every visible character of another author, read or not.
  */
-async function listUnread(
+async function unreadRuns(
   queries: DiaryQueries,
   viewer: string,
   diaryId: string,
@@ -156,21 +179,36 @@ async function listUnread(
   cutoff: number,
   bound: number,
   read?: readonly ClockRange[],
-): Promise<boolean> {
-  const others = authorRuns(doc, await queries.bindings(diaryId)).filter(
-    (run) => run.author !== viewer,
-  );
-  if (!others.length) return false;
+): Promise<{ unread: TextRun[]; others: TextRun[] }> {
+  const others = authorRuns(doc, await queries.bindings(diaryId))
+    .filter((run) => run.author !== viewer)
+    .map((run) => ({
+      clientId: run.client,
+      from: run.clock,
+      to: run.clock + run.text.length,
+      text: run.text,
+    }));
+  if (!others.length) return { unread: [], others };
   const covered = [...(read ?? (await queries.readRanges(viewer, diaryId)))];
   if (cutoff < bound) covered.push(...(await queries.insertedAfter(diaryId, cutoff)));
   const byClient = Map.groupBy(
     covered.sort((a, b) => a.from - b.from),
     (range) => range.clientId,
   );
-  return others.some((run) =>
-    uncovered(run.clock, run.clock + run.text.length, byClient.get(run.client) ?? []),
+  const unread = others.flatMap((run) =>
+    uncoveredParts(run.from, run.to, byClient.get(run.clientId) ?? []).map(([from, to]) => ({
+      clientId: run.clientId,
+      from,
+      to,
+      text: run.text.slice(from - run.from, to - run.from),
+    })),
   );
+  return { unread, others };
 }
+
+/** Whether `viewer` has list unread in `doc`: any run of `unreadRuns`. */
+const listUnread = async (...args: Parameters<typeof unreadRuns>) =>
+  (await unreadRuns(...args)).unread.length > 0;
 
 /** The list facts of one text; an unreadable one keeps its card without them. */
 async function summarize(
@@ -324,7 +362,24 @@ async function dayCards(
   return cards;
 }
 
-export function createReader(store: Store) {
+/**
+ * Per (viewer, diary) answers kept with the inputs they were computed from, so a text is
+ * rebuilt only when one of them changed (book-frontend-workspace D5, email-reminders D10).
+ * A disposable copy of computed answers, lost on restart; never a stored state. A caller
+ * that makes readers over one snapshot at a time passes one memo to all of them.
+ */
+export type ReaderMemo = {
+  unread: Map<string, { inputs: string; unread: boolean }>;
+  fresh: Map<string, { inputs: string; fresh: TextRun[]; others: TextRun[] }>;
+};
+export const createReaderMemo = (): ReaderMemo => ({ unread: new Map(), fresh: new Map() });
+
+const digestOf = (ranges: readonly ClockRange[]) =>
+  createHash('sha256')
+    .update(JSON.stringify(ranges.map((r) => [r.clientId, r.from, r.to]).sort()))
+    .digest('base64');
+
+export function createReader(store: Store, memos: ReaderMemo = createReaderMemo()) {
   /** The epoch if it shares this diary with `viewer`; anything else looks missing (D10). */
   async function epochFor(
     queries: DiaryQueries,
@@ -348,10 +403,7 @@ export function createReader(store: Store) {
     return { doc, seq: seq - 1 };
   }
 
-  // Each (viewer, diary)'s list unread with the inputs it was computed from, so
-  // `nextUnread` rebuilds a text only when one of them changed (book-frontend-workspace
-  // D5). A disposable copy of a computed answer, lost on restart; never a stored state.
-  const memo = new Map<string, { inputs: string; unread: boolean }>();
+  const memo = memos.unread;
 
   /** The list unread of one text the viewer may read, as on the day list, through the memo. */
   async function unreadOf(
@@ -360,10 +412,7 @@ export function createReader(store: Store) {
     text: { diaryId: string; generationId: string; bound: number; cutoff: number },
     read: readonly ClockRange[],
   ): Promise<boolean> {
-    const coverage = createHash('sha256')
-      .update(JSON.stringify(read.map((r) => [r.clientId, r.from, r.to]).sort()))
-      .digest('base64');
-    const inputs = [text.generationId, text.bound, text.cutoff, coverage].join(' ');
+    const inputs = [text.generationId, text.bound, text.cutoff, digestOf(read)].join(' ');
     const key = `${viewer} ${text.diaryId}`;
     const kept = memo.get(key);
     if (kept?.inputs === inputs) return kept.unread;
@@ -373,6 +422,46 @@ export function createReader(store: Store) {
     );
     memo.set(key, { inputs, unread });
     return unread;
+  }
+
+  /** As `unreadOf`, with what mails already reported counted as covered, through its memo. */
+  async function freshOf(
+    queries: DiaryQueries,
+    viewer: string,
+    text: { diaryId: string; generationId: string; bound: number; cutoff: number },
+    read: readonly ClockRange[],
+    notified: readonly ClockRange[],
+  ): Promise<{ fresh: TextRun[]; others: TextRun[] }> {
+    const inputs = [
+      text.generationId,
+      text.bound,
+      text.cutoff,
+      digestOf(read),
+      digestOf(notified),
+    ].join(' ');
+    const key = `${viewer} ${text.diaryId}`;
+    const kept = memos.fresh.get(key);
+    if (kept?.inputs === inputs) return kept;
+    let doc: Y.Doc;
+    try {
+      doc = await queries.state(text.diaryId, text.generationId, text.bound);
+    } catch (error) {
+      if (!(error instanceof VersionUnreadable)) throw error;
+      return { fresh: [], others: [] };
+    }
+    const covered = [...read, ...notified];
+    const runs = await unreadRuns(
+      queries,
+      viewer,
+      text.diaryId,
+      doc,
+      text.cutoff,
+      text.bound,
+      covered,
+    );
+    const value = { inputs, fresh: runs.unread, others: runs.others };
+    memos.fresh.set(key, value);
+    return value;
   }
 
   return {
@@ -629,6 +718,73 @@ export function createReader(store: Store) {
           }
         }
         return null;
+      });
+    },
+
+    /**
+     * Every diary the viewer may read that holds another author's text, with its list
+     * unread not yet reported by an accepted mail (email-reminders D3): the same diaries and
+     * the same rule as `nextUnread`, with `notified` (by diary) counted as covered.
+     */
+    freshDiaries(
+      viewer: string,
+      notified: ReadonlyMap<string, readonly ClockRange[]>,
+      settled: SettledPoint,
+    ): Promise<FreshDiary[]> {
+      return store.read(async (queries) => {
+        const writers = await queries.diariesWithOtherWriters(viewer);
+        const own = (await queries.ownedDiaries(viewer, null, ALL)).filter((row) =>
+          writers.has(row.id),
+        );
+        const shared = await queries.epochs.sharedWith(viewer, null);
+        const ids = [...own.map((row) => row.id), ...shared.map((e) => e.diaryId)];
+        const partner = await queries.findDiaries(shared.map((e) => e.diaryId));
+        const timelines = await queries.timelines(ids);
+        const reads = await queries.readRangesIn(viewer, ids);
+        const received = Map.groupBy(
+          await queries.epochs.allRecipientEpochs(viewer),
+          (e) => e.diaryId,
+        );
+        const cutoffOf = (timeline: readonly CommitPoint[]) => settled(timeline)?.version ?? -1;
+        const out: FreshDiary[] = [];
+        const add = async (
+          diaryDate: string,
+          text: { diaryId: string; generationId: string; bound: number; cutoff: number },
+        ) => {
+          const found = await freshOf(
+            queries,
+            viewer,
+            text,
+            reads.get(text.diaryId) ?? [],
+            notified.get(text.diaryId) ?? [],
+          );
+          if (found.others.length) out.push({ diaryId: text.diaryId, diaryDate, ...found });
+        };
+        for (const row of own)
+          await add(row.diaryDate, {
+            diaryId: row.id,
+            generationId: row.generationId,
+            bound: row.version,
+            cutoff: cutoffOf(timelines.get(row.id) ?? []),
+          });
+        for (const epoch of shared) {
+          const diary = partner.get(epoch.diaryId)!;
+          const bound = boundOf(epoch, diary);
+          const timeline = authorize(
+            timelines.get(diary.id) ?? [],
+            diary,
+            viewer,
+            received.get(diary.id) ?? [],
+          )!;
+          const cutoff = epoch.closedAt ? bound : cutoffOf(timeline);
+          await add(epoch.diaryDate, {
+            diaryId: diary.id,
+            generationId: epoch.generationId,
+            bound,
+            cutoff,
+          });
+        }
+        return out;
       });
     },
 

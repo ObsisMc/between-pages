@@ -18,6 +18,14 @@ const Env = z
     GOOGLE_TOKEN_KEY: z.base64().optional(),
     /** The Google app is in Testing, so Drive grants expire after seven days (D9). */
     GOOGLE_DRIVE_TESTING: z.enum(['true', 'false']).default('false'),
+    /** Resend's API key; without it no reminder is sent (email-reminders 技术设计). */
+    RESEND_API_KEY: z.string().min(1).optional(),
+    /** The sender, e.g. `Between Pages <remind@mail.ruihaozhang.com>`. */
+    MAIL_FROM: z.string().min(1).optional(),
+    /** 32 bytes, base64; signs unsubscribe links (D8). */
+    MAIL_TOKEN_KEY: z.base64().optional(),
+    /** Tests only: a stand-in for Resend; passed to the SDK, never read by it from the environment. */
+    RESEND_BASE_URL: z.url().optional(),
     /** End-to-end tests only: closes history points sooner than the two-minute rule. */
     HISTORY_IDLE_MS: z.coerce.number().int().positive().optional(),
   })
@@ -38,6 +46,13 @@ const Env = z
     }
     if (env.GOOGLE_TOKEN_KEY && Buffer.from(env.GOOGLE_TOKEN_KEY, 'base64').length !== 32)
       issue('GOOGLE_TOKEN_KEY', 'must be 32 bytes, base64 (openssl rand -base64 32)');
+    if (env.MAIL_TOKEN_KEY && Buffer.from(env.MAIL_TOKEN_KEY, 'base64').length !== 32)
+      issue('MAIL_TOKEN_KEY', 'must be 32 bytes, base64 (openssl rand -base64 32)');
+    // Every mail carries a working unsubscribe link and a sender (invariant 11).
+    if (env.RESEND_API_KEY) {
+      if (!env.MAIL_FROM) issue('MAIL_FROM', 'required when RESEND_API_KEY is set');
+      if (!env.MAIL_TOKEN_KEY) issue('MAIL_TOKEN_KEY', 'required when RESEND_API_KEY is set');
+    }
     // A shorter history rule is a test setting; tying it to the mock login keeps it out of
     // anything real, whose history must follow kernel D6.
     if (env.HISTORY_IDLE_MS !== undefined && env.AUTH_PROVIDER !== 'dev')
