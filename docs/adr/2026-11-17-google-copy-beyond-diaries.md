@@ -1,6 +1,6 @@
 # 每人的 Google Drive 也放共享页面、心愿单、礼物墙与纪念日，内容与本人在应用里看到的一致，未揭晓的礼物只进送的人自己的 Drive
 
-- 状态：提议
+- 状态：已采纳
 - 日期：2026-11-17
 - 决策者：Ray
 - 范围：备份
@@ -279,7 +279,7 @@ worker 的转换步骤（与 `backup_outbox` 的转换并列）把每行转成 `
 
 ## 落地顺序
 
-0. **采纳**：Ray 采纳本文时，同一 PR 改写 `docs/architecture.md` Current decisions 里领域行的"they stay out of Google copies"与备份行，指向本文。
+0. **采纳**：已完成，2026-11-17（PR #96）：`docs/architecture.md` Current decisions 的领域行与备份行已改写并指向本文。
 1. **服务端**（API、contracts）：迁移（三张新表、`backup_events` 的项列、`google_connections` 的唯一约束与重复连接的处理、上线补写的登记）；D9 的连接冲突与错误码；`space-records`、`commit` 页面分支、`bindings`、链接预览写回的登记点；`BackupAttention` 计入新的待写项；worker 的转换与处理、`render-together.ts`、页面改名与删除改名、每日检查覆盖新 Doc；`GET /api/backup`、`GET /api/shared-pages/:id`、`POST /api/backup/run` 的扩展，`npm run openapi`；依赖方向登记；`backup`、`worker`、`space-records`、`shared-pages` 模块 README；[功能规格](../diary-spec.md)第 1、9 节与[验收清单](../acceptance.md)的 GOOGLE 新条目。完成条件：不变量 1～12 有真实 PG 测试（Google 用本地假 Drive/Docs 服务），其中不变量 2 覆盖准备、改卡片、取消、揭晓的每一步，检查收的人的 Drive 写入、待写项、进度与问题记录在揭晓前都不变、送的人的"准备中"一节随之变化。
 2. **网页**：备份页按类的进度、问题记录与 D8 的说明，删除确认框的提示，共享页面的备份状态、链接与失败提示。完成条件：web 测试与 e2e 覆盖；不变量 9 的网页侧检查。
 3. **收尾**：用真实 Google 账号走一遍（建页面、改标题、删页面、许愿、准备并揭晓礼物、记纪念日、解绑与重绑、在 Google 改一份汇总，检查收的人在揭晓前什么都看不到），结果写入 `docs/validation/`；核对 Google 同意页面链接的隐私说明（如在仓库之外），补上共享页面、心愿、礼物与纪念日也会写进各自 Drive 的说明；本文转为已实现，更新路线图与 README 状态。
