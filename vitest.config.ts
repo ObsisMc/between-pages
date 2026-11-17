@@ -6,6 +6,7 @@ export default defineConfig({
     projects: [
       { test: { name: 'contracts', root: 'packages/contracts', environment: 'node' } },
       { test: { name: 'collab', root: 'packages/collab', environment: 'node' } },
+      { test: { name: 'time', root: 'packages/time', environment: 'node' } },
       {
         test: {
           name: 'api',

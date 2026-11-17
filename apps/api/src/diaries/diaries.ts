@@ -1,5 +1,6 @@
 import * as Y from 'yjs';
 import { BODY, createDiaryDoc } from '@between-pages/collab';
+import { isoDateIn } from '@between-pages/time';
 import { VersionUnreadable } from '../errors.ts';
 import { covers } from '../sharing/selection.ts';
 import type { Store } from '../store/store.ts';
@@ -38,14 +39,7 @@ export type CatchUp = {
   shared: boolean;
 };
 
-// en-CA formats as YYYY-MM-DD, the diary date's own format.
-const today = (timeZone: string) =>
-  new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
+const today = (timeZone: string) => isoDateIn(Date.now(), timeZone);
 
 /** A new diary's first generation starts from the empty document. */
 const EMPTY_BASELINE = Y.encodeStateAsUpdate(createDiaryDoc());

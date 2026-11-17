@@ -20,16 +20,8 @@ import {
   type AnniversaryRow,
   type ReminderStore,
 } from '../store/anniversaries.ts';
-import {
-  dateIn,
-  dayCount,
-  daysBetween,
-  isoDate,
-  nextOccurrence,
-  startOf,
-  addDays,
-  years,
-} from './dates.ts';
+import { addDays, dateIn, daysBetween, isoDate, startOf } from '@between-pages/time';
+import { dayCount, nextOccurrence, years } from './dates.ts';
 
 // Anniversaries (anniversaries ADR), written only through space-records. Every date is
 // counted in its basis zone (partner-local-dates D1, D2): the caller's own birthday in the

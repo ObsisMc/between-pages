@@ -10,6 +10,7 @@ Between Pages is a shared diary for two people: each character has an immutable 
 | `apps/web/` | React app and the typed API client |
 | `packages/contracts/` | Zod schemas and the route table both apps use |
 | `packages/collab/` | Pure Yjs collaboration model: validation, baselines, digest, authorship |
+| `packages/time/` | Pure time-zone math: wall time, local dates, day arithmetic, sleep |
 | `prototypes/` | Frozen behavior baseline for collaboration; do not edit or import |
 | `docs/` | Spec, acceptance, ADRs, standards ([index](docs/README.md)) |
 | `checks/` | Verify scripts; `npm run check -- <group>` runs them |

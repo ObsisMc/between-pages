@@ -6,6 +6,7 @@ import { Page, PageHeader, SectionTitle } from '../shell/index.ts';
 import { Button, Label, NativeSelect } from '../ui/index.ts';
 import { AwakeLine, PERIOD_TEXT } from './HomeClocks.tsx';
 import { browserZone, clocksKey, useClocks, useNow, useTimezoneReport } from './queries.ts';
+import { type Sleep } from '@between-pages/time';
 import {
   awakeTogether,
   clockText,
@@ -15,7 +16,6 @@ import {
   minuteText,
   regionName,
   type DayPeriod,
-  type Sleep,
 } from './time.ts';
 
 // The clocks page (two-clocks D2, D3): both local times, both sleep schedules (only the

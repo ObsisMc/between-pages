@@ -24,6 +24,7 @@ The go-live steps and the update are below, in Chinese, for Ray.
 - Project, volume and port differ from development: `between-pages-prod`, `between-pages-prod_pgdata`, `54330`.
 - Secrets live only in `/etc/between-pages`, never in an image or this repository.
 - Every container's log rotates at 10 MB × 3.
+- Both images copy every workspace's `package.json` (`apps/api`, `apps/web`, `packages/collab`, `packages/contracts`, `packages/time`) before `npm ci`, so the lockfile's workspace links resolve; a new workspace adds a line to both.
 
 ## Allowed dependencies
 

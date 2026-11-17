@@ -12,6 +12,7 @@
   "dependencies": {
     "@between-pages/collab": "0.0.1",
     "@between-pages/contracts": "0.0.1",
+    "@between-pages/time": "0.0.1",
     "@date-fns/tz": "1.5.0",
     "@radix-ui/react-collapsible": "1.2.1",
     "@radix-ui/react-dialog": "1.3.1",

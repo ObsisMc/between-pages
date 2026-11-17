@@ -174,7 +174,7 @@ Sub-modules of `src/` (kernel D11), top to bottom; each imports only from the la
 
 ## Allowed dependencies
 
-- May import: `@between-pages/contracts`, `@between-pages/collab`, `yjs`, `fastify` and `@fastify/*` plugins (`@fastify/websocket` for the sync socket), `fastify-type-provider-zod`, `zod`, `drizzle-orm`, `pg`, `better-auth` (from `src/auth/` only). `oauth2-mock-server` only in `scripts/` and `test/`.
+- May import: `@between-pages/contracts`, `@between-pages/collab`, `@between-pages/time` (zone and day math), `yjs`, `fastify` and `@fastify/*` plugins (`@fastify/websocket` for the sync socket), `fastify-type-provider-zod`, `zod`, `drizzle-orm`, `pg`, `better-auth` (from `src/auth/` only). `oauth2-mock-server` only in `scripts/` and `test/`.
 - Inside `src/`: the sub-module table of `checks/verify-dependency-direction.ts` (transport → services → store; `events` imports no other service; `app` and `server` compose everything).
 - Must not import: `apps/web` ([architecture](../../docs/architecture.md#dependency-direction)).
 

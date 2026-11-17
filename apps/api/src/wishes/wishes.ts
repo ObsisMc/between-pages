@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { BodyOf, ResponseOf } from '@between-pages/contracts';
+import { isoDateIn } from '@between-pages/time';
 import {
   Refused,
   authorOnly,
@@ -140,17 +141,12 @@ async function wishOut(ctx: Present, row: WishRow): Promise<Wish> {
   return wishBody(row, unseen.get(keyOf(wishRef(row.id)))!, null);
 }
 
-/** The local date in the zone two clocks keeps; UTC if never reported. */
-function localDate(timezone: string | null, now: Date): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: timezone ?? 'UTC' }).format(now);
-}
-
 /**
  * A revealed gift's wall date (partner-local-dates D4): the receiver's local date, else the
  * revealer's, else UTC.
  */
 const receiverDate = async (w: WishWrites, receiver: string, revealer: string, now: Date) =>
-  localDate((await w.timezoneOf(receiver)) ?? (await w.timezoneOf(revealer)), now);
+  isoDateIn(now.getTime(), (await w.timezoneOf(receiver)) ?? (await w.timezoneOf(revealer)));
 
 const editedLink = (before: string | null, after: string | null) =>
   before === after ? {} : { link: after, ...unreadPreview };

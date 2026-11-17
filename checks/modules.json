@@ -1,1 +1,1 @@
-["apps/api", "apps/web", "ops/deploy", "packages/collab", "packages/contracts"]
+["apps/api", "apps/web", "ops/deploy", "packages/collab", "packages/contracts", "packages/time"]

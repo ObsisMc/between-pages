@@ -7,18 +7,15 @@ import {
   useNow,
   useTimezoneReport,
 } from './queries.ts';
+import { asleepAt, localParts, localToInstant, type Sleep } from '@between-pages/time';
 import {
-  asleepAt,
   awakeTogether,
   clockText,
   dayText,
   localDay,
-  localParts,
-  localToInstant,
   regionName,
   type DayPeriod,
   type Interval,
-  type Sleep,
 } from './time.ts';
 import './home-clocks.css';
 
