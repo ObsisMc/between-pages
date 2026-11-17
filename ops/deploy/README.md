@@ -109,7 +109,7 @@ Docker and Compose on the host. The test may use `ops/backup/lib.ts` and its tes
 
 [邮件提醒 ADR](../../docs/adr/2026-11-17-email-reminders.md) 落地顺序第 3 步。没配 `RESEND_API_KEY` 时 worker 什么都不发，所以下面任何一步之前停下都不会有邮件出去。
 
-1. **先更新网页**：确认过的 main（含 #94～#96）按下面的“更新”部署，打开首页能看到"邮件提醒已开启，可在设置里关闭"，「设置 → 邮件提醒」能打开。这样两个人在收到第一封信之前已经知道这件事。
+1. **先更新网页**：确认过的 main（含 #94、#95、#97）按下面的“更新”部署，打开首页能看到"邮件提醒已开启，可在设置里关闭"，「设置 → 邮件提醒」能打开。这样两个人在收到第一封信之前已经知道这件事。
 2. **Resend 账号与域名**：在 [resend.com](https://resend.com) 注册，在 Domains 里添加 `mail.ruihaozhang.com`（想用别的子域名也行，只影响下面的 `MAIL_FROM`）。Resend 会列出几条 DNS 记录（SPF 用的 MX 与 TXT、DKIM 的 TXT），逐条加到 Cloudflare 的 `ruihaozhang.com` 区域里，代理状态选"仅 DNS"（灰色云朵）。再加一条 DMARC：
 
    | 类型 | 名称 | 内容 |
