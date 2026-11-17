@@ -105,6 +105,48 @@ Docker and Compose on the host. The test may use `ops/backup/lib.ts` and its tes
 
 8. **验收**：打开 `https://missu.ruihaozhang.com/days/2026-11-05`，用 Google 登录，再对照 ADR 的“验收标准”逐项确认。
 
+## 开启邮件提醒（Ray 执行）
+
+[邮件提醒 ADR](../../docs/adr/2026-11-17-email-reminders.md) 落地顺序第 3 步。没配 `RESEND_API_KEY` 时 worker 什么都不发，所以下面任何一步之前停下都不会有邮件出去。
+
+1. **先更新网页**：确认过的 main（含 #94～#96）按下面的“更新”部署，打开首页能看到"邮件提醒已开启，可在设置里关闭"，「设置 → 邮件提醒」能打开。这样两个人在收到第一封信之前已经知道这件事。
+2. **Resend 账号与域名**：在 [resend.com](https://resend.com) 注册，在 Domains 里添加 `mail.ruihaozhang.com`（想用别的子域名也行，只影响下面的 `MAIL_FROM`）。Resend 会列出几条 DNS 记录（SPF 用的 MX 与 TXT、DKIM 的 TXT），逐条加到 Cloudflare 的 `ruihaozhang.com` 区域里，代理状态选"仅 DNS"（灰色云朵）。再加一条 DMARC：
+
+   | 类型 | 名称 | 内容 |
+   | --- | --- | --- |
+   | TXT | `_dmarc.mail` | `v=DMARC1; p=none;` |
+
+   等 Resend 显示 Verified 再往下走。主域名现有的邮件设置不受影响。
+3. **API 密钥**：Resend → API Keys → Create，权限选 Sending access，域名限定为上面那个。只显示一次，存进密码管理器。
+4. **退订签名密钥**：`openssl rand -base64 32`，同样存进密码管理器。以后换掉它，已发出邮件里的退订链接就失效了（设置页照常可用）。
+5. **写进环境文件**：`sudoedit /etc/between-pages/app.env`，把末尾三行的 `#` 去掉并填上：
+
+   ```sh
+   RESEND_API_KEY=re_...
+   MAIL_FROM=Between Pages <remind@mail.ruihaozhang.com>
+   MAIL_TOKEN_KEY=...
+   ```
+
+   三个要一起填：只填 `RESEND_API_KEY` 时 api 和 worker 都会拒绝启动，并在日志里写出缺哪一个。
+6. **重启**：`sudo ops/deploy/up.sh`，再看 worker 的日志里没有 "email reminders are off"：
+
+   ```sh
+   sudo docker compose --env-file /etc/between-pages/backup.env logs worker --since 10m
+   ```
+
+   之后每封信在日志里是一行 `notify: sent … mail <ID> to user <ID>`，只有 ID，没有邮箱和内容。Resend 拒绝时是 `notify: Resend refused mail … (<错误码>)`，常见的是域名验证失效或密钥被撤销。
+7. **手动验收**（真实 Gmail，结果写进 `docs/validation/email-reminders-manual-<日期>.md`，不写真实日记内容）：
+   - 搭档写一段日记，你一小时不打开应用，收到"…写了新内容"，带日期和约 50 字的预览；
+   - 邮件在收件箱而不是垃圾箱（在垃圾箱就标为"非垃圾邮件"并记下）；
+   - Gmail 网页版和手机 App 里显示正常，"去看看"打开对应的页面；
+   - Gmail 发件人旁边的"退订"按一下，「设置 → 邮件提醒」里这一类变成关；页脚的"不再收到这类邮件"打开确认页，按了才关；
+   - 设了作息后，睡觉时段里到期的提醒在醒来后的 15 分钟内收到；
+   - 纪念日进入提醒期时收到一封，同一天不重复。
+
+   全部通过后，ADR 的状态改为"已实现"，路线图记一笔。
+
+**临时关掉**：把 `RESEND_API_KEY` 那一行注释掉，再 `sudo ops/deploy/up.sh`。关着的时候什么都不发；重新打开后，排队不到 24 小时的信先复查再发，超过 24 小时的直接放弃。
+
 ## 更新
 
 1. `cd ~/volumes/between-pages`，切到确认过的 main 提交。
