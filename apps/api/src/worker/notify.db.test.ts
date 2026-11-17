@@ -22,6 +22,9 @@ import { createNotify, type Notify } from '../notify/notify.ts';
 // ahead of the real clock, so every commit already counts as a history point.
 
 const ORIGIN = 'http://localhost:5173';
+// Every round judges everyone with an address in the shared test database, and a test runs
+// up to a dozen rounds: about 1.5 s alone, past 5 s beside the whole suite under coverage.
+const SLOW = { timeout: 20_000 };
 const KEY = randomBytes(32);
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
@@ -200,7 +203,7 @@ async function round(minutes: number, notifier = notify) {
   while (await notifier.sendNext(at(minutes)));
 }
 
-describe.runIf(testDatabaseUrl)('有新内容', () => {
+describe.runIf(testDatabaseUrl)('有新内容', SLOW, () => {
   it('[adr:email-reminders#1] [adr:email-reminders#3] names only shared dates, previews 50 characters of new diary text, and counts a frozen share', async () => {
     const { a, b, saveRange } = await couple();
     const shared = await diaryOf(a, '2026-06-20');
@@ -428,7 +431,7 @@ describe.runIf(testDatabaseUrl)('有新内容', () => {
   });
 });
 
-describe.runIf(testDatabaseUrl)('纪念日与备份', () => {
+describe.runIf(testDatabaseUrl)('纪念日与备份', SLOW, () => {
   it('[adr:email-reminders#12] mails a due anniversary once per target date, by the partner’s local date', async () => {
     const { a, b } = await couple();
     // A reports Tokyo; on B's mail the day is counted there (partner-local-dates D1).
