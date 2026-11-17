@@ -36,7 +36,7 @@
 | [shared-pages](./2026-11-04-shared-pages.md) | 共享页面是两人一起写的纯文字页面，每人只改自己的字，标题与删除两人都能做 | 已实现 | 领域 | 11/11 已完成 |
 | [soft-mascot](./2026-11-04-soft-mascot.md) | 团子改用视觉探索稿 32 号的柔软圆形，不再有手 | 已实现 | 领域 | 3/5 部分 |
 | [production-deployment](./2026-11-05-production-deployment.md) | 生产环境用 Docker 跑在现有服务器上，由现有 Caddy 接入，数据与开发环境完全分开 | 已实现 | 技术栈 | 7/11 部分 |
-| [email-reminders](./2026-11-17-email-reminders.md) | 对方的新内容一小时没读、纪念日到了提醒期、备份需要处理时，worker 经 Resend 发一封提醒邮件 | 提议 | 领域 | 0/13 未开始 |
+| [email-reminders](./2026-11-17-email-reminders.md) | 对方的新内容一小时没读、纪念日到了提醒期、备份需要处理时，worker 经 Resend 发一封提醒邮件 | 提议 | 领域 | 0/14 未开始 |
 <!-- adr-index:end -->
 
 ## 原则
