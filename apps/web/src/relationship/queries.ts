@@ -38,6 +38,7 @@ const REFUSAL_TEXT: Partial<Record<ErrorCode, string>> = {
   PERIOD_CLOSED: '这次绑定已经结束',
   POLICY_CONFLICT: '共享范围已在别处修改，请重新载入后再改',
   NOT_FOUND: '找不到这个空间',
+  INVITE_LIMIT: '24 小时内已经发出 5 次邀请，请稍后再试，或改用邀请链接',
 };
 
 /** The screen's text for a failed relationship call; codes decide it, never server messages. */

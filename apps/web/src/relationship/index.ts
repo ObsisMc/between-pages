@@ -1,4 +1,5 @@
 export { RelationshipPanel } from './RelationshipPanel.tsx';
+export { InvitationBanner } from './InvitationBanner.tsx';
 export { PartnerCard } from './PartnerCard.tsx';
 export { PartnerPage } from './PartnerPage.tsx';
 export { partnerOf } from './partner.ts';

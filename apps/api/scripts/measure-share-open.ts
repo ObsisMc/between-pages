@@ -11,6 +11,7 @@ import { BODY, createDiaryDoc } from '@between-pages/collab';
 import type { DateSelection } from '@between-pages/contracts';
 import { createBindingService } from '../src/bindings/bindings.ts';
 import { createCommitService } from '../src/commit/commit.ts';
+import { createAddresses } from '../src/auth/email.ts';
 import { createDb } from '../src/db/client.ts';
 import { runMigrations } from '../src/db/migrate.ts';
 import { createEvents } from '../src/events/events.ts';
@@ -32,7 +33,7 @@ const database = createDb(url);
 const store = createStore(database.db);
 const relations = createRelationStore(database.db);
 const sharing = createSharingService(relations, store, createEvents());
-const bindings = createBindingService(relations, sharing);
+const bindings = createBindingService(relations, sharing, createAddresses(database.db));
 const commit = createCommitService(store);
 const EMPTY = Y.encodeStateAsUpdate(createDiaryDoc());
 

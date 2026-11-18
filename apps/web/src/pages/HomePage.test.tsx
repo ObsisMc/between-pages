@@ -10,7 +10,11 @@ const EPOCH = '8d2e3c9f-4a5b-4c6d-9e7f-0a1b2c3d4e5f';
 
 const bound = {
   'GET /api/binding': () =>
-    Response.json({ binding: { space: space(), periodId: SPACE }, invitation: null }),
+    Response.json({
+      binding: { space: space(), periodId: SPACE },
+      invitation: null,
+      invitationsForMe: [],
+    }),
   'GET /api/spaces': () => Response.json({ spaces: [space()] }),
   'GET /api/pokes': () => Response.json({ received: null }),
   'GET /api/clocks': () =>
@@ -132,7 +136,7 @@ describe('HomePage', () => {
     renderAt('/');
     expect(await screen.findByText('还没有搭档')).toBeDefined();
     expect(screen.getByRole('link', { name: '邀请搭档' }).getAttribute('href')).toBe('/partner');
-    expect(screen.queryByText('生成邀请链接')).toBeNull();
+    expect(screen.queryByText('或者生成邀请链接')).toBeNull();
     expect(await screen.findByText('我这边')).toBeDefined();
     expect(screen.queryByText(/TA 那边|醒着/)).toBeNull();
   });

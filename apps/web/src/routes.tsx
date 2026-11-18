@@ -12,6 +12,7 @@ import { SharedPageScreen, SharedPagesPage } from './shared-pages/index.ts';
 import { WishesPage } from './wishes/index.ts';
 import { AnniversariesPage, AnniversaryPage } from './anniversaries/index.ts';
 import { MailPage, UnsubscribePage } from './mail/index.ts';
+import { NamePage } from './name/index.ts';
 import { SiteLayout } from './shell/index.ts';
 
 // authentication-and-sessions D10: /login is public, / and diaries need a session,
@@ -122,6 +123,15 @@ const pages: RouteObject[] = [
     element: (
       <RequireAuth>
         <MailPage />
+      </RequireAuth>
+    ),
+  },
+  // 设置 → 我的名字: the caller's own name, the one both people see (display-name D7).
+  {
+    path: '/name',
+    element: (
+      <RequireAuth>
+        <NamePage />
       </RequireAuth>
     ),
   },

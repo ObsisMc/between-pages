@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { and, asc, eq, inArray, isNull, or } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, ne, or } from 'drizzle-orm';
 import type { DateSelection } from '@between-pages/contracts';
 import type { Db } from '../db/client.ts';
 import {
@@ -31,6 +31,9 @@ export type InvitationRow = {
   id: string;
   createdBy: string;
   requestId: string;
+  /** Null for a link (in-app-invitation-by-email D1). */
+  recipientEmail: string | null;
+  dismissedAt: Date | null;
   confirmedSelection: DateSelection | null;
   createdAt: Date;
   expiresAt: Date;
@@ -66,6 +69,8 @@ const invitationColumns = {
   id: bindingInvitations.id,
   createdBy: bindingInvitations.createdBy,
   requestId: bindingInvitations.requestId,
+  recipientEmail: bindingInvitations.recipientEmail,
+  dismissedAt: bindingInvitations.dismissedAt,
   confirmedSelection: bindingInvitations.confirmedSelection,
   createdAt: bindingInvitations.createdAt,
   expiresAt: bindingInvitations.expiresAt,
@@ -175,6 +180,41 @@ export class RelationQueries {
       .from(bindingInvitations)
       .where(eq(bindingInvitations.tokenHash, tokenHash));
     return row ?? null;
+  }
+
+  /**
+   * Open, unexpired invitations addressed to `email` that `userId` did not make and has not
+   * dismissed, newest first (in-app-invitation-by-email D3).
+   */
+  incomingInvitations(email: string, userId: string, now: Date): Promise<InvitationRow[]> {
+    return this.tx
+      .select(invitationColumns)
+      .from(bindingInvitations)
+      .where(
+        and(
+          eq(bindingInvitations.recipientEmail, email),
+          ne(bindingInvitations.createdBy, userId),
+          isOpen,
+          gt(bindingInvitations.expiresAt, now),
+          isNull(bindingInvitations.dismissedAt),
+        ),
+      )
+      .orderBy(desc(bindingInvitations.createdAt), desc(bindingInvitations.id));
+  }
+
+  /** How many addressed invitations `createdBy` made after `since`, closed or not (D6). */
+  async addressedSince(createdBy: string, since: Date): Promise<number> {
+    const [row] = await this.tx
+      .select({ n: count() })
+      .from(bindingInvitations)
+      .where(
+        and(
+          eq(bindingInvitations.createdBy, createdBy),
+          isNotNull(bindingInvitations.recipientEmail),
+          gt(bindingInvitations.createdAt, since),
+        ),
+      );
+    return row!.n;
   }
 
   async invitation(id: string): Promise<InvitationRow | null> {
@@ -314,7 +354,9 @@ export class LockedRelations extends RelationQueries {
   async insertInvitation(input: {
     createdBy: string;
     requestId: string;
-    tokenHash: Uint8Array;
+    /** Exactly one of the two (D1). */
+    tokenHash: Uint8Array | null;
+    recipientEmail: string | null;
     confirmedSelection: DateSelection | null;
     createdAt: Date;
     expiresAt: Date;
@@ -332,6 +374,14 @@ export class LockedRelations extends RelationQueries {
       .update(bindingInvitations)
       .set({ revokedAt: at })
       .where(and(inArray(bindingInvitations.createdBy, [...createdBy]), isOpen));
+  }
+
+  /** Only the recipient's view changes; the row stays open for the inviter (D4). */
+  async dismissInvitation(id: string, at: Date): Promise<void> {
+    await this.tx
+      .update(bindingInvitations)
+      .set({ dismissedAt: at })
+      .where(and(eq(bindingInvitations.id, id), isNull(bindingInvitations.dismissedAt)));
   }
 
   async revokeInvitation(id: string, at: Date): Promise<void> {

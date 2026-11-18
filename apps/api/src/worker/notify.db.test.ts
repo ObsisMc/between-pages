@@ -234,6 +234,28 @@ describe.runIf(testDatabaseUrl)('有新内容', SLOW, () => {
     expect(mailsTo(a)).toHaveLength(0);
   });
 
+  it('[adr:display-name#3] [adr:display-name#5] mails nothing for a rename and says the new name in the next mail', async () => {
+    const { a, b } = await couple();
+    const rename = (displayName: string) =>
+      app.inject({
+        method: 'PATCH',
+        url: routes.updateMe.path,
+        headers: { origin: ORIGIN, cookie: a.cookie },
+        payload: { displayName },
+      });
+    expect((await rename('小雨')).statusCode).toBe(200);
+    await round(0);
+    await round(61);
+    expect(mailsTo(b)).toHaveLength(0);
+
+    const diaryId = await diaryOf(a, '2026-06-24');
+    await write(a, diaryId, append('改了名字'));
+    await round(70);
+    expect((await rename('小雨点')).statusCode).toBe(200);
+    await round(131);
+    expect(mailsTo(b).map((mail) => mail.body.subject)).toEqual(['小雨点写了新内容']);
+  });
+
   it('waits an hour of unread, and sends nothing for text read meanwhile', async () => {
     const { a, b } = await couple();
     const diaryId = await diaryOf(a, '2026-06-21');

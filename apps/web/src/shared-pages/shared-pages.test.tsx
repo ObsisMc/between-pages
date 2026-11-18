@@ -52,7 +52,7 @@ const opened = (over: object = {}, bindings: object[] = []) => ({
 const json = (body: object) => () => Response.json(body);
 const fixed = {
   'GET /api/me': json({ user: ME }),
-  'GET /api/binding': json({ binding: null, invitation: null }),
+  'GET /api/binding': json({ binding: null, invitation: null, invitationsForMe: [] }),
   'GET /api/spaces': json({ spaces: [] }),
 };
 

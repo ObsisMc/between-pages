@@ -41,6 +41,33 @@ describe('JoinPage', () => {
     expect(await screen.findByText('bob')).toBeDefined();
   });
 
+  it('[adr:display-name#1] renames the current account beside it and stays on the invitation', async () => {
+    sessionStorage.setItem('between-pages-pending-invite', TOKEN);
+    let name = 'alice';
+    stubApi({
+      ...noRelationship,
+      'GET /api/me': () =>
+        Response.json({ user: { id: '6f1c1d0e-0000-4000-8000-000000000001', displayName: name } }),
+      'POST /api/binding/invitations/preview': preview,
+      'PATCH /api/me': (init) => {
+        name = (JSON.parse(String(init?.body)) as { displayName: string }).displayName;
+        return Response.json({
+          user: { id: '6f1c1d0e-0000-4000-8000-000000000001', displayName: name },
+        });
+      },
+    });
+    const { router } = renderAt('/join');
+
+    fireEvent.click(await screen.findByRole('button', { name: '修改名字 alice' }));
+    fireEvent.change(screen.getByLabelText('名字'), { target: { value: '小雨' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+
+    expect(await screen.findByRole('button', { name: '修改名字 小雨' })).toBeDefined();
+    expect(screen.getByText('bob')).toBeDefined();
+    expect(screen.getByText('接受邀请')).toBeDefined();
+    expect(router.state.location.pathname).toBe('/join');
+  });
+
   it('[adr:spaces-and-invitations#3] shows both accounts and binds only on accepting', async () => {
     sessionStorage.setItem('between-pages-pending-invite', TOKEN);
     const accepted = vi.fn((init: RequestInit | undefined) => {
