@@ -11,6 +11,7 @@ import {
 } from '../db/schema.ts';
 import type { ConnectionRow } from './backup.ts';
 import type { Tx } from './store.ts';
+import { anyFailing } from './together.ts';
 
 // The day-Doc side of the Google copy (server-backup-and-google-docs D5–D9): the queue of
 // days to write per person, the Docs and folders written into each Drive, and what the
@@ -144,13 +145,9 @@ export function createCopyStore(db: Db) {
             await tx.delete(googleDayWork).where(key);
           },
           later: async (at, failure) => {
-            // The first failing day of a run of failures marks when the run began: after a
-            // day of it the home page shows a banner (D9, Ray 2026-10-29).
-            if (
-              failure &&
-              failure !== 'storage_full' &&
-              !(await failingDays(tx, work.userId)).length
-            )
+            // The first failure of a run, days and `Together` items together, marks when the run
+            // began: after a day of it the home page shows a banner (D9, Ray 2026-10-29).
+            if (failure && failure !== 'storage_full' && !(await anyFailing(tx, work.userId)))
               await tx
                 .insert(backupEvents)
                 .values({ userId: work.userId, kind: 'copy_failing', diaryDate: work.diaryDate });
@@ -367,7 +364,7 @@ export function createCopyStore(db: Db) {
         );
       const root = (await folders(userId, googleUserId)).get(ROOT_FOLDER) ?? null;
       const failing = await failingDays(db, userId);
-      const [run] = failing.length
+      const [run] = (await anyFailing(db, userId))
         ? await db
             .select({ at: backupEvents.at })
             .from(backupEvents)

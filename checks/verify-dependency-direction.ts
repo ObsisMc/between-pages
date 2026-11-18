@@ -79,7 +79,20 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       // text only through `reader` and history points through `history`; `worker` is the
       // worker process, the only one that opens tokens (invariant 11).
       google: [],
-      backup: ['store', 'google', 'reader', 'history', 'errors', 'config'],
+      // google-copy-beyond-diaries: the `Together` Docs read pages, wishes and gifts and
+      // anniversaries only through those services' per-viewer reads (invariant 1); the
+      // three features still import none of each other.
+      backup: [
+        'store',
+        'google',
+        'reader',
+        'history',
+        'errors',
+        'config',
+        'shared-pages',
+        'wishes',
+        'anniversaries',
+      ],
       worker: ['*'],
       commit: ['store', 'outbox', 'events', 'errors'],
       diaries: ['store', 'sharing', 'errors'],

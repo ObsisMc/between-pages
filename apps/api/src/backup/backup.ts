@@ -12,6 +12,14 @@ import { keyIdOf, sealToken } from '../google/tokens.ts';
 import type { BackupStore } from '../store/backup.ts';
 import type { ConnectionRow } from '../store/backup.ts';
 import { ROOT_FOLDER, type CopyStore, type WorkFailure } from '../store/copy.ts';
+import type { SharedPageService } from '../shared-pages/shared-pages.ts';
+import {
+  pageIdOf,
+  pageItem,
+  type Category,
+  type Item,
+  type TogetherStore,
+} from '../store/together.ts';
 import { ensureFolders } from './folders.ts';
 
 // The Drive connection and the readable copy's progress as the API serves them
@@ -34,6 +42,13 @@ const EXPIRY_WARNING_MS = 2 * DAY_MS;
 /** A run of failed writes this long puts a banner on the home page (D9, Ray 2026-10-29). */
 const FAILING_BANNER_MS = DAY_MS;
 
+/** A `Together` Doc as the backup page names it (google-copy-beyond-diaries D8). */
+export type ItemRef = {
+  kind: 'page' | 'wishes' | 'gifts' | 'anniversaries';
+  pageId: string | null;
+  title: string | null;
+};
+
 export type BackupStatus = {
   google: {
     state: 'unavailable' | 'disconnected' | 'connected' | 'reconnect' | 'disconnecting';
@@ -48,9 +63,17 @@ export type BackupStatus = {
     failing: { diaryDate: string; failure: 'unreachable' | 'failed' }[];
     backedUpTo: Date | null;
     folderUrl: string | null;
+    categories: { category: 'diaries' | Category; waiting: number; backedUpTo: Date | null }[];
+    failingItems: { item: ItemRef; failure: 'unreachable' | 'failed' }[];
   } | null;
   attention: 'reconnect' | 'storage_full' | 'failing' | 'expiring' | null;
-  events: { at: Date; kind: string; diaryDate: string | null }[];
+  events: {
+    at: Date;
+    kind: string;
+    diaryDate: string | null;
+    item: ItemRef | null;
+    email: string | null;
+  }[];
 };
 
 export type DayCopyStatus = {
@@ -61,14 +84,47 @@ export type DayCopyStatus = {
   problem: 'reconnect' | WorkFailure | null;
 };
 
+/** A shared page's Doc in the caller's own Drive (google-copy-beyond-diaries D8). */
+export type PageCopyStatus = {
+  connected: boolean;
+  docUrl: string | null;
+  coveredAt: Date | null;
+  problem: 'reconnect' | WorkFailure | null;
+};
+
 export type ConnectRefusal =
-  'GOOGLE_UNAVAILABLE' | 'GOOGLE_STATE_INVALID' | 'GOOGLE_EXCHANGE_FAILED' | 'GOOGLE_DISCONNECTING';
+  | 'GOOGLE_UNAVAILABLE'
+  | 'GOOGLE_STATE_INVALID'
+  | 'GOOGLE_EXCHANGE_FAILED'
+  | 'GOOGLE_DISCONNECTING'
+  | 'GOOGLE_ACCOUNT_IN_USE';
 
 export function createBackupService(
   store: BackupStore,
   copy: CopyStore,
+  together: TogetherStore,
+  pages: Pick<SharedPageService, 'titles'>,
   drive: DriveConfig | null,
 ) {
+  /**
+   * Names the items the page shows: a page by its current title, or by the one its Doc
+   * last got once the page is gone or unreadable (D8); null when never known.
+   */
+  async function itemRefs(userId: string, items: readonly Item[]) {
+    const pageIds = [...new Set(items.flatMap((i) => pageIdOf(i) ?? []))];
+    const current = pageIds.length ? await pages.titles(userId, pageIds) : new Map();
+    const written = pageIds.length ? await together.writtenTitles(userId) : new Map();
+    return (item: Item): ItemRef => {
+      const pageId = pageIdOf(item);
+      if (!pageId) return { kind: item as ItemRef['kind'], pageId: null, title: null };
+      return {
+        kind: 'page',
+        pageId,
+        title: current.get(pageId) ?? written.get(pageItem(pageId)) ?? null,
+      };
+    };
+  }
+
   /** Whether the grant still works, and when a Testing-mode grant ends. */
   function grant(row: ConnectionRow, driveConfig: DriveConfig, now: Date) {
     // A token sealed under a key this server no longer has can never be used (D10.7).
@@ -84,7 +140,12 @@ export function createBackupService(
   }
 
   async function status(userId: string, now = new Date()): Promise<BackupStatus> {
-    const events = await store.events(userId);
+    const rows = await store.events(userId);
+    const named = await itemRefs(
+      userId,
+      rows.flatMap((e) => e.item ?? []),
+    );
+    const events = rows.map((e) => ({ ...e, item: e.item === null ? null : named(e.item) }));
     const without = (state: BackupStatus['google']['state'], retrying = false): BackupStatus => ({
       google: { state, email: null, connectedAt: null, expiresAt: null, retrying },
       progress: null,
@@ -97,6 +158,11 @@ export function createBackupService(
     if (row.status === 'revoking') return without('disconnecting', row.attempts > 0);
     const { state, expiresAt } = grant(row, drive, now);
     const progress = await copy.progress(userId, row.googleUserId);
+    const items = await together.progress(userId, row.googleUserId);
+    const failingNamed = await itemRefs(
+      userId,
+      items.failing.map((f) => f.item),
+    );
     const expiring = expiresAt !== null && expiresAt.getTime() - now.getTime() <= EXPIRY_WARNING_MS;
     const longFailing =
       progress.failingSince !== null &&
@@ -114,11 +180,24 @@ export function createBackupService(
         failing: progress.failing,
         backedUpTo: progress.backedUpTo,
         folderUrl: progress.rootFolderId && folderUrl(progress.rootFolderId),
+        categories: [
+          {
+            category: 'diaries',
+            waiting: progress.waitingDays,
+            backedUpTo: progress.backedUpTo,
+          },
+          ...items.categories,
+        ],
+        failingItems: items.failing.map((f) => ({
+          item: failingNamed(f.item),
+          failure: f.failure,
+        })),
       },
+      // Days and `Together` items count alike for the banner and the backup mail (D8).
       attention:
         state === 'reconnect'
           ? 'reconnect'
-          : progress.storageFull
+          : progress.storageFull || items.storageFull
             ? 'storage_full'
             : longFailing
               ? 'failing'
@@ -132,13 +211,37 @@ export function createBackupService(
   return {
     status,
 
-    /** "现在备份": queues what commits registered and makes every waiting day due now (D9). */
+    /**
+     * "现在备份": queues what commits and space records registered and makes every waiting
+     * day, page and summary due now (D9; google-copy-beyond-diaries D5).
+     */
     async runNow(userId: string, now = new Date()): Promise<BackupStatus> {
       if (drive) {
         await copy.intake([userId]);
         await copy.runNow(userId, now);
+        await together.intake(now, [userId]);
+        await together.runNow(userId, now);
       }
       return status(userId, now);
+    },
+
+    /** One shared page in the caller's own Drive, for the page itself (D8). */
+    async page(userId: string, pageId: string, now = new Date()): Promise<PageCopyStatus> {
+      const row = drive && (await store.connection(userId));
+      if (!drive || !row || row.status === 'revoking')
+        return { connected: false, docUrl: null, coveredAt: null, problem: null };
+      const item = pageItem(pageId);
+      const doc = await together.currentDoc(userId, row.googleUserId, item);
+      const written = doc && doc.revisionId !== '' ? doc : null;
+      return {
+        connected: true,
+        docUrl: written && docUrl(written.docId),
+        coveredAt: written?.coveredAt ?? null,
+        problem:
+          grant(row, drive, now).state === 'reconnect'
+            ? 'reconnect'
+            : await together.itemFailure(userId, item),
+      };
     },
 
     /** One date in the caller's own Drive, for the day page (D9). */
@@ -212,6 +315,9 @@ export function createBackupService(
         connectedAt: now,
       });
       if (outcome === 'disconnecting') return 'GOOGLE_DISCONNECTING';
+      // The account is another user's connection: the new grant is only dropped, never
+      // revoked, since revoking it would end that user's grant too (D9).
+      if (outcome === 'in_use') return 'GOOGLE_ACCOUNT_IN_USE';
       // The `Between Pages` folder is made now, with the access token the exchange returned,
       // so "在 Google Drive 打开文件夹" works before the first Doc is written (D7 落地说明,
       // F-07). Not making it is no reason to refuse the connection: the worker makes it

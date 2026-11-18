@@ -1,12 +1,17 @@
 import type { FastifyReply } from 'fastify';
+import type { BackupService } from '../backup/backup.ts';
 import type { SharedPageService } from '../shared-pages/shared-pages.ts';
+import { pageCopyBody } from './backup.ts';
 import type { ContractRequest } from './contract.ts';
 import { answer, userOf } from './space-records.ts';
 
 // Shared pages (shared-pages ADR). Run after requireUser; the actor is always the session's
 // user. The text goes over the collaboration socket, not through these routes.
-export function sharedPageHandlers(services: { sharedPages: SharedPageService }) {
-  const { sharedPages } = services;
+export function sharedPageHandlers(services: {
+  sharedPages: SharedPageService;
+  backup: BackupService;
+}) {
+  const { sharedPages, backup } = services;
 
   return {
     async sharedPages(request: ContractRequest<'sharedPages'>, reply: FastifyReply) {
@@ -15,8 +20,11 @@ export function sharedPageHandlers(services: { sharedPages: SharedPageService })
     async sharedPage(request: ContractRequest<'sharedPage'>, reply: FastifyReply) {
       const view = await sharedPages.open(userOf(request), request.params.pageId);
       if (typeof view === 'string') return answer(reply, view);
+      // The caller's own Drive only, as on a day (invariant 9).
+      const google = await backup.page(userOf(request), request.params.pageId);
       return answer(reply, {
         ...view,
+        google: pageCopyBody(google),
         state: Buffer.from(view.state).toString('base64'),
         bindings: [...view.bindings].map(([clientId, userId]) => ({ clientId, userId })),
       });

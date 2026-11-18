@@ -80,6 +80,8 @@ describe('BackupPage', () => {
               failing: [],
               backedUpTo: null,
               folderUrl: 'https://drive.google.com/drive/folders/f-root',
+              categories: [],
+              failingItems: [],
             },
           },
         }),
@@ -142,7 +144,15 @@ describe('BackupPage', () => {
             },
             progress: null,
             attention: 'reconnect',
-            events: [{ at: '2026-10-28T08:00:00.000Z', kind: 'revoke_failed', diaryDate: null }],
+            events: [
+              {
+                at: '2026-10-28T08:00:00.000Z',
+                kind: 'revoke_failed',
+                diaryDate: null,
+                item: null,
+                email: null,
+              },
+            ],
           },
         }),
     });
@@ -154,8 +164,19 @@ describe('BackupPage', () => {
   });
 });
 
+/** One line of the per-kind progress, matched whole ("日记：还有 3 天等待备份"). */
+const progressLine = (text: string | RegExp) =>
+  screen.findByText((_, el) =>
+    el?.tagName === 'LI' && typeof text === 'string'
+      ? el.textContent === text
+      : el?.tagName === 'LI' && (text as RegExp).test(el.textContent ?? ''),
+  );
+
 describe('backup progress', () => {
-  const connected = (progress: object, attention: string | null = null) => ({
+  const connected = (
+    progress: { waitingDays?: number; backedUpTo?: string } & Record<string, unknown>,
+    attention: string | null = null,
+  ) => ({
     backup: {
       ...google('connected', { email: 'ray@example.com' }).backup,
       progress: {
@@ -163,6 +184,19 @@ describe('backup progress', () => {
         failing: [],
         backedUpTo: null,
         folderUrl: 'https://drive.google.com/drive/folders/f-1',
+        categories: [
+          {
+            category: 'diaries',
+            waiting: progress.waitingDays ?? 0,
+            backedUpTo: progress.backedUpTo ?? null,
+          },
+          ...['shared_pages', 'wishes', 'gifts', 'anniversaries'].map((category) => ({
+            category,
+            waiting: 0,
+            backedUpTo: null,
+          })),
+        ],
+        failingItems: [],
         ...progress,
       },
       attention,
@@ -187,7 +221,7 @@ describe('backup progress', () => {
       'POST /api/backup/run': run,
     });
     renderAt('/backup', routesWith(vi.fn()));
-    expect(await screen.findByText('还有 3 天等待备份')).toBeDefined();
+    expect(await progressLine('日记：还有 3 天等待备份')).toBeDefined();
     expect(
       screen.getByText('暂时连不上 Google，2 天正在自动重试：10 月 28 日、10 月 27 日'),
     ).toBeDefined();
@@ -196,7 +230,7 @@ describe('backup progress', () => {
       screen.getByRole('link', { name: '在 Google Drive 打开文件夹' }).getAttribute('href'),
     ).toBe('https://drive.google.com/drive/folders/f-1');
     fireEvent.click(screen.getByText('现在备份'));
-    expect(await screen.findByText(/^全部日记已备份到 .* 的版本$/)).toBeDefined();
+    expect(await progressLine(/^日记：已备份到 /)).toBeDefined();
     expect(run).toHaveBeenCalledTimes(1);
   });
 
@@ -226,8 +260,65 @@ describe('backup progress', () => {
         ),
       },
     ]);
-    expect(await screen.findByText('还有 3 天等待备份')).toBeDefined();
+    expect(await progressLine('日记：还有 3 天等待备份')).toBeDefined();
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('[adr:google-copy-beyond-diaries#9] lists each kind, names failing pages and summaries, and says the copies go to both Drives', async () => {
+    const page = '0d0d0d0d-0000-4000-8000-000000000009';
+    const answer = connected({
+      categories: [
+        { category: 'diaries', waiting: 0, backedUpTo: '2026-11-18T01:22:00.000Z' },
+        { category: 'shared_pages', waiting: 2, backedUpTo: null },
+        { category: 'wishes', waiting: 0, backedUpTo: '2026-11-18T01:30:00.000Z' },
+        { category: 'gifts', waiting: 1, backedUpTo: null },
+        { category: 'anniversaries', waiting: 0, backedUpTo: null },
+      ],
+      failingItems: [
+        { item: { kind: 'page', pageId: page, title: '旅行清单' }, failure: 'unreachable' },
+        { item: { kind: 'gifts', pageId: null, title: null }, failure: 'failed' },
+      ],
+    });
+    answer.backup.events = [
+      {
+        at: '2026-11-18T02:00:00.000Z',
+        kind: 'doc_replaced',
+        diaryDate: null,
+        item: { kind: 'page', pageId: page, title: '' },
+        email: null,
+      },
+      {
+        at: '2026-11-18T01:00:00.000Z',
+        kind: 'doc_recreated',
+        diaryDate: null,
+        item: { kind: 'wishes', pageId: null, title: null },
+        email: null,
+      },
+      {
+        at: '2026-11-17T01:00:00.000Z',
+        kind: 'account_in_use',
+        diaryDate: null,
+        item: null,
+        email: 'shared@example.com',
+      },
+    ] as never;
+    stubApi({ 'GET /api/me': signedIn(), 'GET /api/backup': () => Response.json(answer) });
+    renderAt('/backup', routesWith(vi.fn()));
+    expect(await progressLine(/^日记：已备份到 /)).toBeDefined();
+    expect(await progressLine('共享页面：还有 2 项等待备份')).toBeDefined();
+    expect(await progressLine(/^心愿单：已备份到 /)).toBeDefined();
+    expect(await progressLine('礼物墙：还有 1 项等待备份')).toBeDefined();
+    expect(await progressLine('纪念日：还没有需要备份的内容')).toBeDefined();
+    expect(screen.getByText('暂时连不上 Google，正在自动重试：共享页面「旅行清单」')).toBeDefined();
+    expect(screen.getByText('备份失败，正在自动重试：礼物墙')).toBeDefined();
+    expect(
+      screen.getByText(/共享页面「未命名页面」的 Doc 在 Google 里被改过，已另存一份新的/),
+    ).toBeDefined();
+    expect(screen.getByText(/心愿单的 Doc 不见了，已重新生成/)).toBeDefined();
+    expect(screen.getByText(/之前写进 shared@example\.com 的副本仍在那个 Drive 里/)).toBeDefined();
+    expect(
+      screen.getByText(/共享页面、心愿、礼物墙与纪念日会进你们两人各自的 Drive/).textContent,
+    ).toContain('在应用里删除，不会从对方 Drive 的版本历史里消失');
   });
 });
 
@@ -268,5 +359,17 @@ describe('GoogleCallbackPage', () => {
     });
     renderAt('/backup/google/callback?code=c&state=s', routesWith(vi.fn()));
     expect((await screen.findByRole('alert')).textContent).toMatch(/已过期或不是从这里发起的/);
+  });
+
+  it('[adr:google-copy-beyond-diaries#12] asks for another account when this one is connected by someone else, naming no one', async () => {
+    stubApi({
+      'GET /api/me': signedIn(),
+      'POST /api/backup/google/finish': () =>
+        Response.json({ error: { code: 'GOOGLE_ACCOUNT_IN_USE', message: 'x' } }, { status: 409 }),
+    });
+    renderAt('/backup/google/callback?code=c&state=s', routesWith(vi.fn()));
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      '这个 Google 账号已被另一位用户连接，请换一个账号',
+    );
   });
 });

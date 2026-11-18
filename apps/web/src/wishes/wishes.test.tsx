@@ -203,6 +203,51 @@ describe('WishesPage', () => {
     expect(screen.queryByLabelText('日期')).toBeNull();
   });
 
+  it('says a deleted wish or wall gift stays in the partner’s Drive, but not for a gift only being prepared', async () => {
+    const asked: string[] = [];
+    vi.stubGlobal('confirm', (message: string) => {
+      asked.push(message);
+      return false;
+    });
+    stubApi({
+      'GET /api/wishes': () =>
+        Response.json(
+          view({
+            mine: [wish({ authorId: ME.id })],
+            preparing: [
+              gift({
+                id: '0c0c0c0c-0000-4000-8000-000000000002',
+                authorId: ME.id,
+                giverId: ME.id,
+                receiverId: PARTNER.id,
+                name: '书',
+                status: 'preparing',
+                revealed: null,
+                date: null,
+              }),
+            ],
+            wall: [gift({ authorId: ME.id, giverId: ME.id, receiverId: PARTNER.id })],
+          }),
+        ),
+      'GET /api/space/unread': () => Response.json({ features: { wishes: 0 } }),
+      ...anniversaries(),
+    });
+    renderAt('/wishes', routes);
+    const note = '已经备份到对方 Google Drive 的内容不会因此删除。';
+    openTab(await screen.findByRole('tab', { name: '我的心愿' }));
+    fireEvent.click(await screen.findByRole('button', { name: '删除' }));
+    openTab(screen.getByRole('tab', { name: '悄悄准备' }));
+    fireEvent.click(await screen.findByRole('button', { name: '取消准备' }));
+    openTab(screen.getByRole('tab', { name: /礼物墙/ }));
+    fireEvent.click(await screen.findByRole('button', { name: '修改' }));
+    fireEvent.click(await screen.findByRole('button', { name: '删除' }));
+    expect(asked).toEqual([
+      `删除"灰色围巾"？${note}`,
+      '取消准备？TA 不会知道。',
+      `从礼物墙删除"花"？${note}`,
+    ]);
+  });
+
   it('says why a write was refused and keeps the request ID for sending again', async () => {
     const bodies: string[] = [];
     let attempts = 0;
