@@ -41,7 +41,11 @@ describe('SiteHeader', () => {
       ...noRelationship,
       'GET /api/me': signedIn('alice'),
       'GET /api/binding': () =>
-        Response.json({ binding: { space: space(), periodId: SPACE }, invitation: null }),
+        Response.json({
+          binding: { space: space(), periodId: SPACE },
+          invitation: null,
+          invitationsForMe: [],
+        }),
       'GET /api/spaces': () => Response.json({ spaces: [space()] }),
       'GET /api/space/unread': () =>
         Response.json({ features: { wishes: 2, anniversaries: 0, sharedPages: 0 } }),
@@ -76,7 +80,11 @@ describe('SiteHeader', () => {
       ...noRelationship,
       'GET /api/me': signedIn('alice'),
       'GET /api/binding': () =>
-        Response.json({ binding: { space: space(), periodId: SPACE }, invitation: null }),
+        Response.json({
+          binding: { space: space(), periodId: SPACE },
+          invitation: null,
+          invitationsForMe: [],
+        }),
       'GET /api/spaces': () => Response.json({ spaces: [space()] }),
       'GET /api/space/unread': () =>
         Response.json({ features: { wishes: 0, anniversaries: 0, sharedPages: 0 } }),

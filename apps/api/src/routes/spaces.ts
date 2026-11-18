@@ -1,6 +1,12 @@
 import type { FastifyReply } from 'fastify';
 import type { ResponseOf } from '@between-pages/contracts';
-import type { Binding, BindingService, Invitation, Space } from '../bindings/bindings.ts';
+import type {
+  Binding,
+  BindingService,
+  IncomingInvitation,
+  Invitation,
+  Space,
+} from '../bindings/bindings.ts';
 import { sendError, sendShareOpenFailed } from '../errors.ts';
 import type { SharingService } from '../sharing/sharing.ts';
 import type { ContractRequest } from './contract.ts';
@@ -17,6 +23,10 @@ const invitationBody = (invitation: Invitation) => ({
   ...invitation,
   expiresAt: invitation.expiresAt.toISOString(),
 });
+const incomingBody = (invitation: IncomingInvitation) => ({
+  ...invitation,
+  expiresAt: invitation.expiresAt.toISOString(),
+});
 
 const MESSAGES = {
   NOT_FOUND: 'No such space or invitation',
@@ -30,6 +40,7 @@ const MESSAGES = {
   PARTNER_FIXED: 'The partner is fixed after the first binding',
   PERIOD_CLOSED: 'This binding period is no longer open',
   POLICY_CONFLICT: 'The sharing range changed since it was loaded',
+  INVITE_LIMIT: 'Too many addressed invitations in the last 24 hours',
 } as const;
 
 // Relationship and sharing range routes (spaces-and-invitations D11). Run after requireUser,
@@ -43,10 +54,14 @@ export function spaceHandlers(services: { bindings: BindingService; sharing: Sha
   return {
     async binding(request: ContractRequest<'binding'>, reply: FastifyReply) {
       reply.header('cache-control', 'no-store');
-      const { binding, invitation } = await services.bindings.binding(request.user!.id, new Date());
+      const { binding, invitation, invitationsForMe } = await services.bindings.binding(
+        request.user!.id,
+        new Date(),
+      );
       return {
         binding: binding && bindingBody(binding),
         invitation: invitation && invitationBody(invitation),
+        invitationsForMe: invitationsForMe.map(incomingBody),
       };
     },
 
@@ -93,13 +108,20 @@ export function spaceHandlers(services: { bindings: BindingService; sharing: Sha
 
     async previewInvitation(request: ContractRequest<'previewInvitation'>, reply: FastifyReply) {
       reply.header('cache-control', 'no-store');
-      const preview = await services.bindings.preview(
-        request.user!.id,
-        request.body.token,
-        new Date(),
-      );
+      const preview = await services.bindings.preview(request.user!.id, request.body, new Date());
       if (typeof preview === 'string') return refuse(reply, preview);
       return { ...preview, expiresAt: preview.expiresAt.toISOString() };
+    },
+
+    async dismissInvitation(request: ContractRequest<'dismissInvitation'>, reply: FastifyReply) {
+      reply.header('cache-control', 'no-store');
+      const dismissed = await services.bindings.dismiss(
+        request.user!.id,
+        request.params.inviteId,
+        new Date(),
+      );
+      if (dismissed !== true) return refuse(reply, dismissed);
+      return { dismissed: true as const };
     },
 
     async acceptInvitation(request: ContractRequest<'acceptInvitation'>, reply: FastifyReply) {

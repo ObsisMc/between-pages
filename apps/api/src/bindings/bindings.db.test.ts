@@ -17,6 +17,8 @@ beforeAll(() => {
   bindings = createBindingService(
     opened.relations,
     createSharingService(opened.relations, opened.store, createEvents()),
+    // Links only: nobody here has a verified address.
+    { verifiedEmailOf: async () => null },
   );
 });
 afterAll(async () => {
@@ -42,10 +44,12 @@ describe.runIf(testDatabaseUrl)('invitation expiry', () => {
     const { token } = await invitation();
     const acceptor = await createUser();
 
-    expect(await bindings.preview(acceptor, token, at(INVITATION_TTL_MS - 1))).toMatchObject({
+    expect(await bindings.preview(acceptor, { token }, at(INVITATION_TTL_MS - 1))).toMatchObject({
       mode: 'new',
     });
-    expect(await bindings.preview(acceptor, token, at(INVITATION_TTL_MS))).toBe('INVITE_EXPIRED');
+    expect(await bindings.preview(acceptor, { token }, at(INVITATION_TTL_MS))).toBe(
+      'INVITE_EXPIRED',
+    );
     expect(
       await bindings.accept(acceptor, { token, sharingSelection: null }, at(INVITATION_TTL_MS)),
     ).toBe('INVITE_EXPIRED');
@@ -62,7 +66,7 @@ describe.runIf(testDatabaseUrl)('invitation expiry', () => {
     );
 
     expect(rotated).toMatchObject({ invitation: { state: 'pending' } });
-    expect(await bindings.preview(acceptor, token, at(INVITATION_TTL_MS + 2000))).toBe(
+    expect(await bindings.preview(acceptor, { token }, at(INVITATION_TTL_MS + 2000))).toBe(
       'INVITE_EXPIRED',
     );
     const current = await bindings.binding(inviter, at(INVITATION_TTL_MS + 2000));
@@ -76,6 +80,7 @@ describe.runIf(testDatabaseUrl)('invitation expiry', () => {
       id,
       expiresAt: at(INVITATION_TTL_MS),
       state: 'pending',
+      recipientEmail: null,
     });
     expect((await bindings.binding(inviter, at(INVITATION_TTL_MS))).invitation?.state).toBe(
       'expired',

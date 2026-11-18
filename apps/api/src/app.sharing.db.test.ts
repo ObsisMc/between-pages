@@ -28,7 +28,8 @@ beforeAll(() => {
   opened = openTestRelationStore();
   ({ relations, store } = opened);
   sharing = createSharingService(relations, store, createEvents());
-  bindings = createBindingService(relations, sharing);
+  // Links only: nobody here has a verified address.
+  bindings = createBindingService(relations, sharing, { verifiedEmailOf: async () => null });
   commit = createCommitService(store);
 });
 afterAll(async () => {
