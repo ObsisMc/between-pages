@@ -212,3 +212,10 @@ export function useRequestId(): [string, () => void] {
   const [id, setId] = useState(() => crypto.randomUUID());
   return [id, useCallback(() => setId(crypto.randomUUID()), [])];
 }
+
+/**
+ * Said when deleting something that is already in both people's Drive: deleting in the app
+ * takes nothing out of the partner's Doc or its version history (google-copy-beyond-diaries
+ * D8). Not for a gift in preparation, which only ever reached the giver's own Drive.
+ */
+export const COPY_STAYS_NOTE = '已经备份到对方 Google Drive 的内容不会因此删除。';

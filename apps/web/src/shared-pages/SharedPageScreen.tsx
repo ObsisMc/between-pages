@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { ApiError, callApi } from '../api/client.ts';
-import { DiaryBlock, usePeople, type PageSource } from '../diary/index.ts';
+import { DiaryBlock, usePeople, type GoogleCopy, type PageSource } from '../diary/index.ts';
 import { Page } from '../shell/index.ts';
-import { refusalText, useSeenReporter } from '../space-common/index.ts';
+import { COPY_STAYS_NOTE, refusalText, useSeenReporter } from '../space-common/index.ts';
 import {
   Button,
   Dialog,
@@ -21,6 +21,13 @@ import { sharedPagesKey, useSharedPage, useSharedPages, type SharedPageView } fr
 // as it is open, and again as what the partner writes arrives (D5).
 
 const alertClass = 'mt-3 rounded-xl bg-notice px-4 py-3 text-sm text-ink';
+
+const pageCopy = (google: SharedPageView['google']): GoogleCopy => ({
+  connected: google.connected,
+  backedUpAt: google.coveredAt,
+  docUrl: google.docUrl,
+  problem: google.problem,
+});
 
 function Title({ view, onChanged }: { view: SharedPageView; onChanged: () => Promise<void> }) {
   const [error, setError] = useState<string | null>(null);
@@ -106,6 +113,7 @@ function DeletePage({ view, partner }: { view: SharedPageView; partner: string }
         <DialogTitle>删除这一页？</DialogTitle>
         <p className="text-sm">删除后两人都看不到，也不能恢复。</p>
         {partnerWrote && <p className="text-sm">TA 写的内容也会一起消失。</p>}
+        <p className="text-sm">{COPY_STAYS_NOTE}</p>
         {error && (
           <p className={alertClass} role="alert">
             {error}
@@ -184,6 +192,8 @@ export function SharedPageScreen() {
           page={source}
           people={people}
           closed={gone ? 'NOT_FOUND' : undefined}
+          // The page's Doc in the caller's own Drive, as a day's (google-copy-beyond-diaries D8).
+          googleCopy={view && pageCopy(view.google)}
           // The editor learned it first: the title, deletion and list follow it now.
           onClosed={() => {
             if (!view?.readOnly) void client.invalidateQueries({ queryKey: sharedPagesKey });

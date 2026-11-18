@@ -20,6 +20,7 @@ import {
   cn,
 } from '../ui/index.ts';
 import {
+  COPY_STAYS_NOTE,
   ReadOnlyNotice,
   StampText,
   UnreadJump,
@@ -436,7 +437,7 @@ function Item({
                       size="sm"
                       disabled={write.busy}
                       onClick={() =>
-                        window.confirm(`删除"${nameOf(a, view)}"？`) &&
+                        window.confirm(`删除"${nameOf(a, view)}"？${COPY_STAYS_NOTE}`) &&
                         void write
                           .run(() =>
                             callApi('deleteAnniversary', { params, body: { requestId: deleteId } }),

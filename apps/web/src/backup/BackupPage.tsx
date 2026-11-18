@@ -18,15 +18,32 @@ const dateTime = (iso: string) =>
   );
 
 type BackupEvent = Backup['events'][number];
+type BackupItem = NonNullable<BackupEvent['item']>;
+type Progress = NonNullable<Backup['progress']>;
+
+/**
+ * A page or summary as the backup page names it (google-copy-beyond-diaries D8): a page by
+ * the title the server found, its current one or the one its Doc last got.
+ */
+const itemText = (item: BackupItem) =>
+  item.kind === 'page'
+    ? item.title === null
+      ? '一个共享页面'
+      : `共享页面「${item.title || '未命名页面'}」`
+    : { wishes: '心愿单', gifts: '礼物墙', anniversaries: '纪念日' }[item.kind];
+
+/** What an entry is about: a page or summary, else a diary date. */
+const subject = (date: string | null, e: BackupEvent) =>
+  e.item ? itemText(e.item) : dayText(date ?? '');
 
 const EVENT_TEXT: Record<BackupEvent['kind'], (date: string | null, e: BackupEvent) => string> = {
-  doc_replaced: (d) => `${d} 的 Doc 在 Google 里被改过，已另存一份新的`,
-  doc_recreated: (d) => `${d} 的 Doc 不见了，已重新生成`,
+  doc_replaced: (d, e) => `${subject(d, e)}的 Doc 在 Google 里被改过，已另存一份新的`,
+  doc_recreated: (d, e) => `${subject(d, e)}的 Doc 不见了，已重新生成`,
   storage_full: () => 'Google 空间已满，备份暂停',
   revoke_failed: () =>
     '没能通知 Google 收回授权，请到 Google 账号的"第三方访问"里移除 Between Pages',
   reconnect_needed: () => 'Google 授权失效，需要重新连接',
-  copy_failing: (d) => `${d} 的备份开始失败，会自动重试`,
+  copy_failing: (d, e) => `${subject(d, e)}的备份开始失败，会自动重试`,
   check_failed: () => '检查 Google 里的文件失败，明天再试',
   account_in_use: (_d, e) =>
     `这个 Google 账号也被另一位用户连接着，你的连接已移除；之前写进 ${e.email} 的副本仍在那个 Drive 里，需要的话请自己删除，再换自己的账号连接`,
@@ -44,7 +61,7 @@ const dayText = (date: string) => {
 };
 
 /** The days that failed for one reason, each retried on its own (D9, Ray 2026-10-29). */
-function failingOf(progress: NonNullable<Backup['progress']>, failure: 'unreachable' | 'failed') {
+function failingOf(progress: Progress, failure: 'unreachable' | 'failed') {
   const days = progress.failing.filter((f) => f.failure === failure).map((f) => f.diaryDate);
   if (!days.length) return null;
   const which = days.map(dayText).join('、');
@@ -54,6 +71,52 @@ function failingOf(progress: NonNullable<Backup['progress']>, failure: 'unreacha
         ? `暂时连不上 Google，${days.length} 天正在自动重试：${which}`
         : `有 ${days.length} 天备份失败，正在自动重试：${which}`}
     </p>
+  );
+}
+
+/** The pages and summaries that failed for one reason (google-copy-beyond-diaries D8). */
+function failingItemsOf(progress: Progress, failure: 'unreachable' | 'failed') {
+  const items = progress.failingItems.filter((f) => f.failure === failure).map((f) => f.item);
+  if (!items.length) return null;
+  const which = items.map(itemText).join('、');
+  return (
+    <p role="alert" className={warnClass}>
+      {failure === 'unreachable'
+        ? `暂时连不上 Google，正在自动重试：${which}`
+        : `备份失败，正在自动重试：${which}`}
+    </p>
+  );
+}
+
+const CATEGORY_TEXT: Record<Progress['categories'][number]['category'], string> = {
+  diaries: '日记',
+  shared_pages: '共享页面',
+  wishes: '心愿单',
+  gifts: '礼物墙',
+  anniversaries: '纪念日',
+};
+
+/** One line per kind: what still waits, else how far its Docs reach (D8). */
+function CategoryProgress({ progress }: { progress: Progress }) {
+  return (
+    <ul aria-label="各类备份进度" className="grid gap-1 text-sm">
+      {progress.categories.map((c) => (
+        <li key={c.category}>
+          <span className="text-ink-soft">{CATEGORY_TEXT[c.category]}：</span>
+          {c.waiting > 0 ? (
+            c.category === 'diaries' ? (
+              `还有 ${c.waiting} 天等待备份`
+            ) : (
+              `还有 ${c.waiting} 项等待备份`
+            )
+          ) : c.backedUpTo ? (
+            <span className="text-done">已备份到 {dateTime(c.backedUpTo)}</span>
+          ) : (
+            <span className="text-ink-soft">还没有需要备份的内容</span>
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -128,8 +191,10 @@ function WhereDocsGo() {
         onPointerLeave={(e) => hoverOut(e.pointerType)}
       >
         每天一份 Google Doc，存在你 Drive 的{' '}
-        <span className="text-ink">我的云端硬盘 › Between Pages › 年 › 月</span> 里。可以在 Drive
-        里移动或改名 Between Pages 文件夹，备份会跟着它；删掉的话会在根目录重新建一个。
+        <span className="text-ink">我的云端硬盘 › Between Pages › 年 › 月</span>{' '}
+        里；共享页面每页一份、心愿单、礼物墙与纪念日各一份，存在{' '}
+        <span className="text-ink">Between Pages › Together</span> 里。可以在 Drive 里移动或改名
+        Between Pages 文件夹，备份会跟着它；删掉的话会在根目录重新建一个。
       </PopoverContent>
     </Popover>
   );
@@ -213,6 +278,12 @@ export function BackupPage({ goTo = (url) => window.location.assign(url) }: Back
                 {google.state === 'unavailable' && (
                   <p className="text-ink-soft">这台服务器还没有配置 Google 备份</p>
                 )}
+                {google.state !== 'unavailable' && (
+                  <p className="text-sm text-ink-soft">
+                    共享页面、心愿、礼物墙与纪念日会进你们两人各自的
+                    Drive（各自连接后）；在应用里删除，不会从对方 Drive 的版本历史里消失。
+                  </p>
+                )}
                 {google.state === 'disconnected' && (
                   <>
                     <p className="text-ink-soft">未开启 Google 备份</p>
@@ -263,17 +334,11 @@ export function BackupPage({ goTo = (url) => window.location.assign(url) }: Back
                 )}
                 {progress && (
                   <div aria-label="备份进度" role="group" className="grid gap-3">
-                    {progress.waitingDays > 0 ? (
-                      <p className="text-sm">还有 {progress.waitingDays} 天等待备份</p>
-                    ) : progress.backedUpTo ? (
-                      <p className="text-sm text-done">
-                        全部日记已备份到 {dateTime(progress.backedUpTo)} 的版本
-                      </p>
-                    ) : (
-                      <p className="text-sm text-ink-soft">还没有需要备份的日记</p>
-                    )}
+                    <CategoryProgress progress={progress} />
                     {failingOf(progress, 'unreachable')}
                     {failingOf(progress, 'failed')}
+                    {failingItemsOf(progress, 'unreachable')}
+                    {failingItemsOf(progress, 'failed')}
                     {backup.data?.attention === 'storage_full' && (
                       <p role="alert" className={warnClass}>
                         Google 空间已满，备份暂停。腾出空间后点"现在备份"继续
