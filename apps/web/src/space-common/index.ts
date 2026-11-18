@@ -1,4 +1,5 @@
 export {
+  COPY_STAYS_NOTE,
   EntryDot,
   ReadOnlyNotice,
   SEEN_DWELL_MS,

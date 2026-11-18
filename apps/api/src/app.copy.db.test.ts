@@ -10,6 +10,7 @@ import { createDb, type Database } from './db/client.ts';
 import { FOLDER_TYPE } from './google/docs.ts';
 import { createReader } from './reader/reader.ts';
 import { createCopyStore } from './store/copy.ts';
+import { createTogetherStore } from './store/together.ts';
 import { createStore } from './store/store.ts';
 import { checkDrives } from './worker/check.ts';
 import { copyNext } from './worker/copy.ts';
@@ -63,7 +64,7 @@ beforeAll(async () => {
     await copy.intake(people.map((p) => p.id));
     while (await copyNext({ copy, store, drive }));
   };
-  dailyCheck = () => checkDrives({ store, drive });
+  dailyCheck = () => checkDrives({ store, together: createTogetherStore(database.db), drive });
 });
 afterAll(async () => {
   await app?.close();

@@ -39,15 +39,42 @@ export const BackupEventKind = z.enum([
   'copy_failing',
   /** The daily check could not read the Drive; tried again the next day. */
   'check_failed',
+  /**
+   * The connection shared its Google account with another user's and was removed when one
+   * account became one user's (google-copy-beyond-diaries D9); `email` names that account.
+   */
+  'account_in_use',
 ]);
+
+/**
+ * A `Together` Doc (google-copy-beyond-diaries D4): one shared page, by its ID and title
+ * (the current one, or the one its Doc last got once the page is gone; `''` untitled,
+ * null when never known), or one of the three summaries.
+ */
+export const BackupItem = z
+  .object({
+    kind: z.enum(['page', 'wishes', 'gifts', 'anniversaries']),
+    pageId: z.uuid().nullable(),
+    title: z.string().nullable(),
+  })
+  .meta({ id: 'BackupItem' });
 
 export const BackupEvent = z
   .object({
     at: z.iso.datetime(),
     kind: BackupEventKind,
     diaryDate: z.iso.date().nullable(),
+    /** The page or summary the entry is about; null for a day or the whole Drive. */
+    item: BackupItem.nullable(),
+    /** Only on `account_in_use`. */
+    email: z.string().nullable(),
   })
   .meta({ id: 'BackupEvent' });
+
+/** What the backup page lists by kind (google-copy-beyond-diaries D8). */
+export const BackupCategory = z
+  .enum(['diaries', 'shared_pages', 'wishes', 'gifts', 'anniversaries'])
+  .meta({ id: 'BackupCategory' });
 
 /** How far the readable copy is (D9); only while a connection exists. */
 export const BackupProgress = z
@@ -65,6 +92,21 @@ export const BackupProgress = z
     backedUpTo: z.iso.datetime().nullable(),
     /** The app's `Between Pages` folder in Drive, once created. */
     folderUrl: z.url().nullable(),
+    /**
+     * Each kind in the order the page shows them (D8): how many days or Docs wait, and the
+     * newest state a Doc of it holds ("已备份到 9:22"); `diaries` repeats the two above.
+     */
+    categories: z.array(
+      z.object({
+        category: BackupCategory,
+        waiting: z.number().int().nonnegative(),
+        backedUpTo: z.iso.datetime().nullable(),
+      }),
+    ),
+    /** Pages and summaries whose last attempt failed, as `failing` for days. */
+    failingItems: z.array(
+      z.object({ item: BackupItem, failure: z.enum(['unreachable', 'failed']) }),
+    ),
   })
   .meta({ id: 'BackupProgress' });
 
@@ -104,6 +146,19 @@ export const DayGoogleCopy = z
     problem: z.enum(['reconnect', 'storage_full', 'unreachable', 'failed']).nullable(),
   })
   .meta({ id: 'DayGoogleCopy' });
+
+/**
+ * A shared page's Doc in the caller's own Drive (google-copy-beyond-diaries D8), as
+ * `DayGoogleCopy` for a day: `coveredAt` is when the state the Doc holds was committed.
+ */
+export const PageGoogleCopy = z
+  .object({
+    connected: z.boolean(),
+    docUrl: z.url().nullable(),
+    coveredAt: z.iso.datetime().nullable(),
+    problem: z.enum(['reconnect', 'storage_full', 'unreachable', 'failed']).nullable(),
+  })
+  .meta({ id: 'PageGoogleCopy' });
 
 export const BackupResponse = z.object({ backup: BackupStatus }).meta({ id: 'BackupResponse' });
 

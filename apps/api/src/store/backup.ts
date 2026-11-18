@@ -1,4 +1,4 @@
-import { and, desc, eq, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, lte, ne, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.ts';
 import { backupEvents, googleConnections, googleOauthStates } from '../db/schema.ts';
 
@@ -45,35 +45,69 @@ export function createBackupStore(db: Db) {
     /**
      * Stores the new connection unless the old grant is still being revoked: revoking a
      * Google grant revokes every token of it, so a later revoke would end the new one too.
+     * A Google account another user has connected, revoking included, is `in_use` and
+     * nothing is stored (google-copy-beyond-diaries D9); the unique key decides a race.
      */
     async connect(
       row: Omit<ConnectionRow, 'attempts' | 'nextAttemptAt' | 'lastError'>,
-    ): Promise<'connected' | 'disconnecting'> {
-      return db.transaction(async (tx) => {
-        const [existing] = await tx
-          .select({ status: googleConnections.status })
-          .from(googleConnections)
-          .where(eq(googleConnections.userId, row.userId))
-          .for('update');
-        if (existing?.status === 'revoking') return 'disconnecting';
-        await tx
-          .insert(googleConnections)
-          .values(row)
-          .onConflictDoUpdate({
-            target: googleConnections.userId,
-            set: { ...row, attempts: 0, nextAttemptAt: sql`now()`, lastError: null },
-          });
-        // Every date the user can see is queued (D7 "第一次连接"); a day whose Doc already
-        // holds the same content in this account is not written again.
-        await tx.execute(sql`
+    ): Promise<'connected' | 'disconnecting' | 'in_use'> {
+      return db
+        .transaction(async (tx) => {
+          const [existing] = await tx
+            .select({ status: googleConnections.status })
+            .from(googleConnections)
+            .where(eq(googleConnections.userId, row.userId))
+            .for('update');
+          if (existing?.status === 'revoking') return 'disconnecting' as const;
+          const [other] = await tx
+            .select({ userId: googleConnections.userId })
+            .from(googleConnections)
+            .where(
+              and(
+                eq(googleConnections.googleUserId, row.googleUserId),
+                ne(googleConnections.userId, row.userId),
+              ),
+            );
+          if (other) return 'in_use' as const;
+          await tx
+            .insert(googleConnections)
+            .values(row)
+            .onConflictDoUpdate({
+              target: googleConnections.userId,
+              set: { ...row, attempts: 0, nextAttemptAt: sql`now()`, lastError: null },
+            });
+          // Every date the user can see is queued (D7 "第一次连接"); a day whose Doc already
+          // holds the same content in this account is not written again.
+          await tx.execute(sql`
           insert into google_day_work (user_id, diary_date)
           select ${row.userId}::uuid, diary_date from diaries where owner_id = ${row.userId}
           union
           select ${row.userId}::uuid, d.diary_date from share_epochs e
             join diaries d on d.id = e.diary_id where e.recipient_id = ${row.userId}
           on conflict do nothing`);
-        return 'connected';
-      });
+          // And every `Together` Doc (google-copy-beyond-diaries D5): the three summaries
+          // and the pages of the user's space, plus every page Doc of this account still
+          // current, so a page deleted while disconnected gets its last content and name.
+          await tx.execute(sql`
+          insert into google_item_work (user_id, item)
+          select ${row.userId}::uuid, i.item from spaces s
+            cross join unnest(array['wishes', 'gifts', 'anniversaries']) i(item)
+            where ${row.userId}::uuid in (s.user_low, s.user_high)
+          union
+          select ${row.userId}::uuid, 'page:' || p.id from spaces s
+            join shared_pages p on p.space_id = s.id and p.deleted_at is null
+            where ${row.userId}::uuid in (s.user_low, s.user_high)
+          union
+          select ${row.userId}::uuid, d.item from google_item_docs d
+            where d.user_id = ${row.userId} and d.google_user_id = ${row.googleUserId}
+              and d.state = 'current' and d.item like 'page:%'
+          on conflict do nothing`);
+          return 'connected' as const;
+        })
+        .catch((error: unknown) => {
+          if (isAccountTaken(error)) return 'in_use' as const;
+          throw error;
+        });
     },
 
     /** Hands the grant to the worker to revoke; the page shows it as disconnecting until then. */
@@ -126,13 +160,26 @@ export function createBackupStore(db: Db) {
 
     events: (userId: string, limit = 20) =>
       db
-        .select({ at: backupEvents.at, kind: backupEvents.kind, diaryDate: backupEvents.diaryDate })
+        .select({
+          at: backupEvents.at,
+          kind: backupEvents.kind,
+          diaryDate: backupEvents.diaryDate,
+          item: backupEvents.item,
+          email: backupEvents.email,
+        })
         .from(backupEvents)
         .where(eq(backupEvents.userId, userId))
         .orderBy(desc(backupEvents.at))
         .limit(limit),
   };
 }
+
+/** Another user connected the same Google account between the check and the insert. */
+const isAccountTaken = (error: unknown): boolean => {
+  const cause = (error as { cause?: { code?: string; constraint?: string } }).cause ?? error;
+  const { code, constraint } = cause as { code?: string; constraint?: string };
+  return code === '23505' && constraint === 'google_connections_account';
+};
 
 export type RevocationOutcome = {
   revoked(): Promise<void>;

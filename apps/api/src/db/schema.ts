@@ -525,11 +525,13 @@ export const sharingPolicyChanges = pgTable(
 
 // One Drive connection per person. The refresh token is AES-256-GCM ciphertext; the key is
 // only in the environment, named by `key_id`, and only the worker decrypts (D10).
+// One Google account is connected by at most one user at a time, a revoking connection
+// included, so two people's copies never land in one Drive (google-copy-beyond-diaries D9).
 export const googleConnections = pgTable('google_connections', {
   userId: uuid('user_id')
     .primaryKey()
     .references(() => users.id),
-  googleUserId: text('google_user_id').notNull(),
+  googleUserId: text('google_user_id').notNull().unique('google_connections_account'),
   email: text('email').notNull(),
   refreshToken: bytea('refresh_token').notNull(),
   tokenNonce: bytea('token_nonce').notNull(),
@@ -635,11 +637,103 @@ export const backupEvents = pgTable(
         'reconnect_needed',
         'copy_failing',
         'check_failed',
+        'account_in_use',
       ],
     }).notNull(),
     diaryDate: date('diary_date'),
+    /** The page or summary an entry is about (google-copy-beyond-diaries D8): `page:<id>`, `wishes`, ... */
+    item: text('item'),
+    /**
+     * The Google account an `account_in_use` entry names: its connection row was deleted by
+     * migration `0014`, so only this entry still says which Drive holds the earlier copies (D9).
+     */
+    email: text('email'),
   },
   (t) => [index('backup_events_user').on(t.userId, t.at)],
+);
+
+// The space's records that changed since the worker last looked (google-copy-beyond-diaries,
+// 技术设计): written in the transaction of each change by space-records, the page commit,
+// bindings and the link-preview write-back. A null record type means every `Together` Doc of
+// the space (unbinding, rebinding). `private_to` is copied from the write: a private change
+// queues work only for that person (D3). No foreign keys: the writers hold the period FOR
+// SHARE or a document lock, and a key check would lock rows relationship flows lock first.
+export const spaceCopyOutbox = pgTable(
+  'space_copy_outbox',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    spaceId: uuid('space_id').notNull(),
+    recordType: text('record_type'),
+    recordId: uuid('record_id'),
+    privateTo: uuid('private_to'),
+    status: text('status', { enum: ['pending', 'done'] })
+      .notNull()
+      .default('pending'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    processedAt: timestamp('processed_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('space_copy_outbox_pending')
+      .on(t.createdAt)
+      .where(sql`${t.status} = 'pending'`),
+    check('space_copy_outbox_record', sql`num_nulls(${t.recordType}, ${t.recordId}) in (0, 2)`),
+  ],
+);
+
+// A page or summary Doc waiting to be written into one person's Drive (D5), merged per person
+// and item (`page:<id>`, `wishes`, `gifts`, `anniversaries`). A summary is due two minutes
+// after its latest change, at the latest ten after `first_at`; a page is looked at at once
+// and waits for its history point as a day does. No foreign key, as for the outbox.
+export const googleItemWork = pgTable(
+  'google_item_work',
+  {
+    userId: uuid('user_id').notNull(),
+    item: text('item').notNull(),
+    readyAt: timestamp('ready_at', { withTimezone: true }).notNull().defaultNow(),
+    /** When this batch of changes was first queued (D5's ten-minute bound). */
+    firstAt: timestamp('first_at', { withTimezone: true }).notNull().defaultNow(),
+    /** "现在备份": write without waiting for a history point or the two minutes. */
+    now: boolean('now').notNull().default(false),
+    attempts: integer('attempts').notNull().default(0),
+    lastError: text('last_error'),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.item] })],
+);
+
+// A page or summary Doc in one Drive (D4–D7). At most one `current` per person, account and
+// item; `replaced` was changed in Google (D6), `deleted` holds a page deleted in the app and
+// is never written or made again (D7). `title` is the page title the Doc last got, kept for
+// the backup page once the page is gone; `rename_intent` is a Drive rename under way, so a
+// crash between it and recording the revision it produced is not taken for an edit.
+export const googleItemDocs = pgTable(
+  'google_item_docs',
+  {
+    docId: text('doc_id').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    googleUserId: text('google_user_id').notNull(),
+    item: text('item').notNull(),
+    state: text('state', { enum: ['current', 'replaced', 'deleted'] }).notNull(),
+    title: text('title'),
+    /** The name the rename gives, the revision before it and the sha256 (hex) of the text then. */
+    renameIntent: jsonb('rename_intent').$type<{
+      name: string;
+      revisionId: string;
+      textSha256: string;
+    }>(),
+    /** The revision the app's last write produced; a write requires it. */
+    revisionId: text('revision_id').notNull(),
+    contentSha256: bytea('content_sha256').notNull(),
+    /** What the Doc reaches, as "已备份到 Google 9:22" shows it. */
+    coveredAt: timestamp('covered_at', { withTimezone: true }).notNull(),
+    writtenAt: timestamp('written_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('google_item_docs_current')
+      .on(t.userId, t.googleUserId, t.item)
+      .where(sql`${t.state} = 'current'`),
+  ],
 );
 
 // Shared tables of the space features beyond the diary (space-records ADR). Only

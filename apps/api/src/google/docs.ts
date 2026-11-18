@@ -13,7 +13,7 @@ export const DOC_TYPE = 'application/vnd.google-apps.document';
 export type DocBody = {
   text: string;
   /** Offsets into `text`, end exclusive. */
-  headings: { start: number; end: number; level: 1 | 2 }[];
+  headings: { start: number; end: number; level: 1 | 2 | 3 }[];
   colors: { start: number; end: number; rgb: readonly [number, number, number] }[];
 };
 
@@ -156,6 +156,55 @@ export async function docRevision(
       ),
     );
     return { revisionId: doc.revisionId, endIndex: doc.body.content.at(-1)?.endIndex ?? 2 };
+  } catch (error) {
+    if (error instanceof GoogleError && error.status === 404) return null;
+    throw error;
+  }
+}
+
+const DocText = z.object({
+  revisionId: z.string().min(1),
+  title: z.string(),
+  body: z.object({
+    content: z.array(
+      z
+        .object({
+          paragraph: z
+            .object({
+              elements: z.array(
+                z.object({ textRun: z.object({ content: z.string() }).optional() }).loose(),
+              ),
+            })
+            .loose()
+            .optional(),
+        })
+        .loose(),
+    ),
+  }),
+});
+
+/**
+ * The Doc's revision, title (its Drive name) and plain text without the final newline;
+ * null when gone. Only to tell whether a rename the app made is all that changed
+ * (google-copy-beyond-diaries 技术设计); never logged.
+ */
+export async function docText(
+  endpoints: GoogleEndpoints,
+  token: string,
+  docId: string,
+): Promise<{ revisionId: string; title: string; text: string } | null> {
+  try {
+    const doc = DocText.parse(
+      await call(
+        `${endpoints.docs}/documents/${docId}?fields=revisionId,title,body.content(paragraph.elements(textRun.content))`,
+        token,
+      ),
+    );
+    const text = doc.body.content
+      .flatMap((c) => c.paragraph?.elements ?? [])
+      .map((e) => e.textRun?.content ?? '')
+      .join('');
+    return { revisionId: doc.revisionId, title: doc.title, text: text.replace(/\n$/, '') };
   } catch (error) {
     if (error instanceof GoogleError && error.status === 404) return null;
     throw error;
