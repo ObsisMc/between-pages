@@ -128,3 +128,17 @@ test('[adr:shared-pages#10] input survives the page being deleted, while open an
   const left = back.getByRole('region', { name: '已删除页面里没保存的内容' });
   await expect(left).toContainText('离线写的字');
 });
+
+test('[adr:google-copy-beyond-diaries#9] the page says whether it is in the own Google Drive, and deleting says the partner’s copy stays', async ({
+  browser,
+  browserName,
+}) => {
+  const { a } = await bound(browser, browserName, 'g');
+  await newPage(a, '备份说明');
+  // This server has no Google Drive, so nobody's copy of the page exists.
+  await expect(a.getByText('未开启 Google 备份')).toBeVisible();
+  await a.getByRole('button', { name: '删除', exact: true }).click();
+  await expect(a.getByRole('dialog')).toContainText(
+    '已经备份到对方 Google Drive 的内容不会因此删除。',
+  );
+});

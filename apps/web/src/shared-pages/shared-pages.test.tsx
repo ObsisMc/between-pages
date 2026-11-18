@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { BODY, createDiaryDoc } from '@between-pages/collab';
 import { PROTOCOL_VERSION } from '@between-pages/contracts';
 import * as Y from 'yjs';
@@ -264,6 +264,27 @@ describe('shared pages', () => {
     await waitFor(() => expect(editable()).toBe('true'));
   });
 
+  it("[adr:google-copy-beyond-diaries#9] shows the page's Doc in the caller's own Drive, and why it is behind", async () => {
+    let google: object = {
+      connected: true,
+      docUrl: 'https://docs.google.com/document/d/doc-1/edit',
+      coveredAt: '2026-11-18T01:22:00.000Z',
+      problem: null,
+    };
+    const { client } = openPage(() => Response.json(opened({ google })));
+    const link = await screen.findByRole('link', { name: '在 Google Docs 打开' });
+    expect(link.getAttribute('href')).toBe('https://docs.google.com/document/d/doc-1/edit');
+    expect(link.parentElement!.textContent).toMatch(/^已备份到 Google /);
+
+    google = { ...google, problem: 'unreachable' };
+    await act(() => client.invalidateQueries());
+    await screen.findByText(/暂时连不上 Google，正在自动重试/);
+
+    google = { connected: false, docUrl: null, coveredAt: null, problem: null };
+    await act(() => client.invalidateQueries());
+    await screen.findByText('未开启 Google 备份');
+  });
+
   it('asks the server who wrote in the page before confirming its deletion', async () => {
     let partnerWrote = false;
     openPage(() =>
@@ -276,6 +297,9 @@ describe('shared pages', () => {
     fireEvent.click(screen.getByRole('button', { name: '删除' }));
 
     await screen.findByText('TA 写的内容也会一起消失。');
+    // Already in both Drives, so deleting here takes nothing out of the partner's
+    // (google-copy-beyond-diaries D8).
+    screen.getByText('已经备份到对方 Google Drive 的内容不会因此删除。');
     expect(screen.getByRole('button', { name: '确认删除' })).toHaveProperty('disabled', false);
   });
 
