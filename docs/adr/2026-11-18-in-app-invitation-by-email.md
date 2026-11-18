@@ -1,6 +1,6 @@
 # 邀请可以按对方的 Google 邮箱定向发出，对方用这个邮箱登录后在应用里看到并接受；不发邮件，发起方在接受前得不到关于对方的任何信号
 
-- 状态：已采纳
+- 状态：已实现
 - 日期：2026-11-18
 - 决策者：Ray
 - 范围：领域
@@ -118,7 +118,7 @@ type IncomingInvitation = {
 
 ### 数据与接口
 
-迁移（编号见落地顺序，名称 `directed_invitations`），只改 `binding_invitations`：
+迁移 `0015_directed_invitations`，只改 `binding_invitations`：
 
 | 改动 | 内容 |
 | --- | --- |
@@ -183,26 +183,11 @@ contracts：`CreateInvitationRequest` 加可选 `recipientEmail`；`InvitationSu
 - 数据库开始保存用户填的、可能不属于任何用户的邮箱地址。关闭的邀请不清除这一列（没有消费者需要清除），它和其他数据一样进服务器备份；只有发起方本人看得到。
 - 对方接受另一位发起方的邀请后，其余寄给 TA 的邀请仍列到到期或被忽略（失败与恢复表）。
 
-## 落地顺序
+## 验证
 
-0. **采纳**：Ray 于 2026-11-18 采纳；`docs/architecture.md` Current decisions 的领域行已写入并指向本文，[关系 ADR](./2026-10-25-spaces-and-invitations.md) 的关联行已标明 D8 的部分被本文取代。
-1. **前置**：Google 可读副本扩展的服务端 PR（迁移 `0014`）合入 `main` 之后才开始实现；本文的迁移取下一个编号 `0015_directed_invitations`。若届时 `0015` 已被别的迁移占用，取当时的下一个编号，名称不变。
-2. **服务端**（contracts、API、迁移）：上面的迁移；`verifiedEmailOf` 加进 `auth/email.ts` 并注入 `bindings`；`bindings` 的创建（D1、D2、D6）、`binding()` 的 `invitationsForMe`（D3）、按 ID 预览与接受、忽略（D4）；`store/relations.ts` 的查询与写入；contracts 与错误码；`npm run openapi`；`apps/api` 与 `packages/contracts` 的 README；[功能规格](../diary-spec.md)"邀请…不指定邮箱"一句、[验收清单](../acceptance.md) AUTH-10 的"不指定邮箱"改写，并加定向邀请的验收条目。完成条件：不变量 1～10 有真实 PG 的 API 测试，其中不变量 3 比较"邮箱有账号且已登录、已忽略"与"邮箱无账号"两种情况下发起方的创建响应与 `GET /api/binding` 除 ID 与时间外完全相同。
-3. **网页**：D5 的横幅、`/join?invite=`、"不接受"、`RelationshipPanel` 的邮箱表单与状态、`PartnerCard` 文案、`INVITE_LIMIT` 文案；`apps/web` README。完成条件：组件测试与 e2e（开发登录的身份带 `email_verified: true`，`alice`/`bob` 两个账号走完邀请、横幅、接受；第三个账号看不到、按 ID 被拒）。
-4. **收尾**：在生产用两个真实 Google 账号走一遍：A 在 PWA 里按 B 的 Gmail 邀请，B 在已安装的 PWA 里登录、看到横幅、接受；再试一次大小写不同的写法和一个不存在的地址。结果写进 `docs/validation/`；本文转为已实现，更新路线图、README 状态与 [F-06](../future-features.md#f-06站内邀请不靠链接) 的状态。
-
-**自主实现约定**：本文采纳后，以下改动无需再问——上面那一次迁移；错误码 `INVITE_LIMIT`；列出的 contracts 改动与新路由；`auth/email.ts` 新增 `verifiedEmailOf` 并由 `app.ts` 注入 `bindings`。必须停下来问的情况：需要新的 npm 依赖；需要改 Better Auth 配置或 `auth_*` 表；需要发任何邮件；需要删除现有公开接口或改变链接邀请的行为；改 CI 或 hooks。服务端与网页各一个 PR，叠放，Ray 确认后再合并。
-
-## 验收标准
-
-- A 在「设置 → 搭档」填 B 的 Gmail（故意写成首字母大写）并发出，看到"已发出邀请"与"已邀请 …，等 TA 登录"；B 在已安装的 PWA 里用该账号登录，首页出现"A 邀请你一起写日记 · 查看"，确认范围后接受，两人绑定。
-- A 改填一个没有账号的地址：A 看到的文案、状态与上一条完全相同。
-- C 用另一个账号登录看不到任何邀请；C 拿到 A 那条邀请的 ID 去预览或接受，得到"邀请无效"，看不到 A 的名字。
-- B 点"不接受"后，B 在另一台设备上也看不到；A 看到的仍是"等 TA 登录"；A 重新发出后 B 再次看到；A 第 6 次发出被拒，提示可以改用链接。
-- A 改用链接后，B 首页的横幅消失；链接邀请的行为与现在相同。
-- 已绑定的 B 收到 D 的定向邀请：横幅出现，确认页说明已有搭档、不能接受，可以忽略。
-- 全程没有任何邮件发出。
-- 不变量 1～10 由 API 的真实 PG 测试与 web 测试验证，测试标题带 `[adr:in-app-invitation-by-email#N]`。
+- 服务端（#107，2026-11-18 合并）：迁移 `0015_directed_invitations`；`verifiedEmailOf` 注入 `bindings`；定向创建、`invitationsForMe`、按 ID 预览与接受、忽略与 `INVITE_LIMIT`。`apps/api/src/app.invitations.db.test.ts` 在真实 PG 上测不变量 1～10（`[adr:in-app-invitation-by-email#N]`），其中不变量 3 比较邮箱有账号且已登录、已忽略与邮箱无账号两种情况下发起方看到的响应。
+- 网页（#108，2026-11-18 合并）：首页横幅、`/join?invite=`、"不接受"、搭档页的邮箱表单与状态、`PartnerCard` 文案；`apps/web/src/relationship/addressed-invitations.test.tsx` 与 `e2e/invitations.spec.ts` 覆盖。
+- 验收（2026-11-18，Ray）：在开发环境用开发登录自己测试通过。原落地顺序第 4 步的生产真实 Google 账号检查，Ray 决定不做；大小写不同的写法与不存在的地址只由自动测试覆盖。
 
 ## 补充信息
 

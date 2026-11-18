@@ -136,7 +136,7 @@ describe('HomePage', () => {
     renderAt('/');
     expect(await screen.findByText('还没有搭档')).toBeDefined();
     expect(screen.getByRole('link', { name: '邀请搭档' }).getAttribute('href')).toBe('/partner');
-    expect(screen.queryByText('生成邀请链接')).toBeNull();
+    expect(screen.queryByText('或者生成邀请链接')).toBeNull();
     expect(await screen.findByText('我这边')).toBeDefined();
     expect(screen.queryByText(/TA 那边|醒着/)).toBeNull();
   });

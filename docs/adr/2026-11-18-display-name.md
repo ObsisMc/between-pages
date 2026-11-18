@@ -1,6 +1,6 @@
 # 每人在设置里改自己的名字，两人看到同一个，改后处处现读，Drive 里 Together 下的 Doc 随之重写
 
-- 状态：已采纳
+- 状态：已实现
 - 日期：2026-11-18
 - 决策者：Ray
 - 范围：领域
@@ -180,37 +180,11 @@
 - **私人昵称**：以后要做时，需要回答页头、作者图例、邮件、每人 Drive 里的 Doc、纪念日"X 的生日"和礼物场合副本按谁的称呼来显示。现在的默认做法：不做，所有地方都用对方自己设的名字。
 - **登录默认名字的清理**：Google 名字超过 20 个字或含控制字符时，第一次登录照常保存（D6 不改认证 ADR 的默认规则）。现在的默认做法：不截断，只在用户改名时要求合规。
 
-## 落地顺序
+## 验证
 
-1. **前置**：google-copy-beyond-diaries 的服务端 PR（#99）合入 `main`，`registerSpaceCopy` 已经存在。
-2. **一个 PR 完成服务端与网页**：
-   - `packages/contracts`：`DisplayName` schema、`UpdateMeRequest`、路由 `updateMe`；`npm run openapi`。
-   - `apps/api`：`display-name` 单元、`store` 的两个查询、`app.ts` 注册路由、依赖方向规则表；模块 README 的 *Public surface* 与 *Invariants*，*Known limitations* 写明 D3 的礼物场合副本与 D4 的日记 Doc。
-   - `apps/web`：`name` 单元（`/name` 页面与就地编辑组件）、「设置」菜单项、`/partner` 与 `/join` 的"修改"、保存后刷新的查询；依赖方向规则表；模块 README。
-   - `docs`：本 ADR 的事实同步，roadmap 这一行与日期，architecture 的 Current decisions 加上本文；认证 ADR 的"关联"行本 PR 已写好。
-   - 完成条件：下面的验收标准都有测试，format、lint、typecheck、`contracts`/`api`/`web` 的测试与 `npm run check -- docs` 通过，e2e 只在全部改完后跑一次。
-   - 从此改变的行为：用户能改名字；改名后两人的 Drive 里，`Together` 下的 Doc 换成新名字。
-
-**自主实现约定**：
-
-- 预先批准：上面列出的契约、路由、两个新单元，以及依赖方向规则表的这几行。
-- 不需要迁移，不加新依赖（`Intl.Segmenter` 是 Node 26 与目标浏览器内置的）。需要迁移或新依赖时停下来问 Ray。
-- AI 可以自行决定：页面与提示的具体文案和布局（沿用数字书页的组件）、`store` 查询的写法、测试的拆分。
-- 必须停下来的情况：要写 `users.display_name` 与 `registerSpaceCopy` 的登记之外的任何表或列（礼物场合副本也不写）；要改 `UserSummary` 的形状；要让 `display-name` 依赖 `store`、`errors` 以外的单元。
-- PR 用 Conventional Commits，例如 `feat(api): let users change their display name`、`feat(web): edit your name under 设置`，按项目的规矩用合并提交合入，等 Ray 验收后才合并。
-
-## 验收标准
-
-- A 在 `/name` 把名字改成"小雨"并保存，页头马上显示"小雨"；B 刷新后，作者图例、搭档卡片、心愿、纪念日"小雨 的生日"和两地时间都显示"小雨"（端到端，Chromium）。
-- 去掉首尾空白后为空、21 个字、含换行、只有零宽字符的名字被拒绝，返回 400，名字不变；`👩‍❤️‍👨` 加 19 个汉字可以保存（契约单元测试与 `app.inject()`）。不变量 2。
-- 请求体带上别的用户 ID 或任何额外字段时被拒绝；改的只是会话里的用户（`app.inject()`）。不变量 1。
-- 绑定中改名后，`space_copy_outbox` 里有一条这个空间 `recordType` 为 null 的登记，与名字在同一次提交里；名字没变、未绑定、已解绑时没有登记（真实 PG）。不变量 4。
-- 改名后接口里所有返回名字的地方都是新名字：`me`、`binding`、空间参与者、两地时间、心愿、纪念日、共享页面、邀请预览，以及 `notify` 拼出的邮件（真实 PG）。不变量 3。
-- 改名后 B 的未读、首页提示和邮件判定都不变（真实 PG）。不变量 5。
-- 另一个事务持有这位用户的 `users` 行 `FOR UPDATE` 时，改名等待而不报错，释放后完成；改名持有 `users` 行时，新建日记与日记提交不受阻（真实 PG，持锁测试）。
-- 改名后网页上所有显示自己名字的地方都换成新名字，不用刷新页面（jsdom 组件测试）。
-- `/partner` 的邀请表单与 `/join` 确认页显示"修改"，就地改名后留在原页面（jsdom 组件测试）。
-- 再用 Google 登录一次（模拟登录换一个名字），`display_name` 不变（`app.inject()`，扩展认证 ADR 已有的测试）。不变量 6。
+- 实现（#106，2026-11-18 合并）：契约 `DisplayName`、`UpdateMeRequest` 与路由 `updateMe`；服务单元 `display-name` 与 `store/names.ts`；网页单元 `name`（`/name` 页面与就地「修改」）。与 D7 的一处出入已同步进 D7：`name` 还依赖 `auth`，用来读本人当前的名字。
+- 测试：`packages/contracts/src/users.test.ts` 测名字的规则；`apps/api/src/app.names.db.test.ts` 在真实 PG 上测不变量 1～5 与持锁行为，`auth/auth.db.test.ts` 测不变量 6，`worker/notify.db.test.ts` 测邮件里的名字与改名不发邮件；网页组件测试覆盖 `/name`、`/partner` 与 `/join` 的"修改"；`e2e/names.spec.ts` 测对方看到的新名字。
+- 验收（2026-11-18，Ray）：在开发环境自己测试通过。
 
 ## 补充信息
 
