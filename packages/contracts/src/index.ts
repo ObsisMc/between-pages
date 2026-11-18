@@ -1,8 +1,10 @@
 export { ApiErrorBody, ErrorCategory, ErrorCode, errorCategory, errorStatus } from './errors.ts';
 export {
   BackupAttention,
+  BackupCategory,
   BackupEvent,
   BackupEventKind,
+  BackupItem,
   BackupProgress,
   BackupResponse,
   BackupStatus,
@@ -10,6 +12,7 @@ export {
   FinishGoogleRequest,
   GoogleConnection,
   GoogleConnectionState,
+  PageGoogleCopy,
   StartGoogleResponse,
 } from './backup.ts';
 export { HealthResponse, MeResponse, routes } from './routes.ts';

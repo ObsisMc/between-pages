@@ -1,6 +1,11 @@
 import type { FastifyReply } from 'fastify';
 import type { ResponseOf } from '@between-pages/contracts';
-import type { BackupService, BackupStatus, ConnectRefusal } from '../backup/backup.ts';
+import type {
+  BackupService,
+  BackupStatus,
+  ConnectRefusal,
+  PageCopyStatus,
+} from '../backup/backup.ts';
 import { sendError } from '../errors.ts';
 import type { ContractRequest } from './contract.ts';
 
@@ -9,7 +14,14 @@ const MESSAGES: Record<ConnectRefusal, string> = {
   GOOGLE_STATE_INVALID: 'This authorization is unknown, expired or was started by someone else',
   GOOGLE_EXCHANGE_FAILED: 'Google did not grant Drive access',
   GOOGLE_DISCONNECTING: 'The previous connection is still being disconnected',
+  GOOGLE_ACCOUNT_IN_USE: 'This Google account is connected by another user',
 };
+
+/** A shared page's Doc on the page itself (google-copy-beyond-diaries D8). */
+export const pageCopyBody = (copy: PageCopyStatus) => ({
+  ...copy,
+  coveredAt: copy.coveredAt?.toISOString() ?? null,
+});
 
 const statusBody = (status: BackupStatus): ResponseOf<'backup'> => ({
   backup: {
@@ -21,12 +33,18 @@ const statusBody = (status: BackupStatus): ResponseOf<'backup'> => ({
     progress: status.progress && {
       ...status.progress,
       backedUpTo: status.progress.backedUpTo?.toISOString() ?? null,
+      categories: status.progress.categories.map((c) => ({
+        ...c,
+        backedUpTo: c.backedUpTo?.toISOString() ?? null,
+      })),
     },
     attention: status.attention,
     events: status.events.map((e) => ({
       at: e.at.toISOString(),
       kind: e.kind as ResponseOf<'backup'>['backup']['events'][number]['kind'],
       diaryDate: e.diaryDate,
+      item: e.item,
+      email: e.email,
     })),
   },
 });

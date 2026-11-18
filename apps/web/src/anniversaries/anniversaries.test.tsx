@@ -118,6 +118,22 @@ describe('AnniversariesPage', () => {
     expect(JSON.parse(String(saved.mock.calls[0]![0]!.body))).toEqual({ days: null });
   });
 
+  it('says a deleted anniversary stays in the partner’s Google Drive', async () => {
+    const confirm = vi.fn(() => false);
+    vi.stubGlobal('confirm', confirm);
+    stubApi({
+      [LIST]: () => Response.json(view()),
+      'GET /api/space/unread': () =>
+        Response.json({ features: { wishes: 0, anniversaries: 0, sharedPages: 0 } }),
+    });
+    renderAt('/anniversaries', routes);
+    fireEvent.click(await screen.findByRole('button', { name: '修改' }));
+    fireEvent.click(await screen.findByRole('button', { name: '删除' }));
+    expect(confirm).toHaveBeenCalledWith(
+      '删除"在一起的日子"？已经备份到对方 Google Drive 的内容不会因此删除。',
+    );
+  });
+
   it('records a birthday without a year, and explains a second together day', async () => {
     const bodies: unknown[] = [];
     stubApi({

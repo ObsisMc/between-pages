@@ -47,6 +47,7 @@ import { createWishService } from './wishes/wishes.ts';
 import { sharedPageHandlers } from './routes/shared-pages.ts';
 import { createSharedPageService } from './shared-pages/shared-pages.ts';
 import { createBackupStore } from './store/backup.ts';
+import { createTogetherStore } from './store/together.ts';
 import { createCopyStore } from './store/copy.ts';
 import { createClockStore } from './store/clocks.ts';
 import { createPokeStore } from './store/pokes.ts';
@@ -155,9 +156,13 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const diaries = createDiaryService(store);
   const reader = createReader(store);
   const commit = createCommitService(store);
+  const records = createSpaceRecords(createSpaceRecordStore(deps.db));
+  const sharedPageService = createSharedPageService(records);
   const backupService = createBackupService(
     createBackupStore(deps.db),
     createCopyStore(deps.db),
+    createTogetherStore(deps.db),
+    sharedPageService,
     deps.drive ?? null,
   );
   const handlers = diaryHandlers({
@@ -213,12 +218,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   contractRoute('sendPoke', pokes.sendPoke);
   contractRoute('seenPokes', pokes.seenPokes);
 
-  const records = createSpaceRecords(createSpaceRecordStore(deps.db));
   const services = {
     records,
     wishes: createWishService(records),
     anniversaries: createAnniversaryService(records, createReminderStore(deps.db)),
-    sharedPages: createSharedPageService(records),
+    sharedPages: sharedPageService,
+    backup: backupService,
   };
   const space = spaceRecordHandlers(services);
   contractRoute('spaceUnread', space.spaceUnread);

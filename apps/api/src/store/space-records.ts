@@ -2,6 +2,7 @@ import { and, eq, inArray, isNull, ne, or, sql, type Column, type SQL } from 'dr
 import type { Db } from '../db/client.ts';
 import { bindingPeriods, spaceActions, spaceChanges, spaceReads, spaces } from '../db/schema.ts';
 import type { Tx } from './store.ts';
+import { registerSpaceCopy } from './together.ts';
 
 // SQL for the shared space-record tables (space-records ADR). A record's history rows are
 // inserted only while its feature row is locked FOR UPDATE (or, for a creation, before the
@@ -226,6 +227,7 @@ export class SpaceRecordWrites extends SpaceRecordQueries {
       requestId: row.request?.id ?? null,
       requestDigest: row.request?.digest ?? null,
     });
+    await this.copied(row);
   }
 
   async appendAction(row: {
@@ -245,6 +247,20 @@ export class SpaceRecordWrites extends SpaceRecordQueries {
       privateTo: row.privateTo,
       requestId: row.request.id,
       requestDigest: row.request.digest,
+    });
+    await this.copied(row);
+  }
+
+  /**
+   * Every change and action also queues the space's Google copy, in the same transaction
+   * and with the same `private_to` (google-copy-beyond-diaries 技术设计, invariant 8).
+   */
+  private copied(row: { spaceId: string; ref: RecordRef; privateTo: string | null }) {
+    return registerSpaceCopy(this.tx, {
+      spaceId: row.spaceId,
+      recordType: row.ref.type,
+      recordId: row.ref.id,
+      privateTo: row.privateTo,
     });
   }
 

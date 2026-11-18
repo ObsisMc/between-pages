@@ -41,6 +41,7 @@
                   "GOOGLE_STATE_INVALID",
                   "GOOGLE_EXCHANGE_FAILED",
                   "GOOGLE_DISCONNECTING",
+                  "GOOGLE_ACCOUNT_IN_USE",
                   "SPACE_READ_ONLY",
                   "RECORD_STALE",
                   "RECORD_EXISTS"
@@ -123,6 +124,43 @@
           "retrying"
         ]
       },
+      "BackupItemInput": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "wishes",
+              "gifts",
+              "anniversaries"
+            ]
+          },
+          "pageId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "pageId",
+          "title"
+        ]
+      },
       "BackupEventInput": {
         "type": "object",
         "properties": {
@@ -140,7 +178,8 @@
               "revoke_failed",
               "reconnect_needed",
               "copy_failing",
-              "check_failed"
+              "check_failed",
+              "account_in_use"
             ]
           },
           "diaryDate": {
@@ -154,12 +193,40 @@
                 "type": "null"
               }
             ]
+          },
+          "item": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BackupItemInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
           "at",
           "kind",
-          "diaryDate"
+          "diaryDate",
+          "item",
+          "email"
+        ]
+      },
+      "BackupCategoryInput": {
+        "type": "string",
+        "enum": [
+          "diaries",
+          "shared_pages",
+          "wishes",
+          "gifts",
+          "anniversaries"
         ]
       },
       "BackupProgressInput": {
@@ -216,13 +283,70 @@
                 "type": "null"
               }
             ]
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "category": {
+                  "$ref": "#/components/schemas/BackupCategoryInput"
+                },
+                "waiting": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "backedUpTo": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "category",
+                "waiting",
+                "backedUpTo"
+              ]
+            }
+          },
+          "failingItems": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "item": {
+                  "$ref": "#/components/schemas/BackupItemInput"
+                },
+                "failure": {
+                  "type": "string",
+                  "enum": [
+                    "unreachable",
+                    "failed"
+                  ]
+                }
+              },
+              "required": [
+                "item",
+                "failure"
+              ]
+            }
           }
         },
         "required": [
           "waitingDays",
           "failing",
           "backedUpTo",
-          "folderUrl"
+          "folderUrl",
+          "categories",
+          "failingItems"
         ]
       },
       "BackupStatusInput": {
@@ -334,6 +458,59 @@
           "docUrl",
           "mine",
           "partner",
+          "problem"
+        ]
+      },
+      "PageGoogleCopyInput": {
+        "type": "object",
+        "properties": {
+          "connected": {
+            "type": "boolean"
+          },
+          "docUrl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "coveredAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "reconnect",
+                  "storage_full",
+                  "unreachable",
+                  "failed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "connected",
+          "docUrl",
+          "coveredAt",
           "problem"
         ]
       },
@@ -3246,6 +3423,9 @@
             "items": {
               "$ref": "#/components/schemas/ClientBindingInput"
             }
+          },
+          "google": {
+            "$ref": "#/components/schemas/PageGoogleCopyInput"
           }
         },
         "required": [
@@ -3255,7 +3435,8 @@
           "generationId",
           "seq",
           "state",
-          "bindings"
+          "bindings",
+          "google"
         ]
       },
       "RenameSharedPageRequestInput": {
@@ -3950,6 +4131,7 @@
                   "GOOGLE_STATE_INVALID",
                   "GOOGLE_EXCHANGE_FAILED",
                   "GOOGLE_DISCONNECTING",
+                  "GOOGLE_ACCOUNT_IN_USE",
                   "SPACE_READ_ONLY",
                   "RECORD_STALE",
                   "RECORD_EXISTS"
@@ -4035,6 +4217,44 @@
         ],
         "additionalProperties": false
       },
+      "BackupItem": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "wishes",
+              "gifts",
+              "anniversaries"
+            ]
+          },
+          "pageId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "pageId",
+          "title"
+        ],
+        "additionalProperties": false
+      },
       "BackupEvent": {
         "type": "object",
         "properties": {
@@ -4052,7 +4272,8 @@
               "revoke_failed",
               "reconnect_needed",
               "copy_failing",
-              "check_failed"
+              "check_failed",
+              "account_in_use"
             ]
           },
           "diaryDate": {
@@ -4066,14 +4287,42 @@
                 "type": "null"
               }
             ]
+          },
+          "item": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BackupItem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
           "at",
           "kind",
-          "diaryDate"
+          "diaryDate",
+          "item",
+          "email"
         ],
         "additionalProperties": false
+      },
+      "BackupCategory": {
+        "type": "string",
+        "enum": [
+          "diaries",
+          "shared_pages",
+          "wishes",
+          "gifts",
+          "anniversaries"
+        ]
       },
       "BackupProgress": {
         "type": "object",
@@ -4130,13 +4379,72 @@
                 "type": "null"
               }
             ]
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "category": {
+                  "$ref": "#/components/schemas/BackupCategory"
+                },
+                "waiting": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "backedUpTo": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "category",
+                "waiting",
+                "backedUpTo"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "failingItems": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "item": {
+                  "$ref": "#/components/schemas/BackupItem"
+                },
+                "failure": {
+                  "type": "string",
+                  "enum": [
+                    "unreachable",
+                    "failed"
+                  ]
+                }
+              },
+              "required": [
+                "item",
+                "failure"
+              ],
+              "additionalProperties": false
+            }
           }
         },
         "required": [
           "waitingDays",
           "failing",
           "backedUpTo",
-          "folderUrl"
+          "folderUrl",
+          "categories",
+          "failingItems"
         ],
         "additionalProperties": false
       },
@@ -4250,6 +4558,60 @@
           "docUrl",
           "mine",
           "partner",
+          "problem"
+        ],
+        "additionalProperties": false
+      },
+      "PageGoogleCopy": {
+        "type": "object",
+        "properties": {
+          "connected": {
+            "type": "boolean"
+          },
+          "docUrl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "coveredAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "reconnect",
+                  "storage_full",
+                  "unreachable",
+                  "failed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "connected",
+          "docUrl",
+          "coveredAt",
           "problem"
         ],
         "additionalProperties": false
@@ -7223,6 +7585,9 @@
             "items": {
               "$ref": "#/components/schemas/ClientBinding"
             }
+          },
+          "google": {
+            "$ref": "#/components/schemas/PageGoogleCopy"
           }
         },
         "required": [
@@ -7232,7 +7597,8 @@
           "generationId",
           "seq",
           "state",
-          "bindings"
+          "bindings",
+          "google"
         ],
         "additionalProperties": false
       },
