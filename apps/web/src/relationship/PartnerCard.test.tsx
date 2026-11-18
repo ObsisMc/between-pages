@@ -17,14 +17,14 @@ describe('PartnerCard', () => {
     const { router } = renderAt('/');
     const region = await card();
     expect(within(region).getByText('还没有搭档')).toBeDefined();
-    expect(screen.queryByText('生成邀请链接')).toBeNull();
+    expect(screen.queryByText('或者生成邀请链接')).toBeNull();
     expect(screen.queryByLabelText('自选日期')).toBeNull();
 
     fireEvent.click(within(region).getByRole('link', { name: '邀请搭档' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/partner'));
     expect(await screen.findByRole('heading', { level: 1, name: '搭档' })).toBeDefined();
-    expect(await screen.findByText('生成邀请链接')).toBeDefined();
+    expect(await screen.findByText('或者生成邀请链接')).toBeDefined();
   });
 
   it('names the archived space after unbinding, as a link', async () => {

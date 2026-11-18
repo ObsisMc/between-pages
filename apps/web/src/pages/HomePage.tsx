@@ -7,7 +7,7 @@ import { useMe } from '../auth/me.ts';
 import { BackupBanner } from '../backup/index.ts';
 import { MailHint } from '../mail/index.ts';
 import { pendingInvite } from '../join/index.ts';
-import { PartnerCard, useBinding, useSpaces } from '../relationship/index.ts';
+import { InvitationBanner, PartnerCard, useBinding, useSpaces } from '../relationship/index.ts';
 import { usePokes, receivedText } from '../pokes/index.ts';
 import { asleepAt } from '@between-pages/time';
 import { browserZone, dayPeriod, HomeClocks, useClocks, useNow } from '../two-clocks/index.ts';
@@ -93,6 +93,7 @@ export function HomePage() {
   return (
     <main className="mx-auto w-full max-w-6xl px-5 pt-8 pb-16 font-sans text-ink wrap-anywhere sm:px-8 sm:pt-12">
       <BackupBanner />
+      <InvitationBanner />
       <MailHint />
       <section className="grid items-center gap-10 md:grid-cols-[1.1fr_1fr] md:gap-14">
         <div>

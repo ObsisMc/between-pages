@@ -33,7 +33,9 @@ export function PartnerCard({ userId }: { userId: string }) {
       : binding.isPending || spaces.isPending
         ? '正在读取…'
         : pending
-          ? `已发出邀请，${dayText.format(new Date(pending.expiresAt))} 前有效`
+          ? pending.recipientEmail
+            ? `已邀请 ${pending.recipientEmail}，${dayText.format(new Date(pending.expiresAt))} 前有效`
+            : `已发出邀请，${dayText.format(new Date(pending.expiresAt))} 前有效`
           : archived
             ? null
             : '还没有搭档';

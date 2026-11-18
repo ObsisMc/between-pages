@@ -36,7 +36,7 @@ describe('RelationshipPanel', () => {
     renderAt('/partner');
 
     expect(await screen.findByRole('heading', { level: 1, name: '搭档' })).toBeDefined();
-    fireEvent.click(await screen.findByText('生成邀请链接'));
+    fireEvent.click(await screen.findByText('或者生成邀请链接'));
 
     const link = (await screen.findByLabelText('邀请链接')) as HTMLInputElement;
     expect(link.value).toBe(`${window.location.origin}/join#token=${TOKEN}`);
@@ -56,7 +56,7 @@ describe('RelationshipPanel', () => {
     });
     renderAt('/partner');
     fireEvent.click(await screen.findByText('暂不设置'));
-    fireEvent.click(await screen.findByText('生成邀请链接'));
+    fireEvent.click(await screen.findByText('或者生成邀请链接'));
 
     expect((await screen.findByRole('alert')).textContent).toBe(
       '邀请已经生成过，但链接无法再次显示，请撤销后重新生成',
@@ -81,7 +81,7 @@ describe('RelationshipPanel', () => {
 
     fireEvent.click(screen.getByText('撤销邀请'));
 
-    expect(await screen.findByText('生成邀请链接')).toBeDefined();
+    expect(await screen.findByText('或者生成邀请链接')).toBeDefined();
   });
 
   it('links the current and archived spaces and offers no invitation while bound', async () => {
@@ -130,7 +130,7 @@ describe('RelationshipPanel', () => {
     expect(await screen.findByRole('button', { name: '修改名字 小雨' })).toBeDefined();
     expect(screen.queryByLabelText('名字')).toBeNull();
     expect(router.state.location.pathname).toBe('/partner');
-    expect(screen.getByText('生成邀请链接')).toBeDefined();
+    expect(screen.getByText('或者生成邀请链接')).toBeDefined();
   });
 
   it('names a bound caller’s refusal', async () => {
@@ -143,7 +143,7 @@ describe('RelationshipPanel', () => {
       'POST /api/binding/invitations': errorBody('ALREADY_BOUND', 409),
     });
     renderAt('/partner');
-    fireEvent.click(await screen.findByText('生成邀请链接'));
+    fireEvent.click(await screen.findByText('或者生成邀请链接'));
     expect((await screen.findByRole('alert')).textContent).toBe('你或对方已有当前绑定');
   });
 });
