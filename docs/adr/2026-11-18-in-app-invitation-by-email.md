@@ -82,7 +82,7 @@ type IncomingInvitation = {
 - `POST /api/binding/invitations/preview` 的请求改为 `{ token } | { inviteId }`；`POST /api/binding/invitations/accept` 改为 `({ token } | { inviteId }) & { sharingSelection }`。带 `token` 的行为完全不变。
 - 带 `inviteId` 时，先确认这是一条定向邀请、收件邮箱等于调用者的已验证登录邮箱，且调用者没有忽略过它；任何一条不满足都返回 `INVITE_INVALID`（404），与未知 token 相同，不返回发起方名字。所以猜到或看到别人的 `inviteId` 什么也得不到；链接邀请的 ID 也不能按 ID 接受，定向邀请没有 token，也无法从链接那条路接受。
 - 之后的拒绝顺序（`INVITE_EXPIRED`、`INVITE_REVOKED`、`INVITE_USED`、`SELF_INVITE`，再 `ALREADY_BOUND`、`PARTNER_FIXED`，再 `SHARE_OPEN_FAILED`）、绑定事务（锁双方 users 行、重查邀请、找或建空间、新期间、双方当前绑定、消费本条并关闭双方其他未关闭邀请、双方确认的范围开放日记）与链接完全相同。
-- 新接口 `POST /api/binding/invitations/:inviteId/dismiss`，body `{}`，返回 `{ dismissed: true }`：只对收件人有效，条件同上，不满足返回 `NOT_FOUND`。在 `withUsersLocked([调用者])` 里写 `dismissed_at`；已忽略、已关闭或已过期的邀请再忽略不报错、不改动。忽略后这条邀请不再出现在 TA 的 `invitationsForMe`，按 ID 预览或接受得 `INVITE_INVALID`。
+- 新接口 `POST /api/binding/invitations/:inviteId/dismiss`，body `{}`，返回 `{ dismissed: true }`：只对收件人有效：这是一条定向邀请，且收件邮箱等于调用者的已验证登录邮箱；不满足（含未知 ID）返回 `NOT_FOUND`。这里不检查"没有忽略过"，所以重复忽略是幂等的。在 `withUsersLocked([调用者])` 里写 `dismissed_at`；已忽略、已关闭或已过期的邀请再忽略同样返回 `{ dismissed: true }`，不改动。忽略后这条邀请不再出现在 TA 的 `invitationsForMe`，按 ID 预览或接受得 `INVITE_INVALID`。
 - 忽略不关闭邀请：发起方看到的仍是 `pending`，直到七天到期或自己撤销。发起方重新发出是一条新的邀请，会再次出现在对方那边，受 D6 的次数约束。
 
 为什么：依据 2、3、4、7。按 ID 而不是新造一种凭证，因为身份已经由会话和已验证邮箱证明；ID 本身不是秘密，所以它可以出现在地址栏，不需要链接那套 fragment 与 sessionStorage 处理。忽略做成只对收件人可见的标记，是唯一既让对方摆脱邀请、又不让发起方得知"这个邮箱有人登录过"的做法。
