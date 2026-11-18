@@ -6,6 +6,7 @@ import { signOut } from '../api/auth.ts';
 import { useMe } from '../auth/me.ts';
 import { Avatar, Mascot } from '../avatar/index.ts';
 import { clearPendingInvite } from '../join/index.ts';
+import { clearAppBadge } from '../pwa/index.ts';
 import {
   Button,
   cn,
@@ -16,10 +17,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/index.ts';
+import { useIconBadge } from './badge.ts';
 import { useSiteEntries, type SiteEntry } from './entries.ts';
 
 // The one navigation of every signed-in page (digital-paper-interface D1): 此刻, 日记, and the
-// menus 一起 and 设置 holding the pages the caller can reach; the account menu signs out.
+// menus 一起 and 设置 holding the pages the caller can reach; the account menu signs out. It
+// also keeps the installed icon's unread badge (installable-pwa D5).
 
 const tab =
   'inline-flex h-9 min-h-0 items-center gap-1 rounded-lg border-0 px-2.5 text-sm whitespace-nowrap text-ink-soft no-underline transition-colors hover:bg-accent hover:text-foreground aria-[current=page]:bg-accent aria-[current=page]:text-foreground data-[state=open]:bg-accent sm:px-3.5';
@@ -72,6 +75,7 @@ function Account({ name }: { name: string }) {
       // the login page.
       queryClient.clear();
       clearPendingInvite();
+      clearAppBadge();
       await navigate('/login', { replace: true });
     } catch {
       setFailed(true);
@@ -112,6 +116,7 @@ const SETTINGS = /^\/(spaces|partner|backup|mail)(\/|$)/;
 export function SiteHeader() {
   const me = useMe();
   const entries = useSiteEntries();
+  useIconBadge(!!me.data, entries.spaceUnread);
   const { pathname } = useLocation();
   if (!me.data) return null;
   return (

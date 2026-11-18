@@ -93,6 +93,14 @@ export const NextUnreadResponse = z
   .object({ date: z.iso.date().nullable() })
   .meta({ id: 'NextUnreadResponse' });
 
+/**
+ * How many dates have list unread for the caller, each counted once whoever wrote on it, by
+ * the rule of `GET /api/days` (installable-pwa D5): what the icon badge counts for diaries.
+ */
+export const DaysUnreadCountResponse = z
+  .object({ dates: z.number().int().nonnegative() })
+  .meta({ id: 'DaysUnreadCountResponse' });
+
 /** One date; both sides null when the caller can see no diary on it. */
 export const DayResponse = z
   .object({ day: Day, google: DayGoogleCopy })

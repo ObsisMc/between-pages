@@ -1553,6 +1553,19 @@
           "date"
         ]
       },
+      "DaysUnreadCountResponseInput": {
+        "type": "object",
+        "properties": {
+          "dates": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "dates"
+        ]
+      },
       "DayResponseInput": {
         "type": "object",
         "properties": {
@@ -5687,6 +5700,20 @@
         ],
         "additionalProperties": false
       },
+      "DaysUnreadCountResponse": {
+        "type": "object",
+        "properties": {
+          "dates": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "dates"
+        ],
+        "additionalProperties": false
+      },
       "DayResponse": {
         "type": "object",
         "properties": {
@@ -8930,6 +8957,33 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/NextUnreadResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/days/unread-count": {
+      "get": {
+        "summary": "How many dates have list unread for the caller: the diary part of the installed app's icon badge.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DaysUnreadCountResponse"
                 }
               }
             }

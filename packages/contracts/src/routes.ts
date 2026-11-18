@@ -34,6 +34,7 @@ import {
   DayResponse,
   DaysPage,
   DaysQuery,
+  DaysUnreadCountResponse,
   NextUnreadQuery,
   NextUnreadResponse,
 } from './days.ts';
@@ -335,6 +336,14 @@ export const routes = {
     access: 'user',
     query: NextUnreadQuery,
     response: NextUnreadResponse,
+  },
+  daysUnreadCount: {
+    method: 'GET',
+    path: '/api/days/unread-count',
+    summary:
+      "How many dates have list unread for the caller: the diary part of the installed app's icon badge.",
+    access: 'user',
+    response: DaysUnreadCountResponse,
   },
   backup: {
     method: 'GET',

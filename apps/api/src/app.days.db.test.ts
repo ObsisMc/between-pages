@@ -105,6 +105,24 @@ async function nextUnread(who: Person, search = '') {
   return routes.nextUnread.response.parse(res.json()).date;
 }
 
+async function unreadCount(who: Person) {
+  const res = await get(who, routes.daysUnreadCount.path);
+  expect(res.statusCode).toBe(200);
+  expect(res.headers['cache-control']).toBe('no-store');
+  return routes.daysUnreadCount.response.parse(res.json()).dates;
+}
+
+/** The dates the day list marks unread, over every page. */
+async function unreadOnList(who: Person) {
+  let unread = 0;
+  for (let before: string | undefined; ;) {
+    const page = await days(who, before);
+    unread += page.days.filter((d) => d.mine?.unread || d.partner?.unread).length;
+    if (!page.nextBefore) return unread;
+    before = page.nextBefore;
+  }
+}
+
 async function day(who: Person, date = DATE): Promise<Day> {
   const res = await get(who, path(routes.day.path, { date }));
   expect(res.statusCode).toBe(200);
@@ -456,5 +474,52 @@ describe.runIf(testDatabaseUrl)('the nearest unread date', () => {
     expect(await nextUnread(b)).toBe('2026-07-01');
     expect(await nextUnread(b, '?after=2026-07-01')).toBeNull();
     expect(await nextUnread(a)).toBeNull();
+  });
+});
+
+describe.runIf(testDatabaseUrl)('the unread date count', () => {
+  it('[adr:installable-pwa#7] counts each date the day list marks unread once, across pages, never an unshared diary', async () => {
+    // B shares everything with A, A nothing with B.
+    const { a, b } = await pair(NOTHING, ALL);
+    // A's private text: no one's unread, and B's count never learns of it.
+    const secret = await ownDiary(a, '2026-06-29');
+    await write(a, secret, (t) => t.insert(0, SECRET));
+    await settle(secret);
+    // 22 of B's dates: more than one page of the day list, newest first.
+    const ids = new Map<string, string>();
+    for (let i = 1; i <= 22; i++) {
+      const date = `2026-06-${String(i).padStart(2, '0')}`;
+      ids.set(date, await ownDiary(b, date));
+    }
+    // A writes in B's diaries on both pages; B's own text there is A's unread.
+    const fromA = new Map<string, number>();
+    for (const date of ['2026-06-01', '2026-06-21']) {
+      const { epochId } = (await day(a, date)).partner!;
+      fromA.set(date, await write(a, ids.get(date)!, (t) => t.insert(0, 'from A'), epochId));
+    }
+    for (const date of ['2026-06-02', '2026-06-21', '2026-06-22'])
+      await write(b, ids.get(date)!, (t) => t.insert(0, 'B: '));
+    for (const date of ['2026-06-01', '2026-06-02', '2026-06-21', '2026-06-22'])
+      await settle(ids.get(date)!);
+
+    expect(await unreadCount(b)).toBe(2);
+    expect(await unreadOnList(b)).toBe(2);
+    expect(await unreadCount(a)).toBe(3);
+    expect(await unreadOnList(a)).toBe(3);
+
+    // Reading a date takes it off; half read still counts.
+    await report(b, ids.get('2026-06-21')!, [
+      { clientId: fromA.get('2026-06-21')!, from: 0, to: 6 },
+    ]);
+    expect(await unreadCount(b)).toBe(1);
+    await report(b, ids.get('2026-06-01')!, [
+      { clientId: fromA.get('2026-06-01')!, from: 0, to: 2 },
+    ]);
+    expect(await unreadCount(b)).toBe(1);
+    await report(b, ids.get('2026-06-01')!, [
+      { clientId: fromA.get('2026-06-01')!, from: 0, to: 6 },
+    ]);
+    expect(await unreadCount(b)).toBe(0);
+    expect(await unreadOnList(b)).toBe(0);
   });
 });

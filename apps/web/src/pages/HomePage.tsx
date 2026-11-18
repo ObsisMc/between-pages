@@ -7,6 +7,7 @@ import { useMe } from '../auth/me.ts';
 import { BackupBanner } from '../backup/index.ts';
 import { MailHint } from '../mail/index.ts';
 import { pendingInvite } from '../join/index.ts';
+import { BadgePermissionCard } from '../pwa/index.ts';
 import { PartnerCard, useBinding, useSpaces } from '../relationship/index.ts';
 import { usePokes, receivedText } from '../pokes/index.ts';
 import { asleepAt } from '@between-pages/time';
@@ -94,6 +95,7 @@ export function HomePage() {
     <main className="mx-auto w-full max-w-6xl px-5 pt-8 pb-16 font-sans text-ink wrap-anywhere sm:px-8 sm:pt-12">
       <BackupBanner />
       <MailHint />
+      <BadgePermissionCard />
       <section className="grid items-center gap-10 md:grid-cols-[1.1fr_1fr] md:gap-14">
         <div>
           <p className="text-sm tracking-[0.2em] text-ink-soft">{dateLine(now)}</p>

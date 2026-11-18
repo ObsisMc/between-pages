@@ -1,4 +1,5 @@
 import { useBinding, useSpaces } from '../relationship/index.ts';
+import { useBadgeShown } from '../pwa/index.ts';
 import { useSpaceUnread } from '../space-common/index.ts';
 
 // Which pages the navigation lists (digital-paper-interface D1, the visibility rules of
@@ -16,15 +17,25 @@ export type SiteEntries = {
   together: SiteEntry[];
   /** 「设置」. */
   settings: SiteEntry[];
+  /** The three features' unread added up, 0 without a space; undefined until known. */
+  spaceUnread: number | undefined;
 };
 
 export function useSiteEntries(): SiteEntries {
-  const current = useBinding().data?.binding?.space;
+  const binding = useBinding();
+  const spaces = useSpaces();
+  const current = binding.data?.binding?.space;
   // One fixed partner in the first release, so at most one space, current or archived.
-  const archived = useSpaces().data?.spaces[0];
+  const archived = spaces.data?.spaces[0];
   const space = current ?? archived;
-  const unread = useSpaceUnread(!!space).data?.features;
+  const unread = useSpaceUnread(!!space, useBadgeShown()).data?.features;
+  const known = binding.data !== undefined && spaces.data !== undefined;
   return {
+    spaceUnread: !known
+      ? undefined
+      : !space
+        ? 0
+        : unread && unread.wishes + unread.anniversaries + unread.sharedPages,
     together: space
       ? [
           ...(current ? [{ to: '/clocks', label: '两地时间' }] : []),

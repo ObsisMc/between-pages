@@ -189,6 +189,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   contractRoute('sharedDiaries', handlers.sharedDiaries);
   contractRoute('days', handlers.days);
   contractRoute('nextUnread', handlers.nextUnread);
+  contractRoute('daysUnreadCount', handlers.daysUnreadCount);
   contractRoute('day', handlers.day);
 
   const relations = createRelationStore(deps.db);
