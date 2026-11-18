@@ -32,6 +32,7 @@ describe('SiteHeader', () => {
       ['搭档', '/partner'],
       ['备份', '/backup'],
       ['邮件提醒', '/mail'],
+      ['我的名字', '/name'],
     ]);
   });
 
@@ -40,7 +41,11 @@ describe('SiteHeader', () => {
       ...noRelationship,
       'GET /api/me': signedIn('alice'),
       'GET /api/binding': () =>
-        Response.json({ binding: { space: space(), periodId: SPACE }, invitation: null }),
+        Response.json({
+          binding: { space: space(), periodId: SPACE },
+          invitation: null,
+          invitationsForMe: [],
+        }),
       'GET /api/spaces': () => Response.json({ spaces: [space()] }),
       'GET /api/space/unread': () =>
         Response.json({ features: { wishes: 2, anniversaries: 0, sharedPages: 0 } }),
@@ -66,6 +71,7 @@ describe('SiteHeader', () => {
       ['双人空间', `/spaces/${SPACE}`],
       ['备份', '/backup'],
       ['邮件提醒', '/mail'],
+      ['我的名字', '/name'],
     ]);
   });
 
@@ -74,7 +80,11 @@ describe('SiteHeader', () => {
       ...noRelationship,
       'GET /api/me': signedIn('alice'),
       'GET /api/binding': () =>
-        Response.json({ binding: { space: space(), periodId: SPACE }, invitation: null }),
+        Response.json({
+          binding: { space: space(), periodId: SPACE },
+          invitation: null,
+          invitationsForMe: [],
+        }),
       'GET /api/spaces': () => Response.json({ spaces: [space()] }),
       'GET /api/space/unread': () =>
         Response.json({ features: { wishes: 0, anniversaries: 0, sharedPages: 0 } }),
@@ -111,6 +121,7 @@ describe('SiteHeader', () => {
       ['搭档', '/partner'],
       ['备份', '/backup'],
       ['邮件提醒', '/mail'],
+      ['我的名字', '/name'],
     ]);
   });
 

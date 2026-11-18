@@ -44,7 +44,8 @@
                   "GOOGLE_ACCOUNT_IN_USE",
                   "SPACE_READ_ONLY",
                   "RECORD_STALE",
-                  "RECORD_EXISTS"
+                  "RECORD_EXISTS",
+                  "INVITE_LIMIT"
                 ]
               },
               "message": {
@@ -1146,6 +1147,21 @@
           "id",
           "displayName"
         ]
+      },
+      "DisplayNameInput": {
+        "type": "string"
+      },
+      "UpdateMeRequestInput": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "$ref": "#/components/schemas/DisplayNameInput"
+          }
+        },
+        "required": [
+          "displayName"
+        ],
+        "additionalProperties": false
       },
       "SleepScheduleInput": {
         "type": "object",
@@ -3650,12 +3666,50 @@
               "revoked",
               "used"
             ]
+          },
+          "recipientEmail": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
           "id",
           "expiresAt",
-          "state"
+          "state",
+          "recipientEmail"
+        ]
+      },
+      "IncomingInvitationInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "inviter": {
+            "$ref": "#/components/schemas/UserSummaryInput"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "new",
+              "restore"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "inviter",
+          "expiresAt",
+          "mode"
         ]
       },
       "BindingResponseInput": {
@@ -3680,11 +3734,18 @@
                 "type": "null"
               }
             ]
+          },
+          "invitationsForMe": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IncomingInvitationInput"
+            }
           }
         },
         "required": [
           "binding",
-          "invitation"
+          "invitation",
+          "invitationsForMe"
         ]
       },
       "SpacesResponseInput": {
@@ -3736,6 +3797,9 @@
                 "type": "null"
               }
             ]
+          },
+          "recipientEmail": {
+            "type": "string"
           }
         },
         "required": [
@@ -3780,17 +3844,35 @@
         ]
       },
       "PreviewInvitationRequestInput": {
-        "type": "object",
-        "properties": {
-          "token": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9_-]{43}$"
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "token": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{43}$"
+              }
+            },
+            "required": [
+              "token"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "inviteId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              }
+            },
+            "required": [
+              "inviteId"
+            ],
+            "additionalProperties": false
           }
-        },
-        "required": [
-          "token"
-        ],
-        "additionalProperties": false
+        ]
       },
       "PreviewInvitationResponseInput": {
         "type": "object",
@@ -3818,28 +3900,69 @@
         ]
       },
       "AcceptInvitationRequestInput": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "token": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{43}$"
+              },
+              "sharingSelection": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DateSelectionInput"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "token",
+              "sharingSelection"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "inviteId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "sharingSelection": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DateSelectionInput"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "inviteId",
+              "sharingSelection"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "DismissInvitationResponseInput": {
         "type": "object",
         "properties": {
-          "token": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9_-]{43}$"
-          },
-          "sharingSelection": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/DateSelectionInput"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "dismissed": {
+            "type": "boolean",
+            "const": true
           }
         },
         "required": [
-          "token",
-          "sharingSelection"
-        ],
-        "additionalProperties": false
+          "dismissed"
+        ]
       },
       "AcceptInvitationResponseInput": {
         "type": "object",
@@ -4134,7 +4257,8 @@
                   "GOOGLE_ACCOUNT_IN_USE",
                   "SPACE_READ_ONLY",
                   "RECORD_STALE",
-                  "RECORD_EXISTS"
+                  "RECORD_EXISTS",
+                  "INVITE_LIMIT"
                 ]
               },
               "message": {
@@ -5267,6 +5391,21 @@
         },
         "required": [
           "id",
+          "displayName"
+        ],
+        "additionalProperties": false
+      },
+      "DisplayName": {
+        "type": "string"
+      },
+      "UpdateMeRequest": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "$ref": "#/components/schemas/DisplayName"
+          }
+        },
+        "required": [
           "displayName"
         ],
         "additionalProperties": false
@@ -7817,12 +7956,51 @@
               "revoked",
               "used"
             ]
+          },
+          "recipientEmail": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
           "id",
           "expiresAt",
-          "state"
+          "state",
+          "recipientEmail"
+        ],
+        "additionalProperties": false
+      },
+      "IncomingInvitation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "inviter": {
+            "$ref": "#/components/schemas/UserSummary"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "new",
+              "restore"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "inviter",
+          "expiresAt",
+          "mode"
         ],
         "additionalProperties": false
       },
@@ -7848,11 +8026,18 @@
                 "type": "null"
               }
             ]
+          },
+          "invitationsForMe": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IncomingInvitation"
+            }
           }
         },
         "required": [
           "binding",
-          "invitation"
+          "invitation",
+          "invitationsForMe"
         ],
         "additionalProperties": false
       },
@@ -7907,6 +8092,12 @@
                 "type": "null"
               }
             ]
+          },
+          "recipientEmail": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email",
+            "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
           }
         },
         "required": [
@@ -7953,17 +8144,35 @@
         "additionalProperties": false
       },
       "PreviewInvitationRequest": {
-        "type": "object",
-        "properties": {
-          "token": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9_-]{43}$"
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "token": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{43}$"
+              }
+            },
+            "required": [
+              "token"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "inviteId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              }
+            },
+            "required": [
+              "inviteId"
+            ],
+            "additionalProperties": false
           }
-        },
-        "required": [
-          "token"
-        ],
-        "additionalProperties": false
+        ]
       },
       "PreviewInvitationResponse": {
         "type": "object",
@@ -7992,26 +8201,68 @@
         "additionalProperties": false
       },
       "AcceptInvitationRequest": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "token": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{43}$"
+              },
+              "sharingSelection": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DateSelection"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "token",
+              "sharingSelection"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "inviteId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "sharingSelection": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DateSelection"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "inviteId",
+              "sharingSelection"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "DismissInvitationResponse": {
         "type": "object",
         "properties": {
-          "token": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9_-]{43}$"
-          },
-          "sharingSelection": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/DateSelection"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "dismissed": {
+            "type": "boolean",
+            "const": true
           }
         },
         "required": [
-          "token",
-          "sharingSelection"
+          "dismissed"
         ],
         "additionalProperties": false
       },
@@ -8303,6 +8554,41 @@
     "/api/me": {
       "get": {
         "summary": "Return the signed-in user.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Rename the caller; the answer is the caller as GET /api/me returns it (display-name D7).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeRequestInput"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Default Response",
@@ -9224,6 +9510,57 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AcceptInvitationResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/binding/invitations/{inviteId}/dismiss": {
+      "post": {
+        "summary": "Hide an invitation addressed to the caller from the caller only; the inviter sees no change.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "inviteId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DismissInvitationResponse"
                 }
               }
             }

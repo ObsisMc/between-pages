@@ -26,7 +26,11 @@ function openHome(
     ...noRelationship,
     'GET /api/me': signedIn('alice'),
     'GET /api/binding': () =>
-      Response.json({ binding: { space: space(), periodId: SPACE }, invitation: null }),
+      Response.json({
+        binding: { space: space(), periodId: SPACE },
+        invitation: null,
+        invitationsForMe: [],
+      }),
     'GET /api/spaces': () => Response.json({ spaces: [space()] }),
     'GET /api/clocks': () =>
       Response.json({
