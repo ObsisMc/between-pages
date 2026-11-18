@@ -1147,6 +1147,21 @@
           "displayName"
         ]
       },
+      "DisplayNameInput": {
+        "type": "string"
+      },
+      "UpdateMeRequestInput": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "$ref": "#/components/schemas/DisplayNameInput"
+          }
+        },
+        "required": [
+          "displayName"
+        ],
+        "additionalProperties": false
+      },
       "SleepScheduleInput": {
         "type": "object",
         "properties": {
@@ -5271,6 +5286,21 @@
         ],
         "additionalProperties": false
       },
+      "DisplayName": {
+        "type": "string"
+      },
+      "UpdateMeRequest": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "$ref": "#/components/schemas/DisplayName"
+          }
+        },
+        "required": [
+          "displayName"
+        ],
+        "additionalProperties": false
+      },
       "SleepSchedule": {
         "type": "object",
         "properties": {
@@ -8303,6 +8333,41 @@
     "/api/me": {
       "get": {
         "summary": "Return the signed-in user.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Rename the caller; the answer is the caller as GET /api/me returns it (display-name D7).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeRequestInput"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Default Response",

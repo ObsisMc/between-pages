@@ -104,7 +104,7 @@ import {
   UnsubscribeRequest,
   UnsubscribeResponse,
 } from './mail.ts';
-import { UserSummary } from './users.ts';
+import { UpdateMeRequest, UserSummary } from './users.ts';
 
 // Every HTTP route the web client may call. The API registers handlers from these
 // definitions and the client builds requests from them, so the path, method and
@@ -144,6 +144,15 @@ export const routes = {
     path: '/api/me',
     summary: 'Return the signed-in user.',
     access: 'user',
+    response: MeResponse,
+  },
+  updateMe: {
+    method: 'PATCH',
+    path: '/api/me',
+    summary:
+      'Rename the caller; the answer is the caller as GET /api/me returns it (display-name D7).',
+    access: 'user',
+    body: UpdateMeRequest,
     response: MeResponse,
   },
   diaries: {

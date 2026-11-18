@@ -70,6 +70,23 @@ describe.runIf(testDatabaseUrl)('sign-in', () => {
     expect(await accountsOf(`dev-${name}`)).toHaveLength(1);
   });
 
+  it('[adr:display-name#6] keeps a renamed user’s name when the provider name changes at the next sign-in', async () => {
+    const name = unique('carol');
+    const { jar } = await signIn(h, name);
+    const renamed = await h.app.inject({
+      method: 'PATCH',
+      url: routes.updateMe.path,
+      headers: { origin: WEB_ORIGIN, cookie: jar.header() },
+      payload: { displayName: '小雨' },
+    });
+    expect(renamed.statusCode).toBe(200);
+    h.customize = (identity) => ({ ...identity, name: `${name} Google` });
+    const again = await me(h, (await signIn(h, name)).jar);
+    expect(again.user!.displayName).toBe('小雨');
+    const [domain] = await query('select display_name from users where id = $1', [again.user!.id]);
+    expect(domain).toEqual({ display_name: '小雨' });
+  });
+
   it('[adr:authentication-and-sessions#2] creates one user when one new subject signs in twice at once', async () => {
     const name = unique('race');
     await Promise.allSettled([signIn(h, name), signIn(h, name)]);
