@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router';
+import type { ResponseOf } from '@between-pages/contracts';
 import { callApi } from '../api/client.ts';
+import { InlineName } from '../name/index.ts';
 import { ALL_DAYS, RangeEditor, type RangeChoice } from '../sharing-range/index.ts';
 import { localToday } from '../today/index.ts';
 import { Button, Input } from '../ui/index.ts';
@@ -18,9 +20,11 @@ const joinLink = (token: string) => `${window.location.origin}/join#token=${toke
 /**
  * The invitation flow of the 设置 → 搭档 page (spaces-and-invitations D12): the current or
  * archived space, or an invitation to create, copy once, revoke or replace. Ranges set here
- * are configuration only; the panel always says diary sharing is not open yet.
+ * are configuration only; the panel always says diary sharing is not open yet. Above the
+ * form, the name the partner will see, with "修改" (display-name D6).
  */
-export function RelationshipPanel({ userId }: { userId: string }) {
+export function RelationshipPanel({ me }: { me: ResponseOf<'me'>['user'] }) {
+  const userId = me.id;
   const binding = useBinding();
   const spaces = useSpaces();
   const client = useQueryClient();
@@ -161,6 +165,9 @@ export function RelationshipPanel({ userId }: { userId: string }) {
           <h2 className="font-serif text-xl font-medium">
             {archived.length ? '邀请原搭档恢复关系' : '邀请搭档'}
           </h2>
+          <p className="text-sm text-ink-soft">
+            对方会看到你叫 <InlineName name={me.displayName} />
+          </p>
           <p className="text-sm leading-relaxed text-ink-soft">
             选择你以后愿意共享的日期，生成链接后发给对方。
           </p>

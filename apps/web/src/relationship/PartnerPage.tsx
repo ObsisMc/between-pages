@@ -16,7 +16,7 @@ export function PartnerPage() {
         description="首版绑定后搭档固定，不支持更换。每人只共享自己确认过的日期，对方看不到这个设置。"
       />
       <div className="max-w-2xl">
-        <RelationshipPanel userId={me.data.user.id} />
+        <RelationshipPanel me={me.data.user} />
       </div>
     </Page>
   );

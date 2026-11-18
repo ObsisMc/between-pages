@@ -32,6 +32,7 @@ describe('SiteHeader', () => {
       ['搭档', '/partner'],
       ['备份', '/backup'],
       ['邮件提醒', '/mail'],
+      ['我的名字', '/name'],
     ]);
   });
 
@@ -66,6 +67,7 @@ describe('SiteHeader', () => {
       ['双人空间', `/spaces/${SPACE}`],
       ['备份', '/backup'],
       ['邮件提醒', '/mail'],
+      ['我的名字', '/name'],
     ]);
   });
 
@@ -111,6 +113,7 @@ describe('SiteHeader', () => {
       ['搭档', '/partner'],
       ['备份', '/backup'],
       ['邮件提醒', '/mail'],
+      ['我的名字', '/name'],
     ]);
   });
 

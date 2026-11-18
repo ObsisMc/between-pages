@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router';
 import type { ResponseOf } from '@between-pages/contracts';
 import { callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
+import { InlineName } from '../name/index.ts';
 import { isFinalRefusal, refreshRelationships, refusalText } from '../relationship/index.ts';
 import { ALL_DAYS, RangeEditor, type RangeChoice } from '../sharing-range/index.ts';
 import { localToday } from '../today/index.ts';
@@ -129,9 +130,7 @@ export function JoinPage() {
       {preview && token && (
         <div className="mt-5 grid gap-4">
           <div className="grid gap-1 border-y border-line py-4 text-sm">
-            <p>
-              当前账号：<strong className="font-medium">{me.data?.user.displayName}</strong>
-            </p>
+            <p>当前账号：{me.data && <InlineName name={me.data.user.displayName} />}</p>
             <p>
               邀请者：<strong className="font-medium">{preview.inviter.displayName}</strong>
             </p>
