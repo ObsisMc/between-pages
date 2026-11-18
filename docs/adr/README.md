@@ -38,7 +38,7 @@
 | [production-deployment](./2026-11-05-production-deployment.md) | 生产环境用 Docker 跑在现有服务器上，由现有 Caddy 接入，数据与开发环境完全分开 | 已实现 | 技术栈 | 7/11 部分 |
 | [email-reminders](./2026-11-17-email-reminders.md) | 对方的新内容一小时没读、纪念日到了提醒期、备份需要处理时，worker 经 Resend 发一封提醒邮件 | 已采纳 | 领域 | 14/14 已完成 |
 | [google-copy-beyond-diaries](./2026-11-17-google-copy-beyond-diaries.md) | 每人的 Google Drive 也放共享页面、心愿单、礼物墙与纪念日，内容与本人在应用里看到的一致，未揭晓的礼物只进送的人自己的 Drive | 已采纳 | 备份 | 0/12 未开始 |
-| [installable-pwa](./2026-11-18-installable-pwa.md) | 应用可以装到桌面和 iPhone 主屏幕，离线也能打开并说明离线，图标上的圆点提示未读，不做推送 | 提议 | 技术栈 | 0/9 未开始 |
+| [installable-pwa](./2026-11-18-installable-pwa.md) | 应用可以装到 iPhone 主屏幕，离线也能打开并说明离线，图标上的圆点提示未读，不做推送 | 提议 | 技术栈 | 0/9 未开始 |
 <!-- adr-index:end -->
 
 ## 原则
