@@ -424,6 +424,73 @@ export function createReader(store: Store, memos: ReaderMemo = createReaderMemo(
     return unread;
   }
 
+  /**
+   * Up to `limit` dates nearest first in `direction` whose own diary or partner's share has
+   * list unread for `viewer`. Own diaries nobody else has written in cannot hold any and are
+   * skipped without reading their text; everything but a changed text is read in a few
+   * queries, not per diary.
+   */
+  async function unreadDates(
+    queries: DiaryQueries,
+    viewer: string,
+    direction: DateDirection,
+    settled: SettledPoint,
+    limit: number,
+  ): Promise<string[]> {
+    const writers = await queries.diariesWithOtherWriters(viewer);
+    const own = (
+      direction.after === undefined
+        ? await queries.ownedDiaries(viewer, direction.before ?? null, ALL)
+        : await queries.ownedDiariesAfter(viewer, direction.after, ALL)
+    ).filter((row) => writers.has(row.id));
+    const shared = (await queries.epochs.sharedWith(viewer, null)).filter((e) =>
+      inDirection(e.diaryDate, direction),
+    );
+    const ids = [...own.map((row) => row.id), ...shared.map((e) => e.diaryId)];
+    const partner = await queries.findDiaries(shared.map((e) => e.diaryId));
+    const timelines = await queries.timelines(ids);
+    const reads = await queries.readRangesIn(viewer, ids);
+    const received = Map.groupBy(await queries.epochs.allRecipientEpochs(viewer), (e) => e.diaryId);
+    const cutoffOf = (timeline: readonly CommitPoint[]) => settled(timeline)?.version ?? -1;
+
+    const unread = async (date: string) => {
+      const row = own.find((r) => r.diaryDate === date);
+      if (row) {
+        const cutoff = cutoffOf(timelines.get(row.id) ?? []);
+        const text = {
+          diaryId: row.id,
+          generationId: row.generationId,
+          bound: row.version,
+          cutoff,
+        };
+        if (await unreadOf(queries, viewer, text, reads.get(row.id) ?? [])) return true;
+      }
+      const epoch = shared.find((e) => e.diaryDate === date);
+      if (!epoch) return false;
+      const diary = partner.get(epoch.diaryId)!;
+      const bound = boundOf(epoch, diary);
+      const timeline = authorize(
+        timelines.get(diary.id) ?? [],
+        diary,
+        viewer,
+        received.get(diary.id) ?? [],
+      )!;
+      const cutoff = epoch.closedAt ? bound : cutoffOf(timeline);
+      const text = { diaryId: diary.id, generationId: epoch.generationId, bound, cutoff };
+      return unreadOf(queries, viewer, text, reads.get(diary.id) ?? []);
+    };
+
+    const found: string[] = [];
+    for (const date of nearestFirst(
+      [...new Set([...own, ...shared].map((d) => d.diaryDate))],
+      direction.after !== undefined,
+    )) {
+      if (found.length >= limit) break;
+      if (await unread(date)) found.push(date);
+    }
+    return found;
+  }
+
   /** As `unreadOf`, with what mails already reported counted as covered, through its memo. */
   async function freshOf(
     queries: DiaryQueries,
@@ -657,68 +724,25 @@ export function createReader(store: Store, memos: ReaderMemo = createReaderMemo(
 
     /**
      * The nearest date in the direction asked whose own diary or partner's share has list
-     * unread for `viewer` (book-frontend-workspace D5), or null. Own diaries nobody else
-     * has written in cannot hold any and are skipped without reading their text.
+     * unread for `viewer` (book-frontend-workspace D5), or null.
      */
-    nextUnread(
+    async nextUnread(
       viewer: string,
       direction: DateDirection,
       settled: SettledPoint,
     ): Promise<string | null> {
-      return store.read(async (queries) => {
-        const writers = await queries.diariesWithOtherWriters(viewer);
-        const own = (
-          direction.after === undefined
-            ? await queries.ownedDiaries(viewer, direction.before ?? null, ALL)
-            : await queries.ownedDiariesAfter(viewer, direction.after, ALL)
-        ).filter((row) => writers.has(row.id));
-        const shared = (await queries.epochs.sharedWith(viewer, null)).filter((e) =>
-          inDirection(e.diaryDate, direction),
-        );
-        // Everything but a changed text is read in a few queries, not per diary.
-        const ids = [...own.map((row) => row.id), ...shared.map((e) => e.diaryId)];
-        const partner = await queries.findDiaries(shared.map((e) => e.diaryId));
-        const timelines = await queries.timelines(ids);
-        const reads = await queries.readRangesIn(viewer, ids);
-        const received = Map.groupBy(
-          await queries.epochs.allRecipientEpochs(viewer),
-          (e) => e.diaryId,
-        );
-        const cutoffOf = (timeline: readonly CommitPoint[]) => settled(timeline)?.version ?? -1;
+      return (
+        (await store.read((queries) => unreadDates(queries, viewer, direction, settled, 1)))[0] ??
+        null
+      );
+    },
 
-        const dates = nearestFirst(
-          [...new Set([...own, ...shared].map((d) => d.diaryDate))],
-          direction.after !== undefined,
-        );
-        for (const date of dates) {
-          const row = own.find((r) => r.diaryDate === date);
-          if (row) {
-            const cutoff = cutoffOf(timelines.get(row.id) ?? []);
-            const text = {
-              diaryId: row.id,
-              generationId: row.generationId,
-              bound: row.version,
-              cutoff,
-            };
-            if (await unreadOf(queries, viewer, text, reads.get(row.id) ?? [])) return date;
-          }
-          const epoch = shared.find((e) => e.diaryDate === date);
-          if (epoch) {
-            const diary = partner.get(epoch.diaryId)!;
-            const bound = boundOf(epoch, diary);
-            const timeline = authorize(
-              timelines.get(diary.id) ?? [],
-              diary,
-              viewer,
-              received.get(diary.id) ?? [],
-            )!;
-            const cutoff = epoch.closedAt ? bound : cutoffOf(timeline);
-            const text = { diaryId: diary.id, generationId: epoch.generationId, bound, cutoff };
-            if (await unreadOf(queries, viewer, text, reads.get(diary.id) ?? [])) return date;
-          }
-        }
-        return null;
-      });
+    /**
+     * How many dates have list unread for `viewer` (installable-pwa D5): the dates of
+     * `nextUnread` in every direction, each once, so a date counts as its dot on the day list.
+     */
+    async unreadCount(viewer: string, settled: SettledPoint): Promise<number> {
+      return (await store.read((queries) => unreadDates(queries, viewer, {}, settled, ALL))).length;
     },
 
     /**

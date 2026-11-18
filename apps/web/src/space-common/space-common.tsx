@@ -16,12 +16,14 @@ export const SEEN_DWELL_MS = 1_000;
 export const spaceUnreadKey = ['space-unread'] as const;
 
 /** Unread per feature for the entry dots, refreshed like the day list. */
-export const useSpaceUnread = (enabled: boolean) =>
+/** With `inBackground`, it keeps reading while the page is hidden, for the icon badge. */
+export const useSpaceUnread = (enabled: boolean, inBackground = false) =>
   useQuery({
     queryKey: spaceUnreadKey,
     queryFn: () => callApi('spaceUnread'),
     enabled,
     refetchInterval: 45_000,
+    refetchIntervalInBackground: inBackground,
   });
 
 export function EntryDot({ count }: { count: number | undefined }) {

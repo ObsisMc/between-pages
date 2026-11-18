@@ -101,6 +101,7 @@ export {
   DayResponse,
   DaysPage,
   DaysQuery,
+  DaysUnreadCountResponse,
   NextUnreadQuery,
   NextUnreadResponse,
   OwnDay,

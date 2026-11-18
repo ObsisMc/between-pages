@@ -186,6 +186,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'windows',
         'pokes',
         'mail',
+        'pwa',
       ],
       // digital-paper-interface 落地顺序 2: the shadcn components know no other module.
       ui: [],

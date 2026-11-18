@@ -170,6 +170,15 @@ export function diaryHandlers(services: {
       return { date };
     },
 
+    async daysUnreadCount(request: ContractRequest<'daysUnreadCount'>, reply: FastifyReply) {
+      reply.header('cache-control', 'no-store');
+      const dates = await services.reader.unreadCount(
+        request.user!.id,
+        services.history.settled(new Date()),
+      );
+      return { dates };
+    },
+
     async day(request: ContractRequest<'day'>, reply: FastifyReply) {
       reply.header('cache-control', 'no-store');
       const card = await services.reader.day(
