@@ -1,5 +1,13 @@
 import { driveConfig } from '../backup/drive-config.ts';
 import { createCopyService } from '../backup/copy.ts';
+import { createTogetherCopy } from '../backup/together.ts';
+import { createAnniversaryService } from '../anniversaries/anniversaries.ts';
+import { createSharedPageService } from '../shared-pages/shared-pages.ts';
+import { createSpaceRecords } from '../space-records/space-records.ts';
+import { createReminderStore } from '../store/anniversaries.ts';
+import { createSpaceRecordStore } from '../store/space-records.ts';
+import { createTogetherStore } from '../store/together.ts';
+import { createWishService } from '../wishes/wishes.ts';
 import { parseConfig } from '../config.ts';
 import { createDb } from '../db/client.ts';
 import { createReader } from '../reader/reader.ts';
@@ -13,6 +21,7 @@ import { copyNext } from './copy.ts';
 import { reminders } from './notify.ts';
 import { previewNext } from './preview.ts';
 import { revokeNext } from './revoke.ts';
+import { togetherNext } from './together.ts';
 
 // The worker process (ADR-0006 item 20, server-backup-and-google-docs): same code base as the
 // API, started on its own (`npm run start:worker`). It is the only process that opens Drive
@@ -36,6 +45,19 @@ const copy = createCopyService(
   createReader(createStore(database.db)),
   config.HISTORY_IDLE_MS,
 );
+// The `Together` Docs read through the same per-viewer services the API answers with
+// (google-copy-beyond-diaries invariant 1).
+const records = createSpaceRecords(createSpaceRecordStore(database.db));
+const togetherStore = createTogetherStore(database.db);
+const together = createTogetherCopy(
+  togetherStore,
+  {
+    pages: createSharedPageService(records),
+    wishes: createWishService(records),
+    anniversaries: createAnniversaryService(records, createReminderStore(database.db)),
+  },
+  config.HISTORY_IDLE_MS,
+);
 const notify = reminders(config, database.db, drive);
 let stopping = false;
 let checkedAt = 0;
@@ -55,9 +77,14 @@ async function tick() {
     console.log('worker: revoked a Drive grant');
   while (!stopping && (await copy.intake()) > 0);
   while (!stopping && (await copyNext({ copy, store: copyStore, drive })));
+  while (!stopping && (await together.intake(new Date())) > 0);
+  while (
+    !stopping &&
+    (await togetherNext({ copy: together, store: togetherStore, copyStore, drive }))
+  );
   if (!stopping && Date.now() - checkedAt >= CHECK_MS) {
     checkedAt = Date.now();
-    await checkDrives({ store: copyStore, drive });
+    await checkDrives({ store: copyStore, together: togetherStore, drive });
   }
 }
 

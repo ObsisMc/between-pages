@@ -1,6 +1,6 @@
 # 每人的 Google Drive 也放共享页面、心愿单、礼物墙与纪念日，内容与本人在应用里看到的一致，未揭晓的礼物只进送的人自己的 Drive
 
-- 状态：已采纳
+- 状态：已实现
 - 日期：2026-11-17
 - 决策者：Ray
 - 范围：备份
@@ -277,25 +277,12 @@ worker 的转换步骤（与 `backup_outbox` 的转换并列）把每行转成 `
 - 链接预览图片：不写；以后若要，再评估下载图片的存储与授权。
 - 礼物墙很长时是否按年拆：等实际条目数接近 Docs 上限的十分之一再看。
 
-## 落地顺序
+## 验证
 
-0. **采纳**：已完成，2026-11-17（PR #96）：`docs/architecture.md` Current decisions 的领域行与备份行已改写并指向本文。
-1. **服务端**（API、contracts）：迁移（三张新表、`backup_events` 的项列、`google_connections` 的唯一约束与重复连接的处理、上线补写的登记）；D9 的连接冲突与错误码；`space-records`、`commit` 页面分支、`bindings`、链接预览写回的登记点；`BackupAttention` 计入新的待写项；worker 的转换与处理、`render-together.ts`、页面改名与删除改名、每日检查覆盖新 Doc；`GET /api/backup`、`GET /api/shared-pages/:id`、`POST /api/backup/run` 的扩展，`npm run openapi`；依赖方向登记；`backup`、`worker`、`space-records`、`shared-pages` 模块 README；[功能规格](../diary-spec.md)第 1、9 节与[验收清单](../acceptance.md)的 GOOGLE 新条目。完成条件：不变量 1～12 有真实 PG 测试（Google 用本地假 Drive/Docs 服务），其中不变量 2 覆盖准备、改卡片、取消、揭晓的每一步，检查收的人的 Drive 写入、待写项、进度与问题记录在揭晓前都不变、送的人的"准备中"一节随之变化。
-2. **网页**：备份页按类的进度、问题记录与 D8 的说明，删除确认框的提示，共享页面的备份状态、链接与失败提示。完成条件：web 测试与 e2e 覆盖；不变量 9 的网页侧检查。
-3. **收尾**：用真实 Google 账号走一遍（建页面、改标题、删页面、许愿、准备并揭晓礼物、记纪念日、解绑与重绑、在 Google 改一份汇总，检查收的人在揭晓前什么都看不到），结果写入 `docs/validation/`；核对 Google 同意页面链接的隐私说明（如在仓库之外），补上共享页面、心愿、礼物与纪念日也会写进各自 Drive 的说明；本文转为已实现，更新路线图与 README 状态。
-
-**自主实现约定**：本文采纳后，以下改动无需再问——上面的一次迁移（含 D9 的唯一约束与重复连接的处理）；D9 的错误码 `GOOGLE_ACCOUNT_IN_USE`；`backup` 对三个功能服务的只读依赖及其在依赖方向检查中的登记；共享页面服务的副本专用读取入口（D7，只给 worker）；列出的接口扩展与 contracts；`space-records`、`commit`、`bindings` 与链接预览写回（`store`）中登记 outbox 的那几行。必须停下来问的情况：需要新的 Google 权限或 npm 依赖；需要往 Drive 写 Doc 与文件夹以外的东西；需要改协同内核的校验或页面的锁顺序；某个功能的读取入口无法保证私密过滤（不变量 1、2）；需要删除现有公开接口；改 CI 或 hooks。每一阶段一个 PR，按顺序叠放，Ray 确认后再合并。
-
-## 验收标准
-
-- 两个账号都连接 Google：建一个共享页面、两人各写几句，2～5 分钟后两人的 `Between Pages/Together/Shared pages/` 里各有一份同名 Doc，作者颜色与应用一致；改标题后 Doc 跟着改名；删除页面后 Doc 改名为"（已在应用中删除）"、内容不变。
-- 许愿、改心愿、记纪念日后约 2 分钟，两人的 Wishes、Anniversaries 更新；删除一条后它从汇总里消失。
-- 为对方准备一份礼物并写卡片：约 2 分钟后送的人的 Gifts 出现"准备中"一节、Wishes 里那条心愿标出"我在准备"；收的人的 Drive、备份页的进度与问题记录都没有变化；取消后从送的人的"准备中"消失；揭晓后两人的 Gifts 礼物墙都有这份礼物与卡片。
-- 备份页写明这些内容进两人各自的 Drive、删除收不回；心愿、纪念日、共享页面、已揭晓的礼物与卡片的删除确认框有那一行提示，准备中的没有。
-- 解绑后两人的 `Together` Doc 标题下面注明已解绑；重绑后继续更新。
-- 备份页按类显示进度；共享页面显示"已备份到 Google"与 Doc 链接。
-- B 用 A 已连接的 Google 账号连接时被拒绝，提示里没有 A 的名字，B 的连接没有保存令牌。
-- 不变量 1～12 由 API 的真实 PG 测试（Google 接口用本地假服务）与 web 测试验证，测试标题带 `[adr:google-copy-beyond-diaries#N]`。
+- 服务端（#99，2026-11-18 合并）：迁移 `0014`；`apps/api/src/app.together.db.test.ts` 在真实 PG 上、Google 用本地假 Drive/Docs 服务测试不变量 1～12（`[adr:google-copy-beyond-diaries#N]`），其中不变量 2 覆盖准备、改卡片、取消、揭晓的每一步，收的人的 Drive 写入、待写项、进度与问题记录在揭晓前都不变；`render-together.test.ts` 测 D4 的版式。
+- 网页（#101，2026-11-18 合并）：备份页按类进度、出问题的页面与汇总、D8 的说明，删除确认框的提示，共享页面的备份状态与链接，由 web 测试与 `e2e/shared-pages.spec.ts` 覆盖。
+- 上线（2026-11-18，main `5c078a8`）：迁移 `0014` 先在最新生产备份恢复出的副本上演练两次（原样一次；造出重复连接与一对绑定一次，确认保留较早的连接、留下 `account_in_use` 记录、补登记三份汇总），再手动备份并 `up.sh`，演练 `drill ok`（见[路线图](../roadmap.md)部署一节）。
+- 真实 Google 账号（2026-11-18，Ray）：最小检查通过：建共享页面两人各写一句、许愿、为对方准备礼物，几分钟后两人的 Drive 里页面与心愿单都在、作者颜色正确，收礼的一方看不到那份礼物；Google 同意页链接的隐私说明已核对，写明了这些内容也会写进各自的 Drive。改标题、删除页面、揭晓、在 Google 改汇总、解绑与重绑、账号冲突只由自动测试覆盖（[清单](../validation/google-copy-beyond-diaries-manual-2026-11-18.md)）。
 
 ## 补充信息
 

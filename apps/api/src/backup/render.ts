@@ -27,7 +27,8 @@ export type DayDoc = DocBody & {
   sha256: Uint8Array;
 };
 
-const SLOT_COLORS = [
+/** The two slots' author colors, shared by every Doc the copy writes. */
+export const SLOT_COLORS = [
   [0x8a / 255, 0x4a / 255, 0x2b / 255],
   [0x2d / 255, 0x5e / 255, 0x66 / 255],
 ] as const;
@@ -35,7 +36,7 @@ const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 
 // Docs refuses control characters other than newline and tab in inserted text.
 // eslint-disable-next-line no-control-regex
-const clean = (text: string) => text.replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, '');
+export const clean = (text: string) => text.replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, '');
 
 const weekdayOf = (date: string) => WEEKDAYS[new Date(`${date}T00:00:00Z`).getUTCDay()]!;
 

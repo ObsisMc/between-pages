@@ -13,6 +13,7 @@ import { createSpaceRecords } from '../space-records/space-records.ts';
 import { createReminderStore } from '../store/anniversaries.ts';
 import { createBackupStore } from '../store/backup.ts';
 import { createCopyStore } from '../store/copy.ts';
+import { createTogetherStore } from '../store/together.ts';
 import { createMailStore } from '../store/mail.ts';
 import { createSpaceRecordStore } from '../store/space-records.ts';
 import { createStore } from '../store/store.ts';
@@ -37,7 +38,13 @@ export function reminderScope(drive: DriveConfig | null, historyIdleMs?: number)
     const wishes = createWishService(records);
     const pages = createSharedPageService(records);
     const anniversaries = createAnniversaryService(records, createReminderStore(db));
-    const backup = createBackupService(createBackupStore(db), createCopyStore(db), drive);
+    const backup = createBackupService(
+      createBackupStore(db),
+      createCopyStore(db),
+      createTogetherStore(db),
+      pages,
+      drive,
+    );
     return {
       freshDiaries: (viewer, notified, now) =>
         reader.freshDiaries(viewer, notified, history.settled(now)),

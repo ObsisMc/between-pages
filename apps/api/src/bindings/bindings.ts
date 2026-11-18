@@ -260,6 +260,7 @@ export function createBindingService(relations: RelationStore, sharing: SharingS
             ? (await locked.lockSpace(existing.id))!
             : await locked.insertSpace(inviter, caller, now);
           const periodId = await locked.startPeriod(space, now);
+          if (existing) await locked.copySpace(space.id);
           await locked.acceptInvitation(row!.id, caller, now);
           await locked.closeOpenInvitations([inviter, caller], now);
           const choices = [
@@ -324,6 +325,7 @@ export function createBindingService(relations: RelationStore, sharing: SharingS
           if (!period) return 'NOT_FOUND';
           if (!period.endedAt) {
             await locked.endPeriod(period.id, caller, now);
+            await locked.copySpace(space.id);
             await locked.closeOpenInvitations([space.userLow, space.userHigh], now);
             changes = await sharing.freezeSpace(locked, space.id, now);
           }

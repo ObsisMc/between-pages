@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import * as Y from 'yjs';
-import { createDiaryDoc } from '@between-pages/collab';
+import { authorRuns, createDiaryDoc } from '@between-pages/collab';
 import type { BodyOf, ResponseOf } from '@between-pages/contracts';
 import {
   Refused,
@@ -14,7 +14,7 @@ import {
   type WriteContext,
 } from '../space-records/space-records.ts';
 import { SharedPageQueries, SharedPageWrites, type SharedPageRow } from '../store/shared-pages.ts';
-import { DiaryQueries, type Tx } from '../store/store.ts';
+import { DiaryQueries, type CommitPoint, type Tx } from '../store/store.ts';
 
 // Shared pages (shared-pages ADR), written only through space-records. Either of the two
 // renames or deletes a page (D3), so nothing here calls `authorOnly`; the text is the commit
@@ -35,6 +35,20 @@ export type PageView = {
   seq: number;
   state: Uint8Array;
   bindings: Map<number, string>;
+};
+
+/**
+ * What one person's Google copy of a page is built from (google-copy-beyond-diaries D5, D7):
+ * the page's title and commits, whether it is deleted, and whether the space is unbound.
+ */
+export type PageCopySource = {
+  title: string;
+  /** When the title was last set; null while it is the one the page was created with. */
+  titleAt: Date | null;
+  createdAt: Date;
+  deleted: boolean;
+  readOnly: boolean;
+  timeline: CommitPoint[];
 };
 
 const ref = (id: string): RecordRef => ({ type: 'shared_page', id });
@@ -122,6 +136,58 @@ export function createSharedPageService(records: SpaceRecords) {
     async unread(caller: string): Promise<number | 'NOT_FOUND'> {
       const items = await this.unreadItems(caller);
       return items === 'NOT_FOUND' ? items : items.length;
+    },
+
+    /** The current titles of these pages of the caller's space; deleted ones are absent. */
+    async titles(caller: string, ids: readonly string[]): Promise<Map<string, string>> {
+      const found = await records.read(caller, async (ctx) =>
+        (await new SharedPageQueries(ctx.tx).byIds(ctx.spaceId, ids)).filter((r) => !r.deletedAt),
+      );
+      return new Map(found === 'NOT_FOUND' ? [] : found.map((r) => [r.id, r.title]));
+    },
+
+    /**
+     * The worker's entry for the caller's Google copy of a page (google-copy-beyond-diaries
+     * D7, invariant 1): a live page as the caller opens it, and also one deleted, whose last
+     * commit the copy still writes, but only for the two people of its space. No route
+     * reaches it, so a deleted page stays gone for every answer (shared-pages invariant 5).
+     */
+    async copySource(caller: string, pageId: string): Promise<PageCopySource | null> {
+      const found = await records.read(caller, async (ctx) => {
+        const [row] = await new SharedPageQueries(ctx.tx).byIds(ctx.spaceId, [pageId]);
+        if (!row) return null;
+        return {
+          title: row.title,
+          titleAt: row.titleAt,
+          createdAt: row.createdAt,
+          deleted: row.deletedAt !== null,
+          readOnly: ctx.readOnly,
+          timeline: await new DiaryQueries(ctx.tx).timeline(row.id),
+        };
+      });
+      return found === 'NOT_FOUND' ? null : found;
+    },
+
+    /** The text of a commit of `copySource`'s page as author runs, for the same two people. */
+    async copyRuns(
+      caller: string,
+      pageId: string,
+      commit: CommitPoint,
+    ): Promise<{ author: string; text: string }[] | null> {
+      const found = await records.read(caller, async (ctx) => {
+        const [row] = await new SharedPageQueries(ctx.tx).byIds(ctx.spaceId, [pageId]);
+        if (!row) return null;
+        const queries = new DiaryQueries(ctx.tx);
+        const doc = await queries.state(row.id, commit.generationId, commit.version);
+        const runs: { author: string; text: string }[] = [];
+        for (const run of authorRuns(doc, await queries.bindings(row.id))) {
+          const last = runs.at(-1);
+          if (last?.author === run.author) last.text += run.text;
+          else runs.push({ author: run.author, text: run.text });
+        }
+        return runs;
+      });
+      return found === 'NOT_FOUND' ? null : found;
     },
 
     /** The page as it opens; a deleted page is gone for both (invariant 5). */

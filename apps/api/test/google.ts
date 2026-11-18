@@ -58,6 +58,10 @@ export async function startFakeGoogle() {
     storageFull: false,
     /** Runs just before a batchUpdate's revision check, e.g. to edit the Doc in between. */
     beforeBatch: null as ((file: FakeFile) => void) | null,
+    /** A Drive rename gives the Doc a new revision, as Google may. */
+    renameBumpsRevision: false,
+    /** Runs just after a rename, e.g. to make the next call fail as a crash would. */
+    afterRename: null as ((file: FakeFile) => void) | null,
   };
 
   const apiError = (status: number, reason: string) => ({
@@ -174,6 +178,9 @@ export async function startFakeGoogle() {
       if (!file) return json(404, apiError(404, 'notFound'));
       if (req.method === 'PATCH') {
         Object.assign(file, JSON.parse(await read(req)) as { name: string });
+        if (state.renameBumpsRevision) file.revision += 1;
+        state.afterRename?.(file);
+        state.afterRename = null;
         return json(200, { id: file.id });
       }
       return json(200, { trashed: file.trashed });
@@ -185,7 +192,16 @@ export async function startFakeGoogle() {
       if (!doc[2])
         return json(200, {
           revisionId: `rev-${file.revision}`,
-          body: { content: [{ endIndex: 1 }, { endIndex: file.text.length + 2 }] },
+          title: file.name,
+          body: {
+            content: [
+              { endIndex: 1 },
+              {
+                endIndex: file.text.length + 2,
+                paragraph: { elements: [{ textRun: { content: `${file.text}\n` } }] },
+              },
+            ],
+          },
         });
       const body = JSON.parse(await read(req)) as {
         requests: DocRequest[];

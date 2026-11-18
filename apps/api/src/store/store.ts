@@ -20,6 +20,7 @@ import type { DateSelection } from '@between-pages/contracts';
 import type { Db } from '../db/client.ts';
 import { EpochQueries, LockedBoundaries } from './boundaries.ts';
 import { coverage, coverageIn, type ClockRange } from './reading.ts';
+import { registerSpaceCopy } from './together.ts';
 import { VersionUnreadable } from '../errors.ts';
 import {
   backupOutbox,
@@ -651,6 +652,14 @@ export class LockedDocument extends DiaryQueries {
   async notePageWritten(page: LockedPage, writer: string, batchId: string, digest: Uint8Array) {
     const { id } = this.document;
     await this.tx.update(sharedPages).set({ updatedAt: new Date() }).where(eq(sharedPages.id, id));
+    // The page's Doc is written once this commit is in a history point
+    // (google-copy-beyond-diaries D5); a page still never registers a diary backup task.
+    await registerSpaceCopy(this.tx, {
+      spaceId: page.spaceId,
+      recordType: 'shared_page',
+      recordId: id,
+      privateTo: null,
+    });
     const partner = page.participants.find((p) => p !== writer)!;
     const [last] = await this.tx
       .select({ seq: spaceActions.seq })

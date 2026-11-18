@@ -3,6 +3,7 @@ import type { Db } from '../db/client.ts';
 import { giftCards, gifts, users, wishes } from '../db/schema.ts';
 import { visibleTo } from './space-records.ts';
 import type { Tx } from './store.ts';
+import { registerSpaceCopy } from './together.ts';
 
 // SQL for wishes, gifts and cards (wishes-and-gifts ADR). Every read a caller's answer is
 // built from filters private rows through `visibleTo` (space-records D9). The two lookups
@@ -250,17 +251,32 @@ export function createPreviewStore(db: Db) {
       ];
     },
 
+    /**
+     * Writes the preview back, and in the same transaction queues the record's Google copy
+     * with the record's own `private_to`: the preview's title and site are in the Doc
+     * (google-copy-beyond-diaries D1, 技术设计).
+     */
     async save(item: PendingLink, preview: Preview | null, at: Date): Promise<void> {
       const table = item.table === 'wish' ? wishes : gifts;
-      await db
-        .update(table)
-        .set({
-          previewTitle: preview?.title ?? null,
-          previewSite: preview?.site ?? null,
-          previewImage: preview?.image ?? null,
-          previewReadAt: at,
-        })
-        .where(and(eq(table.id, item.id), eq(table.link, item.link), isNull(table.previewReadAt)));
+      await db.transaction(async (tx) => {
+        const [saved] = await tx
+          .update(table)
+          .set({
+            previewTitle: preview?.title ?? null,
+            previewSite: preview?.site ?? null,
+            previewImage: preview?.image ?? null,
+            previewReadAt: at,
+          })
+          .where(and(eq(table.id, item.id), eq(table.link, item.link), isNull(table.previewReadAt)))
+          .returning({ spaceId: table.spaceId, privateTo: table.privateTo });
+        if (saved)
+          await registerSpaceCopy(tx, {
+            spaceId: saved.spaceId,
+            recordType: item.table,
+            recordId: item.id,
+            privateTo: saved.privateTo,
+          });
+      });
     },
   };
 }

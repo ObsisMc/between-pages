@@ -13,6 +13,10 @@ import { createDb, type Database } from './db/client.ts';
 import { DRIVE_FILE_SCOPE, GOOGLE_ENDPOINTS } from './google/oauth.ts';
 import { createBackupStore } from './store/backup.ts';
 import { createCopyStore } from './store/copy.ts';
+import { createSharedPageService } from './shared-pages/shared-pages.ts';
+import { createSpaceRecords } from './space-records/space-records.ts';
+import { createSpaceRecordStore } from './store/space-records.ts';
+import { createTogetherStore } from './store/together.ts';
 import { revokeNext } from './worker/revoke.ts';
 import { query, testDatabaseUrl } from '../test/db.ts';
 import { testSessions } from '../test/diary.ts';
@@ -328,6 +332,8 @@ describe.runIf(testDatabaseUrl)('Google Drive connection', () => {
     const testing = createBackupService(
       createBackupStore(database.db),
       createCopyStore(database.db),
+      createTogetherStore(database.db),
+      createSharedPageService(createSpaceRecords(createSpaceRecordStore(database.db))),
       {
         ...drive,
         testing: true,

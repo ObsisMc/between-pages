@@ -5,6 +5,7 @@ import type { GiftOccasion } from '@between-pages/contracts';
 import { callApi } from '../api/client.ts';
 import { Page, PageHeader } from '../shell/index.ts';
 import {
+  COPY_STAYS_NOTE,
   ReadOnlyNotice,
   StampText,
   UnreadJump,
@@ -361,7 +362,7 @@ function MyWish({
                 size="sm"
                 disabled={write.busy}
                 onClick={() =>
-                  window.confirm(`删除"${wish.name}"？`) &&
+                  window.confirm(`删除"${wish.name}"？${COPY_STAYS_NOTE}`) &&
                   void write
                     .run(() =>
                       callApi('deleteWish', {
@@ -735,7 +736,7 @@ function WallGift({
                     size="sm"
                     disabled={write.busy}
                     onClick={() =>
-                      window.confirm(`从礼物墙删除"${gift.name}"？`) &&
+                      window.confirm(`从礼物墙删除"${gift.name}"？${COPY_STAYS_NOTE}`) &&
                       void write
                         .run(() =>
                           callApi('deleteGift', {
