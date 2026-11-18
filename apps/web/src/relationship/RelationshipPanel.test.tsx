@@ -15,6 +15,7 @@ const pending = {
   id: INVITE,
   expiresAt: '2026-11-03T08:00:00.000Z',
   state: 'pending',
+  recipientEmail: null,
 };
 
 describe('RelationshipPanel', () => {
@@ -28,7 +29,7 @@ describe('RelationshipPanel', () => {
     stubApi({
       'GET /api/me': signedIn('alice'),
       'GET /api/days': noDays,
-      'GET /api/binding': () => Response.json({ binding: null, invitation }),
+      'GET /api/binding': () => Response.json({ binding: null, invitation, invitationsForMe: [] }),
       'GET /api/spaces': () => Response.json({ spaces: [] }),
       'POST /api/binding/invitations': created,
     });
@@ -48,7 +49,8 @@ describe('RelationshipPanel', () => {
     stubApi({
       'GET /api/me': signedIn('alice'),
       'GET /api/days': noDays,
-      'GET /api/binding': () => Response.json({ binding: null, invitation: null }),
+      'GET /api/binding': () =>
+        Response.json({ binding: null, invitation: null, invitationsForMe: [] }),
       'GET /api/spaces': () => Response.json({ spaces: [] }),
       'POST /api/binding/invitations': () => Response.json({ invitation: pending, token: null }),
     });
@@ -67,7 +69,7 @@ describe('RelationshipPanel', () => {
     stubApi({
       'GET /api/me': signedIn('alice'),
       'GET /api/days': noDays,
-      'GET /api/binding': () => Response.json({ binding: null, invitation }),
+      'GET /api/binding': () => Response.json({ binding: null, invitation, invitationsForMe: [] }),
       'GET /api/spaces': () => Response.json({ spaces: [] }),
       [`POST /api/binding/invitations/${INVITE}/revoke`]: () => {
         invitation = null;
@@ -87,7 +89,11 @@ describe('RelationshipPanel', () => {
       'GET /api/me': signedIn('alice'),
       'GET /api/days': noDays,
       'GET /api/binding': () =>
-        Response.json({ binding: { space: space(), periodId: SPACE }, invitation: null }),
+        Response.json({
+          binding: { space: space(), periodId: SPACE },
+          invitation: null,
+          invitationsForMe: [],
+        }),
       'GET /api/spaces': () => Response.json({ spaces: [space()] }),
     });
     // The header lists the page only while unbound; the panel itself still links a current space.
@@ -106,7 +112,8 @@ describe('RelationshipPanel', () => {
     stubApi({
       'GET /api/me': () => Response.json({ user: { id: ME, displayName: name } }),
       'GET /api/days': noDays,
-      'GET /api/binding': () => Response.json({ binding: null, invitation: null }),
+      'GET /api/binding': () =>
+        Response.json({ binding: null, invitation: null, invitationsForMe: [] }),
       'GET /api/spaces': () => Response.json({ spaces: [] }),
       'PATCH /api/me': (init) => {
         name = (JSON.parse(String(init?.body)) as { displayName: string }).displayName;
@@ -130,7 +137,8 @@ describe('RelationshipPanel', () => {
     stubApi({
       'GET /api/me': signedIn('alice'),
       'GET /api/days': noDays,
-      'GET /api/binding': () => Response.json({ binding: null, invitation: null }),
+      'GET /api/binding': () =>
+        Response.json({ binding: null, invitation: null, invitationsForMe: [] }),
       'GET /api/spaces': () => Response.json({ spaces: [] }),
       'POST /api/binding/invitations': errorBody('ALREADY_BOUND', 409),
     });

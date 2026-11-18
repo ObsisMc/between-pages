@@ -35,16 +35,40 @@ export const PeriodSummary = z
   .object({ id: Uuid, startedAt: Timestamp, endedAt: Timestamp.nullable() })
   .meta({ id: 'PeriodSummary' });
 
+/**
+ * The inviter's own invitation. `recipientEmail` is the address an addressed invitation was
+ * made for, null for a link; it appears only in the inviter's answers. No state says whether
+ * the address has an account or was seen (in-app-invitation-by-email D1, invariant 3).
+ */
 export const InvitationSummary = z
   .object({
     id: Uuid,
     expiresAt: Timestamp,
     state: z.enum(['pending', 'expired', 'revoked', 'used']),
+    recipientEmail: z.string().nullable(),
   })
   .meta({ id: 'InvitationSummary' });
 
+/**
+ * An open invitation addressed to the caller's verified sign-in email, also when it cannot be
+ * accepted now (D3). Never the inviter's email, range or the address itself.
+ */
+export const IncomingInvitation = z
+  .object({
+    id: Uuid,
+    inviter: UserSummary,
+    expiresAt: Timestamp,
+    mode: z.enum(['new', 'restore']),
+  })
+  .meta({ id: 'IncomingInvitation' });
+
 export const BindingResponse = z
-  .object({ binding: BindingSummary.nullable(), invitation: InvitationSummary.nullable() })
+  .object({
+    binding: BindingSummary.nullable(),
+    invitation: InvitationSummary.nullable(),
+    /** Newest first. */
+    invitationsForMe: z.array(IncomingInvitation),
+  })
   .meta({ id: 'BindingResponse' });
 
 export const SpacesResponse = z
@@ -57,9 +81,22 @@ export const SpaceResponse = z
   .object({ space: SpaceSummary, periods: z.array(PeriodSummary) })
   .meta({ id: 'SpaceResponse' });
 
-/** `sharingSelection: null` restores or starts the relationship without confirming a range (D5). */
+/**
+ * The partner's Google sign-in address for an addressed invitation (in-app-invitation-by-email
+ * D2). The server compares it trimmed and lower-cased; nothing else is folded.
+ */
+export const RecipientEmail = z.string().trim().pipe(z.email().max(254));
+
+/**
+ * `sharingSelection: null` restores or starts the relationship without confirming a range (D5).
+ * With `recipientEmail` the invitation is addressed and has no token (in-app-invitation-by-email D1).
+ */
 export const CreateInvitationRequest = z
-  .strictObject({ requestId: Uuid, sharingSelection: DateSelection.nullable() })
+  .strictObject({
+    requestId: Uuid,
+    sharingSelection: DateSelection.nullable(),
+    recipientEmail: RecipientEmail.optional(),
+  })
   .meta({ id: 'CreateInvitationRequest' });
 
 /** `token` is null when the request ID was already used: the original link cannot be recovered. */
@@ -75,8 +112,9 @@ export const RevokeInvitationResponse = z
   .object({ revoked: z.literal(true) })
   .meta({ id: 'RevokeInvitationResponse' });
 
+/** A link's token, or an addressed invitation's ID, never both (in-app-invitation-by-email D4). */
 export const PreviewInvitationRequest = z
-  .strictObject({ token: InvitationToken })
+  .union([z.strictObject({ token: InvitationToken }), z.strictObject({ inviteId: Uuid })])
   .meta({ id: 'PreviewInvitationRequest' });
 
 /** What the token holder may learn before accepting; never the inviter's range (D7). */
@@ -85,8 +123,15 @@ export const PreviewInvitationResponse = z
   .meta({ id: 'PreviewInvitationResponse' });
 
 export const AcceptInvitationRequest = z
-  .strictObject({ token: InvitationToken, sharingSelection: DateSelection.nullable() })
+  .union([
+    z.strictObject({ token: InvitationToken, sharingSelection: DateSelection.nullable() }),
+    z.strictObject({ inviteId: Uuid, sharingSelection: DateSelection.nullable() }),
+  ])
   .meta({ id: 'AcceptInvitationRequest' });
+
+export const DismissInvitationResponse = z
+  .object({ dismissed: z.literal(true) })
+  .meta({ id: 'DismissInvitationResponse' });
 
 export const AcceptInvitationResponse = z
   .object({ binding: BindingSummary, restored: z.boolean() })

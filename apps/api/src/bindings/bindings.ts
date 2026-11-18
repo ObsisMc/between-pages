@@ -13,11 +13,27 @@ import type { Prepared } from '../sharing/open.ts';
 import { refusingFailedOpen, type OpenRefusal, type SharingService } from '../sharing/sharing.ts';
 
 // Invitations, binding, unbinding and the caller's spaces (spaces-and-invitations D2, D5,
-// D8, D9). The caller always comes from the session. Every flow that writes locks the users
-// rows of everyone it touches first, then re-reads what it decides on.
+// D8, D9), with invitations addressed to a verified sign-in email (in-app-invitation-by-email).
+// The caller always comes from the session. Every flow that writes locks the users rows of
+// everyone it touches first, then re-reads what it decides on.
 
 /** Links stay valid this long; an invitation whose expiry equals now is expired (D8). */
 export const INVITATION_TTL_MS = 7 * 24 * 3600 * 1000;
+/** Addressed invitations one inviter may make in any 24 hours (in-app-invitation-by-email D6). */
+export const ADDRESSED_PER_DAY = 5;
+const DAY_MS = 24 * 3600 * 1000;
+
+/** The verified sign-in addresses, which only `auth` reads (in-app-invitation-by-email D2). */
+export type VerifiedEmails = { verifiedEmailOf(userId: string): Promise<string | null> };
+
+/**
+ * The one comparison form of an address (D2): trimmed and lower-cased, nothing else folded,
+ * so Gmail's dots and `+` aliases stay different addresses.
+ */
+export const normalizeEmail = (email: string) => email.trim().toLowerCase();
+
+/** A link's token or an addressed invitation's ID (D4). */
+export type InvitationKey = { token: string } | { inviteId: string };
 
 export type Refusal =
   | 'NOT_FOUND'
@@ -28,7 +44,8 @@ export type Refusal =
   | 'INVITE_USED'
   | 'SELF_INVITE'
   | 'ALREADY_BOUND'
-  | 'PARTNER_FIXED';
+  | 'PARTNER_FIXED'
+  | 'INVITE_LIMIT';
 
 export type Space = {
   id: string;
@@ -42,6 +59,13 @@ export type Invitation = {
   id: string;
   expiresAt: Date;
   state: 'pending' | 'expired' | 'revoked' | 'used';
+  recipientEmail: string | null;
+};
+export type IncomingInvitation = {
+  id: string;
+  inviter: { id: string; displayName: string };
+  expiresAt: Date;
+  mode: 'new' | 'restore';
 };
 
 const hashToken = (token: string) =>
@@ -58,7 +82,26 @@ const summary = (row: InvitationRow, now: Date): Invitation => ({
   id: row.id,
   expiresAt: row.expiresAt,
   state: invitationState(row, now),
+  recipientEmail: row.recipientEmail,
 });
+
+/** Whether `row` is an addressed invitation `recipient` may see and act on (D4, invariant 2). */
+const addressedTo = (row: InvitationRow, recipient: string | null) =>
+  recipient !== null && row.recipientEmail === recipient && row.dismissedAt === null;
+
+/**
+ * The invitation a key names: a link by its token's digest, an addressed one by ID only for
+ * its recipient. Anything else is not found, as an unknown token is (invariant 2).
+ */
+async function findInvitation(
+  queries: RelationQueries,
+  key: InvitationKey,
+  recipient: string | null,
+): Promise<InvitationRow | null> {
+  if ('token' in key) return queries.invitationByTokenHash(hashToken(key.token));
+  const row = await queries.invitation(key.inviteId);
+  return row && addressedTo(row, recipient) ? row : null;
+}
 
 /** Why `row` cannot be accepted by `caller` now, checking the invitation before the people (D11). */
 function invitationRefusal(row: InvitationRow | null, caller: string, now: Date): Refusal | null {
@@ -106,22 +149,50 @@ async function spaceSummary(queries: RelationQueries, row: SpaceRow): Promise<Sp
 const isParticipant = (row: SpaceRow, userId: string) =>
   row.userLow === userId || row.userHigh === userId;
 
-export function createBindingService(relations: RelationStore, sharing: SharingService) {
+export function createBindingService(
+  relations: RelationStore,
+  sharing: SharingService,
+  emails: VerifiedEmails,
+) {
+  /** The caller's verified address in comparison form; null matches no addressed invitation. */
+  const recipientOf = async (caller: string) => {
+    const email = await emails.verifiedEmailOf(caller);
+    return email === null ? null : normalizeEmail(email);
+  };
+
   return {
-    /** The caller's current binding and their latest open invitation. */
-    binding(
+    /**
+     * The caller's current binding, their latest open invitation and the open invitations
+     * addressed to their verified email, including ones they cannot accept now (D3).
+     */
+    async binding(
       caller: string,
       now: Date,
-    ): Promise<{ binding: Binding | null; invitation: Invitation | null }> {
+    ): Promise<{
+      binding: Binding | null;
+      invitation: Invitation | null;
+      invitationsForMe: IncomingInvitation[];
+    }> {
+      const recipient = await recipientOf(caller);
       return relations.read(async (queries) => {
         const active = await queries.activeBinding(caller);
         const space = active && (await queries.space(active.spaceId));
         const invitation = await queries.openInvitation(caller);
+        const incoming = recipient ? await queries.incomingInvitations(recipient, caller, now) : [];
+        const names = await queries.names(incoming.map((row) => row.createdBy));
         return {
           binding: space
             ? { space: await spaceSummary(queries, space), periodId: active!.periodId }
             : null,
           invitation: invitation && summary(invitation, now),
+          invitationsForMe: await Promise.all(
+            incoming.map(async (row) => ({
+              id: row.id,
+              inviter: { id: row.createdBy, displayName: names.get(row.createdBy)! },
+              expiresAt: row.expiresAt,
+              mode: (await queries.spaceOfPair(row.createdBy, caller)) ? 'restore' : 'new',
+            })),
+          ),
         };
       });
     },
@@ -146,32 +217,50 @@ export function createBindingService(relations: RelationStore, sharing: SharingS
     },
 
     /**
-     * Opens a new invitation, closing the caller's previous one. A repeated `requestId`
-     * returns the stored invitation without its token, which cannot be recovered; the same
-     * request ID with another selection is VALIDATION_FAILED (D8, D11).
+     * Opens a new invitation, closing the caller's previous one: a link with a token shown
+     * once, or, with `recipientEmail`, one addressed to that address with no token
+     * (in-app-invitation-by-email D1). A repeated `requestId` returns the stored invitation
+     * without a token; the same request ID with another selection or address is
+     * VALIDATION_FAILED (D8, D11). Addressed ones count toward D6's limit, under the lock.
      */
-    createInvitation(
+    async createInvitation(
       caller: string,
-      input: { requestId: string; sharingSelection: DateSelection | null },
+      input: {
+        requestId: string;
+        sharingSelection: DateSelection | null;
+        recipientEmail?: string | undefined;
+      },
       now: Date,
     ): Promise<{ invitation: Invitation; token: string | null } | Refusal> {
       const selection = input.sharingSelection && normalizeSelection(input.sharingSelection);
+      const recipient =
+        input.recipientEmail === undefined ? null : normalizeEmail(input.recipientEmail);
+      const own = recipient === null ? null : await recipientOf(caller);
       return relations.withUsersLocked([caller], async (locked) => {
         const earlier = await locked.invitationByRequest(caller, input.requestId);
         if (earlier) {
           const same =
-            earlier.confirmedSelection === null || selection === null
+            earlier.recipientEmail === recipient &&
+            (earlier.confirmedSelection === null || selection === null
               ? earlier.confirmedSelection === selection
-              : sameSelection(earlier.confirmedSelection, selection);
+              : sameSelection(earlier.confirmedSelection, selection));
           return same ? { invitation: summary(earlier, now), token: null } : 'VALIDATION_FAILED';
         }
         if (await locked.activeBinding(caller)) return 'ALREADY_BOUND';
+        if (recipient !== null) {
+          // The caller's own address: refusing it says nothing about anyone else (D1).
+          if (recipient === own) return 'SELF_INVITE';
+          const since = new Date(now.getTime() - DAY_MS);
+          if ((await locked.addressedSince(caller, since)) >= ADDRESSED_PER_DAY)
+            return 'INVITE_LIMIT';
+        }
         await locked.closeOpenInvitations([caller], now);
-        const token = randomBytes(32).toString('base64url');
+        const token = recipient === null ? randomBytes(32).toString('base64url') : null;
         const row = await locked.insertInvitation({
           createdBy: caller,
           requestId: input.requestId,
-          tokenHash: hashToken(token),
+          tokenHash: token === null ? null : hashToken(token),
+          recipientEmail: recipient,
           confirmedSelection: selection,
           createdAt: now,
           expiresAt: new Date(now.getTime() + INVITATION_TTL_MS),
@@ -191,17 +280,38 @@ export function createBindingService(relations: RelationStore, sharing: SharingS
       });
     },
 
-    /** What the holder of `token` may see before accepting; binds nothing and reserves nothing (D8). */
-    preview(
+    /**
+     * Hides an invitation addressed to the caller from the caller only; the inviter's view and
+     * the invitation's state do not change. Again, or on a closed one, changes nothing
+     * (in-app-invitation-by-email D4, invariant 7).
+     */
+    async dismiss(caller: string, inviteId: string, now: Date): Promise<true | 'NOT_FOUND'> {
+      const recipient = await recipientOf(caller);
+      if (recipient === null) return 'NOT_FOUND';
+      return relations.withUsersLocked([caller], async (locked) => {
+        const row = await locked.invitation(inviteId);
+        if (!row || row.recipientEmail !== recipient) return 'NOT_FOUND';
+        if (row.dismissedAt === null && invitationState(row, now) === 'pending')
+          await locked.dismissInvitation(row.id, now);
+        return true;
+      });
+    },
+
+    /**
+     * What the holder of a link, or the recipient of an addressed invitation, may see before
+     * accepting; binds nothing and reserves nothing (D8; in-app-invitation-by-email D4).
+     */
+    async preview(
       caller: string,
-      token: string,
+      key: InvitationKey,
       now: Date,
     ): Promise<
       | { inviter: { id: string; displayName: string }; expiresAt: Date; mode: 'new' | 'restore' }
       | Refusal
     > {
+      const recipient = 'inviteId' in key ? await recipientOf(caller) : null;
       return relations.read(async (queries) => {
-        const row = await queries.invitationByTokenHash(hashToken(token));
+        const row = await findInvitation(queries, key, recipient);
         const refusal =
           invitationRefusal(row, caller, now) ??
           (await pairRefusal(queries, row!.createdBy, caller));
@@ -225,11 +335,12 @@ export function createBindingService(relations: RelationStore, sharing: SharingS
      */
     async accept(
       caller: string,
-      input: { token: string; sharingSelection: DateSelection | null },
+      input: InvitationKey & { sharingSelection: DateSelection | null },
       now: Date,
     ): Promise<{ binding: Binding; restored: boolean } | Refusal | OpenRefusal> {
-      const tokenHash = hashToken(input.token);
-      const found = await relations.read((queries) => queries.invitationByTokenHash(tokenHash));
+      const byId = 'inviteId' in input;
+      const recipient = byId ? await recipientOf(caller) : null;
+      const found = await relations.read((queries) => findInvitation(queries, input, recipient));
       if (!found) return 'INVITE_INVALID';
       const selection = input.sharingSelection && normalizeSelection(input.sharingSelection);
       const early =
@@ -250,6 +361,8 @@ export function createBindingService(relations: RelationStore, sharing: SharingS
       const result = await refusingFailedOpen(() =>
         relations.withUsersLocked([found.createdBy, caller], async (locked) => {
           const row = await locked.invitation(found.id);
+          // Dismissed meanwhile: as unknown to this recipient as before (D4).
+          if (byId && row && !addressedTo(row, recipient)) return 'INVITE_INVALID';
           const refusal =
             invitationRefusal(row, caller, now) ??
             (await pairRefusal(locked, row!.createdBy, caller));

@@ -432,7 +432,12 @@ export const bindingInvitations = pgTable(
       .notNull()
       .references(() => users.id),
     requestId: uuid('request_id').notNull(),
-    tokenHash: bytea('token_hash').notNull().unique(),
+    /** A link's token digest; null for an addressed invitation (in-app-invitation-by-email D1). */
+    tokenHash: bytea('token_hash').unique(),
+    /** An addressed invitation's recipient, trimmed and lower-cased (D2); null for a link. */
+    recipientEmail: text('recipient_email'),
+    /** When the recipient dismissed it; only they stop seeing it (D4). */
+    dismissedAt: timestamp('dismissed_at', { withTimezone: true }),
     /** The inviter's selection confirmed for this invitation; null restores the relationship only. */
     confirmedSelection: jsonb('confirmed_selection').$type<DateSelection>(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -455,6 +460,14 @@ export const bindingInvitations = pgTable(
       'binding_invitations_closed_once',
       sql`${t.revokedAt} is null or ${t.acceptedAt} is null`,
     ),
+    check('binding_invitations_one_way', sql`num_nulls(${t.tokenHash}, ${t.recipientEmail}) = 1`),
+    check(
+      'binding_invitations_dismiss_directed',
+      sql`${t.dismissedAt} is null or ${t.recipientEmail} is not null`,
+    ),
+    index('binding_invitations_recipient')
+      .on(t.recipientEmail)
+      .where(sql`${t.revokedAt} is null and ${t.acceptedAt} is null`),
   ],
 );
 

@@ -52,7 +52,13 @@ describe('PartnerCard', () => {
       'GET /api/binding': () =>
         Response.json({
           binding: null,
-          invitation: { id: INVITE, expiresAt: '2026-11-03T08:00:00.000Z', state: 'pending' },
+          invitation: {
+            id: INVITE,
+            expiresAt: '2026-11-03T08:00:00.000Z',
+            state: 'pending',
+            recipientEmail: null,
+          },
+          invitationsForMe: [],
         }),
     });
     renderAt('/');

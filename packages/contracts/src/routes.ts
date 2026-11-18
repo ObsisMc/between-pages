@@ -81,6 +81,7 @@ import {
   BindingResponse,
   CreateInvitationRequest,
   CreateInvitationResponse,
+  DismissInvitationResponse,
   EmptyRequest,
   InvitationParams,
   MySharingResponse,
@@ -299,6 +300,16 @@ export const routes = {
     access: 'user',
     body: AcceptInvitationRequest,
     response: AcceptInvitationResponse,
+  },
+  dismissInvitation: {
+    method: 'POST',
+    path: '/api/binding/invitations/:inviteId/dismiss',
+    summary:
+      'Hide an invitation addressed to the caller from the caller only; the inviter sees no change.',
+    access: 'user',
+    params: InvitationParams,
+    body: EmptyRequest,
+    response: DismissInvitationResponse,
   },
   unbind: {
     method: 'POST',

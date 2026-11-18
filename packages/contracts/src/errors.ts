@@ -33,6 +33,7 @@ export const ErrorCode = z.enum([
   'SPACE_READ_ONLY',
   'RECORD_STALE',
   'RECORD_EXISTS',
+  'INVITE_LIMIT',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
 
@@ -79,6 +80,8 @@ export const errorStatus = {
   SPACE_READ_ONLY: 409,
   RECORD_STALE: 409,
   RECORD_EXISTS: 409,
+  // in-app-invitation-by-email D6: five addressed invitations in 24 hours per inviter.
+  INVITE_LIMIT: 429,
 } as const satisfies Record<ErrorCode, number>;
 
 /**
@@ -129,4 +132,5 @@ export const errorCategory = {
   SPACE_READ_ONLY: 'show',
   RECORD_STALE: 'show',
   RECORD_EXISTS: 'show',
+  INVITE_LIMIT: 'show',
 } as const satisfies Record<ErrorCode, ErrorCategory>;

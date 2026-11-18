@@ -197,7 +197,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const relations = createRelationStore(deps.db);
   const sharing = createSharingService(relations, store, events);
   const spaces = spaceHandlers({
-    bindings: createBindingService(relations, sharing),
+    bindings: createBindingService(relations, sharing, createAddresses(deps.db)),
     sharing,
   });
   contractRoute('binding', spaces.binding);
@@ -207,6 +207,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   contractRoute('revokeInvitation', spaces.revokeInvitation);
   contractRoute('previewInvitation', spaces.previewInvitation);
   contractRoute('acceptInvitation', spaces.acceptInvitation);
+  contractRoute('dismissInvitation', spaces.dismissInvitation);
   contractRoute('unbind', spaces.unbind);
   contractRoute('mySharing', spaces.mySharing);
   contractRoute('saveMySharing', spaces.saveMySharing);
