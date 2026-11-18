@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PageGoogleCopy } from './backup.ts';
 import { ClientBinding } from './diaries.ts';
 import { RecordUnread, Stamp } from './space-records.ts';
 import { UserSummary } from './users.ts';
@@ -78,6 +79,8 @@ export const SharedPageStateResponse = z
     seq: z.int().nonnegative(),
     state: z.base64(),
     bindings: z.array(ClientBinding),
+    /** The page's Doc in the caller's own Drive (google-copy-beyond-diaries D8). */
+    google: PageGoogleCopy,
   })
   .meta({ id: 'SharedPageStateResponse' });
 

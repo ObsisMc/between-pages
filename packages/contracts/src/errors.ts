@@ -29,6 +29,7 @@ export const ErrorCode = z.enum([
   'GOOGLE_STATE_INVALID',
   'GOOGLE_EXCHANGE_FAILED',
   'GOOGLE_DISCONNECTING',
+  'GOOGLE_ACCOUNT_IN_USE',
   'SPACE_READ_ONLY',
   'RECORD_STALE',
   'RECORD_EXISTS',
@@ -74,6 +75,7 @@ export const errorStatus = {
   GOOGLE_STATE_INVALID: 400,
   GOOGLE_EXCHANGE_FAILED: 502,
   GOOGLE_DISCONNECTING: 409,
+  GOOGLE_ACCOUNT_IN_USE: 409,
   SPACE_READ_ONLY: 409,
   RECORD_STALE: 409,
   RECORD_EXISTS: 409,
@@ -120,6 +122,7 @@ export const errorCategory = {
   GOOGLE_STATE_INVALID: 'show',
   GOOGLE_EXCHANGE_FAILED: 'show',
   GOOGLE_DISCONNECTING: 'show',
+  GOOGLE_ACCOUNT_IN_USE: 'show',
   // Space records (space-records D3, D5): unbound, so read-only; or the record changed
   // since it was loaded; or the space may hold only one such record (anniversaries D1).
   // The screen explains and reloads.

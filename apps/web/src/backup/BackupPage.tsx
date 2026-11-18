@@ -17,7 +17,9 @@ const dateTime = (iso: string) =>
     new Date(iso),
   );
 
-const EVENT_TEXT: Record<Backup['events'][number]['kind'], (date: string | null) => string> = {
+type BackupEvent = Backup['events'][number];
+
+const EVENT_TEXT: Record<BackupEvent['kind'], (date: string | null, e: BackupEvent) => string> = {
   doc_replaced: (d) => `${d} 的 Doc 在 Google 里被改过，已另存一份新的`,
   doc_recreated: (d) => `${d} 的 Doc 不见了，已重新生成`,
   storage_full: () => 'Google 空间已满，备份暂停',
@@ -26,6 +28,8 @@ const EVENT_TEXT: Record<Backup['events'][number]['kind'], (date: string | null)
   reconnect_needed: () => 'Google 授权失效，需要重新连接',
   copy_failing: (d) => `${d} 的备份开始失败，会自动重试`,
   check_failed: () => '检查 Google 里的文件失败，明天再试',
+  account_in_use: (_d, e) =>
+    `这个 Google 账号也被另一位用户连接着，你的连接已移除；之前写进 ${e.email} 的副本仍在那个 Drive 里，需要的话请自己删除，再换自己的账号连接`,
 };
 
 const ERROR_TEXT: Record<string, string> = {
@@ -331,7 +335,7 @@ export function BackupPage({ goTo = (url) => window.location.assign(url) }: Back
                 {backup.data.events.map((event) => (
                   <li key={`${event.at}-${event.kind}`}>
                     <span className="text-ink-soft">{dateTime(event.at)}</span> ·{' '}
-                    {EVENT_TEXT[event.kind](event.diaryDate)}
+                    {EVENT_TEXT[event.kind](event.diaryDate, event)}
                   </li>
                 ))}
               </ul>

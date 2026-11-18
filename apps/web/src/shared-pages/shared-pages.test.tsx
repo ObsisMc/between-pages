@@ -45,6 +45,7 @@ const opened = (over: object = {}, bindings: object[] = []) => ({
   seq: 0,
   state: 'AAA=',
   bindings,
+  google: { connected: false, docUrl: null, coveredAt: null, problem: null },
   ...over,
 });
 

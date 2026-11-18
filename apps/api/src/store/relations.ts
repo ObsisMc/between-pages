@@ -15,6 +15,7 @@ import {
 } from '../db/schema.ts';
 import { EpochQueries, LockedBoundaries } from './boundaries.ts';
 import { DiaryQueries, type DiaryRow } from './store.ts';
+import { registerSpaceCopy } from './together.ts';
 
 // SQL for the relationship and sharing range tables (spaces-and-invitations D9, D10).
 // Every write runs under `withUsersLocked`: the users rows of everyone the flow touches,
@@ -286,6 +287,19 @@ export class LockedRelations extends RelationQueries {
       { userId: space.userHigh, periodId, spaceId: space.id },
     ]);
     return periodId;
+  }
+
+  /**
+   * Every `Together` Doc of the space is written again: after unbinding with the read-only
+   * line, after the pair rebinds without it (google-copy-beyond-diaries D7, invariant 10).
+   */
+  async copySpace(spaceId: string): Promise<void> {
+    await registerSpaceCopy(this.tx, {
+      spaceId,
+      recordType: null,
+      recordId: null,
+      privateTo: null,
+    });
   }
 
   /** Ends the open period and removes both current bindings; the space and its history stay. */
