@@ -15,6 +15,7 @@ const pending = {
   id: INVITE,
   expiresAt: '2026-11-03T08:00:00.000Z',
   state: 'pending',
+  recipientEmail: null,
 };
 
 describe('RelationshipPanel', () => {
@@ -28,14 +29,14 @@ describe('RelationshipPanel', () => {
     stubApi({
       'GET /api/me': signedIn('alice'),
       'GET /api/days': noDays,
-      'GET /api/binding': () => Response.json({ binding: null, invitation }),
+      'GET /api/binding': () => Response.json({ binding: null, invitation, invitationsForMe: [] }),
       'GET /api/spaces': () => Response.json({ spaces: [] }),
       'POST /api/binding/invitations': created,
     });
     renderAt('/partner');
 
     expect(await screen.findByRole('heading', { level: 1, name: '搭档' })).toBeDefined();
-    fireEvent.click(await screen.findByText('生成邀请链接'));
+    fireEvent.click(await screen.findByText('或者生成邀请链接'));
 
     const link = (await screen.findByLabelText('邀请链接')) as HTMLInputElement;
     expect(link.value).toBe(`${window.location.origin}/join#token=${TOKEN}`);
@@ -48,13 +49,14 @@ describe('RelationshipPanel', () => {
     stubApi({
       'GET /api/me': signedIn('alice'),
       'GET /api/days': noDays,
-      'GET /api/binding': () => Response.json({ binding: null, invitation: null }),
+      'GET /api/binding': () =>
+        Response.json({ binding: null, invitation: null, invitationsForMe: [] }),
       'GET /api/spaces': () => Response.json({ spaces: [] }),
       'POST /api/binding/invitations': () => Response.json({ invitation: pending, token: null }),
     });
     renderAt('/partner');
     fireEvent.click(await screen.findByText('暂不设置'));
-    fireEvent.click(await screen.findByText('生成邀请链接'));
+    fireEvent.click(await screen.findByText('或者生成邀请链接'));
 
     expect((await screen.findByRole('alert')).textContent).toBe(
       '邀请已经生成过，但链接无法再次显示，请撤销后重新生成',
@@ -67,7 +69,7 @@ describe('RelationshipPanel', () => {
     stubApi({
       'GET /api/me': signedIn('alice'),
       'GET /api/days': noDays,
-      'GET /api/binding': () => Response.json({ binding: null, invitation }),
+      'GET /api/binding': () => Response.json({ binding: null, invitation, invitationsForMe: [] }),
       'GET /api/spaces': () => Response.json({ spaces: [] }),
       [`POST /api/binding/invitations/${INVITE}/revoke`]: () => {
         invitation = null;
@@ -79,7 +81,7 @@ describe('RelationshipPanel', () => {
 
     fireEvent.click(screen.getByText('撤销邀请'));
 
-    expect(await screen.findByText('生成邀请链接')).toBeDefined();
+    expect(await screen.findByText('或者生成邀请链接')).toBeDefined();
   });
 
   it('links the current and archived spaces and offers no invitation while bound', async () => {
@@ -87,12 +89,16 @@ describe('RelationshipPanel', () => {
       'GET /api/me': signedIn('alice'),
       'GET /api/days': noDays,
       'GET /api/binding': () =>
-        Response.json({ binding: { space: space(), periodId: SPACE }, invitation: null }),
+        Response.json({
+          binding: { space: space(), periodId: SPACE },
+          invitation: null,
+          invitationsForMe: [],
+        }),
       'GET /api/spaces': () => Response.json({ spaces: [space()] }),
     });
     // The header lists the page only while unbound; the panel itself still links a current space.
     const { router } = renderAt('/partner', [
-      { path: '/partner', element: <RelationshipPanel userId={ME} /> },
+      { path: '/partner', element: <RelationshipPanel me={{ id: ME, displayName: 'alice' }} /> },
       { path: '/spaces/:spaceId', element: <p>空间</p> },
     ]);
 
@@ -101,16 +107,43 @@ describe('RelationshipPanel', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe(`/spaces/${SPACE}`));
   });
 
+  it('[adr:display-name#1] shows the name the partner will see and renames it in place', async () => {
+    let name = 'alice';
+    stubApi({
+      'GET /api/me': () => Response.json({ user: { id: ME, displayName: name } }),
+      'GET /api/days': noDays,
+      'GET /api/binding': () =>
+        Response.json({ binding: null, invitation: null, invitationsForMe: [] }),
+      'GET /api/spaces': () => Response.json({ spaces: [] }),
+      'PATCH /api/me': (init) => {
+        name = (JSON.parse(String(init?.body)) as { displayName: string }).displayName;
+        return Response.json({ user: { id: ME, displayName: name } });
+      },
+    });
+    const { router } = renderAt('/partner');
+
+    expect((await screen.findByText(/对方会看到你叫/)).textContent).toContain('alice');
+    fireEvent.click(screen.getByRole('button', { name: '修改名字 alice' }));
+    fireEvent.change(screen.getByLabelText('名字'), { target: { value: '小雨' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+
+    expect(await screen.findByRole('button', { name: '修改名字 小雨' })).toBeDefined();
+    expect(screen.queryByLabelText('名字')).toBeNull();
+    expect(router.state.location.pathname).toBe('/partner');
+    expect(screen.getByText('或者生成邀请链接')).toBeDefined();
+  });
+
   it('names a bound caller’s refusal', async () => {
     stubApi({
       'GET /api/me': signedIn('alice'),
       'GET /api/days': noDays,
-      'GET /api/binding': () => Response.json({ binding: null, invitation: null }),
+      'GET /api/binding': () =>
+        Response.json({ binding: null, invitation: null, invitationsForMe: [] }),
       'GET /api/spaces': () => Response.json({ spaces: [] }),
       'POST /api/binding/invitations': errorBody('ALREADY_BOUND', 409),
     });
     renderAt('/partner');
-    fireEvent.click(await screen.findByText('生成邀请链接'));
+    fireEvent.click(await screen.findByText('或者生成邀请链接'));
     expect((await screen.findByRole('alert')).textContent).toBe('你或对方已有当前绑定');
   });
 });

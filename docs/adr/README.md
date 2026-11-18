@@ -38,6 +38,8 @@
 | [production-deployment](./2026-11-05-production-deployment.md) | 生产环境用 Docker 跑在现有服务器上，由现有 Caddy 接入，数据与开发环境完全分开 | 已实现 | 技术栈 | 7/11 部分 |
 | [email-reminders](./2026-11-17-email-reminders.md) | 对方的新内容一小时没读、纪念日到了提醒期、备份需要处理时，worker 经 Resend 发一封提醒邮件 | 已采纳 | 领域 | 14/14 已完成 |
 | [google-copy-beyond-diaries](./2026-11-17-google-copy-beyond-diaries.md) | 每人的 Google Drive 也放共享页面、心愿单、礼物墙与纪念日，内容与本人在应用里看到的一致，未揭晓的礼物只进送的人自己的 Drive | 已实现 | 备份 | 12/12 已完成 |
+| [display-name](./2026-11-18-display-name.md) | 每人在设置里改自己的名字，两人看到同一个，改后处处现读，Drive 里 Together 下的 Doc 随之重写 | 已实现 | 领域 | 6/6 已完成 |
+| [in-app-invitation-by-email](./2026-11-18-in-app-invitation-by-email.md) | 邀请可以按对方的 Google 邮箱定向发出，对方用这个邮箱登录后在应用里看到并接受；不发邮件，发起方在接受前得不到关于对方的任何信号 | 已实现 | 领域 | 10/10 已完成 |
 | [installable-pwa](./2026-11-18-installable-pwa.md) | 应用可以装到 iPhone 主屏幕，离线也能打开并说明离线，图标上的角标提示未读，不做推送 | 已采纳 | 技术栈 | 7/9 部分 |
 <!-- adr-index:end -->
 

@@ -151,7 +151,8 @@ describe('SpacePage', () => {
         Response.json({ space: space(open ? 'active' : 'archived'), periods: periods(open) }),
       [`GET /api/spaces/${SPACE}/my-sharing`]: mine(1, PERIOD),
       [`GET /api/spaces/${SPACE}/shared-diaries`]: noneShared,
-      'GET /api/binding': () => Response.json({ binding: null, invitation: null }),
+      'GET /api/binding': () =>
+        Response.json({ binding: null, invitation: null, invitationsForMe: [] }),
       'GET /api/spaces': () => Response.json({ spaces: [] }),
       [`POST /api/spaces/${SPACE}/unbind`]: unbound,
     });

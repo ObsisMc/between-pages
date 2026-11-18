@@ -36,7 +36,7 @@ export {
   UnsubscribeRequest,
   UnsubscribeResponse,
 } from './mail.ts';
-export { UserSummary } from './users.ts';
+export { DisplayName, UpdateMeRequest, UserSummary, type DisplayNameRefusal } from './users.ts';
 export type {
   BodyOf,
   ParamsOf,
@@ -115,12 +115,15 @@ export {
   BindingSummary,
   CreateInvitationRequest,
   CreateInvitationResponse,
+  DismissInvitationResponse,
+  IncomingInvitation,
   InvitationSummary,
   InvitationToken,
   MySharingResponse,
   PeriodSummary,
   PreviewInvitationRequest,
   PreviewInvitationResponse,
+  RecipientEmail,
   SaveMySharingRequest,
   SaveMySharingResponse,
   SpaceParticipant,
