@@ -1,6 +1,6 @@
 # 邀请可以按对方的 Google 邮箱定向发出，对方用这个邮箱登录后在应用里看到并接受；不发邮件，发起方在接受前得不到关于对方的任何信号
 
-- 状态：提议
+- 状态：已采纳
 - 日期：2026-11-18
 - 决策者：Ray
 - 范围：领域
@@ -185,7 +185,7 @@ contracts：`CreateInvitationRequest` 加可选 `recipientEmail`；`InvitationSu
 
 ## 落地顺序
 
-0. **采纳**：本 PR 合并时转为已采纳；`docs/architecture.md` Current decisions 的领域行已写入并指向本文，[关系 ADR](./2026-10-25-spaces-and-invitations.md) 的关联行已标明 D8 的部分被本文取代。
+0. **采纳**：Ray 于 2026-11-18 采纳；`docs/architecture.md` Current decisions 的领域行已写入并指向本文，[关系 ADR](./2026-10-25-spaces-and-invitations.md) 的关联行已标明 D8 的部分被本文取代。
 1. **前置**：Google 可读副本扩展的服务端 PR（迁移 `0014`）合入 `main` 之后才开始实现；本文的迁移取下一个编号 `0015_directed_invitations`。若届时 `0015` 已被别的迁移占用，取当时的下一个编号，名称不变。
 2. **服务端**（contracts、API、迁移）：上面的迁移；`verifiedEmailOf` 加进 `auth/email.ts` 并注入 `bindings`；`bindings` 的创建（D1、D2、D6）、`binding()` 的 `invitationsForMe`（D3）、按 ID 预览与接受、忽略（D4）；`store/relations.ts` 的查询与写入；contracts 与错误码；`npm run openapi`；`apps/api` 与 `packages/contracts` 的 README；[功能规格](../diary-spec.md)"邀请…不指定邮箱"一句、[验收清单](../acceptance.md) AUTH-10 的"不指定邮箱"改写，并加定向邀请的验收条目。完成条件：不变量 1～10 有真实 PG 的 API 测试，其中不变量 3 比较"邮箱有账号且已登录、已忽略"与"邮箱无账号"两种情况下发起方的创建响应与 `GET /api/binding` 除 ID 与时间外完全相同。
 3. **网页**：D5 的横幅、`/join?invite=`、"不接受"、`RelationshipPanel` 的邮箱表单与状态、`PartnerCard` 文案、`INVITE_LIMIT` 文案；`apps/web` README。完成条件：组件测试与 e2e（开发登录的身份带 `email_verified: true`，`alice`/`bob` 两个账号走完邀请、横幅、接受；第三个账号看不到、按 ID 被拒）。
