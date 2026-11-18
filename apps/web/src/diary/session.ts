@@ -23,6 +23,7 @@ import {
   type Span,
   type VisibleRun,
 } from '../read-tracker/index.ts';
+import { checkForUpdate } from '../pwa/index.ts';
 import { createSender, type SaveStatus, type Sender } from '../sender/index.ts';
 import { createSyncClient, type SyncClient, type SyncStatus } from '../sync-client/index.ts';
 
@@ -117,6 +118,9 @@ export type DiarySession = {
 
 const STORE_RETRY_MS = 5_000;
 const CARET_EVERY_MS = 100;
+
+/** The server or a newer tab speaks a newer version than this page (kernel D10). */
+const isOutdated = ({ save, sync }: DiaryState) => save === 'upgrade' || sync === 'upgrade';
 
 /** What a shared page opens from (shared-pages D7). */
 export type PageSource = {
@@ -214,7 +218,10 @@ export function createDiarySession({
 
   const set = (patch: Partial<DiaryState>) => {
     if (destroyed) return;
+    const outdated = isOutdated(state);
     state = { ...state, ...patch };
+    // The new version is looked for at once, so "刷新" can show (installable-pwa D2).
+    if (!outdated && isOutdated(state)) checkForUpdate();
     onChange(state);
   };
 

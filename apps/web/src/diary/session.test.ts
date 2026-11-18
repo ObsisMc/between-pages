@@ -3,7 +3,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PROTOCOL_VERSION } from '@between-pages/contracts';
 import { DIARY, FakeSocket, GENERATION, diaryResponse, stubLocks } from '../../test/diary.ts';
 import { stubApi } from '../../test/render.tsx';
+import { checkForUpdate } from '../pwa/index.ts';
 import { createDiarySession, type DiaryState, type PageSource } from './session.ts';
+
+vi.mock(import('../pwa/index.ts'), async (original) => ({
+  ...(await original()),
+  checkForUpdate: vi.fn(),
+}));
 
 const sessions: { destroy(): void }[] = [];
 afterEach(() => {
@@ -94,6 +100,20 @@ describe('diary session', () => {
     FakeSocket.release();
     await vi.waitFor(() => expect(diary.state()).toMatchObject({ save: 'saved', unstored: 0 }));
     expect(FakeSocket.seq).toBe(1);
+  });
+
+  it('[adr:installable-pwa#6] looks for the new version once when the server no longer speaks its protocol', async () => {
+    vi.mocked(checkForUpdate).mockClear();
+    const diary = open();
+    await vi.waitFor(() => expect(diary.state()?.save).toBe('saved'));
+    expect(checkForUpdate).not.toHaveBeenCalled();
+    FakeSocket.answer = () => 'PROTOCOL_UNSUPPORTED';
+
+    diary.paste('旧版本写的');
+    await vi.waitFor(() => expect(diary.state()?.save).toBe('upgrade'));
+    diary.paste('还没发出');
+    await vi.waitFor(() => expect(diary.state()?.unstored).toBe(0));
+    expect(checkForUpdate).toHaveBeenCalledTimes(1);
   });
 
   it('opens from this device when the server is unreachable, pending text included', async () => {

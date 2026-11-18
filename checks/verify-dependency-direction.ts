@@ -188,7 +188,10 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       windows: ['avatar'],
       // digital-paper-interface D1: the site header and which pages it lists; the account menu
       // signs out and forgets a kept invitation.
-      shell: ['ui', 'api', 'auth', 'avatar', 'join', 'relationship', 'space-common'],
+      shell: ['ui', 'api', 'auth', 'avatar', 'join', 'relationship', 'space-common', 'pwa'],
+      // installable-pwa: the worker's registration, the update bar and the icon badge; it
+      // knows no data, so the shell, the home and the diary hand it what it shows.
+      pwa: ['ui'],
       'editor-binding': [],
       journal: [],
       sender: ['journal'],
@@ -249,6 +252,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'avatar',
         'ui',
         'shell',
+        'pwa',
       ],
       'read-tracker': ['api'],
     },

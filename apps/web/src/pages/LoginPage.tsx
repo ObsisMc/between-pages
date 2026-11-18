@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Navigate, useSearchParams } from 'react-router';
 import { signIn, type Provider } from '../api/auth.ts';
+import { useOnline } from '../api/online.ts';
 import { useMe } from '../auth/me.ts';
 import { Button, Input } from '../ui/index.ts';
 import { WelcomeLayout } from '../windows/index.ts';
@@ -29,6 +30,7 @@ export interface LoginPageProps {
 
 export function LoginPage({ goTo = (url) => window.location.assign(url) }: LoginPageProps) {
   const me = useMe();
+  const online = useOnline();
   const [params] = useSearchParams();
   const [pending, setPending] = useState<Provider | null>(null);
   const [failed, setFailed] = useState(false);
@@ -69,11 +71,17 @@ export function LoginPage({ goTo = (url) => window.location.assign(url) }: Login
       <Button
         type="button"
         className="mt-6 w-full"
-        disabled={pending !== null}
+        disabled={pending !== null || !online}
         onClick={() => void start('google')}
       >
         {pending === 'google' ? '正在前往 Google…' : '使用 Google 登录'}
       </Button>
+      {/* Google cannot be reached offline either, so the button waits (installable-pwa D3). */}
+      {!online && (
+        <p role="status" className="mt-3 text-sm text-warm">
+          现在离线，联网后再登录
+        </p>
+      )}
       <p className="mt-4 text-sm text-ink-soft">登录与 Google 日记备份分别授权。</p>
       {import.meta.env.DEV && (
         <form
