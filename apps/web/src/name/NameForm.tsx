@@ -96,7 +96,7 @@ export function NameForm({
         )}
       </div>
       {error && (
-        <p id={`${id}-error`} role="alert" className="text-sm text-destructive">
+        <p id={`${id}-error`} role="alert" className="text-sm text-warm">
           {error}
         </p>
       )}

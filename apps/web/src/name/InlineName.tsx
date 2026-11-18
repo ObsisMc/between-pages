@@ -27,7 +27,7 @@ export function InlineName({ name }: { name: string }) {
       <Button
         type="button"
         variant="link"
-        className="align-baseline text-warm"
+        className="h-auto p-0 align-baseline text-warm"
         aria-label={`修改名字 ${name}`}
         onClick={() => setEditing(true)}
       >
