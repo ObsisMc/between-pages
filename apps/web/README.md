@@ -166,6 +166,7 @@ npx vitest run --project web
 - Opening a diary while offline works only for one this device has stored, from a page already open; there is no offline list of diaries, and an app opened offline shows only its cover pages, since the server has not confirmed who is signed in (installable-pwa D3; offline reading is deferred).
 - The offline notice and the update bar sit in the page's flow, so while one shows, the wide diary page, which fills the window under the header, scrolls by its height.
 - A window that did not press "刷新" keeps running the old version, whose `/assets/` files the server no longer has once a new version took over; the app loads no chunks on demand, so nothing is missing until that window reloads.
+- That old window also talks to the new API. Routes are not kept backward compatible while the app has no users (Ray, 2026-11-18): a response whose shape changed fails its contract parse and that page shows its error until "刷新"; only the diary sync protocol answers `PROTOCOL_UNSUPPORTED` and brings up the bar at once.
 - The iPhone home-screen app has its own cookies and storage: it is signed in once on its own, and text written in Safari but not sent stays in Safari's journal until that diary is opened there again (installable-pwa D7). The page does not extend under the notch (no `viewport-fit=cover`).
 - Refused input typed one character at a time is stored as one draft per character; only the display groups it.
 - The journal is not locked on sign-out yet.
