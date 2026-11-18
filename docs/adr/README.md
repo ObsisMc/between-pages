@@ -39,6 +39,7 @@
 | [email-reminders](./2026-11-17-email-reminders.md) | 对方的新内容一小时没读、纪念日到了提醒期、备份需要处理时，worker 经 Resend 发一封提醒邮件 | 已采纳 | 领域 | 14/14 已完成 |
 | [google-copy-beyond-diaries](./2026-11-17-google-copy-beyond-diaries.md) | 每人的 Google Drive 也放共享页面、心愿单、礼物墙与纪念日，内容与本人在应用里看到的一致，未揭晓的礼物只进送的人自己的 Drive | 已实现 | 备份 | 12/12 已完成 |
 | [display-name](./2026-11-18-display-name.md) | 每人在设置里改自己的名字，两人看到同一个，改后处处现读，Drive 里 Together 下的 Doc 随之重写 | 已采纳 | 领域 | 6/6 已完成 |
+| [in-app-invitation-by-email](./2026-11-18-in-app-invitation-by-email.md) | 邀请可以按对方的 Google 邮箱定向发出，对方用这个邮箱登录后在应用里看到并接受；不发邮件，发起方在接受前得不到关于对方的任何信号 | 已采纳 | 领域 | 0/10 未开始 |
 <!-- adr-index:end -->
 
 ## 原则
