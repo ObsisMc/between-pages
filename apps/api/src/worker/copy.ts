@@ -4,6 +4,7 @@ import { ensureFolders } from '../backup/folders.ts';
 import { replacedTitle, type DayDoc } from '../backup/render.ts';
 import {
   DOC_TYPE,
+  type DocBody,
   createFile,
   docRevision,
   fileState,
@@ -29,7 +30,7 @@ const STORAGE_FULL_MS = 24 * 60 * 60_000;
 const backoffMs = (attempts: number) => Math.min(60_000 * 2 ** attempts, RETRY_MAX_MS);
 
 /** The Doc changed in Google, or is gone or in the bin; never written into. */
-class DocUnavailable extends Error {
+export class DocUnavailable extends Error {
   readonly reason: 'changed' | 'missing';
   constructor(reason: 'changed' | 'missing') {
     super(`doc_${reason}`);
@@ -72,11 +73,11 @@ async function currentOrNew(
 }
 
 /** Replaces the body of `docId` if it is still the revision this app wrote last. */
-async function writeInto(
-  deps: CopyDeps,
+export async function writeInto(
+  deps: Pick<CopyDeps, 'drive'>,
   token: string,
   current: { docId: string; revisionId: string },
-  doc: DayDoc,
+  doc: DocBody,
 ): Promise<string> {
   const endpoints = deps.drive.client.endpoints;
   if ((await fileState(endpoints, token, current.docId)) !== 'present')
@@ -176,7 +177,17 @@ export async function copyNext(deps: CopyDeps, now = new Date()): Promise<boolea
         });
         return finish(recheckAt);
       } catch (error) {
-        return failed(deps, work, outcome, error, now);
+        return failed(
+          {
+            reconnect: () => deps.store.needsReconnect(work.userId),
+            storageFull: () => deps.store.storageFull(work.userId, work.diaryDate),
+          },
+          work,
+          outcome,
+          error,
+          now,
+          work.diaryDate,
+        );
       }
     },
   );
@@ -194,17 +205,19 @@ const unreachable = (error: unknown) =>
  * reached, `failed` for anything else, `storage_full`; a revoked grant asks to reconnect.
  * The detail goes to the log only, never a token or diary text.
  */
-async function failed(
-  deps: CopyDeps,
-  work: WorkRow,
+export async function failed(
+  on: { reconnect(): Promise<void>; storageFull(): Promise<void> },
+  work: Pick<WorkRow, 'attempts' | 'lastError'>,
   outcome: WorkOutcome,
   error: unknown,
   now: Date,
+  /** A date or an item: never a title or any text of it. */
+  label: string,
 ): Promise<void> {
   const at = (ms: number) => new Date(now.getTime() + ms);
   const detail =
     error instanceof GoogleError ? `${error.status} ${error.code}` : (error as Error).message;
-  console.error(`worker: backing up ${work.diaryDate} failed: ${detail}`);
+  console.error(`worker: backing up ${label} failed: ${detail}`);
   if (error instanceof GoogleError) {
     // The grant was revoked or expired (Testing mode: seven days), or lacks drive.file.
     if (
@@ -212,10 +225,9 @@ async function failed(
       error.status === 401 ||
       error.code === 'insufficientPermissions'
     )
-      return deps.store.needsReconnect(work.userId);
+      return on.reconnect();
     if (error.code === 'storageQuotaExceeded') {
-      if (work.lastError !== 'storage_full')
-        await deps.store.storageFull(work.userId, work.diaryDate);
+      if (work.lastError !== 'storage_full') await on.storageFull();
       return outcome.later(at(STORAGE_FULL_MS), 'storage_full');
     }
   }

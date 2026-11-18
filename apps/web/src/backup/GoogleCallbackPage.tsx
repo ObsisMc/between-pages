@@ -13,6 +13,9 @@ const ERROR_TEXT: Record<string, string> = {
   GOOGLE_EXCHANGE_FAILED: 'Google 没有给出 Drive 授权，请重新连接',
   GOOGLE_DISCONNECTING: '上一次连接还在断开中，请稍等片刻再连接',
   GOOGLE_UNAVAILABLE: '这台服务器还没有配置 Google 备份',
+  // Never says who: whoever reads this is signed in to that Google account
+  // (google-copy-beyond-diaries D9).
+  GOOGLE_ACCOUNT_IN_USE: '这个 Google 账号已被另一位用户连接，请换一个账号',
 };
 
 export function GoogleCallbackPage() {
