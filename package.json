@@ -26,6 +26,8 @@
     "test:e2e": "playwright test --project=chromium --project=webkit",
     "test:e2e:all": "playwright test",
     "test:e2e:db": "bash scripts/with-test-postgres.sh npm run test:e2e",
+    "test:e2e:pwa": "playwright test -c playwright.pwa.config.ts",
+    "test:e2e:pwa:db": "bash scripts/with-test-postgres.sh npm run test:e2e:pwa",
     "openapi": "npm run openapi -w @between-pages/api",
     "adr:index": "node checks/generate-adr-index.ts",
     "check": "node checks/check.ts",

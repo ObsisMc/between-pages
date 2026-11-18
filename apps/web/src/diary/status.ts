@@ -15,7 +15,7 @@ export function statusLine(state: DiaryState): StatusLine {
   if (save === 'readonly')
     return { text: '只读：这个浏览器无法安全保存，请升级浏览器', tone: 'warn' };
   if (save === 'upgrade' || sync === 'upgrade')
-    return { text: '有新版本，请刷新页面；未保存的内容会保留', tone: 'warn' };
+    return { text: '有新版本，请点顶部的「刷新」；未保存的内容会保留', tone: 'warn' };
   if (save === 'reauth' || sync === 'reauth')
     return { text: '登录已过期，请重新登录同一账号', tone: 'warn' };
   if (sync === 'refused') return { text: '无法同步这篇日记', tone: 'warn' };

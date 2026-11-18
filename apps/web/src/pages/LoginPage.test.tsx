@@ -78,6 +78,27 @@ describe('login actions', () => {
     expect(body).toMatchObject({ provider: 'dev', loginHint: 'bob' });
   });
 
+  it('[adr:installable-pwa#3] does not leave for Google while offline, and says so until the API answers', async () => {
+    const goTo = vi.fn();
+    let online = false;
+    stubApi({
+      'GET /api/me': () =>
+        online ? signedOut() : Promise.reject(new TypeError('Failed to fetch')),
+      'GET /api/health': () => Response.json({ status: 'ok' }),
+    });
+    renderAt('/login', withGoTo(goTo));
+    expect((await screen.findByRole('status')).textContent).toBe('现在离线，联网后再登录');
+    const google = screen.getByText('使用 Google 登录').closest('button')!;
+    expect(google.disabled).toBe(true);
+    fireEvent.click(google);
+    expect(goTo).not.toHaveBeenCalled();
+
+    online = true;
+    window.dispatchEvent(new Event('online'));
+    await waitFor(() => expect(google.disabled).toBe(false));
+    expect(screen.queryByText('现在离线，联网后再登录')).toBeNull();
+  });
+
   it('sends a signed-in user to the home page', async () => {
     stubApi({ 'GET /api/me': signedIn() });
     const { router } = renderAt('/login');

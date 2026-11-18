@@ -62,12 +62,19 @@ export async function callApi<Name extends RouteName>(
     ),
   ).toString();
   if (search) url += `?${search}`;
-  const res = await fetchImpl(url, {
-    method: route.method,
-    ...(body === undefined
-      ? {}
-      : { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }),
-  });
+  let res: Response;
+  try {
+    res = await fetchImpl(url, {
+      method: route.method,
+      ...(body === undefined
+        ? {}
+        : { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }),
+    });
+  } catch (error) {
+    if (noAnswer(error)) setReachable(false);
+    throw error;
+  }
+  setReachable(true);
   if (!res.ok) {
     const { code, dates } = await errorOf(res);
     throw new ApiError(name, res.status, code, dates);
@@ -81,4 +88,61 @@ async function errorOf(res: Response): Promise<{ code: ErrorCode; dates?: string
   } catch {
     return { code: 'INTERNAL' };
   }
+}
+
+/** Whether a call failed without any HTTP answer: `fetch` rejects with a `TypeError` then. */
+export const noAnswer = (error: unknown): boolean => error instanceof TypeError;
+
+// installable-pwa D4: whether the API answers at all, for display only. Every callApi result
+// sets it: any HTTP answer, an error included, is online; no answer is offline. The browser's
+// `offline` is believed at once, its `online` only after the API answers a probe, since it is
+// also true on a network that reaches nothing. Nothing that saves or sends reads it.
+const PROBE_MS = 10_000;
+const browserOnline = () => navigator.onLine !== false;
+let reachable = true;
+let probe: ReturnType<typeof setInterval> | undefined;
+const watchers = new Set<() => void>();
+
+function setReachable(next: boolean) {
+  if (next === reachable) return;
+  reachable = next;
+  keepProbing();
+  for (const watcher of watchers) watcher();
+}
+
+function keepProbing() {
+  const wanted = !reachable && watchers.size > 0;
+  if (wanted && !probe) probe = setInterval(check, PROBE_MS);
+  if (!wanted && probe) {
+    clearInterval(probe);
+    probe = undefined;
+  }
+}
+
+const check = () => void callApi('health').catch(() => undefined);
+const wentOffline = () => setReachable(false);
+
+export const isReachable = () => reachable;
+
+/**
+ * Hears every change of `isReachable()`. While anyone watches, the browser's events count and
+ * an unreachable API is probed every 10 s; with nobody watching, nothing shows the state, so
+ * the next watcher starts again from the browser's word.
+ */
+export function watchReachable(watcher: () => void): () => void {
+  if (watchers.size === 0) {
+    reachable = browserOnline();
+    window.addEventListener('offline', wentOffline);
+    window.addEventListener('online', check);
+  }
+  watchers.add(watcher);
+  keepProbing();
+  return () => {
+    watchers.delete(watcher);
+    if (watchers.size > 0) return;
+    window.removeEventListener('offline', wentOffline);
+    window.removeEventListener('online', check);
+    reachable = true;
+    keepProbing();
+  };
 }

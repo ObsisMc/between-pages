@@ -33,6 +33,18 @@ test('E2-E4 signs in, survives a reload and signs out', async ({ page, browserNa
   await expect(page).toHaveURL(/\/login$/);
 });
 
+test('[adr:installable-pwa#9] registers no service worker on the dev server', async ({
+  page,
+  browserName,
+}) => {
+  const name = `erin-${browserName}-${run}`;
+  await devLogin(page, name);
+  await expect(page.getByRole('button', { name: `账号：${name}` })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('button', { name: `账号：${name}` })).toBeVisible();
+  expect(await page.evaluate(async () => navigator.serviceWorker.getRegistrations())).toEqual([]);
+});
+
 test('E5 refuses a second subject with an email already in use', async ({ page, browserName }) => {
   const name = `carol-${browserName}-${run}`;
   await devLogin(page, name);

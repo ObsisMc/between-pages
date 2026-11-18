@@ -40,7 +40,7 @@
 | [google-copy-beyond-diaries](./2026-11-17-google-copy-beyond-diaries.md) | 每人的 Google Drive 也放共享页面、心愿单、礼物墙与纪念日，内容与本人在应用里看到的一致，未揭晓的礼物只进送的人自己的 Drive | 已实现 | 备份 | 12/12 已完成 |
 | [display-name](./2026-11-18-display-name.md) | 每人在设置里改自己的名字，两人看到同一个，改后处处现读，Drive 里 Together 下的 Doc 随之重写 | 已实现 | 领域 | 6/6 已完成 |
 | [in-app-invitation-by-email](./2026-11-18-in-app-invitation-by-email.md) | 邀请可以按对方的 Google 邮箱定向发出，对方用这个邮箱登录后在应用里看到并接受；不发邮件，发起方在接受前得不到关于对方的任何信号 | 已实现 | 领域 | 10/10 已完成 |
-| [installable-pwa](./2026-11-18-installable-pwa.md) | 应用可以装到 iPhone 主屏幕，离线也能打开并说明离线，图标上的角标提示未读，不做推送 | 已采纳 | 技术栈 | 0/9 未开始 |
+| [installable-pwa](./2026-11-18-installable-pwa.md) | 应用可以装到 iPhone 主屏幕，离线也能打开并说明离线，图标上的角标提示未读，不做推送 | 已采纳 | 技术栈 | 5/9 部分 |
 <!-- adr-index:end -->
 
 ## 原则
