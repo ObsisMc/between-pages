@@ -7,7 +7,7 @@ import { useSpaceUnread } from '../space-common/index.ts';
 // readable after unbinding (space-records D5, invariant 10); the partner page, where an
 // invitation is made, only while there is no current binding (spaces-and-invitations D12). An
 // entry's count is the server's unread count, which never counts the partner's unrevealed
-// preparations.
+// preparations. 我的名字 is always there, bound or not (display-name D7).
 
 export type SiteEntry = { to: string; label: string; unread?: number | undefined };
 
@@ -38,6 +38,7 @@ export function useSiteEntries(): SiteEntries {
       ...(current ? [] : [{ to: '/partner', label: '搭档' }]),
       { to: '/backup', label: '备份' },
       { to: '/mail', label: '邮件提醒' },
+      { to: '/name', label: '我的名字' },
     ],
   };
 }

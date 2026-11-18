@@ -33,7 +33,9 @@ import type { ContractRequest } from './routes/contract.ts';
 import { diaryHandlers } from './routes/diaries.ts';
 import { clockHandlers } from './routes/clocks.ts';
 import { pokeHandlers } from './routes/pokes.ts';
-import { meHandler } from './routes/me.ts';
+import { meHandler, updateMeHandler } from './routes/me.ts';
+import { createDisplayNameService } from './display-name/display-name.ts';
+import { createNameStore } from './store/names.ts';
 import { spaceHandlers } from './routes/spaces.ts';
 import { createSharingService } from './sharing/sharing.ts';
 import { createSpaceRecords } from './space-records/space-records.ts';
@@ -176,6 +178,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 
   contractRoute('health', () => ({ status: 'ok' as const }));
   contractRoute('me', meHandler);
+  contractRoute('updateMe', updateMeHandler(createDisplayNameService(createNameStore(deps.db))));
   contractRoute('diaries', handlers.diaries);
   contractRoute('openDiary', handlers.openDiary);
   contractRoute('diary', handlers.diary);

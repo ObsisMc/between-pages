@@ -375,7 +375,7 @@ test('[adr:opening-book-home#5] [adr:book-frontend-workspace#7] home and navigat
   await expect(alone.getByText('还没有搭档')).toBeVisible();
   await expect(alone.getByRole('link', { name: '邀请搭档' })).toBeVisible();
   await expect(alone.getByRole('button', { name: '生成邀请链接' })).toHaveCount(0);
-  expect(await entries(alone)).toEqual(['搭档', '备份', '邮件提醒']);
+  expect(await entries(alone)).toEqual(['搭档', '备份', '邮件提醒', '我的名字']);
 
   // Bound, neither has a sleep schedule: both clocks, an entry to set one, no made-up hours.
   const { a, b, space } = await pair(browser, prefix);
@@ -394,6 +394,7 @@ test('[adr:opening-book-home#5] [adr:book-frontend-workspace#7] home and navigat
     '双人空间',
     '备份',
     '邮件提醒',
+    '我的名字',
   ]);
 
   // A writes a shared diary, then unbinds; B keeps it read-only and nothing of A's later.
@@ -422,6 +423,7 @@ test('[adr:opening-book-home#5] [adr:book-frontend-workspace#7] home and navigat
       '搭档',
       '备份',
       '邮件提醒',
+      '我的名字',
     ]);
   }
   await untilRead(b, '/days', date, '绑定时写的');

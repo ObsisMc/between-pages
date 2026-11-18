@@ -72,6 +72,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'anniversaries',
         'shared-pages',
         'notify',
+        'display-name',
       ],
       ws: ['auth', 'errors', 'commit', 'diaries', 'reader', 'events', 'shared-pages'],
       // server-backup-and-google-docs: `google` calls Google and seals or opens tokens, knowing
@@ -133,6 +134,9 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'config',
         'errors',
       ],
+      // display-name D7: renaming writes only `users.display_name` and the space's copy
+      // registration; it knows no feature, and `auth` keeps only the sign-in default.
+      'display-name': ['store', 'errors'],
       store: ['db', 'errors'],
     },
   },
@@ -163,6 +167,7 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
         'anniversaries',
         'shared-pages',
         'mail',
+        'name',
       ],
       api: [],
       auth: ['api', 'ui'],
@@ -201,8 +206,10 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       today: [],
       'sharing-range': ['ui'],
       // spaces-and-invitations D12: the partner page sits in the shell's page container.
-      relationship: ['api', 'auth', 'sharing-range', 'shell', 'today', 'ui'],
-      join: ['api', 'auth', 'relationship', 'sharing-range', 'today', 'ui', 'windows'],
+      // display-name D6: the name the partner will see, with "修改", where an invitation is
+      // made and accepted.
+      relationship: ['api', 'auth', 'name', 'sharing-range', 'shell', 'today', 'ui'],
+      join: ['api', 'auth', 'name', 'relationship', 'sharing-range', 'today', 'ui', 'windows'],
       space: [
         'api',
         'auth',
@@ -218,6 +225,9 @@ const SUBMODULES: { dir: string; units: Record<string, string[]> }[] = [
       backup: ['api', 'shell', 'ui'],
       // email-reminders D8: the settings page, the public unsubscribe page and the home notice.
       mail: ['api', 'shell', 'ui'],
+      // display-name D7: the settings page and the one name editor; the page reads the
+      // caller from `auth`, which owns the current-user query.
+      name: ['api', 'auth', 'shell', 'ui'],
       // two-clocks: the home time area, the clocks page and the browser's zone report; the
       // page sits in the shell's page container (digital-paper-interface 落地顺序 4).
       'two-clocks': ['api', 'shell', 'ui'],
