@@ -18,7 +18,9 @@ describe('the offline notice', () => {
       'GET /api/me': signedIn('alice'),
       'GET /api/spaces': () => (online ? Response.json({ spaces: [] }) : offline()),
       'GET /api/binding': () =>
-        online ? Response.json({ binding: null, invitation: null }) : offline(),
+        online
+          ? Response.json({ binding: null, invitation: null, invitationsForMe: [] })
+          : offline(),
       'GET /api/health': () => (online ? Response.json({ status: 'ok' }) : offline()),
     });
     const { client } = renderAt('/partner');
