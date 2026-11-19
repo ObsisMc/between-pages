@@ -2,12 +2,12 @@ import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 
 import { flushSync } from 'react-dom';
 import { PenLine } from 'lucide-react';
 import type { Day, ResponseOf } from '@between-pages/contracts';
-import { isoDateIn } from '@between-pages/time';
 import { ApiError, callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
 import { Avatar } from '../avatar/index.ts';
 import { Button, cn } from '../ui/index.ts';
 import { DiaryBlock, copyOf, type BlockReport } from './DiaryBlock.tsx';
+import { openFailureText, openOwnDiary, todayHere } from './open-day.ts';
 import { AuthorLegend, usePeople } from './people.tsx';
 import { UnreadNotices } from './UnreadNotices.tsx';
 import type { DiarySession, ReadingPosition, Unread } from './session.ts';
@@ -35,11 +35,6 @@ function storeSwap(swapped: boolean) {
     // Not remembered; this page still shows the order chosen.
   }
 }
-
-/** The device's IANA zone decides which date "today" is (spec §4); the server checks it. */
-export const timezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
-/** Today's date in the device's zone, as the server would decide it. */
-export const todayHere = () => isoDateIn(Date.now(), timezone());
 
 // A diary date is a calendar day, not an instant: shown as written, in no time zone.
 const dateText = new Intl.DateTimeFormat(undefined, {
@@ -206,18 +201,11 @@ function DayView({
   const write = async () => {
     setCreateError(null);
     setCreating(true);
-    try {
-      const { diary } = await callApi('openDiary', { body: { timezone: timezone(), date } });
-      setMineId(diary.diaryId);
-    } catch (error) {
-      if (error instanceof ApiError && error.code === 'VALIDATION_FAILED') setNotYet(true);
-      else
-        setCreateError(
-          error instanceof ApiError ? '创建失败，请稍后再试' : '离线时无法创建，请联网后再试',
-        );
-    } finally {
-      setCreating(false);
-    }
+    const opened = await openOwnDiary(date);
+    setCreating(false);
+    if (!('failure' in opened)) setMineId(opened.diary.diaryId);
+    else if (opened.failure === 'future') setNotYet(true);
+    else setCreateError(openFailureText[opened.failure]);
   };
 
   const onSession = (side: Side) => (session: DiarySession | null) => {
@@ -394,7 +382,7 @@ function DayView({
                 <>
                   {titleOf('mine')}
                   {notYet ? (
-                    <p className="mt-3 text-sm text-ink-soft">你这边还没到这一天</p>
+                    <p className="mt-3 text-sm text-ink-soft">{openFailureText.future}</p>
                   ) : (
                     <Button
                       ref={writeButton}

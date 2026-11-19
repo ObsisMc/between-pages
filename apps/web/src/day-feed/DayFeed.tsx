@@ -31,6 +31,8 @@ export const POSITION_MS = 400;
 
 /** Opens a date's day view; `edit` gives its own diary the focus. */
 type Open = (date: string, edit: boolean) => void;
+/** Creates the caller's diary of a date; resolves to what to tell them when it could not. */
+type Write = (date: string) => Promise<string | null>;
 
 // A diary date is a calendar day, not an instant: shown as written, in no time zone.
 const dateText = new Intl.DateTimeFormat(undefined, {
@@ -59,7 +61,7 @@ const failureText: Record<Failure['kind'], string> = {
 };
 
 const collapseText: Record<Exclude<Collapse, null>, string> = {
-  'writing-self': '你在别处正在写',
+  'writing-self': '刚写过，约两分钟后在这里显示',
   'writing-partner': 'TA 正在写',
 };
 
@@ -78,6 +80,7 @@ function DateSection({
   authorClass,
   clip,
   onOpen,
+  onWrite,
 }: {
   entry: Entry;
   me: FeedPerson;
@@ -87,6 +90,8 @@ function DateSection({
   authorClass: (author: string) => string;
   clip: () => Clip;
   onOpen: Open | undefined;
+  /** Set for the date jumped to while the caller has no diary on it: "写这天" in place of "编辑". */
+  onWrite: Write | undefined;
 }) {
   const [textUnread, setTextUnread] = useState<Partial<Record<Side, boolean>>>({});
   const onUnread = useCallback(
@@ -94,6 +99,18 @@ function DateSection({
       setTextUnread((known) => (known[side] === unread ? known : { ...known, [side]: unread })),
     [],
   );
+  const [writing, setWriting] = useState(false);
+  const [writeError, setWriteError] = useState<string | null>(null);
+  const write =
+    onWrite &&
+    (async () => {
+      setWriteError(null);
+      setWriting(true);
+      const error = await onWrite(entry.date);
+      setWriting(false);
+      if (error) setWriteError(error);
+      else onOpen?.(entry.date, true);
+    });
   const label = dateLabel(entry.date);
   const to = `/days/${entry.date}`;
   const opening = (edit: boolean) =>
@@ -110,14 +127,30 @@ function DateSection({
         </Link>
       </h3>
       {rest}
-      <Link
-        className="ml-auto text-sm text-ink-soft no-underline hover:text-ink hover:underline"
-        to={to}
-        state={{ edit: true }}
-        onClick={opening(true)}
-      >
-        编辑
-      </Link>
+      {write ? (
+        <button
+          type="button"
+          className="ml-auto h-9 min-h-0 rounded-lg border border-line bg-transparent px-3 text-sm text-ink hover:bg-accent"
+          disabled={writing}
+          onClick={() => void write()}
+        >
+          写这天
+        </button>
+      ) : (
+        <Link
+          className="ml-auto text-sm text-ink-soft no-underline hover:text-ink hover:underline"
+          to={to}
+          state={{ edit: true }}
+          onClick={opening(true)}
+        >
+          编辑
+        </Link>
+      )}
+      {writeError && (
+        <p className="w-full rounded-lg bg-notice px-3 py-2 text-sm" role="alert">
+          {writeError}
+        </p>
+      )}
     </header>
   );
   const sectionProps = {
@@ -228,6 +261,9 @@ function EdgeButton({
  * itself last reported through `onPosition` (after scrolling) or `onOpen` (choosing a
  * date or "编辑"), so the caller can keep it in the browser's history and bring it back.
  * Without `onOpen` a date's links simply navigate.
+ * With `onWrite` and `onOpen`, the date "跳转" went to offers "写这天" in place of "编辑" while
+ * the caller has no diary on it: the jump itself creates nothing (D4), the button creates it
+ * through `onWrite` and opens it with `edit`, or shows what `onWrite` said in the date's row.
  */
 export function DayFeed({
   me,
@@ -235,12 +271,14 @@ export function DayFeed({
   position = null,
   onPosition,
   onOpen,
+  onWrite,
 }: {
   me: FeedPerson;
   partner: FeedPerson;
   position?: FeedPosition | null;
   onPosition?: (at: FeedPosition) => void;
   onOpen?: (date: string, edit: boolean, at: FeedPosition | null) => void;
+  onWrite?: Write;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   // Without IntersectionObserver every date counts as near and nothing loads by itself.
@@ -249,6 +287,8 @@ export function DayFeed({
   );
   const [edges, setEdges] = useState({ newer: false, older: false });
   const [jumpDate, setJumpDate] = useState('');
+  /** The date "跳转" last went to, which offers "写这天" while the caller has no diary on it. */
+  const [jumpedDate, setJumpedDate] = useState<string | null>(null);
   const known = useRef<{ near: ReadonlySet<string> | null; dates: string[] }>({
     near: null,
     dates: [],
@@ -430,6 +470,7 @@ export function DayFeed({
           event.preventDefault();
           if (!jumpDate) return;
           unreadArrows.cancel();
+          setJumpedDate(jumpDate);
           jump(jumpDate);
         }}
       >
@@ -489,6 +530,9 @@ export function DayFeed({
                 authorClass={authorClass}
                 clip={clip}
                 onOpen={onOpen && open}
+                onWrite={
+                  entry.date === jumpedDate && !entry.day?.mine && onOpen ? onWrite : undefined
+                }
               />
             ))}
             {entries?.length === 0 && (

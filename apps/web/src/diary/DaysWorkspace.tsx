@@ -18,7 +18,9 @@ import {
   type FeedPosition,
 } from '../day-feed/index.ts';
 import { Button, cn, Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/index.ts';
-import { DayEditor, timezone, todayHere } from './DayEditor.tsx';
+import { Backfill } from './Backfill.tsx';
+import { DayEditor } from './DayEditor.tsx';
+import { openFailureText, openOwnDiary, timezone, todayHere } from './open-day.ts';
 import { usePeople } from './people.tsx';
 import { ScrollBox } from './scroll-box.ts';
 import './workspace.css';
@@ -177,6 +179,15 @@ export function DaysWorkspace() {
     />
   );
   const writeToday = <WriteToday onOpened={(diaryDate) => openDay(diaryDate, true)} />;
+  const backfill = (wide: boolean) => (
+    <Backfill
+      className={wide ? 'w-full' : undefined}
+      onOpened={(diaryDate) => {
+        setPicking(false);
+        openDay(diaryDate, true);
+      }}
+    />
+  );
 
   const feed = (
     <DayFeed
@@ -189,6 +200,10 @@ export function DaysWorkspace() {
           replace: true,
           state: { ...(location.state as object | null), feed: at, edit: false },
         });
+      }}
+      onWrite={async (to) => {
+        const opened = await openOwnDiary(to);
+        return 'failure' in opened ? openFailureText[opened.failure] : null;
       }}
       onOpen={(to, edit, at) => {
         leaving.current = true;
@@ -234,6 +249,7 @@ export function DaysWorkspace() {
                 />
               </Button>
             </CollapsibleTrigger>
+            {backfill(false)}
             <div className="ml-auto">{writeToday}</div>
           </div>
           <CollapsibleContent className="mt-2 flex max-h-[55dvh] min-h-0 flex-col rounded-xl border border-line">
@@ -259,7 +275,10 @@ export function DaysWorkspace() {
         <div className="px-6 pt-6 pb-3">
           <p className="font-serif text-lg text-ink">我们的日记</p>
         </div>
-        <div className="px-4 pb-3">{writeToday}</div>
+        <div className="space-y-2 px-4 pb-3">
+          {writeToday}
+          {backfill(true)}
+        </div>
         {index}
       </aside>
       {date ? (
