@@ -12,6 +12,7 @@ How this repository tests, tier by tier, and the rules that keep a green suite m
 | Component | same runner, `apps/web` project (jsdom) | Screens render and react to real contract responses | `apps/web/src/*.test.tsx` |
 | Prototype baseline | `npm run test:prototypes` — every PR; PG/browser suites on demand | The validated collaboration behavior still holds | `prototypes/**/test/` (node:test, frozen) |
 | End-to-end | `npm run test:e2e:db` locally (disposable PostgreSQL; Chromium and WebKit), `test:e2e:all` in the CI `e2e` job (adds Firefox) | The product through real browsers (Chromium, Firefox and WebKit, as the kernel ADR requires): mock issuer, API and Vite dev server started by `playwright.config.ts` on their own ports | `e2e/*.spec.ts` |
+| End-to-end, PWA | `npm run test:e2e:pwa:db` locally, `test:e2e:pwa` in the CI `e2e-pwa` job (Chromium only) | The service worker, which exists only in a production build: offline opening, the offline notice, Cache Storage and the update bar, against `vite preview` started by `playwright.pwa.config.ts` | `e2e/pwa/*.e2e.ts` |
 
 Coverage gate: `npm run test:coverage` (`npm run test:db` locally, so database tests count) fails under **80% lines** across `apps/*/src` and `packages/*/src` (process entry points excluded, see `vitest.config.ts`). Coverage proves lines ran, not that behavior is right — necessary, never sufficient. An uncovered line is often dead code to delete, not a test to bolt on.
 
