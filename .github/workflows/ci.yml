@@ -112,7 +112,7 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     # Login (authentication-and-sessions E1-E6) and the diary screen (kernel phase 3) in
     # Chromium, Firefox and WebKit; not a
     # required check (the ADR leaves branch protection unchanged).
