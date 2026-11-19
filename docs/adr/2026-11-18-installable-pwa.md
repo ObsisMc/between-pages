@@ -1,6 +1,6 @@
 # 应用可以装到 iPhone 主屏幕，离线也能打开并说明离线，图标上的角标提示未读，不做推送
 
-- 状态：已采纳
+- 状态：已实现
 - 日期：2026-11-18
 - 决策者：Ray
 - 范围：技术栈
@@ -282,33 +282,12 @@ Ray 于 2026-11-17 提出：应用要能安装，离线也能打开并清楚提�
 - Android 与 iPad：默认不屏蔽、不验收、不宣称支持；有人要用时再加真机清单。
 - 离线阅读：默认继续推后；以后做时，与"退出登录时锁住本机日志"一起设计。
 
-## 落地顺序
+## 验证
 
-0. **动手前先在真 iPhone 上试登录。** 现在 manifest 已经在，不需要 service worker 就能"添加到主屏幕"。Ray 在 iPhone 上做真机清单第 1、2 项：添加到主屏幕，在主屏幕应用里用 Google 登录并回到应用里。登录要先在应用里 `POST /api/auth/sign-in/social` 存下状态 cookie，再跳到 Google；Google 不在应用的范围内，iOS 会用应用里的浏览器页打开它，回跳时 cookie 是否还在同一个应用里，只能在真机上确认。登录不成功，后面的离线页、角标都没有意义，所以不通过就停下来，带着现象找 Ray 另定方案，不开始第 1 个 PR。
-1. **第 1 个 PR：service worker、更新提示与离线。** 范围：D1～D4 与"模块与边界"里除角标外的部分。完成条件：构建出的应用离线能打开并显示离线页，在线时断网出现提示、恢复后消失，发布新版后出现"有新版本 · 刷新"。从此生产环境的页面由 service worker 提供。
-2. **第 2 个 PR：图标角标与权限卡片。** 范围：D5、D6，包括新接口 `GET /api/days/unread-count`。完成条件：新接口的数据库测试通过；jsdom 里按两个来源的总数设置与清除角标；iPhone 上的检查在合并之后：开发环境没有 HTTPS，iPhone 主屏幕应用拿不到通知权限和角标；部署手册也只部署确认过的 main 提交。所以 Ray 确认合并后按手册部署，在 iPhone 上做真机清单第 7 项。不通过就回退第 2 个 PR（只有前端代码，没有数据与迁移）、重新部署，再带着现象找 Ray。
-3. **上线与真机清单。** Ray 按 `ops/deploy/README.md` 更新生产环境，在 iPhone 上按 D7 的清单检查，结果写进 `docs/validation/`。发现的问题各开一个 PR。
-
-**自主实现约定：**
-
-- 预先批准的依赖：`vite-plugin-pwa` 2.0.0（devDependency）、`workbox-window` 7.4.1（dependency），精确版本。
-- 预先批准的检查改动：在 `checks/verify-dependency-direction.ts` 加 `pwa` 子模块的规则（只引入 `ui`），并在 `shell`、`pages`、`diary` 的允许列表里加 `pwa`。
-- 预先批准的 e2e 改动：PWA 的 e2e 对构建产物（`vite build` + `vite preview`，`/api` 代理到 API）运行，只用 Chromium。现有 API 的 `PUBLIC_ORIGIN` 固定为开发服务器的 `http://localhost:5174`，登录回跳与来源检查都认这个地址，所以构建产物要有自己的一套：另一个端口的 preview、一个 `PUBLIC_ORIGIN` 指向它的 API（和需要时的模拟登录服务），写成单独的 Playwright 配置或单独一次运行，不改现有项目。
-- 不需要数据库迁移。预先批准新增 `GET /api/days/unread-count`（contracts、reader、路由、`openapi.json`、`apps/api/README.md`），此外不改接口。
-- 必须停下来问 Ray 的情况：需要缓存任何 `/api/` 的响应；需要改 Caddy、Cloudflare 或部署脚本；需要 `GET /api/days/unread-count` 之外的新接口；iPhone 上的某项行为与本文写的不一致。
-- 每个 PR 在同一 PR 里更新 `apps/web/README.md`、路线图对应行与根 README 的状态行。
-
-## 验收标准
-
-- 生产环境：iPhone 能添加到主屏幕，独立窗口打开；离线冷启动显示离线页，联网后自动进入；D7 清单在 iPhone 上通过，并有记录。
-- 不变量 1：e2e（构建产物，Chromium）在用过日记页之后列出 Cache Storage 的全部条目，只有页面文件与字体；构建配置的单元检查确认 `/api/` 在导航回退的排除名单里，且没有其他 runtime caching。
-- 不变量 2：e2e（构建产物）先在线打开一次，再 `context.setOffline(true)` 后重新加载，看到离线页；恢复网络后自动进入主页。
-- 不变量 3：jsdom，`GET /api/me` 抛网络错误时、以及一开始 `navigator.onLine` 为 false 时都显示离线页（不停在"正在打开…"），返回 503 时显示"服务暂不可用"。
-- 不变量 4：jsdom，离线状态下打开日记，全站提示里没有"已保存"，保存状态行只在服务器确认后显示"已保存到服务器"；sender 的测试不受连通状态影响。
-- 不变量 5、6：e2e（构建产物）部署第二个构建后出现"有新版本 · 刷新"，不点就不变，点后加载新版且没发出的字仍在；jsdom，保存状态为 `upgrade` 时调用一次检查更新。
-- 不变量 7：数据库测试（真 PostgreSQL）里 `GET /api/days/unread-count` 的 `dates` 等于 `GET /api/days` 各页里 `unread` 的日期数，对方没共享的日记有未读时不计入，读完后减少；jsdom 替换 `navigator.setAppBadge` 与 `clearAppBadge`，按两个来源的总数设置，总数为 0 与退出时清除；真 iPhone 上由清单第 7 项确认显示。
-- 不变量 8：jsdom，权限只在 `navigator.standalone === true` 时、点「好的」后请求，请求过以后卡片不再出现，没有 `navigator.standalone` 时不出现卡片；代码检查确认没有 `showNotification`、`new Notification`、`pushManager`。
-- 不变量 9：现有开发服务器上的 e2e 照常通过，且页面上没有已注册的 worker。
+- 实现：#109（service worker、更新提示与离线）与 #110（图标角标、权限卡片、`GET /api/days/unread-count`），2026-11-18 合并；2026-11-19 部署到生产（`9546bdf`，先做手动备份，没有迁移）。实现与本文没有出入。
+- 测试：`apps/web/src/pwa/build.test.ts` 测缓存配置（不变量 1）；`e2e/pwa/pwa.e2e.ts` 对构建产物测 Cache Storage 的内容、离线打开与自动进入、全站离线提示、"有新版本 · 刷新"与没发出的字（不变量 1、2、5）；`auth/RequireAuth.test.tsx`、`pages/LoginPage.test.tsx`、`shell/SiteLayout.test.tsx`、`pwa/pwa.test.tsx`、`diary/session.test.ts` 测不变量 3～6；`apps/api/src/app.days.db.test.ts` 在真 PostgreSQL 上测 `unread-count`，`pwa/badge.test.tsx` 测角标与权限卡片（不变量 7、8）；`e2e/auth.spec.ts` 测开发服务器不注册 worker（不变量 9）。
+- 验收（Ray，iPhone 主屏幕应用，[真机清单](../validation/installable-pwa-iphone-2026-11-18.md)）：第 0 步登录 2026-11-18 通过；2026-11-19 第 1～5、7、8 项通过，第 9 项能跳到下一处未读、不抢焦点，但高亮不明显，记为 #112 以后再调；第 6 项（新版本提示）没有测，留到下一次部署时顺带看。Ray 于 2026-11-19 认定本功能验证完成。
+- 上线时发现：Cloudflare 把 `.js`、`.svg`、`.woff2` 给浏览器的缓存头改成 `max-age=14400`（源站发的是 `no-cache`，边缘每次回源，`cf-cache-status: REVALIDATED`），`sw.js` 也在其中。浏览器检查 service worker 更新时不经 HTTP 缓存，所以不影响 D2。
 
 ## 补充信息
 
