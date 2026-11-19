@@ -61,7 +61,7 @@ const failureText: Record<Failure['kind'], string> = {
 };
 
 const collapseText: Record<Exclude<Collapse, null>, string> = {
-  'writing-self': '你在别处正在写',
+  'writing-self': '刚写过，约两分钟后在这里显示',
   'writing-partner': 'TA 正在写',
 };
 

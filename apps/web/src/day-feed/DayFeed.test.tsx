@@ -296,7 +296,7 @@ describe('DayFeed', () => {
     renderAt('/', feedAlone());
     const region = await feed();
     expect(await within(region).findByText('TA 正在写')).toBeDefined();
-    expect(within(region).getByText('你在别处正在写')).toBeDefined();
+    expect(within(region).getByText('刚写过，约两分钟后在这里显示')).toBeDefined();
     expect(
       within(region)
         .getAllByRole('link', { name: '打开这一天' })
@@ -310,7 +310,7 @@ describe('DayFeed', () => {
     act(() => void window.dispatchEvent(new Event('focus')));
     await within(region).findByText('写完了');
     expect(within(region).queryByText('TA 正在写')).toBeNull();
-    expect(within(region).getByText('你在别处正在写')).toBeDefined();
+    expect(within(region).getByText('刚写过，约两分钟后在这里显示')).toBeDefined();
   });
 
   it('[adr:book-frontend-workspace#9] refreshes on a focus that comes the moment the first page shows', async () => {
