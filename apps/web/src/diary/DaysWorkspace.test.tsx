@@ -400,6 +400,172 @@ describe('DaysWorkspace', () => {
     expect(row().textContent).not.toContain('还没有写字');
   });
 
+  describe('补写…', () => {
+    /** The day the device is on: 2026-10-27, wherever it is. */
+    const onOct27 = () =>
+      vi.useFakeTimers({ now: new Date('2026-10-27T12:00:00Z'), toFake: ['Date'] });
+    afterEach(() => vi.useRealTimers());
+    const partnerOnly = (diaryDate: string): Day => ({
+      diaryDate,
+      mine: null,
+      partner: { ...dated(diaryDate, 9).mine!, epochId: id(10), share: 'live' },
+    });
+    /** October from the day list: the four own dates, and one the partner alone wrote. */
+    const october = {
+      'GET /api/days?before=2026-11-01': page([
+        ...DATES.map((date, i) => dated(date, i + 1)),
+        partnerOnly('2026-10-20'),
+      ]),
+    };
+    const day = (name: string) => screen.findByRole('button', { name });
+    const openedOn = (diaryDate: string) => ({
+      diary: {
+        diaryId: id(5),
+        diaryDate,
+        ownerId: ME,
+        generationId: GENERATION,
+        seq: 0,
+        ...stateOf([]),
+      },
+    });
+
+    it('DATE-06 offers the days up to today, dotting the ones the caller wrote', async () => {
+      onOct27();
+      stubApi({ ...fourDates, ...october });
+      renderAt('/days');
+      fireEvent.click(await screen.findByRole('button', { name: '补写…' }));
+      const calendar = await screen.findByRole('dialog', { name: '补写哪一天' });
+      expect(within(calendar).getByText('2026 年 10 月')).toBeDefined();
+      expect(await day('10 月 26 日，你写过')).toBeDefined();
+      expect(await day('10 月 27 日，你写过，今天')).toBeDefined();
+      // The partner's diary alone does not mark the day as the caller's.
+      expect(screen.getByRole('button', { name: '10 月 20 日' })).toBeDefined();
+      expect(
+        (screen.getByRole('button', { name: '10 月 28 日，还没到' }) as HTMLButtonElement).disabled,
+      ).toBe(true);
+      // No later month to page to.
+      expect(screen.getByRole('button', { name: '下个月' }).getAttribute('aria-disabled')).toBe(
+        'true',
+      );
+    });
+
+    it('DATE-06 opens the chosen day’s own diary for writing', async () => {
+      onOct27();
+      const opened = vi.fn(() => Response.json({ created: true, ...openedOn('2026-10-20') }));
+      stubApi({
+        ...fourDates,
+        ...october,
+        ...emptyDay('2026-10-20'),
+        'GET /api/days?before=2026-10-21': page([]),
+        'GET /api/days?after=2026-10-20': page([]),
+        'POST /api/diaries': opened,
+      });
+      const { router } = renderAt('/days');
+      fireEvent.click(await screen.findByRole('button', { name: '补写…' }));
+      fireEvent.click(await day('10 月 20 日'));
+      await waitFor(() => expect(router.state.location.pathname).toBe('/days/2026-10-20'));
+      expect(router.state.location.state).toMatchObject({ edit: true, back: true });
+      const [init] = opened.mock.calls[0] as unknown as [RequestInit];
+      expect(JSON.parse(String(init.body))).toEqual({
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        date: '2026-10-20',
+      });
+      expect(screen.queryByRole('dialog', { name: '补写哪一天' })).toBeNull();
+    });
+
+    it('says the day has not begun here when the server refuses it, and stays', async () => {
+      onOct27();
+      stubApi({
+        ...fourDates,
+        ...october,
+        'POST /api/diaries': () =>
+          Response.json(
+            { error: { code: 'VALIDATION_FAILED', message: 'future' } },
+            { status: 400 },
+          ),
+      });
+      const { router } = renderAt('/days');
+      fireEvent.click(await screen.findByRole('button', { name: '补写…' }));
+      fireEvent.click(await day('10 月 27 日，你写过，今天'));
+      expect((await screen.findByRole('alert')).textContent).toBe('你这边还没到这一天');
+      expect(router.state.location.pathname).toBe('/days');
+    });
+
+    it('offline creates nothing and says so', async () => {
+      onOct27();
+      stubApi({
+        ...fourDates,
+        ...october,
+        'POST /api/diaries': () => Promise.reject(new TypeError('Failed to fetch')),
+      });
+      const { router } = renderAt('/days');
+      fireEvent.click(await screen.findByRole('button', { name: '补写…' }));
+      fireEvent.click(await day('10 月 20 日'));
+      expect((await screen.findByRole('alert')).textContent).toBe('离线时无法创建，请联网后再试');
+      expect(router.state.location.pathname).toBe('/days');
+    });
+
+    it('narrow: sits beside 日期 and opens the day as its own page', async () => {
+      onOct27();
+      narrowWindow();
+      stubApi({
+        ...fourDates,
+        ...october,
+        ...emptyDay('2026-10-20'),
+        'GET /api/days?before=2026-10-21': page([]),
+        'GET /api/days?after=2026-10-20': page([]),
+        'POST /api/diaries': () => Response.json({ created: true, ...openedOn('2026-10-20') }),
+      });
+      const { router } = renderAt('/days');
+      fireEvent.click(await screen.findByRole('button', { name: '补写…' }));
+      fireEvent.click(await day('10 月 20 日'));
+      await waitFor(() => expect(router.state.location.pathname).toBe('/days/2026-10-20'));
+      expect(router.state.location.state).toMatchObject({ edit: true });
+    });
+  });
+
+  it('[adr:book-frontend-workspace#4] a jump to a day without the own diary creates nothing, and its 写这天 opens it for writing', async () => {
+    const opened = vi.fn(() =>
+      Response.json({
+        created: true,
+        diary: {
+          diaryId: id(5),
+          diaryDate: '2026-10-22',
+          ownerId: ME,
+          generationId: GENERATION,
+          seq: 0,
+          ...stateOf([]),
+        },
+      }),
+    );
+    const fetchMock = stubApi({
+      ...fourDates,
+      'GET /api/days?before=2026-10-23': page([]),
+      'GET /api/days?after=2026-10-22': page(DATES.map((date, i) => dated(date, i + 1))),
+      ...emptyDay('2026-10-22'),
+      'POST /api/diaries': opened,
+    });
+    const { router } = renderAt('/days');
+    const region = await feed();
+    await waitFor(() => expect(dateOf(region, '2026-10-27')).not.toBeNull());
+    fireEvent.change(within(region).getByLabelText('跳到日期'), {
+      target: { value: '2026-10-22' },
+    });
+    fireEvent.click(within(region).getByText('跳转'));
+    await waitFor(() => expect(dateOf(region, '2026-10-22')).not.toBeNull());
+    const row = dateOf(region, '2026-10-22');
+    expect(within(row).queryByRole('link', { name: '编辑' })).toBeNull();
+    // Dates the caller wrote on keep 编辑.
+    expect(within(dateOf(region, '2026-10-24')).getByRole('link', { name: '编辑' })).toBeDefined();
+    expect(requested(fetchMock)).not.toContain('POST /api/diaries');
+
+    fireEvent.click(within(row).getByRole('button', { name: '写这天' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/days/2026-10-22'));
+    expect(router.state.location.state).toMatchObject({ edit: true, back: true });
+    const [init] = opened.mock.calls[0] as unknown as [RequestInit];
+    expect(JSON.parse(String(init.body))).toMatchObject({ date: '2026-10-22' });
+  });
+
   it('sends an address that is not a date to the feed', async () => {
     stubApi(fourDates);
     const { router } = renderAt('/days/yesterday');

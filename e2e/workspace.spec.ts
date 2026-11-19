@@ -217,3 +217,56 @@ test('[adr:book-frontend-workspace#6] narrow: the index folds into a date picker
   await expect.poll(() => feedTop(page)).toEqual(kept);
   await navigationOnScreen();
 });
+
+test('DATE-06 [adr:book-frontend-workspace#4] 补写… opens a past day for writing, and the feed’s jump offers 写这天 without creating anything', async ({
+  browser,
+  browserName,
+}) => {
+  test.setTimeout(120_000);
+  const page = await signedIn(browser, `wb${browserName}${run}`);
+  await page.goto('/days');
+  // Yesterday and tomorrow in the device's zone, as the calendar's days.
+  const [yesterday, today, tomorrow] = await page.evaluate(() =>
+    [-1, 0, 1].map((shift) => {
+      const at = new Date();
+      at.setDate(at.getDate() + shift);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
+    }),
+  );
+  const calendar = page.getByRole('dialog', { name: '补写哪一天' });
+  const dayButton = (day: string) => calendar.locator(`[data-day="${day}"]`).getByRole('button');
+
+  // Two steps: "补写…", then the day.
+  await page.getByRole('button', { name: '补写…' }).click();
+  await expect(calendar).toBeVisible();
+  if (tomorrow!.slice(0, 7) === today!.slice(0, 7))
+    await expect(dayButton(tomorrow!)).toBeDisabled();
+  if (yesterday!.slice(0, 7) !== today!.slice(0, 7))
+    await calendar.getByRole('button', { name: '上个月' }).click();
+  await dayButton(yesterday!).click();
+  await expect(page).toHaveURL(new RegExp(`/days/${yesterday}$`));
+  await expect(calendar).toHaveCount(0);
+  await expect(editor(page)).toBeFocused();
+  await page.keyboard.type('补写昨天');
+  await expect(page.locator('.save-status')).toHaveText('已保存到服务器', { timeout: 15_000 });
+  await expect(editor(page)).toContainText('补写昨天');
+
+  // The feed's jump to a day without the own diary creates nothing; its 写这天 does.
+  await page.getByRole('link', { name: '连续读' }).click();
+  await page.getByLabel('跳到日期').fill('2026-08-20');
+  await page.getByRole('button', { name: '跳转' }).click();
+  const jumped = dateIn(page, '2026-08-20');
+  await expect(jumped).toContainText('这一天没有可以读的日记');
+  const mineOn = () =>
+    page.evaluate(
+      async () =>
+        ((await (await fetch('/api/days/2026-08-20')).json()) as { day: { mine: unknown } }).day
+          .mine,
+    );
+  expect(await mineOn()).toBeNull();
+  await jumped.getByRole('button', { name: '写这天' }).click();
+  await expect(page).toHaveURL(/\/days\/2026-08-20$/);
+  await expect(editor(page)).toBeFocused();
+  expect(await mineOn()).not.toBeNull();
+});
