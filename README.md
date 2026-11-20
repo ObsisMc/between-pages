@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-更新日期：2026-11-19。进度见 [docs/roadmap.md](./docs/roadmap.md)。
+更新日期：2026-11-20。进度见 [docs/roadmap.md](./docs/roadmap.md)。
 
 ## 本地开发
 
