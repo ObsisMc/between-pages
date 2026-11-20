@@ -397,6 +397,18 @@ describe('a shared diary', () => {
       expect(sent.filter((type) => type !== 'subscribe')).toEqual([]);
     });
 
+    it('marks the unread characters in the editor once the coverage is known', async () => {
+      openShared('live', { [`GET /api/diaries/${DIARY}/read`]: halfRead });
+      const editor = await screen.findByRole('textbox');
+      await waitFor(() =>
+        expect(
+          [...editor.querySelectorAll('.day-text-unread')].map((el) => el.textContent),
+        ).toEqual(['鲍', '字']),
+      );
+      fireEvent.click(screen.getByLabelText('只看我的文字'));
+      await waitFor(() => expect(editor.querySelector('.day-text-unread')).toBeNull());
+    });
+
     it('[adr:unread-and-day-page#7] shows no unread while 只看我的文字 hides the other person’s text', async () => {
       openShared('live', { [`GET /api/diaries/${DIARY}/read`]: halfRead });
       await screen.findByRole('button', { name: '下一处未读' });

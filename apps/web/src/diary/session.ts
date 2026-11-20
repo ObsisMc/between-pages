@@ -259,6 +259,7 @@ export function createDiarySession({
       onRefuse: (reason) => set({ refusal: { reason, count: (state.refusal?.count ?? 0) + 1 } }),
     });
     if (state.ownOnly) editor.setOwnTextOnly(true);
+    editor.showUnread(read);
     return editor;
   }
 
@@ -748,6 +749,7 @@ export function createDiarySession({
           visible: onScreen,
           onRead: (ranges) => {
             read = ranges;
+            editor?.showUnread(read);
             updateUnread();
           },
         });

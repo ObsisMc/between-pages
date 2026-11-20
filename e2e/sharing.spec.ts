@@ -226,8 +226,13 @@ test('EDIT-13 EDIT-14 TIME-03 K11 the partner reads and writes a shared diary in
   await typeAtEnd(b, 'B的字');
   await synced(b);
   await expect(editor(a)).toHaveText('A的字B的字');
-  const colorOf = (page: Page, text: string) =>
-    page.locator('.diary-editor [class*="author-slot"]', { hasText: text }).getAttribute('class');
+  // The author's slot class alone: the reader's own unread mark may sit on the same piece.
+  const colorOf = async (page: Page, text: string) =>
+    (
+      await page
+        .locator('.diary-editor [class*="author-slot"]', { hasText: text })
+        .getAttribute('class')
+    )?.match(/author-slot-\d/)?.[0];
   expect(await colorOf(a, 'A的字')).toBe(await colorOf(b, 'A的字'));
   expect(await colorOf(b, 'A的字')).not.toBe(await colorOf(b, 'B的字'));
 

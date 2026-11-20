@@ -3,6 +3,7 @@ export {
   createEditorBinding,
   type Caret,
   type CharacterRun,
+  type ClockRange,
   type EditorBinding,
   type EditorBindingOptions,
   type EditorOperation,

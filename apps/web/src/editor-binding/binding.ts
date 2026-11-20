@@ -89,8 +89,19 @@ export type EditorBinding = {
   indexOfAnchor(anchor: Uint8Array): number | null;
   /** The first text index at or after `index` holding a character the user wrote; null if none. */
   ownCharacterFrom(index: number): number | null;
-  /** Highlights text indexes `[from, to)` briefly (unread-and-day-page D4); changes no text. */
+  /**
+   * Highlights text indexes `[from, to)` (unread-and-day-page D4) for `FLASH_MS`, as
+   * relative positions, so the passage keeps its highlight while text around it changes or
+   * its unread mark is redrawn; changes no text.
+   */
   flash(from: number, to: number): void;
+  /**
+   * Marks the other person's characters the reader has not read (unread-and-day-page D2):
+   * every one outside `read`, the reader's coverage by character identity, so the marks
+   * follow the text through edits; null (coverage unknown) marks none. Nothing is marked
+   * while "只看我的文字" hides that text. Changes no text.
+   */
+  showUnread(read: readonly ClockRange[] | null): void;
   destroy(): void;
 };
 
@@ -103,8 +114,14 @@ export type Caret = { anchor: Uint8Array; head: Uint8Array };
  */
 export type CharacterRun = { client: number; clock: number; length: number; index: number };
 
-/** How long a jumped-to passage stays highlighted; the style fades it out meanwhile. */
-export const FLASH_MS = 2_000;
+/** Characters of one clientID by clock, `[from, to)`: a read range as the server keeps it. */
+export type ClockRange = { clientId: number; from: number; to: number };
+
+/**
+ * How long a jumped-to passage stays highlighted: the `unread-flash` animation in
+ * `styles.css` (two pulses, then a fade to its mark) takes as long.
+ */
+export const FLASH_MS = 3_000;
 
 /** Keys that edit text without a character of their own. */
 const EDIT_KEYS = new Set(['Backspace', 'Delete', 'Enter']);
@@ -147,6 +164,8 @@ export function createEditorBinding(
   /** A passage highlighted after a jump, as relative positions so it follows edits. */
   let flashed: { from: Y.RelativePosition; to: Y.RelativePosition } | null = null;
   let flashTimer: ReturnType<typeof setTimeout> | undefined;
+  /** The reader's coverage by clientID, sorted, for the unread marks; null draws none. */
+  let readBy: Map<number, ClockRange[]> | null = null;
 
   text.observe((event, transaction) => {
     const origin = transaction.origin;
@@ -181,7 +200,7 @@ export function createEditorBinding(
   }
 
   function decorationsOf(pmDoc: Node): DecorationSet {
-    if (composition || (!authorClass && !ownOnly && !remote.size && !flashed))
+    if (composition || (!authorClass && !ownOnly && !remote.size && !flashed && !readBy))
       return DecorationSet.empty;
     const marks: Decoration[] = [];
     if (flashed) {
@@ -222,6 +241,9 @@ export function createEditorBinding(
       ].filter(Boolean);
       if (classes.length)
         marks.push(Decoration.inline(from, offset + 1, { class: classes.join(' ') }));
+      if (readBy && !ownOnly && run.author !== userId)
+        for (const [start, end] of unreadIn(run.clock, run.text.length, readBy.get(run.client)))
+          marks.push(Decoration.inline(from + start, from + end, { class: 'day-text-unread' }));
     }
     return DecorationSet.create(pmDoc, marks);
   }
@@ -686,6 +708,16 @@ export function createEditorBinding(
         view.dispatch(view.state.tr.setMeta(MIRROR, true));
       }, FLASH_MS);
     },
+    showUnread(read) {
+      readBy = null;
+      if (read) {
+        readBy = new Map();
+        for (const range of read)
+          readBy.set(range.clientId, [...(readBy.get(range.clientId) ?? []), range]);
+        for (const ranges of readBy.values()) ranges.sort((a, b) => a.from - b.from);
+      }
+      view.dispatch(view.state.tr.setMeta(MIRROR, true));
+    },
     destroy() {
       clearTimeout(compositionTimer);
       clearTimeout(flashTimer);
@@ -694,6 +726,25 @@ export function createEditorBinding(
       doc.destroy();
     },
   };
+}
+
+/**
+ * The offsets `[start, end)` within a run of `length` characters from `clock` that no
+ * range in `read` (one clientID's, sorted by `from`) covers.
+ */
+function unreadIn(clock: number, length: number, read: readonly ClockRange[] = []) {
+  const gaps: [number, number][] = [];
+  let at = clock;
+  const end = clock + length;
+  for (const range of read) {
+    if (range.to <= at) continue;
+    if (range.from >= end) break;
+    if (range.from > at) gaps.push([at - clock, range.from - clock]);
+    at = Math.max(at, range.to);
+    if (at >= end) break;
+  }
+  if (at < end) gaps.push([at - clock, end - clock]);
+  return gaps;
 }
 
 function read(doc: Node) {
