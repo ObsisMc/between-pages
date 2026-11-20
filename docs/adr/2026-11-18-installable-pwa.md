@@ -286,7 +286,7 @@ Ray 于 2026-11-17 提出：应用要能安装，离线也能打开并清楚提�
 
 - 实现：#109（service worker、更新提示与离线）与 #110（图标角标、权限卡片、`GET /api/days/unread-count`），2026-11-18 合并；2026-11-19 部署到生产（`9546bdf`，先做手动备份，没有迁移）。实现与本文没有出入。
 - 测试：`apps/web/src/pwa/build.test.ts` 测缓存配置（不变量 1）；`e2e/pwa/pwa.e2e.ts` 对构建产物测 Cache Storage 的内容、离线打开与自动进入、全站离线提示、"有新版本 · 刷新"与没发出的字（不变量 1、2、5）；`auth/RequireAuth.test.tsx`、`pages/LoginPage.test.tsx`、`shell/SiteLayout.test.tsx`、`pwa/pwa.test.tsx`、`diary/session.test.ts` 测不变量 3～6；`apps/api/src/app.days.db.test.ts` 在真 PostgreSQL 上测 `unread-count`，`pwa/badge.test.tsx` 测角标与权限卡片（不变量 7、8）；`e2e/auth.spec.ts` 测开发服务器不注册 worker（不变量 9）。
-- 验收（Ray，iPhone 主屏幕应用，[真机清单](../validation/installable-pwa-iphone-2026-11-18.md)）：第 0 步登录 2026-11-18 通过；2026-11-19 第 1～5、7、8 项通过，第 9 项能跳到下一处未读、不抢焦点，但高亮不明显，记为 #112 以后再调；第 6 项（新版本提示）没有测，留到下一次部署时顺带看。Ray 于 2026-11-19 认定本功能验证完成。
+- 验收（Ray，iPhone 主屏幕应用，[真机清单](../validation/installable-pwa-iphone-2026-11-18.md)）：第 0 步登录 2026-11-18 通过；2026-11-19 第 1～5、7、8 项通过，第 9 项能跳到下一处未读、不抢焦点，但高亮不明显，记为 #112 以后再调；第 6 项（新版本提示）没有测，留到下一次部署时顺带看。Ray 于 2026-11-19 认定本功能验证完成。2026-11-20 部署 `f428a6c` 时第 6 项通过（Ray：更新成功）。
 - 上线时发现：Cloudflare 把 `.js`、`.svg`、`.woff2` 给浏览器的缓存头改成 `max-age=14400`（源站发的是 `no-cache`，边缘每次回源，`cf-cache-status: REVALIDATED`），`sw.js` 也在其中。浏览器检查 service worker 更新时不经 HTTP 缓存，所以不影响 D2。
 
 ## 补充信息
