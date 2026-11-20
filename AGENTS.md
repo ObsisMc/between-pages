@@ -34,7 +34,7 @@ npm run check -- docs             # module READMEs, links, ADR format, budget, O
 npm run check -- all              # everything CI runs, locally
 ```
 
-Run the subset that matches what you changed; CI owns the full matrix. PostgreSQL and browser prototype suites (`npm run test:pg:docker`, `npm run test:browser`) need Docker and Playwright browsers — run them when touching collaboration behavior.
+Run the subset that matches what you changed: the changed projects' unit tests, `npm run test:db` when touching the database, and only the affected browser spec (`npm run test:e2e:db -- e2e/<file>`) when touching a screen flow. The full browser matrix, the PWA suite and coverage are CI's; run them locally only to reproduce a CI failure. PostgreSQL and browser prototype suites (`npm run test:pg:docker`, `npm run test:browser`) need Docker and Playwright browsers — run them when touching collaboration behavior.
 
 ## Definition of Done
 
@@ -60,7 +60,7 @@ A task is complete when every line below is true. Check them before reporting; r
 - A choice another agent might re-litigate, or a feature that needs design first ⇒ an ADR in [docs/adr/](docs/adr/README.md). `verify-decision-format` checks the form.
 - Implementing an ADR ⇒ follow its 落地顺序 (dependencies and migrations it pre-approves need no extra ask) and keep its facts in sync once 已实现. Changing a decision ⇒ a new ADR that supersedes it, plus its line in [architecture.md](docs/architecture.md#current-decisions); never edit an adopted ADR's 决策依据/不变量/备选方案 (`verify-adr-immutable`).
 - Meaningful behavior ⇒ a test that fails before and passes after, at the tier [docs/testing.md](docs/testing.md) names. No tests for static values or that mirror the implementation. Coverage gate: 80% lines on `apps/*/src` and `packages/*/src`.
-- Format, lint, typecheck and the relevant test subset ran; the PR's *Evidence* section lists what ran and what did not.
+- Format, lint, typecheck and the relevant test subset ran; the PR's *Evidence* section lists what ran locally and what was left to CI.
 - Commits: Conventional Commits `type(scope)!: description` — see [CONTRIBUTING.md](CONTRIBUTING.md#commits). PRs merge with a merge commit, so every commit must conform; the hook and the `commit-convention` job enforce it.
 - A bug that reached `main` and clears the [postmortem bar](docs/postmortem/README.md#when-to-write-one) ⇒ say which criteria it meets and ask before writing one.
 
