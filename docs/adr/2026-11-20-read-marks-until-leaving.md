@@ -151,9 +151,9 @@ issue #112：对方的新字不好找。Ray 在 iPhone 上验收时（第 9 项�
 
 ## 验证
 
-- 实现：#112 拆分的第 2 个前端 PR（读后保留，叠在第 1 个"荧光笔、编辑器里的标记、跳转高亮"之上，2026-11-20 提交，待 Ray 确认后合并）。保留记录是 `read-tracker` 的 `createReadMarks()`（`ReadMarks`），由 `DaysWorkspace` 用 `useState` 持有，传给 `DayFeed` 和 `DayEditor`，再到每篇的已读追踪器（`createReadTracker` 的 `marks`）；D5 的显示是同一单元的 `createArrivals()`，每个日期页会话一份，`sync-client` 的 `onCommits` 多给一个 `live`（`commit` 为真，`synced` 为假）。连续读和日期页同是路由 `/days/:date?` 的一个元素，切换时 `DaysWorkspace` 不卸载（D3 的前提成立）。连续读里跳转高亮被截掉的原因在 jsdom 里复现：读到后 `<mark>` 被重建成 `<span>`，挂在旧元素上的 class 随之消失；修法是保留态仍是 `<mark>`（只换 class），高亮改为 React 不管的 `data-flash` 属性。
+- 实现：#112 拆分的第 2 个前端 PR（读后保留，叠在第 1 个"荧光笔、编辑器里的标记、跳转高亮"之上，#123，2026-11-20 合并）。保留记录是 `read-tracker` 的 `createReadMarks()`（`ReadMarks`），由 `DaysWorkspace` 用 `useState` 持有，传给 `DayFeed` 和 `DayEditor`，再到每篇的已读追踪器（`createReadTracker` 的 `marks`）；D5 的显示是同一单元的 `createArrivals()`，每个日期页会话一份，`sync-client` 的 `onCommits` 多给一个 `live`（`commit` 为真，`synced` 为假）。连续读和日期页同是路由 `/days/:date?` 的一个元素，切换时 `DaysWorkspace` 不卸载（D3 的前提成立）。连续读里跳转高亮被截掉的原因在 jsdom 里复现：读到后 `<mark>` 被重建成 `<span>`，挂在旧元素上的 class 随之消失；修法是保留态仍是 `<mark>`（只换 class），高亮改为 React 不管的 `data-flash` 属性。
 - 测试：`read-tracker/read-tracker.test.ts`（不变量 2、3、5），`sync-client/sync-client.test.ts`（6），`editor-binding/binding.test.ts`（8、9），`diary/day-diary.test.tsx`（6、7：实时送到时在眼前直接浅色、未读前滚出视野回到实色、`synced` 补发和后台送到是实色、直接浅色的字照常上报），`diary/DaysWorkspace.test.tsx`（1、3、4：连续读读到的字进日期页仍浅色、不再提示有新内容，换日期、回连续读不清除，离开后清除），`day-feed/DayFeed.test.tsx`（1：保留态不被圆形未读按钮找到；读到之后跳转高亮仍然完整）。
-- 验收：Ray 在 iPhone 和电脑上的确认待做（#112）。
+- 验收：Ray 2026-11-20 决定不做 iPhone 与电脑上的手动验收，以浏览器截图（手机与电脑尺寸、亮色与暗色）代替；#122–#124 于 2026-11-20 合并。
 
 ## 补充信息
 
