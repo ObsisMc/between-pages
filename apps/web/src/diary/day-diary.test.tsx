@@ -23,6 +23,7 @@ const card = {
   hasText: true,
   unread: false,
   writing: false,
+  partnerWriting: false,
 };
 const spaces = () =>
   Response.json({

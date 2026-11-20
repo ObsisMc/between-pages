@@ -22,6 +22,7 @@ const dated = (diaryDate: string, n: number): Day => ({
     unread: false,
     sharedWithPartner: false,
     writing: false,
+    partnerWriting: false,
   },
   partner: null,
 });

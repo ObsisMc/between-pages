@@ -81,6 +81,7 @@ export type OwnDayCard = {
   unread: boolean;
   sharedWithPartner: boolean;
   writing: boolean;
+  partnerWriting: boolean;
 };
 
 /** The partner's diary on the day list, by its live share or else its last frozen one. */
@@ -93,6 +94,7 @@ export type PartnerDayCard = {
   hasText: boolean;
   unread: boolean;
   writing: boolean;
+  partnerWriting: boolean;
 };
 
 export type DayCard = {
@@ -239,11 +241,18 @@ const inDirection = (date: string, { before, after }: DateDirection) =>
 const nearestFirst = (dates: string[], up: boolean) => (up ? dates.sort() : dates.sort().reverse());
 
 /**
- * Someone wrote after the newest history point (book-frontend-workspace D8); an opening's
- * baseline has no author, so a share that only just opened is not being written.
+ * Who wrote after the newest history point (book-frontend-workspace D8), told apart for
+ * `viewer`; an opening's baseline has no author, so a share that only just opened is not
+ * being written.
  */
-const writtenAfter = (timeline: readonly CommitPoint[], point: CommitPoint | null) =>
-  timeline.some((c) => c.authorId !== null && c.version > (point?.version ?? -1));
+function writtenAfter(timeline: readonly CommitPoint[], point: CommitPoint | null, viewer: string) {
+  const authors = timeline
+    .filter((c) => c.version > (point?.version ?? -1))
+    .flatMap((c) => (c.authorId === null ? [] : [c.authorId]));
+  return { writing: authors.length > 0, partnerWriting: authors.some((a) => a !== viewer) };
+}
+
+const NOT_WRITING = { writing: false, partnerWriting: false };
 
 function clientsOf(deltas: readonly Uint8Array[], all: Map<number, string>) {
   const out = new Map<number, string>();
@@ -302,7 +311,7 @@ async function ownCard(
     diaryId: row.id,
     updatedAt: row.updatedAt,
     sharedWithPartner,
-    writing: writtenAfter(timeline, point),
+    ...writtenAfter(timeline, point, viewer),
     ...facts,
   };
 }
@@ -334,7 +343,7 @@ async function partnerCard(
     epochId: epoch.id,
     share: epoch.closedAt ? 'frozen' : 'live',
     updatedAt: timeline.filter((c) => c.epochId === epoch.id).at(-1)!.committedAt,
-    writing: !epoch.closedAt && writtenAfter(timeline, point),
+    ...(epoch.closedAt ? NOT_WRITING : writtenAfter(timeline, point, viewer)),
     ...facts,
   };
 }

@@ -119,6 +119,7 @@ export type DiaryRef = {
   hasText: boolean;
   unread: boolean;
   writing: boolean;
+  partnerWriting: boolean;
 };
 
 /** The diaries of a date, own first. */
@@ -132,13 +133,14 @@ export function diariesOf(day: Day): DiaryRef[] {
 
 /**
  * Why a diary shows one row instead of its text (D8, invariant 9): someone wrote after its
- * newest history point. Null: its text.
+ * newest history point, the partner or else only the reader, whichever diary it is. Null:
+ * its text.
  */
 export type Collapse = 'writing-self' | 'writing-partner' | null;
 
 export function collapseOf(diary: DiaryRef): Collapse {
-  if (diary.writing) return diary.side === 'mine' ? 'writing-self' : 'writing-partner';
-  return null;
+  if (!diary.writing) return null;
+  return diary.partnerWriting ? 'writing-partner' : 'writing-self';
 }
 
 /** A diary's loaded text: the list's `updatedAt` it was read for, and whether it was frozen. */

@@ -15,14 +15,19 @@ import {
 } from './model.ts';
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
-const own = (updatedAt = '2026-10-27T08:00:00Z', writing = false) => ({
+type Writer = 'nobody' | 'reader' | 'partner';
+const writtenBy = (writer: Writer) => ({
+  writing: writer !== 'nobody',
+  partnerWriting: writer === 'partner',
+});
+const own = (updatedAt = '2026-10-27T08:00:00Z', writer: Writer = 'nobody') => ({
   diaryId: id(1),
   excerpt: '',
   updatedAt,
   hasText: true,
   unread: false,
   sharedWithPartner: false,
-  writing,
+  ...writtenBy(writer),
 });
 const day = (diaryDate: string): Day => ({ diaryDate, mine: own(), partner: null });
 const page = (dates: string[], more: { nextBefore?: string; nextAfter?: string } = {}) => ({
@@ -123,9 +128,9 @@ describe('the window of dates', () => {
 });
 
 describe('a diary on the list', () => {
-  const partnerDay = (writing: boolean, share: 'live' | 'frozen' = 'live'): Day => ({
+  const partnerDay = (writer: Writer, share: 'live' | 'frozen' = 'live'): Day => ({
     diaryDate: '2026-10-27',
-    mine: own('2026-10-27T08:00:00Z', writing),
+    mine: own('2026-10-27T08:00:00Z', writer),
     partner: {
       diaryId: id(2),
       epochId: id(3),
@@ -134,22 +139,25 @@ describe('a diary on the list', () => {
       updatedAt: '2026-10-27T09:00:00Z',
       hasText: true,
       unread: true,
-      writing,
+      ...writtenBy(writer),
     },
   });
 
-  it('[adr:book-frontend-workspace#9] collapses any diary being written', () => {
-    const [mine, theirs] = diariesOf(partnerDay(false));
+  it('[adr:book-frontend-workspace#9] collapses any diary being written, saying who wrote whoever owns it', () => {
+    const [mine, theirs] = diariesOf(partnerDay('nobody'));
     expect(collapseOf(mine!)).toBeNull();
     expect(collapseOf(theirs!)).toBeNull();
-    const [mineWriting, theirsWriting] = diariesOf(partnerDay(true));
-    expect(collapseOf(mineWriting!)).toBe('writing-self');
-    expect(collapseOf(theirsWriting!)).toBe('writing-partner');
+    const [mineByReader, theirsByReader] = diariesOf(partnerDay('reader'));
+    expect(collapseOf(mineByReader!)).toBe('writing-self');
+    expect(collapseOf(theirsByReader!)).toBe('writing-self');
+    const [mineByPartner, theirsByPartner] = diariesOf(partnerDay('partner'));
+    expect(collapseOf(mineByPartner!)).toBe('writing-partner');
+    expect(collapseOf(theirsByPartner!)).toBe('writing-partner');
   });
 
   it('reads text again when the list says it changed, except a share read once frozen', () => {
-    const [, live] = diariesOf(partnerDay(false));
-    const [, frozen] = diariesOf(partnerDay(false, 'frozen'));
+    const [, live] = diariesOf(partnerDay('nobody'));
+    const [, frozen] = diariesOf(partnerDay('nobody', 'frozen'));
     expect(frozen).toMatchObject({ frozen: true, epochId: id(3) });
     expect(needsText(live!, null)).toBe(true);
     expect(needsText(live!, { updatedAt: live!.updatedAt, frozen: false })).toBe(false);

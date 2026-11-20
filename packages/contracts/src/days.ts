@@ -39,6 +39,11 @@ export const OwnDay = z
     sharedWithPartner: z.boolean(),
     /** Someone wrote after its newest history point, so the list shows no text yet (D8). */
     writing: z.boolean(),
+    /**
+     * Of that writing, some is the partner's: the list says the partner is writing, not the
+     * caller. A field beside `writing` so a client that predates it still parses the list.
+     */
+    partnerWriting: z.boolean(),
   })
   .meta({ id: 'OwnDay' });
 
@@ -56,6 +61,8 @@ export const PartnerDay = z
     unread: z.boolean(),
     /** As `OwnDay.writing`; never for a frozen share. */
     writing: z.boolean(),
+    /** As `OwnDay.partnerWriting`: the owner wrote, not only the caller. */
+    partnerWriting: z.boolean(),
   })
   .meta({ id: 'PartnerDay' });
 

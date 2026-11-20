@@ -16,6 +16,7 @@ const own = (n: number, more: Partial<NonNullable<Day['mine']>> = {}) => ({
   unread: false,
   sharedWithPartner: true,
   writing: false,
+  partnerWriting: false,
   ...more,
 });
 const shared = (n: number, more: Partial<NonNullable<Day['partner']>> = {}) => ({
@@ -27,6 +28,7 @@ const shared = (n: number, more: Partial<NonNullable<Day['partner']>> = {}) => (
   hasText: true,
   unread: false,
   writing: false,
+  partnerWriting: false,
   ...more,
 });
 const page =
@@ -246,7 +248,11 @@ describe('DayFeed', () => {
       'GET /api/days': page([
         { diaryDate: '2026-10-27', mine: own(1), partner: shared(2) },
         { diaryDate: '2026-10-26', mine: null, partner: shared(3) },
-        { diaryDate: '2026-10-25', mine: null, partner: shared(5, { writing: true }) },
+        {
+          diaryDate: '2026-10-25',
+          mine: null,
+          partner: shared(5, { writing: true, partnerWriting: true }),
+        },
       ]),
       ...ownDiary(1, [mineSays('我写的')]),
       ...sharedDiary(2, [theySay('看得见的字')]),
@@ -287,7 +293,12 @@ describe('DayFeed', () => {
           {
             diaryDate: '2026-10-27',
             mine: null,
-            partner: shared(2, writing ? { writing } : { updatedAt: '2026-10-27T09:05:00Z' }),
+            partner: shared(
+              2,
+              writing
+                ? { writing, partnerWriting: writing }
+                : { updatedAt: '2026-10-27T09:05:00Z' },
+            ),
           },
           { diaryDate: '2026-10-26', mine: own(3, { writing: true }), partner: null },
         ])(),
@@ -322,7 +333,12 @@ describe('DayFeed', () => {
           {
             diaryDate: '2026-10-27',
             mine: null,
-            partner: shared(2, writing ? { writing } : { updatedAt: '2026-10-27T09:05:00Z' }),
+            partner: shared(
+              2,
+              writing
+                ? { writing, partnerWriting: writing }
+                : { updatedAt: '2026-10-27T09:05:00Z' },
+            ),
           },
         ])(),
       ...sharedDiary(2, [theySay('写完了')]),
@@ -371,7 +387,7 @@ describe('DayFeed', () => {
               {
                 diaryDate: '2026-10-27',
                 mine: own(1),
-                partner: shared(2, { unread: true, writing: true }),
+                partner: shared(2, { unread: true, writing: true, partnerWriting: true }),
               },
             ])(),
       ...ownDiary(1, [mineSays('留在这里')]),

@@ -1410,6 +1410,9 @@
           },
           "writing": {
             "type": "boolean"
+          },
+          "partnerWriting": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -1419,7 +1422,8 @@
           "hasText",
           "unread",
           "sharedWithPartner",
-          "writing"
+          "writing",
+          "partnerWriting"
         ]
       },
       "PartnerDayInput": {
@@ -1461,6 +1465,9 @@
           },
           "writing": {
             "type": "boolean"
+          },
+          "partnerWriting": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -1471,7 +1478,8 @@
           "updatedAt",
           "hasText",
           "unread",
-          "writing"
+          "writing",
+          "partnerWriting"
         ]
       },
       "DayInput": {
@@ -5675,6 +5683,9 @@
           },
           "writing": {
             "type": "boolean"
+          },
+          "partnerWriting": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -5684,7 +5695,8 @@
           "hasText",
           "unread",
           "sharedWithPartner",
-          "writing"
+          "writing",
+          "partnerWriting"
         ],
         "additionalProperties": false
       },
@@ -5727,6 +5739,9 @@
           },
           "writing": {
             "type": "boolean"
+          },
+          "partnerWriting": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -5737,7 +5752,8 @@
           "updatedAt",
           "hasText",
           "unread",
-          "writing"
+          "writing",
+          "partnerWriting"
         ],
         "additionalProperties": false
       },
