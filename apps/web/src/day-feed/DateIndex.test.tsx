@@ -14,6 +14,7 @@ const own = (n: number, more: Partial<NonNullable<Day['mine']>> = {}) => ({
   unread: false,
   sharedWithPartner: true,
   writing: false,
+  partnerWriting: false,
   ...more,
 });
 const shared = (n: number, more: Partial<NonNullable<Day['partner']>> = {}) => ({
@@ -25,6 +26,7 @@ const shared = (n: number, more: Partial<NonNullable<Day['partner']>> = {}) => (
   hasText: true,
   unread: false,
   writing: false,
+  partnerWriting: false,
   ...more,
 });
 const page =

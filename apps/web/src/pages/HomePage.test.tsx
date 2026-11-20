@@ -38,6 +38,7 @@ const own = (excerpt: string, unread = false) => ({
   unread,
   sharedWithPartner: true,
   writing: false,
+  partnerWriting: false,
 });
 const theirs = (excerpt: string, unread: boolean) => ({
   diaryId: DIARY,
@@ -48,6 +49,7 @@ const theirs = (excerpt: string, unread: boolean) => ({
   hasText: true,
   unread,
   writing: false,
+  partnerWriting: false,
 });
 
 afterEach(() => {

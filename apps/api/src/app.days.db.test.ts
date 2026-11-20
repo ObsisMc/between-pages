@@ -409,19 +409,25 @@ describe.runIf(testDatabaseUrl)('the day list', () => {
     expect((await day(b)).partner).toMatchObject({ writing: false });
 
     await write(a, diaryId, (t) => t.insert(0, 'still typing'));
-    expect((await day(a)).mine).toMatchObject({ writing: true });
-    expect((await day(b)).partner).toMatchObject({ writing: true });
+    expect((await day(a)).mine).toMatchObject({ writing: true, partnerWriting: false });
+    expect((await day(b)).partner).toMatchObject({ writing: true, partnerWriting: true });
     await settle(diaryId);
-    expect((await day(a)).mine).toMatchObject({ writing: false });
-    expect((await day(b)).partner).toMatchObject({ writing: false });
+    expect((await day(a)).mine).toMatchObject({ writing: false, partnerWriting: false });
+    expect((await day(b)).partner).toMatchObject({ writing: false, partnerWriting: false });
 
-    // The partner writing in A's diary counts for A too; a frozen share is never being written.
+    // The partner writing in A's diary counts for A too, as the partner's writing; to B it
+    // is B's own. A frozen share is never being written.
     const { epochId } = (await day(b)).partner!;
     await write(b, diaryId, (t) => t.insert(t.length, ' and B'), epochId);
-    expect((await days(a)).days[0]!.mine).toMatchObject({ writing: true });
+    expect((await days(a)).days[0]!.mine).toMatchObject({ writing: true, partnerWriting: true });
+    expect((await day(b)).partner).toMatchObject({ writing: true, partnerWriting: false });
     await saveRange(NOTHING);
     await write(a, diaryId, (t) => t.insert(0, SECRET));
-    expect((await day(b)).partner).toMatchObject({ share: 'frozen', writing: false });
+    expect((await day(b)).partner).toMatchObject({
+      share: 'frozen',
+      writing: false,
+      partnerWriting: false,
+    });
   });
 });
 
