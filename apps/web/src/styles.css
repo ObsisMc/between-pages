@@ -152,6 +152,23 @@
     color: inherit;
   }
 
+  /* A 3px ochre bar in the left margin of each line that holds unread text, in the feed
+     and in the editor alike: in a positioned box of no height at the text's top-left, so
+     it never moves the text, and only for unread, never for kept text. */
+  .unread-bars {
+    position: relative;
+    height: 0;
+  }
+
+  .unread-bar {
+    position: absolute;
+    left: -0.75rem;
+    width: 3px;
+    border-radius: 2px;
+    background: var(--accent);
+    pointer-events: none;
+  }
+
   /* The other person's text read during this visit to the diary page, or arriving live in
      view (read-marks-until-leaving D1, D5): the same highlighter at about half, its own
      class so nothing that looks for unread finds it (D4). */

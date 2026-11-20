@@ -7,6 +7,7 @@ import { Decoration, DecorationSet, EditorView } from 'prosemirror-view';
 import * as Y from 'yjs';
 import { hasControlCharacter, pasteFits, plainText } from './input.ts';
 import { changesOf, intentOf, type Change, type EditIntent } from './intent.ts';
+import { createMarginBars } from './margin-bars.ts';
 import { erase, ownsRange, spansOf, type Span } from './protection.ts';
 import { docOf, indexOf, lengthOf, schema, textOf } from './schema.ts';
 import { createWriteSessions } from './write-session.ts';
@@ -275,6 +276,8 @@ export function createEditorBinding(
       doc: docOf(''),
       plugins: [
         authorship,
+        // Every update may move or change the unread lines.
+        new Plugin({ view: (shown) => createMarginBars(shown) }),
         keymap({
           Enter: () => insert('\n'),
           'Shift-Enter': () => insert('\n'),

@@ -389,6 +389,46 @@ describe('unread marks', () => {
   });
 });
 
+describe('margin bars', () => {
+  const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+  const bars = (editor: ReturnType<typeof setup>) =>
+    [...editor.view.dom.parentElement!.querySelectorAll<HTMLElement>('.unread-bar')].map((bar) => [
+      bar.style.top,
+      bar.style.height,
+    ]);
+
+  it('draws a bar beside each line with unread text, none for light text or while hidden', async () => {
+    // Each unread piece lies on a line by its first character: 抱 on line 1, ！ on line 2.
+    vi.spyOn(Element.prototype, 'getClientRects').mockImplementation(function (this: Element) {
+      if (!this.classList.contains('day-text-unread')) return [] as unknown as DOMRectList;
+      const line = this.textContent?.startsWith('！') ? 2 : 1;
+      return [new DOMRect(0, line * 30, 40, 20)] as unknown as DOMRectList;
+    });
+    try {
+      const editor = alongsideBob(); // Bob's 抱抱！
+      const bob = [...editor.bindings].find(([, user]) => user === BOB)![0];
+      editor.binding.showUnread([{ clientId: bob, from: 1, to: 2 }]);
+      await nextFrame();
+      expect(bars(editor)).toEqual([
+        ['30px', '20px'],
+        ['60px', '20px'],
+      ]);
+      // 抱 kept light: only the line with ！ keeps its bar.
+      editor.binding.showUnread(
+        [{ clientId: bob, from: 1, to: 2 }],
+        [{ clientId: bob, from: 0, to: 1 }],
+      );
+      await nextFrame();
+      expect(bars(editor)).toEqual([['60px', '20px']]);
+      editor.binding.setOwnTextOnly(true);
+      await nextFrame();
+      expect(bars(editor)).toEqual([]);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+});
+
 describe('authors on screen', () => {
   const colored = (editor: ReturnType<typeof setup>) =>
     [...editor.view.dom.querySelectorAll('[class*="author-slot"]')].map((el) => [

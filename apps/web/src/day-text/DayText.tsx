@@ -1,5 +1,6 @@
 import type { Ref } from 'react';
 import type { TextRun } from './decode.ts';
+import { MarginBars } from './margin-bars.tsx';
 import './day-text.css';
 
 /** A passage by text index, `[from, to)`, sorted and disjoint. */
@@ -63,23 +64,26 @@ export function DayText({
   rootRef?: Ref<HTMLDivElement>;
 }) {
   return (
-    <div className="day-text" ref={rootRef}>
-      {segmentsOf(runs, markedOf(unread, kept)).map(({ run, from, to, mark }) => {
-        const Piece = mark ? 'mark' : 'span';
-        return (
-          <Piece
-            key={from}
-            className={[authorClass(run.author), mark ? MARK_CLASS[mark] : '']
-              .filter(Boolean)
-              .join(' ')}
-            data-client={run.client}
-            data-clock={run.clock + from - run.index}
-            data-other={run.author === readerId ? undefined : ''}
-          >
-            {run.text.slice(from - run.index, to - run.index)}
-          </Piece>
-        );
-      })}
-    </div>
+    <>
+      <MarginBars />
+      <div className="day-text" ref={rootRef}>
+        {segmentsOf(runs, markedOf(unread, kept)).map(({ run, from, to, mark }) => {
+          const Piece = mark ? 'mark' : 'span';
+          return (
+            <Piece
+              key={from}
+              className={[authorClass(run.author), mark ? MARK_CLASS[mark] : '']
+                .filter(Boolean)
+                .join(' ')}
+              data-client={run.client}
+              data-clock={run.clock + from - run.index}
+              data-other={run.author === readerId ? undefined : ''}
+            >
+              {run.text.slice(from - run.index, to - run.index)}
+            </Piece>
+          );
+        })}
+      </div>
+    </>
   );
 }

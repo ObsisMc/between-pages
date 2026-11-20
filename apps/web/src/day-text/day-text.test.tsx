@@ -91,6 +91,48 @@ describe('DayText', () => {
   });
 });
 
+describe('margin bars', () => {
+  /** Each piece's boxes, one per line it runs over: 一 on line 0, 二三 over lines 1 and 2. */
+  const LINES: Record<string, number[]> = { 一: [0], 二三: [1, 2], 四: [2], 五: [4] };
+  const bars = (container: HTMLElement) =>
+    [...container.querySelectorAll<HTMLElement>('.unread-bar')].map((bar) => [
+      bar.style.top,
+      bar.style.height,
+    ]);
+
+  it('draws one bar beside each line that holds unread text, none for kept text', () => {
+    vi.spyOn(Element.prototype, 'getClientRects').mockImplementation(function (this: Element) {
+      const lines = LINES[this.textContent ?? ''] ?? [];
+      return lines.map((line) => new DOMRect(0, line * 30 + 5, 40, 20)) as unknown as DOMRectList;
+    });
+    const runs = decodeText(stateOf([[2, THEM, '一二三四五']]));
+    const marks = (
+      unread: { from: number; to: number }[],
+      kept: { from: number; to: number }[],
+    ) => (
+      <DayText runs={runs} readerId={ME} authorClass={authorClass} unread={unread} kept={kept} />
+    );
+    const { container, rerender } = render(
+      marks(
+        [
+          { from: 1, to: 3 },
+          { from: 3, to: 4 },
+        ],
+        [{ from: 4, to: 5 }],
+      ),
+    );
+    // 二三 and 四 share line 2: one bar there.
+    expect(bars(container)).toEqual([
+      ['35px', '20px'],
+      ['65px', '20px'],
+    ]);
+    // Read on: what is left unread moves the bars with it.
+    rerender(marks([{ from: 0, to: 1 }], [{ from: 1, to: 5 }]));
+    expect(bars(container)).toEqual([['5px', '20px']]);
+    expect(container.querySelector('.unread-bars')!.getAttribute('aria-hidden')).toBe('true');
+  });
+});
+
 describe('visibleOthers', () => {
   it('[adr:book-frontend-workspace#5] names only the other person’s characters inside the clip', () => {
     const runs = decodeText(
