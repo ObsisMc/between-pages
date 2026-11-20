@@ -5,7 +5,7 @@ import type { Day } from '@between-pages/contracts';
 import { FakeSocket, GENERATION, stubLocks } from '../../test/diary.ts';
 import { stateOf, type Turn } from '../../test/day-text.ts';
 import { renderAt, signedIn, stubApi } from '../../test/render.tsx';
-import { ME, space } from '../../test/relationship.ts';
+import { ME, PARTNER, space } from '../../test/relationship.ts';
 import { POSITION_MS } from '../day-feed/index.ts';
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -564,6 +564,91 @@ describe('DaysWorkspace', () => {
     expect(router.state.location.state).toMatchObject({ edit: true, back: true });
     const [init] = opened.mock.calls[0] as unknown as [RequestInit];
     expect(JSON.parse(String(init.body))).toMatchObject({ date: '2026-10-22' });
+  });
+
+  it('[adr:read-marks-until-leaving#1] [adr:read-marks-until-leaving#3] [adr:read-marks-until-leaving#4] keeps text read in the feed light on its day and back, until the diary page is left', async () => {
+    vi.stubGlobal('WebSocket', FakeSocket);
+    vi.stubGlobal('navigator', { locks: stubLocks() });
+    // The feed's box is the window's top 600px and the partner's text lies inside it; the
+    // day is not laid out, so nothing is read there.
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: Element,
+    ) {
+      if (this.classList.contains('day-feed-scroll')) return new DOMRect(0, 0, 300, 600);
+      if (this.hasAttribute('data-other')) return new DOMRect(0, 100, 300, 20);
+      return new DOMRect(0, 0, 0, 0);
+    });
+    const shared = { diaryId: id(9), epochId: id(10), share: 'live' as const };
+    const theirs: Day = {
+      diaryDate: '2026-10-27',
+      mine: null,
+      partner: { ...dated('2026-10-27', 9).mine!, ...shared, unread: true },
+    };
+    let read: unknown[] = [];
+    stubApi({
+      'GET /api/me': signedIn('alice'),
+      'GET /api/spaces': () => Response.json({ spaces: [space()] }),
+      'GET /api/days': page([theirs, dated('2026-10-26', 1)]),
+      ...ownDiary(1, '2026-10-26'),
+      ...emptyDay('2026-10-26'),
+      'GET /api/days/2026-10-27': () => Response.json({ day: theirs, google: NO_COPY }),
+      [`GET /api/diaries/${id(9)}/shares/${id(10)}`]: () =>
+        Response.json({
+          diary: {
+            diaryDate: '2026-10-27',
+            ownerId: PARTNER,
+            ...shared,
+            generationId: GENERATION,
+            seq: 0,
+            ...stateOf([[2, PARTNER, '新的字']]),
+          },
+        }),
+      [`GET /api/diaries/${id(9)}/read`]: () => Response.json({ ranges: read }),
+      [`POST /api/diaries/${id(9)}/read`]: (init) => {
+        read = JSON.parse(String(init!.body)).ranges;
+        return Response.json({ ranges: read });
+      },
+      'GET /api/days?before=2026-10-28': page([theirs, dated('2026-10-26', 1)]),
+      'GET /api/days?after=2026-10-27': page([]),
+    });
+    const { router } = renderAt('/days');
+    const region = await feed();
+    const inFeed = () => within(region).getByText('新的字');
+    await waitFor(() => expect(inFeed().className).toContain('day-text-unread'));
+    await waitFor(() => expect(inFeed().className).toContain('day-text-kept'), {
+      timeout: 4000,
+    });
+
+    // On its day: light, and nothing says there is anything new.
+    choose(region, '2026-10-27');
+    const kept = async () => {
+      const editor = await screen.findByRole('textbox');
+      await waitFor(() =>
+        expect(editor.querySelector('.day-text-kept')?.textContent).toBe('新的字'),
+      );
+      expect(editor.querySelector('.day-text-unread')).toBeNull();
+    };
+    await kept();
+    expect(screen.queryByText(/处新内容/)).toBeNull();
+    expect(screen.queryByRole('button', { name: '下一处未读' })).toBeNull();
+
+    // Another date and back, then the feed again: still light.
+    fireEvent.click(within(await index()).getByRole('link', { name: /10 月 26 日/ }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/days/2026-10-26'));
+    fireEvent.click(within(await index()).getByRole('link', { name: /10 月 27 日/ }));
+    await kept();
+    fireEvent.click(screen.getByRole('link', { name: '连续读' }));
+    const back = await feed();
+    await waitFor(() =>
+      expect(within(back).getByText('新的字').className).toContain('day-text-kept'),
+    );
+
+    // Leaving the diary page ends the visit: the read text is plain when it comes back.
+    await act(() => router.navigate('/clocks'));
+    await act(() => router.navigate('/days'));
+    const again = await feed();
+    await waitFor(() => expect(within(again).getByText('新的字').tagName).toBe('SPAN'));
+    expect(again.querySelector('mark')).toBeNull();
   });
 
   it('sends an address that is not a date to the feed', async () => {

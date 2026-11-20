@@ -120,8 +120,8 @@ test('[adr:book-frontend-workspace#5] ↓ and ↑ reach unread dates not loaded,
 
   await down.click();
   await expect(dateIn(b, OLDEST)).toContainText('A的旧日记');
-  await expect(feed(b).locator('.unread-flash')).toHaveText('A的旧日记');
-  expect(await inFeedBox(b, '.unread-flash')).toBe(true);
+  await expect(feed(b).locator('[data-flash]')).toHaveText('A的旧日记');
+  expect(await inFeedBox(b, '[data-flash]')).toBe(true);
   await expect(jumpDate).toBeFocused();
   // Read there after about a second; nothing older is left.
   await expect(dateIn(b, OLDEST).getByLabel('有新内容')).toHaveCount(0, { timeout: 10_000 });
@@ -130,8 +130,8 @@ test('[adr:book-frontend-workspace#5] ↓ and ↑ reach unread dates not loaded,
   await expect(dateIn(b, NEWEST)).toHaveCount(0);
   await up.click();
   await expect(dateIn(b, NEWEST)).toContainText('A的新日记');
-  await expect(feed(b).locator('.unread-flash')).toHaveText('A的新日记');
-  expect(await inFeedBox(b, '.unread-flash')).toBe(true);
+  await expect(feed(b).locator('[data-flash]')).toHaveText('A的新日记');
+  expect(await inFeedBox(b, '[data-flash]')).toBe(true);
   await expect(jumpDate).toBeFocused();
   await expect(dateIn(b, NEWEST).getByLabel('有新内容')).toHaveCount(0, { timeout: 10_000 });
   await expect(up).toHaveCount(0);

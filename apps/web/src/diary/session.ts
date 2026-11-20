@@ -17,8 +17,10 @@ import {
   type Journal,
 } from '../journal/index.ts';
 import {
+  createArrivals,
   createReadTracker,
   unreadSpans,
+  type ReadMarks,
   type ReadTracker,
   type Span,
   type VisibleRun,
@@ -164,6 +166,11 @@ export type DiarySessionOptions = {
    * what counts as on screen is also inside it, and positions and jumps scroll it.
    */
   scroller?: HTMLElement | undefined;
+  /**
+   * The diary page's record of what this visit read (read-marks-until-leaving D3): what this
+   * diary's tracker reports goes there, and what it keeps of this diary is drawn light.
+   */
+  marks?: ReadMarks | undefined;
 };
 
 export function createDiarySession({
@@ -177,6 +184,7 @@ export function createDiarySession({
   onChange,
   keepPosition,
   scroller,
+  marks,
 }: DiarySessionOptions): DiarySession {
   let state: DiaryState = {
     phase: 'opening',
@@ -196,6 +204,8 @@ export function createDiarySession({
   /** The reader's coverage once known (D4); unread is computed from it and the text. */
   let read: ReadRange[] | null = null;
   let unreadAtOpen: number | undefined;
+  /** The other person's text that came live into view, still unread (D5). */
+  const arrivals = createArrivals();
   let generationId = '';
   /** A page's binding period its baseline belongs to (shared-pages D4). */
   let periodId: string | undefined;
@@ -259,7 +269,7 @@ export function createDiarySession({
       onRefuse: (reason) => set({ refusal: { reason, count: (state.refusal?.count ?? 0) + 1 } }),
     });
     if (state.ownOnly) editor.setOwnTextOnly(true);
-    editor.showUnread(read);
+    showMarks(editor);
     return editor;
   }
 
@@ -415,9 +425,10 @@ export function createDiarySession({
       generationId,
       ...(state.share === 'live' && epochId ? { epochId } : {}),
       knownSeq: seq,
-      onCommits: (commits, bindings) => {
+      onCommits: (commits, bindings, broadcast) => {
         bind(bindings);
         if (commits.length > 0) set({ remoteChanges: state.remoteChanges + commits.length });
+        const shown = !arriving;
         const apply = () => {
           for (const commit of commits)
             if (arriving) arriving.push(commit.delta);
@@ -426,6 +437,12 @@ export function createDiarySession({
         // What the reader is looking at stays where it is however the text above changes (D5).
         if (arriving || !commits.length) apply();
         else (keepPosition ?? keepOwnPosition)(apply);
+        // Text broadcast while it is in view on a visible page is seen arriving: drawn light
+        // (read-marks-until-leaving D5). A catch-up, the opening load and a hidden page are not.
+        if (broadcast && shown && document.visibilityState === 'visible') {
+          arrivals.arrived(insertedBy(commits.map((c) => c.delta)), onScreen());
+          showMarks();
+        }
         updateUnread();
         // A delta the journal fails to store is fetched again by the next catch-up.
         journal?.advance(diaryId, generationId, commits, bindings).catch(() => undefined);
@@ -659,8 +676,28 @@ export function createDiarySession({
   const unreadNow = (): Span[] =>
     editor && read ? unreadSpans(editor.othersCharacters(0, Infinity), read) : [];
 
+  /** The other person's characters the deltas insert, by identity. */
+  const insertedBy = (deltas: Uint8Array[]): VisibleRun[] =>
+    deltas.flatMap((delta) =>
+      Y.decodeUpdate(delta).structs.flatMap((struct) =>
+        struct instanceof Y.Item &&
+        struct.content instanceof Y.ContentString &&
+        authors.get(struct.id.client) !== userId
+          ? [{ client: struct.id.client, clock: struct.id.clock, length: struct.length }]
+          : [],
+      ),
+    );
+
+  /** The editor's marks: unread, and light for what this visit kept or saw arrive (D1, D5). */
+  function showMarks(target = editor) {
+    target?.showUnread(read, [...(marks?.kept(diaryId) ?? []), ...arrivals.light()]);
+  }
+  const unsubscribe = marks?.subscribe(() => showMarks());
+
   /** Recomputes `state.unread` from the text, the coverage and the window (D4). */
   function updateUnread() {
+    // Arrived text that left view unread is solid again; read text is kept instead (D5).
+    if (arrivals.settle(onScreen(), read)) showMarks();
     if (!read || !editor) return;
     const spans = unreadNow();
     unreadAtOpen ??= spans.length;
@@ -747,9 +784,10 @@ export function createDiarySession({
         reads = createReadTracker({
           diaryId,
           visible: onScreen,
+          marks,
           onRead: (ranges) => {
             read = ranges;
-            editor?.showUnread(read);
+            showMarks();
             updateUnread();
           },
         });
@@ -816,6 +854,7 @@ export function createDiarySession({
       window.removeEventListener('beforeunload', guardUnload);
       sender?.stop();
       reads?.stop();
+      unsubscribe?.();
       sync?.close();
       editor?.destroy();
       journal?.close();

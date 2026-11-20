@@ -671,15 +671,15 @@ test('[adr:book-frontend-workspace#5] [adr:book-frontend-workspace#6] narrow: th
 
   await down.click();
   await expect(dateIn(b, oldest)).toContainText('A的旧日记');
-  await expect(feed(b).locator('.unread-flash')).toHaveText('A的旧日记');
-  await expect(feed(b).locator('.unread-flash')).toBeInViewport();
+  await expect(feed(b).locator('[data-flash]')).toHaveText('A的旧日记');
+  await expect(feed(b).locator('[data-flash]')).toBeInViewport();
   await expect(dateIn(b, oldest).getByLabel('有新内容')).toHaveCount(0, { timeout: 10_000 });
   await expect(down).toHaveCount(0);
 
   await up.click();
   await expect(dateIn(b, newest)).toContainText('A的新日记');
-  await expect(feed(b).locator('.unread-flash')).toHaveText('A的新日记');
-  await expect(feed(b).locator('.unread-flash')).toBeInViewport();
+  await expect(feed(b).locator('[data-flash]')).toHaveText('A的新日记');
+  await expect(feed(b).locator('[data-flash]')).toBeInViewport();
   await expect(dateIn(b, newest).getByLabel('有新内容')).toHaveCount(0, { timeout: 10_000 });
   await expect(up).toHaveCount(0);
   await navigationOnScreen(b);

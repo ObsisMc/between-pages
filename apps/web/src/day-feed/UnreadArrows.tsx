@@ -36,9 +36,13 @@ function spotsIn(root: HTMLElement, clip: Clip) {
   return { spots, elements };
 }
 
+/**
+ * Highlights `el` for `FLASH_MS` with `data-flash`, an attribute React never sets, so the
+ * flash lasts while `DayText` redraws the piece from unread to kept (#112).
+ */
 function flash(el: HTMLElement) {
-  el.classList.add('unread-flash');
-  setTimeout(() => el.classList.remove('unread-flash'), FLASH_MS);
+  el.dataset.flash = '';
+  setTimeout(() => delete el.dataset.flash, FLASH_MS);
 }
 
 const keyOf = (ask: Ask) => JSON.stringify(ask);

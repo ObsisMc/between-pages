@@ -2,6 +2,7 @@ import { useContext, useEffect, useRef, useState, type MouseEvent, type ReactNod
 import { History } from 'lucide-react';
 import type { ResponseOf } from '@between-pages/contracts';
 import { callApi } from '../api/client.ts';
+import type { ReadMarks } from '../read-tracker/index.ts';
 import { HistoryPanel, HistoryPreview, type HistoryPointView } from '../history/index.ts';
 import { Button, cn } from '../ui/index.ts';
 import { DraftList } from './DraftList.tsx';
@@ -122,6 +123,7 @@ export function DiaryBlock({
   onReopen,
   onClosed,
   closed,
+  marks,
 }: {
   userId: string;
   diaryId: string;
@@ -142,6 +144,8 @@ export function DiaryBlock({
   onClosed?: () => void;
   /** The screen learned the shared page is gone; the open session ends, drafts shown. */
   closed?: PageClosed | undefined;
+  /** The diary page's record of what this visit read (read-marks-until-leaving D3). */
+  marks?: ReadMarks | undefined;
 }) {
   const peopleRef = useRef(people);
   const keepRef = useRef(keepPosition);
@@ -181,6 +185,7 @@ export function DiaryBlock({
       nameOf: (user) => peopleRef.current.get(user)?.name ?? '',
       onChange: setState,
       scroller: scrollBox?.current ?? undefined,
+      marks,
       // A page that holds the position itself says so when the diary opens.
       ...(keepRef.current
         ? { keepPosition: (apply: () => void) => keepRef.current?.(apply) ?? apply() }
@@ -193,7 +198,7 @@ export function DiaryBlock({
       session.current = null;
       sessionRef.current?.(null);
     };
-  }, [userId, diaryId, epochId, scrollBox]);
+  }, [userId, diaryId, epochId, scrollBox, marks]);
 
   const closedHere = state?.closed;
   useEffect(() => {

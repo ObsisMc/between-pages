@@ -5,6 +5,7 @@ import type { Day, ResponseOf } from '@between-pages/contracts';
 import { ApiError, callApi } from '../api/client.ts';
 import { useMe } from '../auth/me.ts';
 import { Avatar } from '../avatar/index.ts';
+import type { ReadMarks } from '../read-tracker/index.ts';
 import { Button, cn } from '../ui/index.ts';
 import { DiaryBlock, copyOf, type BlockReport } from './DiaryBlock.tsx';
 import { openFailureText, openOwnDiary, todayHere } from './open-day.ts';
@@ -75,12 +76,15 @@ export function DayEditor({
   date,
   focus = null,
   onOwnText,
+  marks,
 }: {
   date: string;
   focus?: string | null;
   onOwnText?: (hasText: boolean) => void;
+  /** The diary page's record of what this visit read (read-marks-until-leaving D3). */
+  marks?: ReadMarks;
 }) {
-  return <DayView key={date} date={date} focus={focus} onOwnText={onOwnText} />;
+  return <DayView key={date} date={date} focus={focus} onOwnText={onOwnText} marks={marks} />;
 }
 
 /**
@@ -97,10 +101,12 @@ function DayView({
   date,
   focus,
   onOwnText,
+  marks,
 }: {
   date: string;
   focus: string | null;
   onOwnText: ((hasText: boolean) => void) | undefined;
+  marks: ReadMarks | undefined;
 }) {
   const titleId = useId();
   const user = useMe().data?.user;
@@ -366,6 +372,7 @@ function DayView({
                   keepPosition={keepPosition}
                   onSession={onSession('theirs')}
                   onReport={onReport('theirs')}
+                  marks={marks}
                 />
               ) : mineId ? (
                 <DiaryBlock
@@ -377,6 +384,7 @@ function DayView({
                   keepPosition={keepPosition}
                   onSession={onSession('mine')}
                   onReport={onReport('mine')}
+                  marks={marks}
                 />
               ) : (
                 <>

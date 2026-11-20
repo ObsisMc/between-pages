@@ -1,11 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { ReadRange } from '@between-pages/contracts';
 import { callApi } from '../api/client.ts';
 import { DayText, decodeText, visibleOthers, type Clip, type TextRun } from '../day-text/index.ts';
-import { createReadTracker, unreadSpans } from '../read-tracker/index.ts';
+import {
+  createReadTracker,
+  keptSpans,
+  unreadSpans,
+  type ReadMarks,
+} from '../read-tracker/index.ts';
 import { needsText, type DiaryRef, type LoadedVersion, type Side } from './model.ts';
 
 type Loaded = LoadedVersion & { runs: TextRun[] };
+
+const NO_MARKS: readonly ReadRange[] = [];
+const quiet = () => () => undefined;
 
 /** The authorized state of a diary: the own one, or the partner's share by its epoch (kernel D17). */
 function readState({ diaryId, epochId }: DiaryRef) {
@@ -28,7 +36,9 @@ function readState({ diaryId, epochId }: DiaryRef) {
  * that collapses is read afresh when it opens again. Once text is shown, a read tracker
  * reports the other person's characters that stayed inside `clip` for about a second; its
  * coverage gives the unread passages, and `onUnread` hears whether any is left (undefined
- * until both text and coverage are known, and when this unmounts).
+ * until both text and coverage are known, and when this unmounts). What it reads goes to
+ * `marks`, the diary page's record of the visit, and the text that record keeps is drawn
+ * light, so it outlives this component (read-marks-until-leaving D1, D3).
  */
 export function FeedDiary({
   diary,
@@ -39,6 +49,7 @@ export function FeedDiary({
   authorClass,
   clip,
   onUnread,
+  marks,
 }: {
   diary: DiaryRef;
   /** Shown above the text when the date has both diaries. */
@@ -50,6 +61,7 @@ export function FeedDiary({
   authorClass: (author: string) => string;
   clip: () => Clip;
   onUnread: (side: Side, unread: boolean | undefined) => void;
+  marks?: ReadMarks | undefined;
 }) {
   const [text, setText] = useState<Loaded | null>(null);
   const [failed, setFailed] = useState(false);
@@ -61,6 +73,10 @@ export function FeedDiary({
   });
 
   const { diaryId, updatedAt, side } = diary;
+  const kept = useSyncExternalStore(
+    marks?.subscribe ?? quiet,
+    useCallback(() => marks?.kept(diaryId) ?? NO_MARKS, [marks, diaryId]),
+  );
   const wanted = near && !failed && needsText(diary, text);
   const diaryRef = useRef(diary);
   useEffect(() => {
@@ -85,19 +101,15 @@ export function FeedDiary({
       diaryId,
       visible: () => (root.current ? visibleOthers(root.current, clipRef.current()) : []),
       onRead: setRead,
+      marks,
     });
     return () => tracker.stop();
-  }, [loaded, diaryId]);
+  }, [loaded, diaryId, marks]);
 
-  const unread =
-    text && read
-      ? unreadSpans(
-          text.runs
-            .filter((run) => run.author !== readerId)
-            .map((run) => ({ ...run, length: run.text.length })),
-          read,
-        )
-      : undefined;
+  const others = text?.runs
+    .filter((run) => run.author !== readerId)
+    .map((run) => ({ ...run, length: run.text.length }));
+  const unread = others && read ? unreadSpans(others, read) : undefined;
   const anyUnread = unread && unread.length > 0;
   useEffect(() => {
     onUnread(side, anyUnread);
@@ -123,6 +135,7 @@ export function FeedDiary({
             readerId={readerId}
             authorClass={authorClass}
             unread={unread ?? []}
+            kept={others && read ? keptSpans(others, kept, read) : []}
             rootRef={root}
           />
         ) : (
