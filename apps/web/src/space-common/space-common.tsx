@@ -96,8 +96,11 @@ export function useSeen(target: SeenTarget | null, report: (target: SeenTarget) 
   return setElement;
 }
 
-/** How long a jumped-to record stays highlighted; the style fades it out meanwhile. */
-const FLASH_MS = 2_000;
+/**
+ * As long as the `unread-flash` animation in `styles.css` runs (editor-binding's
+ * `FLASH_MS`); a record has no unread mark, so it fades to transparent.
+ */
+const FLASH_MS = 3_000;
 
 /**
  * "有 N 处新内容 · 跳到第一处", then "下一处" (D8, as in the diary). `ids` are the elements

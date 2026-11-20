@@ -11,8 +11,8 @@ import {
   type Spot,
 } from './next-unread.ts';
 
-/** How long a jumped-to passage stays highlighted; the style fades it out meanwhile. */
-const FLASH_MS = 2_000;
+/** As long as the `unread-flash` animation in `styles.css` runs (editor-binding's `FLASH_MS`). */
+const FLASH_MS = 3_000;
 
 const names: Record<Direction, string> = { newer: '上一处未读', older: '下一处未读' };
 const arrows: Record<Direction, string> = { newer: '↑', older: '↓' };

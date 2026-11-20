@@ -16,6 +16,9 @@
   /* Two author ink colors, by slot (EDIT-13): text color only, never a background. */
   --author-1: #8a4a2b;
   --author-2: #2d5e66;
+  /* Unread marks (#112): one ochre highlighter for both authors, and the jump's flash. */
+  --highlight: color-mix(in srgb, var(--accent) 38%, transparent);
+  --flash: color-mix(in srgb, var(--accent) 55%, transparent);
   --font-title:
     'Between Serif', 'Songti SC', 'Noto Serif SC', 'Source Han Serif SC', Georgia, serif;
   --font-body:
@@ -37,6 +40,8 @@
     --done: #93c49a;
     --author-1: #e3a37d;
     --author-2: #8cc3ca;
+    --highlight: color-mix(in srgb, var(--accent) 42%, transparent);
+    --flash: color-mix(in srgb, var(--accent) 55%, transparent);
     color-scheme: dark;
   }
 }
@@ -129,17 +134,47 @@
     background: color-mix(in srgb, currentColor 15%, transparent);
   }
 
-  /* A passage just jumped to (unread-and-day-page D4, space-records D8), fading out. */
+  /* The other person's unread text (unread-and-day-page D2), in the feed's `DayText` and
+     in the editor alike: an ochre highlighter over the lower half of the characters, the
+     same for both authors, so it never tells authors apart (spec §8.1); the text keeps its
+     author's color. A background image, so the jump's flash (a background color) runs
+     under it and ends on it. */
+  .day-text-unread {
+    background-color: transparent;
+    background-image: linear-gradient(transparent 52%, var(--highlight) 52%);
+    color: inherit;
+  }
+
+  /* A passage just jumped to (unread-and-day-page D4, space-records D8): two ochre pulses,
+     then a fade to its mark, or to nothing where there is none, in `FLASH_MS` (3 s). Under
+     reduced motion it only fades. */
   .unread-flash {
-    animation: unread-flash 2s ease-out forwards;
+    animation: unread-flash 3s ease-out forwards;
   }
 
   @keyframes unread-flash {
+    0%,
+    40% {
+      background-color: var(--flash);
+    }
+    20%,
+    to {
+      background-color: transparent;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .unread-flash {
+      animation-name: unread-fade;
+    }
+  }
+
+  @keyframes unread-fade {
     from {
-      background: var(--notice);
+      background-color: var(--flash);
     }
     to {
-      background: transparent;
+      background-color: transparent;
     }
   }
 }

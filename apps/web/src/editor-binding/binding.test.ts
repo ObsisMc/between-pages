@@ -309,6 +309,57 @@ describe('reading position', () => {
   });
 });
 
+describe('unread marks', () => {
+  const marked = (editor: ReturnType<typeof setup>) =>
+    [...editor.view.dom.querySelectorAll('.day-text-unread')].map((el) => el.textContent);
+  const bobClient = (editor: ReturnType<typeof setup>) =>
+    [...editor.bindings].find(([, user]) => user === BOB)![0];
+
+  it('[adr:read-marks-until-leaving#9] marks the other person’s characters outside the coverage, following them through edits', () => {
+    const editor = alongsideBob(); // 今天很累，抱抱！ — Bob's 抱抱！ from clock 0
+    const bob = bobClient(editor);
+    expect(marked(editor)).toEqual([]);
+
+    editor.binding.showUnread([{ clientId: bob, from: 1, to: 2 }]);
+    expect(marked(editor)).toEqual(['抱', '！']);
+    // Bob writes before the marks and deletes one: the marks stay on their characters.
+    editor.bob((text) => text.insert(0, '早'));
+    editor.bob((text) => text.delete(8, 1));
+    expect(editor.text()).toBe('早今天很累，抱抱');
+    expect(marked(editor)).toEqual(['早', '抱']);
+    // Alice's own text is never her unread.
+    editor.select(0);
+    editor.type('嗨');
+    expect(marked(editor)).toEqual(['早', '抱']);
+
+    editor.binding.showUnread(null);
+    expect(marked(editor)).toEqual([]);
+  });
+
+  it('marks nothing while 只看我的文字 hides the other person’s text', () => {
+    const editor = alongsideBob();
+    editor.binding.showUnread([]);
+    expect(marked(editor)).toEqual(['抱抱！']);
+    editor.binding.setOwnTextOnly(true);
+    expect(marked(editor)).toEqual([]);
+    editor.binding.setOwnTextOnly(false);
+    expect(marked(editor)).toEqual(['抱抱！']);
+  });
+
+  it('keeps a jumped-to passage highlighted for the whole flash once it is read', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    const editor = alongsideBob();
+    editor.binding.showUnread([]);
+    editor.binding.flash(5, 8);
+    vi.advanceTimersByTime(FLASH_MS / 2);
+    editor.binding.showUnread([{ clientId: bobClient(editor), from: 0, to: 3 }]);
+    expect(marked(editor)).toEqual([]);
+    expect(editor.view.dom.querySelector('.unread-flash')?.textContent).toBe('抱抱！');
+    vi.advanceTimersByTime(FLASH_MS / 2);
+    expect(editor.view.dom.querySelector('.unread-flash')).toBeNull();
+  });
+});
+
 describe('authors on screen', () => {
   const colored = (editor: ReturnType<typeof setup>) =>
     [...editor.view.dom.querySelectorAll('[class*="author-slot"]')].map((el) => [
