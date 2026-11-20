@@ -17,6 +17,7 @@ import {
   type FeedPerson,
   type FeedPosition,
 } from '../day-feed/index.ts';
+import { createReadMarks } from '../read-tracker/index.ts';
 import { Button, cn, Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/index.ts';
 import { Backfill } from './Backfill.tsx';
 import { DayEditor } from './DayEditor.tsx';
@@ -80,6 +81,12 @@ export function DaysWorkspace() {
   const { people } = usePeople();
   const dayBox = useRef<HTMLDivElement>(null);
   const [picking, setPicking] = useState(false);
+  /**
+   * What this visit to the diary page read, shared by the feed and the day: the route is
+   * one element for `/days` and `/days/:date`, so this lives until the reader leaves the
+   * page, reloads or closes the app (read-marks-until-leaving D2, D3).
+   */
+  const [marks] = useState(createReadMarks);
   /**
    * Set once a day is being opened from the feed's entry. The feed reports its place a moment
    * after scrolling stops, by replacing the feed's entry; a report that comes after the day's
@@ -193,6 +200,7 @@ export function DaysWorkspace() {
     <DayFeed
       me={me}
       partner={partner}
+      marks={marks}
       position={state.feed ?? null}
       onPosition={(at) => {
         if (leaving.current) return;
@@ -258,7 +266,7 @@ export function DaysWorkspace() {
         </Collapsible>
         {date ? (
           <div className="px-4 py-5">
-            <DayEditor date={date} focus={focus} onOwnText={reportOwnText} />
+            <DayEditor date={date} focus={focus} onOwnText={reportOwnText} marks={marks} />
           </div>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 pt-4">{feedView}</div>
@@ -292,7 +300,7 @@ export function DaysWorkspace() {
             <ScrollBox value={dayBox}>
               <div className="mx-auto max-w-(--measure) px-(--measure-pad) py-6">
                 <div className="mb-6">{views}</div>
-                <DayEditor date={date} focus={focus} onOwnText={reportOwnText} />
+                <DayEditor date={date} focus={focus} onOwnText={reportOwnText} marks={marks} />
               </div>
             </ScrollBox>
           </div>

@@ -51,8 +51,13 @@ export type SyncClientOptions = {
   epochId?: string;
   /** The highest seq the caller already holds; catch-up starts after it. */
   knownSeq: number;
-  /** Contiguous commits after the last delivered seq, and the bindings naming their authors. */
-  onCommits: (commits: CommittedDelta[], bindings: ClientBinding[]) => void;
+  /**
+   * Contiguous commits after the last delivered seq, and the bindings naming their authors;
+   * `live` when they came as the server's broadcast of one commit, not as a catch-up
+   * (`synced`), so the screen can tell text arriving now from text that waited
+   * (read-marks-until-leaving D5).
+   */
+  onCommits: (commits: CommittedDelta[], bindings: ClientBinding[], live: boolean) => void;
   onStatus: (status: SyncStatus, code?: ErrorCode) => void;
   /** Told after the server committed it; the screen reconciles before switching (D7). */
   onContext?: (change: ContextChange) => void;
@@ -142,6 +147,7 @@ export function createSyncClient({
   const deliver = (
     commits: { seq: number; publicId: string; delta: string }[],
     bindings: ClientBinding[],
+    broadcast: boolean,
   ) => {
     const next: CommittedDelta[] = [];
     for (const commit of [...commits].sort((a, b) => a.seq - b.seq)) {
@@ -150,7 +156,7 @@ export function createSyncClient({
       next.push({ seq: commit.seq, publicId: commit.publicId, delta: fromBase64(commit.delta) });
       seq = commit.seq;
     }
-    if (next.length > 0 || bindings.length > 0) onCommits(next, bindings);
+    if (next.length > 0 || bindings.length > 0) onCommits(next, bindings, broadcast);
     return true;
   };
 
@@ -167,7 +173,7 @@ export function createSyncClient({
     switch (message.type) {
       case 'synced':
         if (message.diaryId !== diaryId || message.generationId !== generationId) return;
-        if (!deliver(message.commits, message.bindings)) return subscribe(ws);
+        if (!deliver(message.commits, message.bindings, false)) return subscribe(ws);
         if (message.shared !== undefined) onShared?.(message.shared);
         live = true;
         retryMs = RECONNECT_FIRST_MS;
@@ -175,7 +181,7 @@ export function createSyncClient({
       case 'commit':
         if (message.diaryId !== diaryId || message.generationId !== generationId) return;
         // A gap means a broadcast overtook another; catch up from what was delivered.
-        if (!deliver([message], message.bindings)) subscribe(ws);
+        if (!deliver([message], message.bindings, true)) subscribe(ws);
         return;
       case 'ack':
         return answer(message.receipt.batchId, { type: 'ack', receipt: message.receipt });

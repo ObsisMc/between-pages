@@ -421,6 +421,121 @@ describe('a shared diary', () => {
       expect(await screen.findByRole('button', { name: '下一处未读' })).toBeDefined();
     });
 
+    describe('text arriving while in view (read-marks-until-leaving D5)', () => {
+      /** The editor's marked characters as `[class, text]`. */
+      const marksIn = (editor: HTMLElement) =>
+        [...editor.querySelectorAll('.day-text-unread, .day-text-kept')].map((el) => [
+          el.className.includes('day-text-kept') ? 'kept' : 'unread',
+          el.textContent,
+        ]);
+
+      /**
+       * Bob's diary all read, laid out so the whole editor fills the window; Bob then
+       * appends `text` and the server sends it as `how`, a broadcast or a catch-up.
+       */
+      async function bobAppends(text: string, how: 'commit' | 'synced') {
+        vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+        Object.defineProperty(document, 'elementFromPoint', {
+          value: () => null,
+          configurable: true,
+        });
+        for (const [name, value] of [
+          ['getClientRects', () => []],
+          ['getBoundingClientRect', () => new DOMRect()],
+        ] as const)
+          Object.defineProperty(Range.prototype, name, { value, configurable: true });
+        let read = [{ clientId: BOB_CLIENT, from: 0, to: 4 }];
+        const reports: unknown[] = [];
+        openShared('live', {
+          [`GET /api/diaries/${DIARY}/read`]: () => Response.json({ ranges: read }),
+          [`POST /api/diaries/${DIARY}/read`]: (init) => {
+            const { ranges } = JSON.parse(String(init!.body));
+            reports.push(ranges);
+            read = [...read, ...ranges];
+            return Response.json({ ranges: read });
+          },
+        });
+        const editor = await screen.findByRole('textbox');
+        await waitFor(() => expect(editor.textContent).toBe('鲍勃的字'));
+        const inView = { top: 0, bottom: 400, left: 0, right: 600 } as DOMRect;
+        const place = vi.spyOn(editor.parentElement!, 'getBoundingClientRect');
+        place.mockReturnValue(inView);
+        const box = document.querySelector<HTMLElement>('.day-scroll');
+        if (box) vi.spyOn(box, 'getBoundingClientRect').mockReturnValue(inView);
+        // The coverage is known before Bob writes.
+        await vi.advanceTimersByTimeAsync(DWELL_MS);
+
+        const bob = createDiaryDoc();
+        bob.clientID = BOB_CLIENT;
+        bob.getText(BODY).insert(0, '鲍勃的字');
+        const before = Y.encodeStateVector(bob);
+        bob.getText(BODY).insert(4, text);
+        const commit = {
+          seq: ++FakeSocket.seq,
+          publicId: crypto.randomUUID(),
+          delta: btoa(String.fromCharCode(...Y.encodeStateAsUpdate(bob, before))),
+        };
+        const socket = FakeSocket.all.at(-1)!;
+        const message = { v: PROTOCOL_VERSION, diaryId: DIARY, generationId: GENERATION };
+        if (how === 'commit') socket.push({ ...message, type: 'commit', ...commit, bindings: [] });
+        else
+          socket.push({
+            ...message,
+            type: 'synced',
+            seq: commit.seq,
+            commits: [commit],
+            bindings: [],
+          });
+        await waitFor(() => expect(editor.textContent).toBe(`鲍勃的字${text}`));
+        return { editor, reports, place };
+      }
+
+      afterEach(() => {
+        vi.useRealTimers();
+        delete (document as { elementFromPoint?: unknown }).elementFromPoint;
+        for (const name of ['getClientRects', 'getBoundingClientRect'])
+          delete (Range.prototype as unknown as Record<string, unknown>)[name];
+      });
+
+      it('[adr:read-marks-until-leaving#6] [adr:read-marks-until-leaving#7] draws a broadcast in view light at once, still unread until it is reported read', async () => {
+        const { editor, reports } = await bobAppends('新字', 'commit');
+        expect(marksIn(editor)).toEqual([['kept', '新字']]);
+        // Still unread: the next unread jump goes to it.
+        expect(await screen.findByRole('button', { name: '下一处未读' })).toBeDefined();
+
+        await vi.advanceTimersByTimeAsync(2 * DWELL_MS);
+        expect(reports).toEqual([[{ clientId: BOB_CLIENT, from: 4, to: 6 }]]);
+        await waitFor(() =>
+          expect(screen.queryByRole('button', { name: '下一处未读' })).toBeNull(),
+        );
+        // Read now, and kept for the visit: it looks the same.
+        expect(marksIn(editor)).toEqual([['kept', '新字']]);
+      });
+
+      it('[adr:read-marks-until-leaving#7] draws it solid again once it leaves view unread', async () => {
+        const { editor, place } = await bobAppends('新字', 'commit');
+        expect(marksIn(editor)).toEqual([['kept', '新字']]);
+        // Scrolled away above the window before a second passed.
+        place.mockReturnValue({ top: -800, bottom: -400, left: 0, right: 600 } as DOMRect);
+        fireEvent.scroll(window);
+        // Measured on the next frame, well before the tracker's next check.
+        await vi.advanceTimersByTimeAsync(50);
+        await waitFor(() => expect(marksIn(editor)).toEqual([['unread', '新字']]));
+        expect(screen.getByRole('button', { name: '下一处未读' })).toBeDefined();
+      });
+
+      it('[adr:read-marks-until-leaving#6] draws a catch-up solid', async () => {
+        const { editor } = await bobAppends('新字', 'synced');
+        await waitFor(() => expect(marksIn(editor)).toEqual([['unread', '新字']]));
+      });
+
+      it('[adr:read-marks-until-leaving#6] draws a broadcast to a hidden page solid', async () => {
+        vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+        const { editor } = await bobAppends('新字', 'commit');
+        await waitFor(() => expect(marksIn(editor)).toEqual([['unread', '新字']]));
+      });
+    });
+
     it('[adr:unread-and-day-page#5] drops unread text the other person deletes, and counts what they type again', async () => {
       openShared('live', { [`GET /api/diaries/${DIARY}/read`]: halfRead });
       await screen.findByRole('button', { name: '下一处未读' });

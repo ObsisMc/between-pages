@@ -2,7 +2,16 @@ import { BODY, authorRuns, buildBaseline, createDiaryDoc } from '@between-pages/
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { stubApi } from '../../test/render.tsx';
-import { DWELL_MS, createReadTracker, unread, unreadSpans, type VisibleRun } from './index.ts';
+import { errorBody } from '../../test/relationship.ts';
+import {
+  DWELL_MS,
+  createReadMarks,
+  createReadTracker,
+  keptSpans,
+  unread,
+  unreadSpans,
+  type VisibleRun,
+} from './index.ts';
 
 const DIARY = '7c1d2b8e-3f4a-4b5c-8d6e-9f0a1b2c3d4e';
 const READ = `/api/diaries/${DIARY}/read`;
@@ -143,5 +152,113 @@ describe('unreadSpans', () => {
     await vi.advanceTimersByTimeAsync(2 * DWELL_MS);
     expect(heard).toEqual([[{ clientId: 7, from: 0, to: 2 }], [{ clientId: 7, from: 0, to: 4 }]]);
     tracker.stop();
+  });
+});
+
+describe('createReadMarks', () => {
+  /** The server's coverage: `already` at first, then everything reported, plus `elsewhere`. */
+  function server(already: unknown[] | 'fails', elsewhere: unknown[] = []) {
+    return stubApi({
+      [`GET ${READ}`]:
+        already === 'fails' ? errorBody('INTERNAL', 500) : () => Response.json({ ranges: already }),
+      [`POST ${READ}`]: (init) =>
+        Response.json({
+          ranges: [
+            ...(already === 'fails' ? [] : already),
+            ...elsewhere,
+            ...JSON.parse(String(init!.body)).ranges,
+          ],
+        }),
+    });
+  }
+
+  it('[adr:read-marks-until-leaving#2] keeps what this page turned from unread to read, not what was read before or on another device', async () => {
+    server([{ clientId: 7, from: 0, to: 2 }], [{ clientId: 7, from: 10, to: 12 }]);
+    const marks = createReadMarks();
+    const changes = vi.fn();
+    marks.subscribe(changes);
+    const tracker = createReadTracker({
+      diaryId: DIARY,
+      visible: () => [{ client: 7, clock: 0, length: 6 }],
+      marks,
+    });
+    await vi.advanceTimersByTimeAsync(2 * DWELL_MS);
+    expect(marks.kept(DIARY)).toEqual([{ clientId: 7, from: 2, to: 6 }]);
+    expect(changes).toHaveBeenCalledTimes(1);
+    expect(marks.kept('another diary')).toEqual([]);
+    tracker.stop();
+  });
+
+  it('[adr:read-marks-until-leaving#2] keeps nothing reported before the page knew what was read', async () => {
+    server('fails');
+    const marks = createReadMarks();
+    let onScreen: VisibleRun[] = [{ client: 7, clock: 0, length: 3 }];
+    const tracker = createReadTracker({ diaryId: DIARY, visible: () => onScreen, marks });
+    await vi.advanceTimersByTimeAsync(2 * DWELL_MS);
+    expect(marks.kept(DIARY)).toEqual([]);
+    // The first answer told the page the coverage; what it reports after that is kept.
+    onScreen = [{ client: 7, clock: 0, length: 5 }];
+    await vi.advanceTimersByTimeAsync(2 * DWELL_MS);
+    expect(marks.kept(DIARY)).toEqual([{ clientId: 7, from: 3, to: 5 }]);
+    tracker.stop();
+  });
+
+  it('[adr:read-marks-until-leaving#3] [adr:read-marks-until-leaving#5] outlives the tracker that reported, in memory only', async () => {
+    const fetchMock = server([]);
+    const stored = vi.spyOn(Storage.prototype, 'setItem');
+    const marks = createReadMarks();
+    const first = createReadTracker({
+      diaryId: DIARY,
+      visible: () => [{ client: 7, clock: 0, length: 2 }],
+      marks,
+    });
+    await vi.advanceTimersByTimeAsync(2 * DWELL_MS);
+    first.stop();
+    // A new tracker for the same diary (the day page after the feed) starts from the
+    // server's coverage, which holds the kept text: it stays kept, and more is added.
+    stubApi({
+      [`GET ${READ}`]: () => Response.json({ ranges: [{ clientId: 7, from: 0, to: 2 }] }),
+      [`POST ${READ}`]: (init) => Response.json(JSON.parse(String(init!.body))),
+    });
+    const second = createReadTracker({
+      diaryId: DIARY,
+      visible: () => [{ client: 7, clock: 0, length: 4 }],
+      marks,
+    });
+    await vi.advanceTimersByTimeAsync(2 * DWELL_MS);
+    expect(marks.kept(DIARY)).toEqual([{ clientId: 7, from: 0, to: 4 }]);
+    second.stop();
+    expect(stored).not.toHaveBeenCalled();
+    expect(fetchMock.mock.calls.map(([url, init]) => `${init?.method ?? 'GET'} ${url}`)).toEqual([
+      `GET ${READ}`,
+      `POST ${READ}`,
+    ]);
+  });
+});
+
+describe('keptSpans', () => {
+  it('gives the passages of indexed runs kept and read, joined where they touch', () => {
+    const runs = [
+      { client: 7, clock: 0, length: 3, index: 0 },
+      { client: 8, clock: 5, length: 2, index: 3 },
+      { client: 7, clock: 3, length: 2, index: 6 },
+    ];
+    const kept = [
+      { clientId: 7, from: 1, to: 4 },
+      { clientId: 8, from: 5, to: 7 },
+    ];
+    expect(keptSpans(runs, kept, [{ clientId: 7, from: 0, to: 4 }])).toEqual([
+      { from: 1, to: 3 },
+      { from: 6, to: 7 },
+    ]);
+    expect(
+      keptSpans(runs, kept, [
+        { clientId: 7, from: 0, to: 9 },
+        { clientId: 8, from: 0, to: 9 },
+      ]),
+    ).toEqual([
+      { from: 1, to: 5 },
+      { from: 6, to: 7 },
+    ]);
   });
 });

@@ -312,6 +312,11 @@ describe('reading position', () => {
 describe('unread marks', () => {
   const marked = (editor: ReturnType<typeof setup>) =>
     [...editor.view.dom.querySelectorAll('.day-text-unread')].map((el) => el.textContent);
+  const kinds = (editor: ReturnType<typeof setup>) =>
+    [...editor.view.dom.querySelectorAll('.day-text-unread, .day-text-kept')].map((el) => [
+      el.classList.contains('day-text-kept') ? 'kept' : 'unread',
+      el.textContent,
+    ]);
   const bobClient = (editor: ReturnType<typeof setup>) =>
     [...editor.bindings].find(([, user]) => user === BOB)![0];
 
@@ -336,14 +341,38 @@ describe('unread marks', () => {
     expect(marked(editor)).toEqual([]);
   });
 
-  it('marks nothing while 只看我的文字 hides the other person’s text', () => {
+  it('[adr:read-marks-until-leaving#8] marks nothing while 只看我的文字 hides the other person’s text', () => {
     const editor = alongsideBob();
-    editor.binding.showUnread([]);
-    expect(marked(editor)).toEqual(['抱抱！']);
+    editor.binding.showUnread([], [{ clientId: bobClient(editor), from: 0, to: 1 }]);
+    expect(kinds(editor)).toEqual([
+      ['kept', '抱'],
+      ['unread', '抱！'],
+    ]);
     editor.binding.setOwnTextOnly(true);
-    expect(marked(editor)).toEqual([]);
+    expect(kinds(editor)).toEqual([]);
     editor.binding.setOwnTextOnly(false);
-    expect(marked(editor)).toEqual(['抱抱！']);
+    expect(kinds(editor)).toEqual([
+      ['kept', '抱'],
+      ['unread', '抱！'],
+    ]);
+  });
+
+  it('draws light characters as kept, read or not, and read ones outside it unmarked', () => {
+    const editor = alongsideBob(); // Bob's 抱抱！ from clock 0
+    const bob = bobClient(editor);
+    // 抱抱 read, the first of them kept; ！ unread but arrived in view.
+    editor.binding.showUnread(
+      [{ clientId: bob, from: 0, to: 2 }],
+      [
+        { clientId: bob, from: 0, to: 1 },
+        { clientId: bob, from: 2, to: 3 },
+      ],
+    );
+    expect(kinds(editor)).toEqual([
+      ['kept', '抱'],
+      ['kept', '！'],
+    ]);
+    expect(marked(editor)).toEqual([]);
   });
 
   it('keeps a jumped-to passage highlighted for the whole flash once it is read', () => {

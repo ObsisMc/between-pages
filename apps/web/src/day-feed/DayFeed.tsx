@@ -10,6 +10,7 @@ import {
 import { Link } from 'react-router';
 import { Avatar, type AvatarPerson } from '../avatar/index.ts';
 import type { Clip } from '../day-text/index.ts';
+import type { ReadMarks } from '../read-tracker/index.ts';
 import { captureAnchor, restoreAnchor, type Anchor } from './anchor.ts';
 import { FeedDiary } from './FeedDiary.tsx';
 import { collapseOf, diariesOf, type Collapse, type Entry, type Side } from './model.ts';
@@ -81,6 +82,7 @@ function DateSection({
   clip,
   onOpen,
   onWrite,
+  marks,
 }: {
   entry: Entry;
   me: FeedPerson;
@@ -92,6 +94,7 @@ function DateSection({
   onOpen: Open | undefined;
   /** Set for the date jumped to while the caller has no diary on it: "写这天" in place of "编辑". */
   onWrite: Write | undefined;
+  marks: ReadMarks | undefined;
 }) {
   const [textUnread, setTextUnread] = useState<Partial<Record<Side, boolean>>>({});
   const onUnread = useCallback(
@@ -213,6 +216,7 @@ function DateSection({
             authorClass={authorClass}
             clip={clip}
             onUnread={onUnread}
+            marks={marks}
           />
         );
       })}
@@ -272,6 +276,7 @@ export function DayFeed({
   onPosition,
   onOpen,
   onWrite,
+  marks,
 }: {
   me: FeedPerson;
   partner: FeedPerson;
@@ -279,6 +284,8 @@ export function DayFeed({
   onPosition?: (at: FeedPosition) => void;
   onOpen?: (date: string, edit: boolean, at: FeedPosition | null) => void;
   onWrite?: Write;
+  /** The diary page's record of what this visit read (read-marks-until-leaving D3). */
+  marks?: ReadMarks;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   // Without IntersectionObserver every date counts as near and nothing loads by itself.
@@ -533,6 +540,7 @@ export function DayFeed({
                 onWrite={
                   entry.date === jumpedDate && !entry.day?.mine && onOpen ? onWrite : undefined
                 }
+                marks={marks}
               />
             ))}
             {entries?.length === 0 && (

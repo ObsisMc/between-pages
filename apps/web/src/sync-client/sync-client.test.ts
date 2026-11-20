@@ -57,18 +57,28 @@ function setup(knownSeq = 0) {
   const statuses: SyncStatus[] = [];
   const delivered: CommittedDelta[] = [];
   const bindings: unknown[] = [];
+  /** Each delivered seq and whether it came as a broadcast. */
+  const arrivals: [number, boolean][] = [];
   const client = createSyncClient({
     diaryId: DIARY,
     generationId: GENERATION,
     knownSeq,
-    onCommits: (commits, b) => {
+    onCommits: (commits, b, broadcast) => {
       delivered.push(...commits);
       bindings.push(...b);
+      arrivals.push(...commits.map((c): [number, boolean] => [c.seq, broadcast]));
     },
     onStatus: (status) => statuses.push(status),
   });
   clients.push(client);
-  return { client, statuses, delivered, bindings, socket: () => FakeSocket.all.at(-1)! };
+  return {
+    client,
+    statuses,
+    delivered,
+    bindings,
+    arrivals,
+    socket: () => FakeSocket.all.at(-1)!,
+  };
 }
 
 const commit = (seq: number, bytes: number[]) => ({
@@ -159,6 +169,19 @@ describe('sync client', () => {
 
     socket().receive(synced(4, [commit(3, [3]), commit(4, [4])]));
     expect(delivered.map((c) => c.seq)).toEqual([2, 3, 4]);
+  });
+
+  it('[adr:read-marks-until-leaving#6] tells a broadcast commit from one a catch-up brings', async () => {
+    const { socket, arrivals } = await live(1);
+    socket().receive(broadcast(commit(2, [2])));
+    // After a gap the broadcast waits for the catch-up, which brings it with the one missed.
+    socket().receive(broadcast(commit(4, [4])));
+    socket().receive(synced(4, [commit(3, [3]), commit(4, [4])]));
+    expect(arrivals).toEqual([
+      [2, true],
+      [3, false],
+      [4, false],
+    ]);
   });
 
   it('submits a batch in the contract shape and resolves with its ACK', async () => {

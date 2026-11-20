@@ -69,6 +69,26 @@ describe('DayText', () => {
       },
     ]);
   });
+
+  it('marks passages read during the visit light, as marks too', () => {
+    const runs = decodeText(stateOf([[2, THEM, '一二三四']]));
+    const { container } = render(
+      <DayText
+        runs={runs}
+        readerId={ME}
+        authorClass={authorClass}
+        unread={[{ from: 3, to: 4 }]}
+        kept={[{ from: 1, to: 3 }]}
+      />,
+    );
+    expect(
+      [...container.querySelectorAll('[data-client]')].map((el) => [el.tagName, el.className]),
+    ).toEqual([
+      ['SPAN', 'author-slot-2'],
+      ['MARK', 'author-slot-2 day-text-kept'],
+      ['MARK', 'author-slot-2 day-text-unread'],
+    ]);
+  });
 });
 
 describe('visibleOthers', () => {

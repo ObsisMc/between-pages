@@ -19,6 +19,8 @@
   /* Unread marks (#112): one ochre highlighter for both authors, and the jump's flash. */
   --highlight: color-mix(in srgb, var(--accent) 38%, transparent);
   --flash: color-mix(in srgb, var(--accent) 55%, transparent);
+  /* Text read during this visit (read-marks-until-leaving D1): the highlighter at half. */
+  --highlight-kept: color-mix(in srgb, var(--accent) 19%, transparent);
   --font-title:
     'Between Serif', 'Songti SC', 'Noto Serif SC', 'Source Han Serif SC', Georgia, serif;
   --font-body:
@@ -42,6 +44,7 @@
     --author-2: #8cc3ca;
     --highlight: color-mix(in srgb, var(--accent) 42%, transparent);
     --flash: color-mix(in srgb, var(--accent) 55%, transparent);
+    --highlight-kept: color-mix(in srgb, var(--accent) 21%, transparent);
     color-scheme: dark;
   }
 }
@@ -149,10 +152,19 @@
     color: inherit;
   }
 
+  /* The other person's text read during this visit to the diary page, or arriving live in
+     view (read-marks-until-leaving D1, D5): the same highlighter at about half, its own
+     class so nothing that looks for unread finds it (D4). */
+  .day-text-kept {
+    background-color: transparent;
+    background-image: linear-gradient(transparent 52%, var(--highlight-kept) 52%);
+  }
+
   /* A passage just jumped to (unread-and-day-page D4, space-records D8): two ochre pulses,
      then a fade to its mark, or to nothing where there is none, in `FLASH_MS` (3 s). Under
-     reduced motion it only fades. */
-  .unread-flash {
+     reduced motion it only fades. The feed sets `data-flash`, which React leaves alone. */
+  .unread-flash,
+  [data-flash] {
     animation: unread-flash 3s ease-out forwards;
   }
 
@@ -168,7 +180,8 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .unread-flash {
+    .unread-flash,
+    [data-flash] {
       animation-name: unread-fade;
     }
   }

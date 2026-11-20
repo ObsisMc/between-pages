@@ -4,7 +4,7 @@ import type { Day } from '@between-pages/contracts';
 import { stateOf, type Turn } from '../../test/day-text.ts';
 import { renderAt, signedIn, stubApi } from '../../test/render.tsx';
 import { ME, PARTNER, errorBody, space } from '../../test/relationship.ts';
-import { DWELL_MS } from '../read-tracker/index.ts';
+import { DWELL_MS, createReadMarks } from '../read-tracker/index.ts';
 import { DayFeed } from './index.ts';
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -550,11 +550,49 @@ describe('DayFeed unread buttons', () => {
     fireEvent.click(arrow);
 
     const passage = await within(region).findByText('没读的');
-    await waitFor(() => expect(passage.classList).toContain('unread-flash'));
+    await waitFor(() => expect(passage.hasAttribute('data-flash')).toBe(true));
     expect(passage.tagName).toBe('MARK');
     // A third down the 600px box: the passage at 900 moves up by 700.
     expect(region.querySelector('.day-feed-scroll')!.scrollTop).toBe(700);
     expect(document.activeElement).toBe(editor);
+  });
+
+  it('[adr:read-marks-until-leaving#1] keeps a jumped-to passage flashing for the whole flash once it is read, then marks it light', async () => {
+    // The unread passage lies 900px down the feed's box, so it moves as the box scrolls.
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: Element,
+    ) {
+      const box = document.querySelector('.day-feed-scroll');
+      if (this === box) return new DOMRect(0, 0, 400, 600);
+      if (this.hasAttribute('data-other') && this.textContent === '没读的')
+        return new DOMRect(0, 900 - box!.scrollTop, 100, 20);
+      return new DOMRect(0, 0, 0, 0);
+    });
+    stubApi({
+      ...signedInWithSpace,
+      'GET /api/days': page([{ diaryDate: '2026-10-27', mine: null, partner: shared(3) }]),
+      ...sharedDiary(3, [theySay('读过的'), theySay('没读的')], [{ clientId: 2, from: 0, to: 3 }]),
+      [`POST /api/diaries/${id(3)}/read`]: () =>
+        Response.json({ ranges: [{ clientId: 2, from: 0, to: 6 }] }),
+    });
+    renderAt('/', [{ path: '/', element: <DayFeed {...people} marks={createReadMarks()} /> }]);
+    const region = await feed();
+    fireEvent.click(await within(region).findByRole('button', { name: '下一处未读' }));
+    const flashing = () => region.querySelector('[data-flash]')?.textContent;
+    await waitFor(() => expect(flashing()).toBe('没读的'));
+    const passage = within(region).getByText('没读的');
+
+    // Two checks a second apart see it and report it; the flash outlives that.
+    await waitFor(() => expect(passage.className).toContain('day-text-kept'), {
+      timeout: 3 * DWELL_MS,
+    });
+    expect(passage.isConnected).toBe(true);
+    expect(flashing()).toBe('没读的');
+    // Kept text is not unread: the round button has nowhere left to go.
+    expect(region.querySelector('mark.day-text-unread')).toBeNull();
+    await waitFor(() => expect(down(region)).toBeNull());
+    await waitFor(() => expect(flashing()).toBeUndefined(), { timeout: 2 * DWELL_MS });
+    expect(passage.className).toContain('day-text-kept');
   });
 
   it('hides a button whose lookup failed, without saying there is no unread, and looks again on refresh', async () => {

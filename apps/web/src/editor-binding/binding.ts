@@ -96,12 +96,14 @@ export type EditorBinding = {
    */
   flash(from: number, to: number): void;
   /**
-   * Marks the other person's characters the reader has not read (unread-and-day-page D2):
-   * every one outside `read`, the reader's coverage by character identity, so the marks
-   * follow the text through edits; null (coverage unknown) marks none. Nothing is marked
-   * while "只看我的文字" hides that text. Changes no text.
+   * Marks the other person's characters by identity, so the marks follow the text through
+   * edits: those in `light` light (`day-text-kept`: read during this visit, or arrived live
+   * in view; read-marks-until-leaving D1, D5), the others outside `read`, the reader's
+   * coverage, as unread (`day-text-unread`, unread-and-day-page D2). With `read` null
+   * (coverage unknown) nothing is marked; nor while "只看我的文字" hides that text.
+   * Changes no text.
    */
-  showUnread(read: readonly ClockRange[] | null): void;
+  showUnread(read: readonly ClockRange[] | null, light?: readonly ClockRange[]): void;
   destroy(): void;
 };
 
@@ -164,8 +166,8 @@ export function createEditorBinding(
   /** A passage highlighted after a jump, as relative positions so it follows edits. */
   let flashed: { from: Y.RelativePosition; to: Y.RelativePosition } | null = null;
   let flashTimer: ReturnType<typeof setTimeout> | undefined;
-  /** The reader's coverage by clientID, sorted, for the unread marks; null draws none. */
-  let readBy: Map<number, ClockRange[]> | null = null;
+  /** What `showUnread` was given, by clientID; null draws no marks. */
+  let marked: { light: ByClient; seen: ByClient } | null = null;
 
   text.observe((event, transaction) => {
     const origin = transaction.origin;
@@ -200,7 +202,7 @@ export function createEditorBinding(
   }
 
   function decorationsOf(pmDoc: Node): DecorationSet {
-    if (composition || (!authorClass && !ownOnly && !remote.size && !flashed && !readBy))
+    if (composition || (!authorClass && !ownOnly && !remote.size && !flashed && !marked))
       return DecorationSet.empty;
     const marks: Decoration[] = [];
     if (flashed) {
@@ -241,9 +243,16 @@ export function createEditorBinding(
       ].filter(Boolean);
       if (classes.length)
         marks.push(Decoration.inline(from, offset + 1, { class: classes.join(' ') }));
-      if (readBy && !ownOnly && run.author !== userId)
-        for (const [start, end] of unreadIn(run.clock, run.text.length, readBy.get(run.client)))
-          marks.push(Decoration.inline(from + start, from + end, { class: 'day-text-unread' }));
+      if (marked && !ownOnly && run.author !== userId) {
+        const { clock, client } = run;
+        const length = run.text.length;
+        const mark =
+          (cls: string) =>
+          ([start, end]: [number, number]) =>
+            marks.push(Decoration.inline(from + start, from + end, { class: cls }));
+        gapsIn(clock, length, marked.seen.get(client)).forEach(mark('day-text-unread'));
+        coveredIn(clock, length, marked.light.get(client)).forEach(mark('day-text-kept'));
+      }
     }
     return DecorationSet.create(pmDoc, marks);
   }
@@ -708,14 +717,8 @@ export function createEditorBinding(
         view.dispatch(view.state.tr.setMeta(MIRROR, true));
       }, FLASH_MS);
     },
-    showUnread(read) {
-      readBy = null;
-      if (read) {
-        readBy = new Map();
-        for (const range of read)
-          readBy.set(range.clientId, [...(readBy.get(range.clientId) ?? []), range]);
-        for (const ranges of readBy.values()) ranges.sort((a, b) => a.from - b.from);
-      }
+    showUnread(read, light = []) {
+      marked = read && { light: byClient(light), seen: byClient([...read, ...light]) };
       view.dispatch(view.state.tr.setMeta(MIRROR, true));
     },
     destroy() {
@@ -728,15 +731,38 @@ export function createEditorBinding(
   };
 }
 
+type ByClient = Map<number, ClockRange[]>;
+
+/** Ranges grouped by clientID, each group sorted by `from`. */
+function byClient(ranges: readonly ClockRange[]): ByClient {
+  const grouped: ByClient = new Map();
+  for (const range of ranges)
+    grouped.set(range.clientId, [...(grouped.get(range.clientId) ?? []), range]);
+  for (const group of grouped.values()) group.sort((a, b) => a.from - b.from);
+  return grouped;
+}
+
+/** The offsets `[start, end)` within a run of `length` characters from `clock` inside `ranges`. */
+function coveredIn(clock: number, length: number, ranges: readonly ClockRange[] = []) {
+  const covered: [number, number][] = [];
+  let at = 0;
+  for (const [start, end] of gapsIn(clock, length, ranges)) {
+    if (start > at) covered.push([at, start]);
+    at = end;
+  }
+  if (at < length) covered.push([at, length]);
+  return covered;
+}
+
 /**
  * The offsets `[start, end)` within a run of `length` characters from `clock` that no
- * range in `read` (one clientID's, sorted by `from`) covers.
+ * range of one clientID's, sorted by `from`, covers.
  */
-function unreadIn(clock: number, length: number, read: readonly ClockRange[] = []) {
+function gapsIn(clock: number, length: number, ranges: readonly ClockRange[] = []) {
   const gaps: [number, number][] = [];
   let at = clock;
   const end = clock + length;
-  for (const range of read) {
+  for (const range of ranges) {
     if (range.to <= at) continue;
     if (range.from >= end) break;
     if (range.from > at) gaps.push([at - clock, range.from - clock]);
